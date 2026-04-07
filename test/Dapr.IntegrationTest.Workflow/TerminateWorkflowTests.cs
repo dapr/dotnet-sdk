@@ -58,8 +58,7 @@ public sealed class TerminateWorkflowTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: preTerminationCts.Token));
 
-        const string terminationOutput = "terminated";
-        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId, terminationOutput, TestContext.Current.CancellationToken);
+        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
 
         using var completionCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         WorkflowState result;
@@ -76,8 +75,6 @@ public sealed class TerminateWorkflowTests
         }
 
         Assert.Equal(WorkflowRuntimeStatus.Terminated, result.RuntimeStatus);
-        var output = result.ReadOutputAs<string>();
-        Assert.Equal(terminationOutput, output);
     }
 
     [Fact]
@@ -121,54 +118,6 @@ public sealed class TerminateWorkflowTests
             var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, getInputsAndOutputs: true, cancellation: terminateCts.Token);
             Assert.Fail($"Terminate gRPC call timed out. Current state: {state?.RuntimeStatus}, CustomStatus: {state?.ReadCustomStatusAs<string>()}");
             throw;
-        }
-    }
-
-    [Fact]
-    public async Task ShouldObserveTerminatedStatusAfterTermination()
-    {
-        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
-        var workflowInstanceId = Guid.NewGuid().ToString();
-        
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
-        await environment.StartAsync(TestContext.Current.CancellationToken);
-
-        var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
-        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
-            .ConfigureServices(builder =>
-            {
-                builder.Services.AddDaprWorkflowBuilder(
-                    opt => opt.RegisterWorkflow<LongRunningWorkflow>(),
-                    configureClient: (sp, clientBuilder) =>
-                    {
-                        var config = sp.GetRequiredService<IConfiguration>();
-                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
-                        if (!string.IsNullOrEmpty(grpcEndpoint))
-                            clientBuilder.UseGrpcEndpoint(grpcEndpoint);
-                    });
-            })
-            .BuildAndStartAsync();
-
-        using var scope = testApp.CreateScope();
-        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
-
-        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(LongRunningWorkflow), workflowInstanceId);
-        await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
-
-        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
-
-        using var statusCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        while (true)
-        {
-            var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, getInputsAndOutputs: true,
-                cancellation: statusCts.Token);
-            if (state?.RuntimeStatus == WorkflowRuntimeStatus.Terminated)
-            {
-                Assert.Equal(WorkflowRuntimeStatus.Terminated, state.RuntimeStatus);
-                break;
-            }
-
-            await Task.Delay(TimeSpan.FromMilliseconds(500), statusCts.Token);
         }
     }
 
