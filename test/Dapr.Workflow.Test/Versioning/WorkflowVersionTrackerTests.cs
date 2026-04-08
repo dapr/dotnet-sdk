@@ -25,8 +25,8 @@ public sealed class WorkflowVersionTrackerTests
         // Arrange
         var history = new List<HistoryEvent>
         {
-            new() { OrchestratorStarted = new() { Version = new() { Patches = { "patch1" } } } },
-            new() { OrchestratorStarted = new() { Version = new() { Patches = { "patch2" } } } }
+            new() { OrchestratorStarted = new OrchestratorStartedEvent { Version = new OrchestrationVersion { Patches = { "patch1" } } } },
+            new() { OrchestratorStarted = new OrchestratorStartedEvent { Version = new OrchestrationVersion { Patches = { "patch2" } } } }
         };
 
         // Act
@@ -42,8 +42,8 @@ public sealed class WorkflowVersionTrackerTests
         // Arrange
         var history = new List<HistoryEvent>
         {
-            new() { OrchestratorStarted = new() { Version = new() { Patches = { "patch1" } } } },
-            new() { OrchestratorStarted = new() { Version = new() { Patches = { "patch2" } } } }
+            new() { OrchestratorStarted = new OrchestratorStartedEvent { Version = new OrchestrationVersion { Patches = { "patch1" } } } },
+            new() { OrchestratorStarted = new OrchestratorStartedEvent { Version = new OrchestrationVersion { Patches = { "patch2" } } } }
         };
 
         // Act
@@ -59,7 +59,7 @@ public sealed class WorkflowVersionTrackerTests
         // Arrange
         var history = new List<HistoryEvent>
         {
-            new() { OrchestratorStarted = new() { Version = new() { Patches = { "p1", "p1", "p2" } } } }
+            new() { OrchestratorStarted = new OrchestratorStartedEvent { Version = new OrchestrationVersion { Patches = { "p1", "p1", "p2" } } } }
         };
 
         // Act
@@ -86,7 +86,7 @@ public sealed class WorkflowVersionTrackerTests
     {
         var history = new List<HistoryEvent>
         {
-            new() { OrchestratorStarted = new() { Version = new() { Patches = { "patch1" } } } }
+            new() { OrchestratorStarted = new OrchestratorStartedEvent { Version = new OrchestrationVersion { Patches = { "patch1" } } } }
         };
         var tracker = new WorkflowVersionTracker(history);
 
@@ -115,7 +115,7 @@ public sealed class WorkflowVersionTrackerTests
     {
         var history = new List<HistoryEvent>
         {
-            new() { OrchestratorStarted = new() { Version = new() { Patches = { "p1", "p2" } } } }
+            new() { OrchestratorStarted = new OrchestratorStartedEvent { Version = new OrchestrationVersion { Patches = { "p1", "p2" } } } }
         };
         var tracker = new WorkflowVersionTracker(history);
 
@@ -130,7 +130,7 @@ public sealed class WorkflowVersionTrackerTests
     {
         var history = new List<HistoryEvent>
         {
-            new() { OrchestratorStarted = new() { Version = new() { Patches = { "p1", "p2" } } } }
+            new() { OrchestratorStarted = new OrchestratorStartedEvent { Version = new OrchestrationVersion { Patches = { "p1", "p2" } } } }
         };
         var tracker = new WorkflowVersionTracker(history);
 
@@ -183,7 +183,7 @@ public sealed class WorkflowVersionTrackerTests
     {
         var history = new List<HistoryEvent>
         {
-            new() { OrchestratorStarted = new() { Version = new() { Patches = { "p1" } } } }
+            new() { OrchestratorStarted = new OrchestratorStartedEvent { Version = new OrchestrationVersion { Patches = { "p1" } } } }
         };
         var tracker = new WorkflowVersionTracker(history);
 
