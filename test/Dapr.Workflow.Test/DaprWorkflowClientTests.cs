@@ -13,6 +13,7 @@
 
 using System.Collections.ObjectModel;
 using Dapr.Workflow.Client;
+using Grpc.Core;
 
 namespace Dapr.Workflow.Test;
 
@@ -74,18 +75,13 @@ public class DaprWorkflowClientTests
         Assert.Equal(new DateTimeOffset(start), inner.LastScheduleOptions.StartAt);
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    public async Task GetWorkflowStateAsync_ShouldReturnNull_WhenInstanceIdIsNullOrEmpty(string? instanceId)
+    [Fact]
+    public async Task GetWorkflowStateAsync_ShouldThrowArgumentException_WhenInstanceIdIsNullOrEmpty()
     {
         var inner = new CapturingWorkflowClient();
         var client = new DaprWorkflowClient(inner);
 
-        var state = await client.GetWorkflowStateAsync(instanceId!, cancellation: TestContext.Current.CancellationToken);
-
-        Assert.Null(state);
-        Assert.Null(inner.LastGetMetadataInstanceId);
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetWorkflowStateAsync("", cancellation: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -102,9 +98,12 @@ public class DaprWorkflowClientTests
     }
 
     [Fact]
-    public async Task GetWorkflowStateAsync_ShouldReturnNull_WhenInnerThrows()
+    public async Task GetWorkflowStateAsync_ShouldReturnNull_WhenInnerThrowsRpcException()
     {
-        var inner = new CapturingWorkflowClient { GetWorkflowMetadataException = new InvalidOperationException("RPC error") };
+        var inner = new CapturingWorkflowClient
+        {
+            GetWorkflowMetadataException = new RpcException(new Status(StatusCode.NotFound, "not found"))
+        };
         var client = new DaprWorkflowClient(inner);
 
         var state = await client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken);
