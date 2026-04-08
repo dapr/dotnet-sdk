@@ -139,7 +139,7 @@ public class JsonWorkflowSerializerTests
         var roundTripped = serializer.Deserialize<ComplexPayload>(json);
 
         Assert.NotNull(roundTripped);
-        Assert.Equal(original.Id, roundTripped!.Id);
+        Assert.Equal(original.Id, roundTripped.Id);
         Assert.Equal(original.Name, roundTripped.Name);
         Assert.NotNull(roundTripped.Nested);
         Assert.Equal(original.Nested.FirstName, roundTripped.Nested.FirstName);

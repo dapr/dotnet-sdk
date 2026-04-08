@@ -152,6 +152,12 @@ public sealed class DaprdContainer : IAsyncStartable
             containerBuilder = containerBuilder.WithOutputConsumer(_logAttachment.OutputConsumer);
         }
 
+        // Put the API token in an envvar so it can be picked up by the Dapr runtime at startup
+        if (!string.IsNullOrWhiteSpace(options.DaprApiToken))
+        {
+            containerBuilder = containerBuilder.WithEnvironment("DAPR_API_TOKEN", options.DaprApiToken);
+        }
+
         containerBuilder = daprHttpPort is not null ? containerBuilder.WithPortBinding(containerPort: InternalHttpPort, hostPort: daprHttpPort.Value) : containerBuilder.WithPortBinding(port: InternalHttpPort, assignRandomHostPort: true);
         containerBuilder = daprGrpcPort is not null ? containerBuilder.WithPortBinding(containerPort: InternalGrpcPort, hostPort: daprGrpcPort.Value) : containerBuilder.WithPortBinding(port: InternalGrpcPort, assignRandomHostPort: true);
                 

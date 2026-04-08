@@ -109,7 +109,7 @@ public partial class DaprClientTest
 
         var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
         {
-            await client.DaprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " });
+            await client.DaprClient.InvokeMethodGrpcAsync<Request, Response>("test", "test", new Request() { RequestParameter = "Hello " }, TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }
@@ -175,7 +175,7 @@ public partial class DaprClientTest
 
         var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
         {
-            await client.DaprClient.InvokeMethodGrpcAsync<Response>("test", "test");
+            await client.DaprClient.InvokeMethodGrpcAsync<Response>("test", "test", TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }
@@ -234,7 +234,7 @@ public partial class DaprClientTest
 
         var ex = await Assert.ThrowsAsync<InvocationException>(async () =>
         {
-            await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", new Request() { RequestParameter = "Hello " });
+            await client.DaprClient.InvokeMethodGrpcAsync<Request>("test", "test", new Request() { RequestParameter = "Hello " }, TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }
@@ -316,7 +316,7 @@ public partial class DaprClientTest
 
         var request = new Request() { RequestParameter = "Look, I was invoked!" };
 
-        var response = await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "SayHello", request);
+        var response = await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "SayHello", request, TestContext.Current.CancellationToken);
 
         response.Name.ShouldBe("Hello Look, I was invoked!");
     }
@@ -337,7 +337,7 @@ public partial class DaprClientTest
         testRun.Tests.Add(new TestCase() { Name = "test2" });
         testRun.Tests.Add(new TestCase() { Name = "test3" });
 
-        var response = await daprClient.InvokeMethodGrpcAsync<TestRun, TestRun>("test", "TestRun", testRun);
+        var response = await daprClient.InvokeMethodGrpcAsync<TestRun, TestRun>("test", "TestRun", testRun, TestContext.Current.CancellationToken);
 
         response.Tests.Count.ShouldBe(3);
         response.Tests[0].Name.ShouldBe("test1");
@@ -358,7 +358,7 @@ public partial class DaprClientTest
 
         var request = new Request() { RequestParameter = "Look, I was invoked!" };
 
-        var response = await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "not-existing", request);
+        var response = await daprClient.InvokeMethodGrpcAsync<Request, Response>("test", "not-existing", request, TestContext.Current.CancellationToken);
 
         response.Name.ShouldBe("unexpected");
     }
@@ -382,7 +382,7 @@ public partial class DaprClientTest
 
         var ex = await Assert.ThrowsAsync<DaprException>(async () =>
         {
-            await client.DaprClient.GetMetadataAsync(default);
+            await client.DaprClient.GetMetadataAsync(TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }
@@ -395,10 +395,7 @@ public partial class DaprClientTest
             c.UseJsonSerializationOptions(this.jsonSerializerOptions);
         });
 
-        var request = await client.CaptureGrpcRequestAsync(async daprClient =>
-        {
-            return await daprClient.GetMetadataAsync(default);
-        });
+        var request = await client.CaptureGrpcRequestAsync(async daprClient => await daprClient.GetMetadataAsync(default));
 
 
         // Create Response & Respond
@@ -437,7 +434,7 @@ public partial class DaprClientTest
 
         var ex = await Assert.ThrowsAsync<DaprException>(async () =>
         {
-            await client.DaprClient.SetMetadataAsync("testName", "", default);
+            await client.DaprClient.SetMetadataAsync("testName", "", TestContext.Current.CancellationToken);
         });
         Assert.Same(rpcException, ex.InnerException);
     }

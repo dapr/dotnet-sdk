@@ -20,18 +20,17 @@ using Dapr.E2E.Test.Actors.WeaklyTypedTesting;
 using Shouldly;
 using Xunit;
 
-public partial class E2ETests : IAsyncLifetime
+public partial class E2ETests
 {
     [Fact]
     public async Task WeaklyTypedActorCanReturnPolymorphicResponse()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var pingProxy = this.ProxyFactory.CreateActorProxy<IWeaklyTypedTestingActor>(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
         var proxy = this.ProxyFactory.Create(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
 
-        await WaitForActorRuntimeAsync(pingProxy, cts.Token);
+        await WaitForActorRuntimeAsync(pingProxy, TestContext.Current.CancellationToken);
 
-        var result = await proxy.InvokeMethodAsync<ResponseBase>(nameof(IWeaklyTypedTestingActor.GetPolymorphicResponse));
+        var result = await proxy.InvokeMethodAsync<ResponseBase>(nameof(IWeaklyTypedTestingActor.GetPolymorphicResponse), TestContext.Current.CancellationToken);
 
         result.ShouldBeOfType<DerivedResponse>().DerivedProperty.ShouldNotBeNullOrWhiteSpace();
     }
@@ -39,13 +38,12 @@ public partial class E2ETests : IAsyncLifetime
     [Fact]
     public async Task WeaklyTypedActorCanReturnNullResponse()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var pingProxy = this.ProxyFactory.CreateActorProxy<IWeaklyTypedTestingActor>(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
         var proxy = this.ProxyFactory.Create(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
 
-        await WaitForActorRuntimeAsync(pingProxy, cts.Token);
+        await WaitForActorRuntimeAsync(pingProxy, TestContext.Current.CancellationToken);
 
-        var result = await proxy.InvokeMethodAsync<ResponseBase>(nameof(IWeaklyTypedTestingActor.GetNullResponse));
+        var result = await proxy.InvokeMethodAsync<ResponseBase>(nameof(IWeaklyTypedTestingActor.GetNullResponse), TestContext.Current.CancellationToken);
 
         result.ShouldBeNull();
     }

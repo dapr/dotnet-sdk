@@ -640,7 +640,7 @@ public partial class DaprClientTest
         Assert.Same(data, content.Value);
 
         // the best way to verify the usage of the correct settings object
-        var actual = await content.ReadFromJsonAsync<Widget>(this.jsonSerializerOptions);
+        var actual = await content.ReadFromJsonAsync<Widget>(this.jsonSerializerOptions, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(data.Color, actual.Color);
     }
 
@@ -666,7 +666,7 @@ public partial class DaprClientTest
         Assert.Same(data, content.Value);
 
         // the best way to verify the usage of the correct settings object
-        var actual = await content.ReadFromJsonAsync<Widget>(this.jsonSerializerOptions);
+        var actual = await content.ReadFromJsonAsync<Widget>(this.jsonSerializerOptions, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(data.Color, actual.Color);
     }
         
@@ -753,7 +753,7 @@ public partial class DaprClientTest
         var request = new HttpRequestMessage(HttpMethod.Get, "https://example.com");
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => 
         {
-            await client.InnerClient.InvokeMethodWithResponseAsync(request);
+            await client.InnerClient.InvokeMethodWithResponseAsync(request, TestContext.Current.CancellationToken);
         });
 
         Assert.Equal("The provided request URI is not a Dapr service invocation URI.", ex.Message);

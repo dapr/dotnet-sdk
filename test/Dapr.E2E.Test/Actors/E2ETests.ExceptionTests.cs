@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 using Dapr.Actors;
 using Dapr.E2E.Test.Actors.ExceptionTesting;
 using Xunit;
-public partial class E2ETests : IAsyncLifetime
+public partial class E2ETests
 {
     [Fact]
     public async Task ActorCanProvideExceptionDetails()

@@ -15,6 +15,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Common;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Serialization;
@@ -22,6 +23,7 @@ using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
 using Grpc.Core;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -37,7 +39,8 @@ internal sealed class WorkflowWorker(
     ILoggerFactory loggerFactory, 
     IWorkflowSerializer workflowSerializer, 
     IServiceProvider serviceProvider, 
-    WorkflowRuntimeOptions options) : BackgroundService
+    WorkflowRuntimeOptions options,
+    IConfiguration? configuration = null) : BackgroundService
 {
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient = grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly IWorkflowsFactory _workflowsFactory = workflowsFactory ?? throw new ArgumentNullException(nameof(workflowsFactory));
@@ -45,6 +48,7 @@ internal sealed class WorkflowWorker(
     private readonly ILogger<WorkflowWorker> _logger = loggerFactory.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly WorkflowRuntimeOptions _options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly IWorkflowSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
+    private readonly string? _daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
     
     private GrpcProtocolHandler? _protocolHandler;
 
@@ -58,7 +62,7 @@ internal sealed class WorkflowWorker(
         try
         {
             // Create the protocol handler
-            _protocolHandler = new GrpcProtocolHandler(_grpcClient, loggerFactory, _options.MaxConcurrentWorkflows, _options.MaxConcurrentActivities);
+            _protocolHandler = new GrpcProtocolHandler(_grpcClient, loggerFactory, _options.MaxConcurrentWorkflows, _options.MaxConcurrentActivities, _daprApiToken);
 
             // Start processing work items
             await _protocolHandler.StartAsync(HandleOrchestratorResponseAsync, HandleActivityResponseAsync, stoppingToken);
@@ -101,12 +105,46 @@ internal sealed class WorkflowWorker(
                     ForWorkItemProcessing = true
                 };
                 
-                using var call = _grpcClient.StreamInstanceHistory(streamRequest);
+                using var call = _grpcClient.StreamInstanceHistory(streamRequest, CreateCallOptions(CancellationToken.None));
                 while (await call.ResponseStream.MoveNext(CancellationToken.None).ConfigureAwait(false))
                 {
                     var chunk = call.ResponseStream.Current.Events;
                     allPastEvents.AddRange(chunk);
                 }
+            }
+            
+            // If the most recent event is `ExecutionTerminated`, acknowledge termination immediately.
+            var timelineEvents = allPastEvents.Concat(request.NewEvents).ToList();
+            var latestEvent = timelineEvents.Count > 0 ? timelineEvents[^1] : null;
+            
+            if (latestEvent?.ExecutionTerminated != null)
+            {
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    CompletionToken = completionToken,
+                    Actions =
+                    {
+                        new OrchestratorAction
+                        {
+                            CompleteOrchestration = new CompleteOrchestrationAction
+                            {
+                                OrchestrationStatus = OrchestrationStatus.Terminated
+                            }
+                        }
+                    }
+                };
+            }
+
+            // If the instance is suspended, acknowledge the work item without running the orchestrator.
+            // This keeps the workflow paused while still committing the suspension event.
+            if (latestEvent?.ExecutionSuspended != null)
+            {
+                return new OrchestratorResponse
+                {
+                    InstanceId = request.InstanceId,
+                    CompletionToken = completionToken
+                };
             }
             
             // Create a new version tracker for this turn
@@ -272,7 +310,7 @@ internal sealed class WorkflowWorker(
 
             // Initialize the context with the FULL history
             var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, 
-                _serializer, loggerFactory, versionTracker, appId);
+                _serializer, loggerFactory, versionTracker, appId, request.ExecutionId);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
@@ -280,7 +318,12 @@ internal sealed class WorkflowWorker(
                 : _serializer.Deserialize(serializedInput, workflow!.InputType);
 
             // Initialize per-turn state before any workflow code runs.
-            context.InitializeNewTurn(currentTurnTimestamp);
+            // On first execution (no past events) use the current turn's OrchestratorStarted timestamp.
+            // On replay use the first past event's timestamp so the workflow sees the same
+            // CurrentUtcDateTime at its start as it did on the very first execution.
+            // ProcessEvents will advance the clock naturally via OrchestratorStarted history events.
+            var initialTimestamp = allPastEvents.Count > 0 ? currentUtcDateTime : currentTurnTimestamp;
+            context.InitializeNewTurn(initialTimestamp);
             context.SetReplayState(allPastEvents.Count > 0);
 
             // Execute the workflow
@@ -301,6 +344,11 @@ internal sealed class WorkflowWorker(
             {
                 context.ProcessEvents(request.NewEvents, false);
             }
+
+            // Populate CarryoverEvents now that all events in this turn have been processed.
+            // ContinueAsNew cannot do this inline because it runs mid-ProcessEvents; events
+            // arriving later in the same NewEvents batch would be buffered after the snapshot.
+            context.FinalizeCarryoverEvents();
 
             // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
             if (versionTracker.IsStalled)
@@ -523,4 +571,7 @@ internal sealed class WorkflowWorker(
 
         await base.StopAsync(cancellationToken);
     }
+
+    private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>
+        DaprClientUtilities.ConfigureGrpcCallOptions(typeof(WorkflowWorker).Assembly, _daprApiToken, cancellationToken);
 }

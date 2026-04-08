@@ -22,13 +22,13 @@ namespace Dapr.IntegrationTest.Workflow;
 public sealed class PauseResumeTests
 {
     [Fact]
-    public async Task ShouldPauseAndResumeWorkflow()
+    public async Task ShouldReportPausedStatusWhenWorkflowIsSuspended()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -52,21 +52,63 @@ public sealed class PauseResumeTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(WaitingWorkflow), workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
         // Pause the workflow
-        await daprWorkflowClient.SuspendWorkflowAsync(workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await daprWorkflowClient.SuspendWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
-        var pausedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId);
+        var pausedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        Assert.NotNull(pausedState);
+        Assert.Equal(WorkflowRuntimeStatus.Suspended, pausedState.RuntimeStatus);
+    }
+
+    [Fact]
+    public async Task ShouldPauseAndResumeWorkflow()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+        var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprWorkflowBuilder(
+                    opt => opt.RegisterWorkflow<WaitingWorkflow>(),
+                    configureClient: (sp, cb) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrEmpty(grpcEndpoint))
+                            cb.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(WaitingWorkflow), workflowInstanceId);
+        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+
+        // Pause the workflow
+        await daprWorkflowClient.SuspendWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+
+        var pausedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.NotNull(pausedState);
         Assert.Equal(WorkflowRuntimeStatus.Suspended, pausedState.RuntimeStatus);
 
         // Resume the workflow
-        await daprWorkflowClient.ResumeWorkflowAsync(workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await daprWorkflowClient.ResumeWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
-        var resumedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId);
+        var resumedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.NotNull(resumedState);
         Assert.Equal(WorkflowRuntimeStatus.Running, resumedState.RuntimeStatus);
     }

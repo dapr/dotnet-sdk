@@ -30,8 +30,8 @@ public sealed class TimerTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -59,20 +59,20 @@ public sealed class TimerTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
         
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(TestWorkflow), workflowInstanceId, 8);
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        await Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
         
         // Get the initial status
-        var initialStatus = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId);
+        var initialStatus = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.NotNull(initialStatus);
         Assert.Equal(WorkflowRuntimeStatus.Running, initialStatus.RuntimeStatus);
         var initialStatusResult = initialStatus.ReadCustomStatusAs<string>();
         Assert.Equal(InitialMessage, initialStatusResult);
         
         // Wait 20 seconds
-        await Task.Delay(TimeSpan.FromSeconds(20));
+        await Task.Delay(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
         
         // Get the current status
-        var finalStatus = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId);
+        var finalStatus = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.NotNull(finalStatus);
         var finalStatusResult = finalStatus.ReadCustomStatusAs<string>();
         Assert.Equal(FinalMessage, finalStatusResult);

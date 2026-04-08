@@ -13,8 +13,8 @@
 
 namespace Dapr.AspNetCore.IntegrationTest;
 
-using Dapr.AspNetCore.IntegrationTest.App;
-using Dapr.Client;
+using App;
+using Client;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,7 +22,7 @@ using Microsoft.Extensions.Logging;
 
 public class AppWebApplicationFactory : WebApplicationFactory<Startup>
 {
-    internal StateTestClient DaprClient { get; } = new StateTestClient();
+    internal StateTestClient DaprClient { get; } = new();
 
     protected override IHostBuilder CreateHostBuilder()
     {
@@ -31,7 +31,7 @@ public class AppWebApplicationFactory : WebApplicationFactory<Startup>
         {
             b.SetMinimumLevel(LogLevel.None);
         });
-        return builder.ConfigureServices((context, services) =>
+        return builder.ConfigureServices((_, services) =>
         {
             services.AddSingleton<DaprClient>(this.DaprClient);
         });

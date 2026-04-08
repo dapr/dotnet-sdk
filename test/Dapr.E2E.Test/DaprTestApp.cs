@@ -19,7 +19,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.Versioning;
-using Xunit.Abstractions;
+using Xunit;
 using static System.IO.Path;
 
 namespace Dapr.E2E.Test;
