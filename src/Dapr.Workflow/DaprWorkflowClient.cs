@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Workflow.Client;
+using Grpc.Core;
 
 namespace Dapr.Workflow;
 
@@ -123,17 +124,27 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// </param>
     /// <param name="cancellation">Token to cancel the retrieval operation.</param>
     /// <returns>
-    /// A <see cref="WorkflowMetadata"/> object, or <c>null</c> if the workflow instance does not exist.
+    /// A <see cref="WorkflowState"/> if the workflow instance exists, or <c>null</c> if the instance does not
+    /// exist or an error occurs retrieving the metadata.
+    /// This method never throws.
     /// </returns>
-    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
     public async Task<WorkflowState?> GetWorkflowStateAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        var metadata = await _innerClient.GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellation);
-        return metadata is null ? null : new WorkflowState(metadata);
+        
+        try
+        {
+            var metadata = await _innerClient.GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellation);
+            return metadata is null ? null : new WorkflowState(metadata);    
+        }
+        catch (RpcException)
+        {
+            // If the state doesn't exist, we typically get an `RpcException`, so this wraps this and just returns null
+            return null;
+        }
     }
     
     /// <summary>
