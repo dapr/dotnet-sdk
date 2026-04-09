@@ -123,14 +123,25 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
         {
             WebApplication? attemptApp = null;
+            PortReservation? httpReservation = null;
+            PortReservation? grpcReservation = null;
 
             try
             {
-                // Pre-assign prots for the app knows where Dapr will be (avoid collisions)
-                var httpPort = PortUtilities.GetAvailablePort();
-                var grpcPort = PortUtilities.GetAvailablePort();
-                while (grpcPort == httpPort)
-                    grpcPort = PortUtilities.GetAvailablePort();
+                // Pre-assign ports so the app knows where Dapr will be (avoid collisions)
+                httpReservation = PortUtilities.ReserveTcpPort();
+                do
+                {
+                    grpcReservation = PortUtilities.ReserveTcpPort();
+                    if (grpcReservation.Port == httpReservation.Port)
+                    {
+                        grpcReservation.Dispose();
+                        grpcReservation = null;
+                    }
+                } while (grpcReservation is null);
+
+                var httpPort = httpReservation.Port;
+                var grpcPort = grpcReservation.Port;
                 
                 harness.SetPorts(httpPort, grpcPort);
 
@@ -141,6 +152,12 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
                     await attemptApp.StartAsync();
                     harness.SetAppPort(GetBoundPort(attemptApp));
                 }
+
+                // Release port reservations just before daprd starts to minimize collisions.
+                httpReservation.Dispose();
+                grpcReservation.Dispose();
+                httpReservation = null;
+                grpcReservation = null;
 
                 await harness.InitializeAsync();
 
@@ -162,7 +179,12 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
                     }
                 }
                 
-                // Try again with a frest set of ports
+                // Try again with a fresh set of ports
+            }
+            finally
+            {
+                httpReservation?.Dispose();
+                grpcReservation?.Dispose();
             }
         }
 
