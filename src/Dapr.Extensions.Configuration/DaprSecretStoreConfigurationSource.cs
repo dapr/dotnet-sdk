@@ -59,6 +59,13 @@ public class DaprSecretStoreConfigurationSource : IConfigurationSource
     /// </summary>
     public TimeSpan? SidecarWaitTimeout { get; set; }
 
+    /// <summary>
+    /// Gets or sets a value indicating whether this configuration source is optional.
+    /// When <c>true</c>, the provider will not block startup waiting for the Dapr sidecar and will
+    /// instead load secrets in the background once the sidecar becomes available.
+    /// </summary>
+    public bool IsOptional { get; set; }
+
     /// <inheritdoc />
     public IConfigurationProvider Build(IConfigurationBuilder builder)
     {
@@ -69,11 +76,11 @@ public class DaprSecretStoreConfigurationSource : IConfigurationSource
                 throw new ArgumentException($"{nameof(Metadata)} must be null when {nameof(SecretDescriptors)} is set", nameof(Metadata));
             }
 
-            return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, KeyDelimiters, SecretDescriptors, Client, SidecarWaitTimeout ?? DaprSecretStoreConfigurationProvider.DefaultSidecarWaitTimeout);
+            return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, KeyDelimiters, SecretDescriptors, Client, SidecarWaitTimeout ?? DaprSecretStoreConfigurationProvider.DefaultSidecarWaitTimeout, IsOptional);
         }
         else
         {
-            return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, KeyDelimiters, Metadata, Client, SidecarWaitTimeout ?? DaprSecretStoreConfigurationProvider.DefaultSidecarWaitTimeout);
+            return new DaprSecretStoreConfigurationProvider(Store, NormalizeKey, KeyDelimiters, Metadata, Client, SidecarWaitTimeout ?? DaprSecretStoreConfigurationProvider.DefaultSidecarWaitTimeout, IsOptional);
         }
     }
 }
