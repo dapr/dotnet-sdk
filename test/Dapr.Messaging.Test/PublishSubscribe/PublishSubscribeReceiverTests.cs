@@ -234,19 +234,24 @@ public class PublishSubscribeReceiverTests
 
         var task = Task.FromException(new InvalidOperationException("Test exception"));
 
-        var exception = Assert.Throws<AggregateException>(() =>
-            PublishSubscribeReceiver.HandleTaskCompletion(task, null));
+        var exception = await Assert.ThrowsAsync<DaprException>(() => receiver.HandleTaskCompletion(task, null));
 
         Assert.IsType<InvalidOperationException>(exception.InnerException);
-        Assert.Equal("Test exception", exception.InnerException.Message);
+        Assert.Equal("Test exception", exception.InnerException!.Message);
     }
 
     [Fact]
-    public void HandleTaskCompletion_SuccessfulTask_DoesNotThrow()
+    public async Task HandleTaskCompletion_SuccessfulTask_DoesNotThrow()
     {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success));
+        var messageHandler = new TopicMessageHandler((message, token) => Task.FromResult(TopicResponseAction.Success));
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, mockDaprClient.Object);
         var task = Task.CompletedTask;
         // Should not throw for a completed (non-faulted) task
-        PublishSubscribeReceiver.HandleTaskCompletion(task, null);
+        await receiver.HandleTaskCompletion(task, null);
     }
 
     [Fact]
@@ -693,8 +698,7 @@ public class PublishSubscribeReceiverTests
 
         // Verify HandleTaskCompletion correctly re-throws when given the faulted task.
         var faultedStub = Task.FromException(new InvalidOperationException("Unrecognized topic acknowledgement action: 99"));
-        var ex = Assert.Throws<AggregateException>(() =>
-            PublishSubscribeReceiver.HandleTaskCompletion(faultedStub, null));
+        var ex = await Assert.ThrowsAsync<DaprException>(() => receiver.HandleTaskCompletion(faultedStub, null));
         Assert.IsType<InvalidOperationException>(ex.InnerException);
         Assert.Contains("99", ex.InnerException!.Message);
 
