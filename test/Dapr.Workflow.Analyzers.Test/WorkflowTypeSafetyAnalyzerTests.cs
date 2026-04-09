@@ -34,6 +34,35 @@ public sealed class WorkflowStarter
     }
 
     [Fact]
+    public async Task VerifyWorkflowInputTypeMismatch_WhenUsingWorkflowClientInterface()
+    {
+        const string testCode = """
+using Dapr.Workflow;
+using System.Threading.Tasks;
+
+public sealed class OrderWorkflow : Workflow<int, string>
+{
+    public override Task<string> RunAsync(WorkflowContext context, int input) => Task.FromResult(input.ToString());
+}
+
+public sealed class WorkflowStarter
+{
+    public Task StartAsync(IDaprWorkflowClient client)
+    {
+        return client.ScheduleNewWorkflowAsync(nameof(OrderWorkflow), input: "wrong");
+    }
+}
+""";
+
+        var expected = VerifyAnalyzer.Diagnostic(WorkflowTypeSafetyAnalyzer.InputTypeMismatchDescriptor)
+            .WithSpan(13, 71, 13, 85)
+            .WithMessage("The provided input type 'string' does not match the expected input type 'int' for workflow 'OrderWorkflow'");
+
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<WorkflowTypeSafetyAnalyzer>(testCode, expected);
+    }
+
+    [Fact]
     public async Task VerifyActivityInputTypeMismatch()
     {
         const string testCode = """

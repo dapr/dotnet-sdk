@@ -1,33 +1,30 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Operations;
 
 namespace Dapr.Workflow.Analyzers;
 
 /// <summary>
-/// Validate that the input and output types to and from a workflow and workflow activity match on either side of the operation.
+/// Validates that the input and output types used with Dapr workflow and workflow activity calls
+/// match the declared generic input/output types of the target workflow/activity type.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
 {
     internal static readonly DiagnosticDescriptor InputTypeMismatchDescriptor = new(
         id: "DAPR1303",
-        title: new LocalizableResourceString(nameof(Resources.DAPR1303Title), Resources.ResourceManager,
-            typeof(Resources)),
-        messageFormat: new LocalizableResourceString(nameof(Resources.DAPR1303MessageFormat), Resources.ResourceManager,
-            typeof(Resources)),
+        title: new LocalizableResourceString(nameof(Resources.DAPR1303Title), Resources.ResourceManager, typeof(Resources)),
+        messageFormat: new LocalizableResourceString(nameof(Resources.DAPR1303MessageFormat), Resources.ResourceManager, typeof(Resources)),
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
     internal static readonly DiagnosticDescriptor OutputTypeMismatchDescriptor = new(
         id: "DAPR1304",
-        title: new LocalizableResourceString(nameof(Resources.DAPR1304Title), Resources.ResourceManager,
-            typeof(Resources)),
-        messageFormat: new LocalizableResourceString(nameof(Resources.DAPR1304MessageFormat), Resources.ResourceManager,
-            typeof(Resources)),
+        title: new LocalizableResourceString(nameof(Resources.DAPR1304Title), Resources.ResourceManager, typeof(Resources)),
+        messageFormat: new LocalizableResourceString(nameof(Resources.DAPR1304MessageFormat), Resources.ResourceManager, typeof(Resources)),
         category: "Usage",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
@@ -49,102 +46,160 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
-        context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
+
+        context.RegisterCompilationStartAction(static compilationStartContext =>
+        {
+            var compilation = compilationStartContext.Compilation;
+
+            var daprWorkflowClientType = compilation.GetDaprWorkflowClientType();
+            var iDaprWorkflowClientType = compilation.GetIDaprWorkflowClientType();
+            var workflowContextType = compilation.GetWorkflowContextType();
+            var workflowBaseType = compilation.GetWorkflowBaseType();
+            var workflowActivityBaseType = compilation.GetWorkflowActivityBaseType();
+
+            if (daprWorkflowClientType is null ||
+                iDaprWorkflowClientType is null ||
+                workflowContextType is null ||
+                workflowBaseType is null ||
+                workflowActivityBaseType is null)
+            {
+                return;
+            }
+
+            compilationStartContext.RegisterOperationAction(
+                operationContext => AnalyzeInvocation(
+                    operationContext,
+                    daprWorkflowClientType,
+                    iDaprWorkflowClientType,
+                    workflowContextType,
+                    workflowBaseType,
+                    workflowActivityBaseType),
+                OperationKind.Invocation);
+        });
     }
 
-    private static void AnalyzeInvocation(SyntaxNodeAnalysisContext context)
+    private static void AnalyzeInvocation(
+        OperationAnalysisContext context,
+        INamedTypeSymbol daprWorkflowClientType,
+        INamedTypeSymbol iDaprWorkflowClientType,
+        INamedTypeSymbol workflowContextType,
+        INamedTypeSymbol workflowBaseType,
+        INamedTypeSymbol workflowActivityBaseType)
     {
-        var invocation = (InvocationExpressionSyntax)context.Node;
-        if (context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken).Symbol is not IMethodSymbol
-            methodSymbol)
+        context.CancellationToken.ThrowIfCancellationRequested();
+
+        var invocation = (IInvocationOperation)context.Operation;
+        var targetMethod = invocation.TargetMethod.ReducedFrom ?? invocation.TargetMethod;
+
+        if (IsScheduleNewWorkflowAsync(targetMethod, daprWorkflowClientType, iDaprWorkflowClientType))
         {
+            AnalyzeWorkflowInput(invocation, context, workflowBaseType);
             return;
         }
 
-        methodSymbol = methodSymbol.ReducedFrom ?? methodSymbol;
-
-        switch (methodSymbol.Name)
+        if (IsCallChildWorkflowAsync(targetMethod, workflowContextType))
         {
-            case "ScheduleNewWorkflowAsync":
-                AnalyzeWorkflowInput(invocation, methodSymbol, context);
-                break;
-            case "CallChildWorkflowAsync":
-                AnalyzeWorkflowInput(invocation, methodSymbol, context);
-                AnalyzeWorkflowOutput(invocation, methodSymbol, context);
-                break;
-            case "CallActivityAsync":
-                AnalyzeActivityInput(invocation, methodSymbol, context);
-                AnalyzeActivityOutput(invocation, methodSymbol, context);
-                break;
+            AnalyzeWorkflowInput(invocation, context, workflowBaseType);
+            AnalyzeWorkflowOutput(invocation, context, workflowBaseType);
+            return;
+        }
+
+        if (IsCallActivityAsync(targetMethod, workflowContextType))
+        {
+            AnalyzeActivityInput(invocation, context, workflowActivityBaseType);
+            AnalyzeActivityOutput(invocation, context, workflowActivityBaseType);
         }
     }
+
+    private static bool IsScheduleNewWorkflowAsync(
+        IMethodSymbol method,
+        INamedTypeSymbol daprWorkflowClientType,
+        INamedTypeSymbol iDaprWorkflowClientType) =>
+        method.Name == "ScheduleNewWorkflowAsync" &&
+        (SymbolEqualityComparer.Default.Equals(method.ContainingType, daprWorkflowClientType) ||
+         SymbolEqualityComparer.Default.Equals(method.ContainingType, iDaprWorkflowClientType));
+
+    private static bool IsCallChildWorkflowAsync(
+        IMethodSymbol method,
+        INamedTypeSymbol workflowContextType) =>
+        method.Name == "CallChildWorkflowAsync" &&
+        SymbolEqualityComparer.Default.Equals(method.ContainingType, workflowContextType);
+
+    private static bool IsCallActivityAsync(
+        IMethodSymbol method,
+        INamedTypeSymbol workflowContextType) =>
+        method.Name == "CallActivityAsync" &&
+        SymbolEqualityComparer.Default.Equals(method.ContainingType, workflowContextType);
 
     private static void AnalyzeWorkflowInput(
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol methodSymbol,
-        SyntaxNodeAnalysisContext context)
+        IInvocationOperation invocation,
+        OperationAnalysisContext context,
+        INamedTypeSymbol workflowBaseType)
     {
-        if (!TryGetTargetType(invocation, methodSymbol, context, "name", "workflowName", out var workflowType))
+        context.CancellationToken.ThrowIfCancellationRequested();
+
+        if (!TryGetTargetTypeFromNameof(invocation, "name", context.CancellationToken, out var workflowType) &&
+            !TryGetTargetTypeFromNameof(invocation, "workflowName", context.CancellationToken, out workflowType))
         {
             return;
         }
 
-        if (!TryGetWorkflowTypeArguments(workflowType, out var expectedInputType, out _))
+        if (!TryGetGenericArgumentsFromBaseType(workflowType, workflowBaseType, out var expectedInputType, out _))
         {
             return;
         }
 
-        var inputArgument = GetArgument(invocation, methodSymbol, "input");
-        if (inputArgument is null || !TryGetExpressionType(context.SemanticModel, inputArgument.Expression,
-                context.CancellationToken, out var actualInputType))
+        var inputArgument = GetArgument(invocation, "input");
+        if (inputArgument is null ||
+            !TryGetExpressionType(inputArgument.Value, out var actualInputType))
         {
             return;
         }
 
-        if (IsCompatible(actualInputType, expectedInputType, context.SemanticModel.Compilation))
+        if (IsCompatible(actualInputType, expectedInputType, context.Compilation))
         {
             return;
         }
 
-        var diagnostic = Diagnostic.Create(
+        context.ReportDiagnostic(Diagnostic.Create(
             InputTypeMismatchDescriptor,
-            inputArgument.GetLocation(),
+            inputArgument.Syntax.GetLocation(),
             ToDisplayString(actualInputType),
             ToDisplayString(expectedInputType),
             "workflow",
-            workflowType.Name);
-
-        context.ReportDiagnostic(diagnostic);
+            workflowType.Name));
     }
 
     private static void AnalyzeWorkflowOutput(
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol methodSymbol,
-        SyntaxNodeAnalysisContext context)
+        IInvocationOperation invocation,
+        OperationAnalysisContext context,
+        INamedTypeSymbol workflowBaseType)
     {
-        if (!TryGetTargetType(invocation, methodSymbol, context, "workflowName", out var workflowType))
+        context.CancellationToken.ThrowIfCancellationRequested();
+
+        if (!TryGetTargetTypeFromNameof(invocation, "workflowName", context.CancellationToken, out var workflowType))
         {
             return;
         }
 
-        if (!TryGetWorkflowTypeArguments(workflowType, out _, out var declaredOutputType))
+        if (!TryGetGenericArgumentsFromBaseType(workflowType, workflowBaseType, out _, out var declaredOutputType))
         {
             return;
         }
 
-        if (!TryGetRequestedOutputType(methodSymbol, out var requestedOutputType))
+        if (!TryGetRequestedOutputType(invocation.TargetMethod, out var requestedOutputType))
         {
             return;
         }
 
-        if (IsCompatible(declaredOutputType, requestedOutputType, context.SemanticModel.Compilation))
+        if (IsCompatible(declaredOutputType, requestedOutputType, context.Compilation))
         {
             return;
         }
 
         context.ReportDiagnostic(Diagnostic.Create(
             OutputTypeMismatchDescriptor,
-            GetOutputDiagnosticLocation(invocation),
+            GetInvocationNameLocation(invocation),
             ToDisplayString(requestedOutputType),
             ToDisplayString(declaredOutputType),
             "workflow",
@@ -152,35 +207,37 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
     }
 
     private static void AnalyzeActivityInput(
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol methodSymbol,
-        SyntaxNodeAnalysisContext context)
+        IInvocationOperation invocation,
+        OperationAnalysisContext context,
+        INamedTypeSymbol workflowActivityBaseType)
     {
-        if (!TryGetTargetType(invocation, methodSymbol, context, "name", out var activityType))
+        context.CancellationToken.ThrowIfCancellationRequested();
+
+        if (!TryGetTargetTypeFromNameof(invocation, "name", context.CancellationToken, out var activityType))
         {
             return;
         }
 
-        if (!TryGetActivityTypeArguments(activityType, out var expectedInputType, out _))
+        if (!TryGetGenericArgumentsFromBaseType(activityType, workflowActivityBaseType, out var expectedInputType, out _))
         {
             return;
         }
 
-        var inputArgument = GetArgument(invocation, methodSymbol, "input");
-        if (inputArgument is null || !TryGetExpressionType(context.SemanticModel, inputArgument.Expression,
-                context.CancellationToken, out var actualInputType))
+        var inputArgument = GetArgument(invocation, "input");
+        if (inputArgument is null ||
+            !TryGetExpressionType(inputArgument.Value, out var actualInputType))
         {
             return;
         }
 
-        if (IsCompatible(actualInputType, expectedInputType, context.SemanticModel.Compilation))
+        if (IsCompatible(actualInputType, expectedInputType, context.Compilation))
         {
             return;
         }
 
         context.ReportDiagnostic(Diagnostic.Create(
             InputTypeMismatchDescriptor,
-            inputArgument.GetLocation(),
+            inputArgument.Syntax.GetLocation(),
             ToDisplayString(actualInputType),
             ToDisplayString(expectedInputType),
             "workflow activity",
@@ -188,190 +245,140 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
     }
 
     private static void AnalyzeActivityOutput(
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol methodSymbol,
-        SyntaxNodeAnalysisContext context)
+        IInvocationOperation invocation,
+        OperationAnalysisContext context,
+        INamedTypeSymbol workflowActivityBaseType)
     {
-        if (!TryGetTargetType(invocation, methodSymbol, context, "name", out var activityType))
+        context.CancellationToken.ThrowIfCancellationRequested();
+
+        if (!TryGetTargetTypeFromNameof(invocation, "name", context.CancellationToken, out var activityType))
         {
             return;
         }
 
-        if (!TryGetActivityTypeArguments(activityType, out _, out var declaredOutputType))
+        if (!TryGetGenericArgumentsFromBaseType(activityType, workflowActivityBaseType, out _, out var declaredOutputType))
         {
             return;
         }
 
-        if (!TryGetRequestedOutputType(methodSymbol, out var requestedOutputType))
+        if (!TryGetRequestedOutputType(invocation.TargetMethod, out var requestedOutputType))
         {
             return;
         }
 
-        if (IsCompatible(declaredOutputType, requestedOutputType, context.SemanticModel.Compilation))
+        if (IsCompatible(declaredOutputType, requestedOutputType, context.Compilation))
         {
             return;
         }
 
         context.ReportDiagnostic(Diagnostic.Create(
             OutputTypeMismatchDescriptor,
-            GetOutputDiagnosticLocation(invocation),
+            GetInvocationNameLocation(invocation),
             ToDisplayString(requestedOutputType),
             ToDisplayString(declaredOutputType),
             "workflow activity",
             activityType.Name));
     }
 
-    private static bool TryGetTargetType(
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol methodSymbol,
-        SyntaxNodeAnalysisContext context,
+    private static bool TryGetTargetTypeFromNameof(
+        IInvocationOperation invocation,
         string parameterName,
+        CancellationToken cancellationToken,
         out INamedTypeSymbol targetType)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         targetType = null!;
-        var argument = GetArgument(invocation, methodSymbol, parameterName);
+        var argument = GetArgument(invocation, parameterName);
         if (argument is null)
         {
             return false;
         }
 
-        return TryGetTypeFromNameof(argument.Expression, context.SemanticModel, context.CancellationToken,
-            out targetType);
-    }
-
-    private static bool TryGetTargetType(
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol methodSymbol,
-        SyntaxNodeAnalysisContext context,
-        string firstParameterName,
-        string secondParameterName,
-        out INamedTypeSymbol targetType)
-    {
-        targetType = null!;
-        return TryGetTargetType(invocation, methodSymbol, context, firstParameterName, out targetType) ||
-               TryGetTargetType(invocation, methodSymbol, context, secondParameterName, out targetType);
+        return TryGetTypeFromNameof(argument.Value, cancellationToken, out targetType);
     }
 
     private static bool TryGetTypeFromNameof(
-        ExpressionSyntax expression,
-        SemanticModel semanticModel,
+        IOperation operation,
         CancellationToken cancellationToken,
         out INamedTypeSymbol targetType)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         targetType = null!;
 
-        if (expression is not InvocationExpressionSyntax
-            {
-                Expression: IdentifierNameSyntax { Identifier.Text: "nameof" } nameofIdentifier
-            } nameofInvocation)
+        if (operation is not INameOfOperation nameOfOperation)
         {
             return false;
         }
 
-        _ = nameofIdentifier;
-        var targetExpression = nameofInvocation.ArgumentList.Arguments.FirstOrDefault()?.Expression;
-        if (targetExpression is null)
+        var argumentOperation = nameOfOperation.Argument;
+        var semanticModel = argumentOperation.SemanticModel;
+        if (semanticModel is null)
         {
             return false;
         }
 
-        var resolvedType = semanticModel.GetSymbolInfo(targetExpression, cancellationToken).Symbol as INamedTypeSymbol;
-        if (resolvedType is null)
+        var symbolInfo = semanticModel.GetSymbolInfo(argumentOperation.Syntax, cancellationToken).Symbol;
+        if (symbolInfo is INamedTypeSymbol namedTypeFromSymbol)
         {
-            return false;
+            targetType = namedTypeFromSymbol;
+            return true;
         }
 
-        targetType = resolvedType;
-        return true;
+        if (argumentOperation.Type is INamedTypeSymbol namedType)
+        {
+            targetType = namedType;
+            return true;
+        }
+
+        return false;
     }
 
-    private static ArgumentSyntax? GetArgument(
-        InvocationExpressionSyntax invocation,
-        IMethodSymbol methodSymbol,
+    private static IArgumentOperation? GetArgument(
+        IInvocationOperation invocation,
         string parameterName)
     {
-        var positionalIndex = 0;
-        foreach (var argument in invocation.ArgumentList.Arguments)
+        foreach (var argument in invocation.Arguments)
         {
-            if (argument.NameColon is not null)
-            {
-                if (argument.NameColon.Name.Identifier.Text == parameterName)
-                {
-                    return argument;
-                }
-
-                continue;
-            }
-
-            if (positionalIndex >= methodSymbol.Parameters.Length)
-            {
-                return null;
-            }
-
-            if (methodSymbol.Parameters[positionalIndex].Name == parameterName)
+            if (argument.Parameter?.Name == parameterName)
             {
                 return argument;
             }
-
-            positionalIndex++;
         }
 
         return null;
     }
 
-    private static bool TryGetWorkflowTypeArguments(
-        INamedTypeSymbol workflowType,
+    private static bool TryGetGenericArgumentsFromBaseType(
+        INamedTypeSymbol candidateType,
+        INamedTypeSymbol genericBaseDefinition,
         out ITypeSymbol inputType,
         out ITypeSymbol outputType)
     {
         inputType = null!;
         outputType = null!;
-        var genericBase = FindGenericBaseType(workflowType, "Dapr.Workflow.Workflow`2");
-        if (genericBase is null)
+
+        for (INamedTypeSymbol? current = candidateType; current is not null; current = current.BaseType)
         {
-            return false;
-        }
-
-        inputType = genericBase.TypeArguments[0];
-        outputType = genericBase.TypeArguments[1];
-        return true;
-    }
-
-    private static bool TryGetActivityTypeArguments(
-        INamedTypeSymbol activityType,
-        out ITypeSymbol inputType,
-        out ITypeSymbol outputType)
-    {
-        inputType = null!;
-        outputType = null!;
-        var genericBase = FindGenericBaseType(activityType, "Dapr.Workflow.WorkflowActivity`2");
-        if (genericBase is null)
-        {
-            return false;
-        }
-
-        inputType = genericBase.TypeArguments[0];
-        outputType = genericBase.TypeArguments[1];
-        return true;
-    }
-
-    private static INamedTypeSymbol? FindGenericBaseType(INamedTypeSymbol type, string metadataName)
-    {
-        for (var current = type; current is not null; current = current.BaseType)
-        {
-            if ($"{current.OriginalDefinition.ContainingNamespace.ToDisplayString()}.{current.OriginalDefinition.MetadataName}" ==
-                metadataName)
+            if (current.IsGenericType &&
+                SymbolEqualityComparer.Default.Equals(current.OriginalDefinition, genericBaseDefinition))
             {
-                return current;
+                inputType = current.TypeArguments[0];
+                outputType = current.TypeArguments[1];
+                return true;
             }
         }
 
-        return null;
+        return false;
     }
 
-    private static bool TryGetRequestedOutputType(IMethodSymbol methodSymbol, out ITypeSymbol requestedOutputType)
+    private static bool TryGetRequestedOutputType(
+        IMethodSymbol methodSymbol,
+        out ITypeSymbol requestedOutputType)
     {
         requestedOutputType = null!;
+
         if (!methodSymbol.IsGenericMethod || methodSymbol.TypeArguments.Length != 1)
         {
             return false;
@@ -382,23 +389,35 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
     }
 
     private static bool TryGetExpressionType(
-        SemanticModel semanticModel,
-        ExpressionSyntax expression,
-        CancellationToken cancellationToken,
+        IOperation operation,
         out ITypeSymbol expressionType)
     {
         expressionType = null!;
-        if (expression.IsKind(SyntaxKind.NullLiteralExpression))
+
+        if (operation.ConstantValue.HasValue && operation.ConstantValue.Value is null)
         {
             return false;
         }
 
-        var typeInfo = semanticModel.GetTypeInfo(expression, cancellationToken);
-        expressionType = typeInfo.Type ?? typeInfo.ConvertedType!;
+        if (operation is IConversionOperation { IsImplicit: true, Operand: { } operand })
+        {
+            if (operand.ConstantValue.HasValue && operand.ConstantValue.Value is null)
+            {
+                return false;
+            }
+
+            expressionType = operand.Type!;
+            return expressionType is not null;
+        }
+
+        expressionType = operation.Type!;
         return expressionType is not null;
     }
 
-    private static bool IsCompatible(ITypeSymbol actualType, ITypeSymbol expectedType, Compilation compilation)
+    private static bool IsCompatible(
+        ITypeSymbol actualType,
+        ITypeSymbol expectedType,
+        Compilation compilation)
     {
         if (SymbolEqualityComparer.Default.Equals(actualType, expectedType))
         {
@@ -409,14 +428,16 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
         return conversion.Exists && conversion.IsImplicit;
     }
 
-    private static Location GetOutputDiagnosticLocation(InvocationExpressionSyntax invocation)
+    private static Location GetInvocationNameLocation(IInvocationOperation invocation)
     {
-        if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+        return invocation.Syntax switch
         {
-            return memberAccess.Name.GetLocation();
-        }
-
-        return invocation.GetLocation();
+            Microsoft.CodeAnalysis.CSharp.Syntax.InvocationExpressionSyntax
+            {
+                Expression: Microsoft.CodeAnalysis.CSharp.Syntax.MemberAccessExpressionSyntax memberAccess
+            } => memberAccess.Name.GetLocation(),
+            _ => invocation.Syntax.GetLocation()
+        };
     }
 
     private static string ToDisplayString(ITypeSymbol typeSymbol) =>
