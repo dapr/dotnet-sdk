@@ -73,6 +73,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private DateTime _currentUtcDateTime;
     private bool _isReplaying;
     private bool _turnInitialized;
+    private bool _preserveUnprocessedEvents;
 
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
         IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
@@ -359,13 +360,33 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             }
         };
 
-        if (preserveUnprocessedEvents)
-        {
-            // all EventRaised events that were not consumed via WaitForExternalEventAsync
-            action.CompleteOrchestration.CarryoverEvents.AddRange(_externalEventBuffer);
-        }
-
+        // Do NOT snapshot _externalEventBuffer here. ContinueAsNew is called from within
+        // workflow execution, which happens during ProcessEvents. Events arriving later in
+        // the same NewEvents batch will be buffered AFTER this point and would be missed.
+        // FinalizeCarryoverEvents() is called after all ProcessEvents calls are complete.
+        _preserveUnprocessedEvents = preserveUnprocessedEvents;
         _pendingActions.Add(action.Id, action);
+    }
+
+    /// <summary>
+    /// Populates <c>CarryoverEvents</c> on any pending <c>ContinuedAsNew</c> action using the
+    /// final state of <c>_externalEventBuffer</c>. Must be called after all <c>ProcessEvents</c>
+    /// calls for the current turn are complete, so that events arriving later in the same
+    /// <c>NewEvents</c> batch are included.
+    /// </summary>
+    internal void FinalizeCarryoverEvents()
+    {
+        if (!_preserveUnprocessedEvents || _externalEventBuffer.Count == 0)
+            return;
+
+        foreach (var action in _pendingActions.Values)
+        {
+            if (action.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew)
+            {
+                action.CompleteOrchestration.CarryoverEvents.AddRange(_externalEventBuffer);
+                return;
+            }
+        }
     }
 
     /// <inheritdoc />

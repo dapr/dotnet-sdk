@@ -318,7 +318,12 @@ internal sealed class WorkflowWorker(
                 : _serializer.Deserialize(serializedInput, workflow!.InputType);
 
             // Initialize per-turn state before any workflow code runs.
-            context.InitializeNewTurn(currentTurnTimestamp);
+            // On first execution (no past events) use the current turn's OrchestratorStarted timestamp.
+            // On replay use the first past event's timestamp so the workflow sees the same
+            // CurrentUtcDateTime at its start as it did on the very first execution.
+            // ProcessEvents will advance the clock naturally via OrchestratorStarted history events.
+            var initialTimestamp = allPastEvents.Count > 0 ? currentUtcDateTime : currentTurnTimestamp;
+            context.InitializeNewTurn(initialTimestamp);
             context.SetReplayState(allPastEvents.Count > 0);
 
             // Execute the workflow
@@ -339,6 +344,11 @@ internal sealed class WorkflowWorker(
             {
                 context.ProcessEvents(request.NewEvents, false);
             }
+
+            // Populate CarryoverEvents now that all events in this turn have been processed.
+            // ContinueAsNew cannot do this inline because it runs mid-ProcessEvents; events
+            // arriving later in the same NewEvents batch would be buffered after the snapshot.
+            context.FinalizeCarryoverEvents();
 
             // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
             if (versionTracker.IsStalled)

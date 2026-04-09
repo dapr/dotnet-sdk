@@ -13,6 +13,7 @@
 
 using System.Collections.ObjectModel;
 using Dapr.Workflow.Client;
+using Grpc.Core;
 
 namespace Dapr.Workflow.Test;
 
@@ -94,6 +95,20 @@ public class DaprWorkflowClientTests
         Assert.Null(state);
         Assert.Equal("missing", inner.LastGetMetadataInstanceId);
         Assert.True(inner.LastGetMetadataGetInputsAndOutputs);
+    }
+
+    [Fact]
+    public async Task GetWorkflowStateAsync_ShouldReturnNull_WhenInnerThrowsRpcException()
+    {
+        var inner = new CapturingWorkflowClient
+        {
+            GetWorkflowMetadataException = new RpcException(new Status(StatusCode.NotFound, "not found"))
+        };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken);
+
+        Assert.Null(state);
     }
 
     [Fact]
@@ -341,6 +356,7 @@ public class DaprWorkflowClientTests
         public string? LastGetMetadataInstanceId { get; private set; }
         public bool LastGetMetadataGetInputsAndOutputs { get; private set; }
         public WorkflowMetadata? GetWorkflowMetadataResult { get; set; }
+        public Exception? GetWorkflowMetadataException { get; set; }
 
         public string? LastWaitForStartInstanceId { get; private set; }
         public bool LastWaitForStartGetInputsAndOutputs { get; private set; }
@@ -405,6 +421,8 @@ public class DaprWorkflowClientTests
         {
             LastGetMetadataInstanceId = instanceId;
             LastGetMetadataGetInputsAndOutputs = getInputsAndOutputs;
+            if (GetWorkflowMetadataException is not null)
+                return Task.FromException<WorkflowMetadata?>(GetWorkflowMetadataException);
             return Task.FromResult(GetWorkflowMetadataResult);
         }
 

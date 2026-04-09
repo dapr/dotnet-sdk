@@ -29,7 +29,10 @@ public sealed class JsonWorkflowSerializer : IWorkflowSerializer
     /// <remarks>
     /// Uses <see cref="JsonSerializerDefaults.Web"/> which provides camelCase naming and other web-friendly defaults.
     /// </remarks>
-    public JsonWorkflowSerializer() : this(new JsonSerializerOptions(JsonSerializerDefaults.Web))
+    public JsonWorkflowSerializer() : this(new JsonSerializerOptions(JsonSerializerDefaults.Web)
+    {
+        IncludeFields = true // https://github.com/dapr/dotnet-sdk/issues/1757
+    })
     {
     }
     
@@ -56,22 +59,13 @@ public sealed class JsonWorkflowSerializer : IWorkflowSerializer
     }
 
     /// <inheritdoc />
-    public T? Deserialize<T>(string? data)
-    {
-        if (string.IsNullOrEmpty(data))
-            return default;
-
-        return JsonSerializer.Deserialize<T>(data, _options);
-    }
+    public T? Deserialize<T>(string? data) => string.IsNullOrEmpty(data) ? default : JsonSerializer.Deserialize<T>(data, _options);
 
     /// <inheritdoc />
     public object? Deserialize(string? data, Type returnType)
     {
         ArgumentNullException.ThrowIfNull(returnType);
         
-        if (string.IsNullOrEmpty(data))
-            return null;
-
-        return JsonSerializer.Deserialize(data, returnType, _options);
+        return string.IsNullOrEmpty(data) ? null : JsonSerializer.Deserialize(data, returnType, _options);
     }
 }

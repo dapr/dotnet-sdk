@@ -17,6 +17,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
 using Dapr.DurableTask.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 
@@ -33,13 +34,16 @@ internal sealed class GrpcProtocolHandler(
     string? daprApiToken = null) : IAsyncDisposable
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
-    
+    private static readonly TimeSpan KeepaliveInterval = TimeSpan.FromSeconds(30);
+
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory?.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient =
         grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly int _maxConcurrentWorkItems =  maxConcurrentWorkItems > 0 ? maxConcurrentWorkItems : throw new ArgumentOutOfRangeException(nameof(maxConcurrentWorkItems));
     private readonly int _maxConcurrentActivities = maxConcurrentActivities > 0 ? maxConcurrentActivities : throw new ArgumentOutOfRangeException(nameof(maxConcurrentActivities));
+    private readonly SemaphoreSlim _orchestrationSemaphore = new(maxConcurrentWorkItems, maxConcurrentWorkItems);
+    private readonly SemaphoreSlim _activitySemaphore = new(maxConcurrentActivities, maxConcurrentActivities);
 
     private AsyncServerStreamingCall<WorkItem>? _streamingCall;
     private int _activeWorkItemCount;
@@ -67,6 +71,9 @@ internal sealed class GrpcProtocolHandler(
 
         while (!token.IsCancellationRequested)
         {
+            CancellationTokenSource? keepaliveCts = null;
+            Task? keepaliveTask = null;
+
             try
             {
                 _logger.LogGrpcProtocolHandlerStartStream();
@@ -76,6 +83,10 @@ internal sealed class GrpcProtocolHandler(
                 _streamingCall = _grpcClient.GetWorkItems(request, grpcCallOptions);
 
                 _logger.LogGrpcProtocolHandlerStreamEstablished();
+
+                // Start the background keepalive loop to keep the connection alive
+                keepaliveCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                keepaliveTask = KeepaliveLoopAsync(keepaliveCts.Token);
 
                 // Process work items from the stream
                 await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
@@ -110,6 +121,18 @@ internal sealed class GrpcProtocolHandler(
             }
             finally
             {
+                // Stop the keepalive loop when the receive loop ends (reconnect or shutdown).
+                // This runs after catch filters evaluate, avoiding a race where teardown delay
+                // allows external cancellation to change filter outcomes.
+                if (keepaliveCts != null)
+                {
+                    await keepaliveCts.CancelAsync();
+                    try { await keepaliveTask!; }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex) { _logger.LogGrpcProtocolHandlerKeepaliveFailed(ex); }
+                    keepaliveCts.Dispose();
+                }
+
                 _streamingCall?.Dispose();
                 _streamingCall = null;
             }
@@ -200,6 +223,7 @@ internal sealed class GrpcProtocolHandler(
     private async Task ProcessWorkflowAsync(OrchestratorRequest request, string completionToken,
         Func<OrchestratorRequest, string, Task<OrchestratorResponse>> handler, CancellationToken cancellationToken)
     {
+        await _orchestrationSemaphore.WaitAsync(cancellationToken);
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
 
         try
@@ -231,6 +255,7 @@ internal sealed class GrpcProtocolHandler(
         }
         finally
         {
+            _orchestrationSemaphore.Release();
             Interlocked.Decrement(ref _activeWorkItemCount);
         }
     }
@@ -241,6 +266,7 @@ internal sealed class GrpcProtocolHandler(
     private async Task ProcessActivityAsync(ActivityRequest request, string completionToken,
         Func<ActivityRequest, string, Task<ActivityResponse>> handler, CancellationToken cancellationToken)
     {
+        await _activitySemaphore.WaitAsync(cancellationToken);
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
 
         try
@@ -275,6 +301,7 @@ internal sealed class GrpcProtocolHandler(
         }
         finally
         {
+            _activitySemaphore.Release();
             Interlocked.Decrement(ref _activeWorkItemCount);
         }
     }
@@ -322,18 +349,40 @@ internal sealed class GrpcProtocolHandler(
             }
         };
 
+    /// <summary>
+    /// Periodically calls Hello on the sidecar to prevent idle HTTP/2 connections from being
+    /// closed by intermediary load balancers (e.g. AWS ALB).
+    /// </summary>
+    private async Task KeepaliveLoopAsync(CancellationToken cancellation)
+    {
+        using var timer = new PeriodicTimer(KeepaliveInterval);
+        while (await timer.WaitForNextTickAsync(cancellation))
+        {
+            try
+            {
+                await _grpcClient.HelloAsync(new Empty(), CreateCallOptions(cancellation));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogGrpcProtocolHandlerKeepaliveFailed(ex);
+            }
+        }
+    }
+
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
         if (_disposalCts.IsCancellationRequested)
             return;
-        
+
         _logger.LogGrpcProtocolHandlerDisposing();
-        
+
         await _disposalCts.CancelAsync();
         _streamingCall?.Dispose();
         _disposalCts.Dispose();
-        
+        _orchestrationSemaphore.Dispose();
+        _activitySemaphore.Dispose();
+
         _logger.LogGrpcProtocolHandlerDisposed();
     }
 
