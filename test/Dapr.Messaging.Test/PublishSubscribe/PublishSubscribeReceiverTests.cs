@@ -221,7 +221,7 @@ public class PublishSubscribeReceiverTests
     }
 
     [Fact]
-    public async Task HandleTaskCompletion_ShouldThrow_WhenNoErrorHandler()
+    public async Task HandleTaskCompletion_ShouldCacheForNextSubscribe_WhenNoErrorHandler()
     {
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
@@ -234,8 +234,12 @@ public class PublishSubscribeReceiverTests
 
         var task = Task.FromException(new InvalidOperationException("Test exception"));
 
-        var exception = await Assert.ThrowsAsync<DaprException>(() => receiver.HandleTaskCompletion(task, null));
+        // With no ErrorHandler, HandleTaskCompletion must NOT throw synchronously (doing so would
+        // fault an unobserved continuation Task — the original silent-failure bug). Instead it caches
+        // the fault and the next SubscribeAsync call rethrows it.
+        await receiver.HandleTaskCompletion(task, null);
 
+        var exception = await Assert.ThrowsAsync<DaprException>(() => receiver.SubscribeAsync(TestContext.Current.CancellationToken));
         Assert.IsType<InvalidOperationException>(exception.InnerException);
         Assert.Equal("Test exception", exception.InnerException!.Message);
     }
@@ -656,10 +660,11 @@ public class PublishSubscribeReceiverTests
     /// <summary>
     /// When the message handler returns an unrecognised TopicResponseAction, AcknowledgeMessageAsync
     /// throws InvalidOperationException, which causes the ProcessTopicChannelMessagesAsync background
-    /// task to fault and HandleTaskCompletion to re-throw the exception.
+    /// task to fault. The fault must be cached by HandleTaskCompletion and rethrown on the next
+    /// SubscribeAsync call.
     /// </summary>
     [Fact]
-    public async Task AcknowledgeMessageAsync_UnrecognisedAction_FaultsProcessingTask()
+    public async Task AcknowledgeMessageAsync_UnrecognisedAction_FaultIsCachedForNextSubscribe()
     {
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
@@ -673,6 +678,8 @@ public class PublishSubscribeReceiverTests
         mockRequestStream
             .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        // Keep the fetch loop parked so it doesn't race the ack-processing fault.
+        mockResponseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
             mockRequestStream.Object, mockResponseStream.Object,
@@ -680,10 +687,6 @@ public class PublishSubscribeReceiverTests
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
             .Returns(mockCall);
 
-        // Capture the faulted continuation task so we can observe the exception.
-#pragma warning disable CS0219 // Variable is assigned but its value is never used
-        Task? faultedTask = null;
-#pragma warning restore CS0219 // Variable is assigned but its value is never used
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (_, _) => Task.FromResult((TopicResponseAction)99), mockDaprClient.Object);
 
@@ -693,12 +696,11 @@ public class PublishSubscribeReceiverTests
         var msg = new TopicMessage("bad-action-id", "src", "type", "1.0", "text/plain", topicName, pubSubName);
         await receiver.WriteMessageToChannelAsync(msg);
 
-        // Allow the background task time to fault.
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        // Wait for the background fault to be observed and cached by HandleTaskCompletion.
+        await WaitForPendingBackgroundFaultAsync(receiver);
 
-        // Verify HandleTaskCompletion correctly re-throws when given the faulted task.
-        var faultedStub = Task.FromException(new InvalidOperationException("Unrecognized topic acknowledgement action: 99"));
-        var ex = await Assert.ThrowsAsync<DaprException>(() => receiver.HandleTaskCompletion(faultedStub, null));
+        // The next SubscribeAsync must surface the cached fault.
+        var ex = await Assert.ThrowsAsync<DaprException>(() => receiver.SubscribeAsync(TestContext.Current.CancellationToken));
         Assert.IsType<InvalidOperationException>(ex.InnerException);
         Assert.Contains("99", ex.InnerException!.Message);
 
@@ -871,5 +873,277 @@ public class PublishSubscribeReceiverTests
             $"DisposeAsync took {sw.ElapsedMilliseconds} ms — expected to honour MaximumCleanupTimeout of 50 ms.");
         Assert.True(receiver.TopicMessagesChannelCompletion.IsCompleted);
         Assert.True(receiver.AcknowledgementsChannelCompletion.IsCompleted);
+    }
+
+    // -------------------------------------------------------------------------
+    // Background-fault surfacing — repro tests that drive the real ContinueWith wiring.
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Polls until the receiver has cached a background fault or the timeout elapses. Used by tests
+    /// that need to wait for HandleTaskCompletion to run through the real continuation chain.
+    /// </summary>
+    private static async Task WaitForPendingBackgroundFaultAsync(PublishSubscribeReceiver receiver, int timeoutMs = 2000)
+    {
+        var deadline = Environment.TickCount + timeoutMs;
+        while (!receiver.HasPendingBackgroundFault)
+        {
+            if (Environment.TickCount >= deadline)
+            {
+                throw new Xunit.Sdk.XunitException(
+                    $"Background fault was not cached within {timeoutMs} ms — HandleTaskCompletion did not run or did not store the fault.");
+            }
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Builds a mock that returns a DaprClient whose response stream faults on MoveNext with the
+    /// supplied exception. Drives FetchDataFromSidecarAsync into a faulted state, exercising the
+    /// real ContinueWith -> HandleTaskCompletion chain.
+    /// </summary>
+    private static Mock<P.Dapr.DaprClient> CreateMockDaprClientWithFaultingResponseStream(Exception faultWith, int? callCount = null)
+    {
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
+        mockRequestStream
+            .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+        mockResponseStream
+            .Setup(s => s.MoveNext(It.IsAny<CancellationToken>()))
+            .Returns(Task.FromException<bool>(faultWith));
+
+        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
+            mockRequestStream.Object, mockResponseStream.Object,
+            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
+        mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
+            .Returns(mockCall);
+        return mockDaprClient;
+    }
+
+    /// <summary>
+    /// Repro for the original bug: when the response stream faults in the background (sidecar became
+    /// unavailable mid-subscription) AND no ErrorHandler is configured, the fault must not be lost.
+    /// It must be cached on the receiver and rethrown on the next SubscribeAsync call.
+    /// </summary>
+    [Fact]
+    public async Task SubscribeAsync_WhenBackgroundFetchFaults_WithoutHandler_NextSubscribeRethrows()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
+
+        var rpcFault = new RpcException(new Status(StatusCode.Unavailable, "sidecar went away"));
+        var mockDaprClient = CreateMockDaprClientWithFaultingResponseStream(rpcFault);
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        // First subscribe succeeds — the gRPC call itself is established. The fault happens in the
+        // background FetchDataFromSidecarAsync loop when it tries to read the first message.
+        await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
+
+        await WaitForPendingBackgroundFaultAsync(receiver);
+
+        var ex = await Assert.ThrowsAsync<DaprException>(() => receiver.SubscribeAsync(TestContext.Current.CancellationToken));
+        Assert.IsType<RpcException>(ex.InnerException);
+        Assert.Contains("testTopic", ex.Message);
+        Assert.Contains("testPubSub", ex.Message);
+
+        await receiver.DisposeAsync();
+    }
+
+    /// <summary>
+    /// When an ErrorHandler IS configured, a single sidecar failure must invoke it exactly once —
+    /// not 2–3 times, even though three background continuations all route to HandleTaskCompletion.
+    /// </summary>
+    [Fact]
+    public async Task SubscribeAsync_WhenBackgroundFetchFaults_InvokesErrorHandlerExactlyOnce()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+
+        var handlerInvoked = new TaskCompletionSource<DaprException>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var invocationCount = 0;
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        {
+            MaximumCleanupTimeout = TimeSpan.FromSeconds(1),
+            ErrorHandler = ex =>
+            {
+                Interlocked.Increment(ref invocationCount);
+                handlerInvoked.TrySetResult(ex);
+                return Task.CompletedTask;
+            }
+        };
+
+        var rpcFault = new RpcException(new Status(StatusCode.Unavailable, "sidecar went away"));
+        var mockDaprClient = CreateMockDaprClientWithFaultingResponseStream(rpcFault);
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
+
+        var received = await handlerInvoked.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        Assert.IsType<RpcException>(received.InnerException);
+
+        // Grace period for any sibling continuations to (incorrectly) invoke the handler.
+        await Task.Delay(150, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, Volatile.Read(ref invocationCount));
+
+        await receiver.DisposeAsync();
+    }
+
+    /// <summary>
+    /// After a background fault with no handler, the caller can re-subscribe to recover. The second
+    /// subscribe call must rethrow the cached fault; a third call must then succeed and establish a
+    /// fresh stream (verifying that the previous stream was properly reset).
+    /// </summary>
+    [Fact]
+    public async Task SubscribeAsync_AfterBackgroundFault_NextSubscribeRecreatesStream()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
+
+        // First call: response stream faults on MoveNext. Second call: a healthy stream that parks.
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+
+        var faultyRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
+        faultyRequestStream
+            .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        var faultyResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+        faultyResponseStream
+            .Setup(s => s.MoveNext(It.IsAny<CancellationToken>()))
+            .Returns(Task.FromException<bool>(new RpcException(new Status(StatusCode.Unavailable, "boom"))));
+        var faultyCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
+            faultyRequestStream.Object, faultyResponseStream.Object,
+            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
+
+        var healthyRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
+        healthyRequestStream
+            .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        var healthyResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+        healthyResponseStream
+            .Setup(s => s.MoveNext(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false); // no messages; stream completes cleanly
+        var healthyCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
+            healthyRequestStream.Object, healthyResponseStream.Object,
+            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
+
+        mockDaprClient.SetupSequence(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
+            .Returns(faultyCall)
+            .Returns(healthyCall);
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
+        await WaitForPendingBackgroundFaultAsync(receiver);
+
+        // Second call: caller observes the cached fault.
+        await Assert.ThrowsAsync<DaprException>(() => receiver.SubscribeAsync(TestContext.Current.CancellationToken));
+
+        // Third call: the fault has been drained; a fresh stream should be obtained from the client.
+        await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
+
+        mockDaprClient.Verify(
+            c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+
+        await receiver.DisposeAsync();
+    }
+
+    /// <summary>
+    /// A background task that completes via OperationCanceledException must not be treated as an
+    /// error: no fault should be cached and the next SubscribeAsync should not rethrow.
+    /// </summary>
+    [Fact]
+    public async Task SubscribeAsync_WhenBackgroundFetchCancelled_DoesNotCachePendingFault()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
+
+        var mockDaprClient = CreateMockDaprClientWithFaultingResponseStream(new OperationCanceledException("cancelled"));
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
+
+        // Give HandleTaskCompletion a chance to run and reset state. Since this is a clean cancellation,
+        // no fault should be cached.
+        await Task.Delay(200, TestContext.Current.CancellationToken);
+        Assert.False(receiver.HasPendingBackgroundFault);
+
+        // A subsequent SubscribeAsync must not rethrow anything cancellation-related — it should try
+        // to re-establish the subscription (which will fault again here, but that second fault path
+        // is orthogonal to this assertion). We only verify that the pending-fault rethrow does NOT fire.
+        try
+        {
+            await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
+        }
+        catch (DaprException)
+        {
+            // A secondary fault from the new subscribe cycle is acceptable — we only wanted to prove
+            // that the cancellation did not get cached as a pending fault to rethrow at the top of
+            // SubscribeAsync (which would have been an OperationCanceledException, not DaprException).
+        }
+
+        await receiver.DisposeAsync();
+    }
+
+    /// <summary>
+    /// When the user-supplied ErrorHandler itself throws, the original fault plus the handler fault
+    /// must both be cached and surfaced together on the next SubscribeAsync as an AggregateException.
+    /// </summary>
+    [Fact]
+    public async Task SubscribeAsync_WhenErrorHandlerThrows_CachesCombinedFaultForNextSubscribe()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+
+        var handlerInvoked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        {
+            MaximumCleanupTimeout = TimeSpan.FromSeconds(1),
+            ErrorHandler = _ =>
+            {
+                handlerInvoked.TrySetResult();
+                throw new InvalidOperationException("handler bug");
+            }
+        };
+
+        var rpcFault = new RpcException(new Status(StatusCode.Unavailable, "sidecar down"));
+        var mockDaprClient = CreateMockDaprClientWithFaultingResponseStream(rpcFault);
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
+        await handlerInvoked.Task.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await WaitForPendingBackgroundFaultAsync(receiver);
+
+        var ex = await Assert.ThrowsAsync<AggregateException>(() =>
+            receiver.SubscribeAsync(TestContext.Current.CancellationToken));
+
+        Assert.Contains(ex.InnerExceptions, e => e is DaprException);
+        Assert.Contains(ex.InnerExceptions, e => e is InvalidOperationException { Message: "handler bug" });
+
+        await receiver.DisposeAsync();
     }
 }

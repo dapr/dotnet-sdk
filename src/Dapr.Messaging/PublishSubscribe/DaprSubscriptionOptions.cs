@@ -44,7 +44,10 @@ public sealed record DaprSubscriptionOptions(MessageHandlingPolicy MessageHandli
     /// <summary>
     /// An optional callback invoked when errors occur in background tasks during an active subscription.
     /// Errors during the initial subscription attempt are thrown directly to the caller.
-    /// If not set, background task errors surface as unobserved task exceptions (default .NET behavior).
+    /// If not set, the first background fault per subscribe cycle is cached on the receiver and rethrown
+    /// on the next call to <c>SubscribeAsync</c>, so the caller can observe it and decide whether to retry.
+    /// If the handler itself throws, both the original fault and the handler failure are cached and
+    /// surfaced together as an <see cref="AggregateException"/> on the next subscribe attempt.
     /// </summary>
     public SubscriptionErrorHandler? ErrorHandler { get; init; }
 }

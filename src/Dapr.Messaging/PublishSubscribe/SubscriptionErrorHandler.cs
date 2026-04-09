@@ -19,6 +19,7 @@ namespace Dapr.Messaging.PublishSubscribe;
 /// <param name="exception">The <see cref="DaprException"/> wrapping the original error.</param>
 /// <remarks>
 /// This handler is invoked on a thread pool thread. Implementations should be thread-safe.
-/// If the returned task faults, the exception will be suppressed.
+/// If the returned task faults, the handler's exception is combined with the original fault and
+/// surfaced as an <see cref="AggregateException"/> on the next call to <c>SubscribeAsync</c>.
 /// </remarks>
 public delegate Task SubscriptionErrorHandler(DaprException exception);

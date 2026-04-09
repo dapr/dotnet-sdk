@@ -74,6 +74,17 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// </summary>
     private int hasInitialized;
     /// <summary>
+    /// Dedupes <see cref="HandleTaskCompletion"/> across the three background continuations so a single
+    /// sidecar failure surfaces exactly once per subscribe cycle. Reset at the start of each new cycle.
+    /// </summary>
+    private int hasFaulted;
+    /// <summary>
+    /// Stores the first unhandled background fault per subscribe cycle. Rethrown on the next call to
+    /// <see cref="SubscribeAsync"/> so a caller that did not configure an <see cref="DaprSubscriptionOptions.ErrorHandler"/>
+    /// still observes the error rather than losing it as an unobserved task exception.
+    /// </summary>
+    private Exception? pendingBackgroundFault;
+    /// <summary>
     /// Flag that ensures the instance is only disposed a single time.
     /// </summary>
     private bool isDisposed;
@@ -82,6 +93,9 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     internal Task TopicMessagesChannelCompletion => topicMessagesChannel.Reader.Completion;
     // Internal property for testing purposes
     internal Task AcknowledgementsChannelCompletion => acknowledgementsChannel.Reader.Completion;
+    // Internal property for testing purposes — exposes whether a background fault has been cached
+    // and is waiting to be surfaced on the next SubscribeAsync call.
+    internal bool HasPendingBackgroundFault => Volatile.Read(ref pendingBackgroundFault) is not null;
 
     /// <summary>
     /// Constructs a new instance of a <see cref="PublishSubscribeReceiver"/> instance.
@@ -113,11 +127,22 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     /// <returns>A task representing the asynchronous subscribe operation.</returns>
     internal async Task SubscribeAsync(CancellationToken cancellationToken = default)
     {
+        // Surface any unhandled background fault from a prior subscribe cycle so the caller
+        // can observe it explicitly before re-subscribing.
+        var carried = Interlocked.Exchange(ref pendingBackgroundFault, null);
+        if (carried is not null)
+        {
+            throw carried;
+        }
+
         //Prevents the receiver from performing the subscribe operation more than once (as the multiple initialization messages would cancel the stream).
         if (Interlocked.Exchange(ref hasInitialized, 1) == 1)
         {
             return;
         }
+
+        // Reset the per-cycle fault dedupe flag.
+        Interlocked.Exchange(ref hasFaulted, 0);
 
         AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1> stream;
         try
@@ -168,8 +193,16 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
     }
 
     /// <summary>
-    /// Handles faulted background tasks by resetting the initialization flag and invoking the configured error handler, if any.
+    /// Handles faulted background tasks by resetting the subscription state and either invoking the
+    /// configured error handler or caching the fault for the next <see cref="SubscribeAsync"/> call.
     /// </summary>
+    /// <remarks>
+    /// This method is the terminal continuation for <see cref="FetchDataFromSidecarAsync"/>,
+    /// <see cref="ProcessAcknowledgementChannelMessagesAsync"/>, and <see cref="ProcessTopicChannelMessagesAsync"/>.
+    /// It never re-throws: doing so would fault an unobserved inner <see cref="Task"/> (the original bug
+    /// this class was meant to fix). Instead, unhandled faults are stored in
+    /// <see cref="pendingBackgroundFault"/> and surfaced on the caller's next subscribe attempt.
+    /// </remarks>
     internal async Task HandleTaskCompletion(Task task, object? state)
     {
         if (task.Exception is null)
@@ -177,16 +210,28 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
             return;
         }
 
-        // Reset initialization flag so a future SubscribeAsync call can re-establish the subscription
-        Interlocked.Exchange(ref hasInitialized, 0);
-        clientStream = null;
-
-        var innerException = task.Exception.InnerException ?? task.Exception;
-
-        if (innerException is OperationCanceledException)
+        // Dedupe: the three sibling continuations typically all fault when the sidecar dies.
+        // Only the first one is reported; the rest observe the dedupe flag and exit.
+        if (Interlocked.CompareExchange(ref hasFaulted, 1, 0) != 0)
         {
             return;
         }
+
+        var innerExceptions = task.Exception.InnerExceptions;
+
+        // If every inner exception is a cancellation, treat the fault as a clean cancel:
+        // reset the subscription state but do not cache or surface an error.
+        if (innerExceptions.All(e => e is OperationCanceledException))
+        {
+            await ResetStreamStateAsync().ConfigureAwait(false);
+            return;
+        }
+
+        // Prefer a non-cancellation inner exception for the user-facing message.
+        var innerException = innerExceptions.FirstOrDefault(e => e is not OperationCanceledException)
+                             ?? task.Exception;
+
+        await ResetStreamStateAsync().ConfigureAwait(false);
 
         var daprException = new DaprException(
             $"An error occurred during an active subscription to topic '{topicName}' on pubsub '{pubSubName}'.",
@@ -194,16 +239,47 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
 
         if (options.ErrorHandler is null)
         {
-            throw daprException;
+            // No handler configured: cache so the next SubscribeAsync surfaces it.
+            Interlocked.CompareExchange(ref pendingBackgroundFault, daprException, null);
+            return;
         }
 
         try
         {
-            await options.ErrorHandler.Invoke(daprException);
+            await options.ErrorHandler.Invoke(daprException).ConfigureAwait(false);
         }
-        catch (Exception)
+        catch (Exception handlerEx)
         {
-            // No logger available; prevent a faulty error handler from becoming an unobserved task exception
+            // User-supplied handler threw. Cache a combined fault so the next SubscribeAsync
+            // surfaces both the original error and the handler failure — never silently drop either.
+            var combined = new AggregateException(
+                $"The SubscriptionErrorHandler for topic '{topicName}' on pubsub '{pubSubName}' threw while handling a prior fault.",
+                daprException, handlerEx);
+            Interlocked.CompareExchange(ref pendingBackgroundFault, combined, null);
+        }
+    }
+
+    /// <summary>
+    /// Atomically tears down the active stream and resets the initialization flag.
+    /// </summary>
+    /// <remarks>
+    /// Serialized under <see cref="semaphore"/> (the same lock used by <see cref="GetStreamAsync"/>)
+    /// so a concurrent <see cref="SubscribeAsync"/> cannot observe <see cref="hasInitialized"/> reset
+    /// while <see cref="clientStream"/> still holds the stale reference.
+    /// </remarks>
+    private async Task ResetStreamStateAsync()
+    {
+        await semaphore.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var old = clientStream;
+            clientStream = null;
+            Interlocked.Exchange(ref hasInitialized, 0);
+            old?.Dispose();
+        }
+        finally
+        {
+            semaphore.Release();
         }
     }
 
