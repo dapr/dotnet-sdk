@@ -45,13 +45,18 @@ public class TimerActor : Actor, ITimerActor
     public async Task StartTimer(StartTimerOptions options)
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(options, Host.JsonSerializerOptions);
+        const string timerName = "test-timer";
         await RegisterTimerAsync(
-            "test-timer",
+            timerName,
             nameof(Tick),
             bytes,
             dueTime: TimeSpan.Zero,
             period: TimeSpan.FromMilliseconds(100));
-        await StateManager.SetStateAsync(StateKey, new TimerState { IsTimerRunning = true });
+        await StateManager.SetStateAsync(StateKey, new TimerState
+        {
+            IsTimerRunning = true,
+            ActiveTimerName = timerName,
+        });
     }
 
     /// <inheritdoc />
@@ -59,14 +64,19 @@ public class TimerActor : Actor, ITimerActor
     {
         var options = new StartTimerOptions { Total = 100 };
         var bytes = JsonSerializer.SerializeToUtf8Bytes(options, Host.JsonSerializerOptions);
+        const string timerName = "test-timer-ttl";
         await RegisterTimerAsync(
-            "test-timer-ttl",
+            timerName,
             nameof(Tick),
             bytes,
             TimeSpan.Zero,
             TimeSpan.FromSeconds(1),
             ttl);
-        await StateManager.SetStateAsync(StateKey, new TimerState { IsTimerRunning = true });
+        await StateManager.SetStateAsync(StateKey, new TimerState
+        {
+            IsTimerRunning = true,
+            ActiveTimerName = timerName,
+        });
     }
 
     private async Task Tick(byte[] bytes)
@@ -76,7 +86,10 @@ public class TimerActor : Actor, ITimerActor
 
         if (++state.Count == options.Total)
         {
-            await UnregisterTimerAsync("test-timer");
+            // Unregister the timer by the name tracked in state.
+            if (!string.IsNullOrEmpty(state.ActiveTimerName))
+                await UnregisterTimerAsync(state.ActiveTimerName);
+
             state.IsTimerRunning = false;
         }
 

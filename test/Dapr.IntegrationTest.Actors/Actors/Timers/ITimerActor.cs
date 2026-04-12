@@ -39,6 +39,9 @@ public sealed class TimerState
 
     /// <summary>Gets or sets the timestamp of the last timer invocation.</summary>
     public DateTime Timestamp { get; set; }
+
+    /// <summary>Gets or sets the name of the currently registered timer, used for self-cancellation.</summary>
+    public string? ActiveTimerName { get; set; }
 }
 
 /// <summary>

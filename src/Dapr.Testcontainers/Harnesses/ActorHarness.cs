@@ -68,5 +68,11 @@ public sealed class ActorHarness : BaseHarness
     }
 
     /// <inheritdoc />
-    protected override ValueTask OnDisposeAsync() => ValueTask.CompletedTask;
+    protected override async ValueTask OnDisposeAsync()
+    {
+        if (_isSelfHostedRedis)
+        {
+            await _redis.DisposeAsync();
+        }
+    }
 }
