@@ -42,4 +42,10 @@
     <data name="DAPR1304MessageFormat" xml:space="preserve">
         <value>The requested output type '{0}' does not match the declared output type '{1}' for {2} '{3}'</value>
     </data>
+    <data name="DAPR1305Title" xml:space="preserve">
+        <value>Workflow implementations do not support dependency injection via constructors</value>
+    </data>
+    <data name="DAPR1305MessageFormat" xml:space="preserve">
+        <value>Workflow '{0}' has constructor parameter '{1}' of type '{2}', but dependency injection is not supported in workflow implementations. Move dependencies to a WorkflowActivity instead.</value>
+    </data>
 </root>

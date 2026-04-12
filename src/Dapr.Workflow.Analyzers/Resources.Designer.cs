@@ -130,5 +130,23 @@ namespace Dapr.Workflow.Analyzers {
                 return ResourceManager.GetString("DAPR1304Title", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Workflow &apos;{0}&apos; has constructor parameter &apos;{1}&apos; of type &apos;{2}&apos;, but dependency injection is not supported in workflow implementations. Move dependencies to a WorkflowActivity instead.
+        /// </summary>
+        internal static string DAPR1305MessageFormat {
+            get {
+                return ResourceManager.GetString("DAPR1305MessageFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Workflow implementations do not support dependency injection via constructors.
+        /// </summary>
+        internal static string DAPR1305Title {
+            get {
+                return ResourceManager.GetString("DAPR1305Title", resourceCulture);
+            }
+        }
     }
 }
