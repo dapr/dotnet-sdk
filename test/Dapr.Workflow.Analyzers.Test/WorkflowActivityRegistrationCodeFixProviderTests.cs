@@ -24,7 +24,7 @@ public sealed class WorkflowActivityRegistrationCodeFixProviderTests
                                                 });
                                             }
                                         }
-                            
+
                                         class OrderProcessingWorkflow : Workflow<OrderPayload, OrderResult>
                                         { 
                                             public override async Task<OrderResult> RunAsync(WorkflowContext context, OrderPayload order)
@@ -37,9 +37,9 @@ public sealed class WorkflowActivityRegistrationCodeFixProviderTests
                                         record OrderPayload;
                                         record OrderResult(string Message) { };
                                         record Notification { public Notification(string message) { } };
-                                        internal sealed class NotifyActivity : WorkflowActivity<string, bool> 
+                                        internal sealed class NotifyActivity : WorkflowActivity<Notification, bool> 
                                         {
-                                             public override async Task<bool> RunAsync(WorkflowActivityContext context, string input) 
+                                             public override async Task<bool> RunAsync(WorkflowActivityContext context, Notification input) 
                                              {
                                                  await Task.Delay(TimeSpan.FromSeconds(15));
                                                  return true;
@@ -78,9 +78,9 @@ public sealed class WorkflowActivityRegistrationCodeFixProviderTests
                                                        record OrderPayload;
                                                        record OrderResult(string Message) { };
                                                        record Notification { public Notification(string message) { } };
-                                                       internal sealed class NotifyActivity : WorkflowActivity<string, bool> 
+                                                       internal sealed class NotifyActivity : WorkflowActivity<Notification, bool> 
                                                        {
-                                                            public override async Task<bool> RunAsync(WorkflowActivityContext context, string input) 
+                                                            public override async Task<bool> RunAsync(WorkflowActivityContext context, Notification input) 
                                                             {
                                                                 await Task.Delay(TimeSpan.FromSeconds(15));
                                                                 return true;
