@@ -30,21 +30,39 @@ The `OrderProcessingWorkflow.cs` in `Workflows` directory implements the running
 
 This sample also contains a [WorkflowUnitTest](./WorkflowUnitTest) .NET project that utilizes [xUnit](https://xunit.net/) and [Moq](https://github.com/moq/moq) to test the workflow logic.
 It works by creating an instance of the `OrderProcessingWorkflow` (defined in the `WorkflowConsoleApp` project), mocking activity calls, and testing the inputs and outputs.
-The tests also verify that outputs of the workflow.
+The tests verify the outputs of the workflow without requiring a Dapr sidecar, since the `WorkflowContext` itself is mocked.
+
+### Test scenarios
+
+| Test | Concept |
+|------|---------|
+| `TestSuccessfulOrder` | Mock activity calls, verify inputs and call counts |
+| `TestHighCostOrderApproved` | Mock external events (`WaitForExternalEventAsync`) and verify custom status |
+| `TestHighCostOrderApprovalTimeout` | Simulate timeouts with `TaskCanceledException` |
+| `TestInsufficientInventory` | Branch on activity return value, verify early termination |
+| `TestActivityException` | Simulate activity failures with `WorkflowTaskFailedException` |
+
+### Running unit tests
+
+No Dapr sidecar is required. From the repository root:
+
+```sh
+dotnet test examples/Workflow/WorkflowUnitTest
+```
 
 ## Running the console app example
 
 To run the workflow web app locally, two separate terminal windows are required.
-In the first terminal window, from the `WorkflowConsoleApp` directory, run the following command to start the program itself:
+In the first terminal window, start the dapr sidecar:
+
+```sh
+dapr run --app-id wfapp --dapr-grpc-port 50001 --dapr-http-port 3500
+```
+
+Next, in a separate terminal window, from the `WorkflowConsoleApp` directory, run the following command to start the program itself:
 
 ```sh
 dotnet run
-```
-
-Next, in a separate terminal window, start the dapr sidecar:
-
-```sh
-dapr run --app-id wfapp --dapr-grpc-port 4001 --dapr-http-port 3500
 ```
 
 Dapr listens for HTTP requests at `http://localhost:3500`.

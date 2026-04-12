@@ -4,6 +4,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <IsPackable>false</IsPackable>
+        <OutputType>Library</OutputType>
     </PropertyGroup>
 
     <ItemGroup>

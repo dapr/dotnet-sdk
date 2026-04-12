@@ -73,7 +73,7 @@ public class ActorStateManagerTest
         Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
         Assert.Equal("value2", await mngr.GetStateAsync<string>("key2", token));
 
-        await Task.Delay(TimeSpan.FromSeconds(1.5));
+        await Task.Delay(TimeSpan.FromSeconds(1.5), TestContext.Current.CancellationToken);
 
         await Assert.ThrowsAsync<KeyNotFoundException>(() => mngr.GetStateAsync<string>("key1", token));
         await Assert.ThrowsAsync<KeyNotFoundException>(() => mngr.GetStateAsync<string>("key2", token));
@@ -83,7 +83,7 @@ public class ActorStateManagerTest
         await mngr.AddStateAsync("key2", "value2", token);
         Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
         Assert.Equal("value2", await mngr.GetStateAsync<string>("key2", token));
-        await Task.Delay(TimeSpan.FromSeconds(1.5));
+        await Task.Delay(TimeSpan.FromSeconds(1.5), TestContext.Current.CancellationToken);
         Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
         Assert.Equal("value2", await mngr.GetStateAsync<string>("key2", token));
     }
@@ -112,7 +112,7 @@ public class ActorStateManagerTest
         Assert.Equal("value2", await mngr.GetStateAsync<string>("key2", token));
 
         // TTL is removed so state should not expire.
-        await Task.Delay(TimeSpan.FromSeconds(1.5));
+        await Task.Delay(TimeSpan.FromSeconds(1.5), TestContext.Current.CancellationToken);
         Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
         Assert.Equal("value2", await mngr.GetStateAsync<string>("key2", token));
 
@@ -121,7 +121,7 @@ public class ActorStateManagerTest
         await mngr.SetStateAsync("key2", "value2", TimeSpan.FromSeconds(1), token);
         Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
         Assert.Equal("value2", await mngr.GetStateAsync<string>("key2", token));
-        await Task.Delay(TimeSpan.FromSeconds(1.5));
+        await Task.Delay(TimeSpan.FromSeconds(1.5), TestContext.Current.CancellationToken);
         await Assert.ThrowsAsync<KeyNotFoundException>(() => mngr.GetStateAsync<string>("key1", token));
         await Assert.ThrowsAsync<KeyNotFoundException>(() => mngr.GetStateAsync<string>("key2", token));
     }
@@ -149,7 +149,7 @@ public class ActorStateManagerTest
             .Returns(Task.FromResult(new ActorStateResponse<string>("", null)));
 
         // Key should be expired after 1 seconds.
-        await Task.Delay(TimeSpan.FromSeconds(1.5));
+        await Task.Delay(TimeSpan.FromSeconds(1.5), TestContext.Current.CancellationToken);
         await Assert.ThrowsAsync<KeyNotFoundException>(() => mngr.GetStateAsync<string>("key1", token));
         await Assert.ThrowsAsync<KeyNotFoundException>(() => mngr.RemoveStateAsync("key1", token));
         await mngr.AddStateAsync("key1", "value2", TimeSpan.FromSeconds(1), token);

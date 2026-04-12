@@ -27,8 +27,8 @@ public sealed class SubworkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -57,12 +57,12 @@ public sealed class SubworkflowTests
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(DemoWorkflow), workflowInstanceId, workflowInstanceId);
         
-        var workflowResult = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var workflowResult = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowRuntimeStatus.Completed, workflowResult.RuntimeStatus);
         var workflowResultValue = workflowResult.ReadOutputAs<bool>();
         Assert.True(workflowResultValue);
 
-        var subworkflowResult = await daprWorkflowClient.WaitForWorkflowCompletionAsync($"{workflowInstanceId}-sub");
+        var subworkflowResult = await daprWorkflowClient.WaitForWorkflowCompletionAsync($"{workflowInstanceId}-sub", cancellation: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowRuntimeStatus.Completed, workflowResult.RuntimeStatus);
         var subworkflowResultValue = subworkflowResult.ReadOutputAs<bool>();
         Assert.True(subworkflowResultValue);
@@ -74,8 +74,8 @@ public sealed class SubworkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -106,7 +106,7 @@ public sealed class SubworkflowTests
             nameof(ParallelSubworkflowsWorkflow), 
             workflowInstanceId);
 
-        var workflowResult = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var workflowResult = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowRuntimeStatus.Completed, workflowResult.RuntimeStatus);
         var results = workflowResult.ReadOutputAs<int[]>();
         Assert.NotNull(results);

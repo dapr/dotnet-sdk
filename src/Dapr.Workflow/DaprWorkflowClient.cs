@@ -12,9 +12,11 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Workflow.Client;
+using Grpc.Core;
 
 namespace Dapr.Workflow;
 
@@ -28,15 +30,22 @@ namespace Dapr.Workflow;
 public sealed class DaprWorkflowClient : IDaprWorkflowClient
 {
     private readonly WorkflowClient _innerClient;
+    
+    /// <summary>
+    /// Exposed only for testing.
+    /// </summary>
+    internal string? DaprApiToken { get; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprWorkflowClient"/> class.
     /// </summary>
     /// <param name="innerClient">The Durable Task client used to communicate with the Dapr sidecar.</param>
+    /// <param name="daprApiToken">The API token used for validating requests to Dapr.</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="innerClient"/> is <c>null</c>.</exception>
-    internal DaprWorkflowClient(WorkflowClient innerClient)
+    internal DaprWorkflowClient(WorkflowClient innerClient,  string? daprApiToken = null)
     {
         _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
+        DaprApiToken = daprApiToken;
     }
     
     /// <summary>
@@ -115,17 +124,27 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// </param>
     /// <param name="cancellation">Token to cancel the retrieval operation.</param>
     /// <returns>
-    /// A <see cref="WorkflowMetadata"/> object, or <c>null</c> if the workflow instance does not exist.
+    /// A <see cref="WorkflowState"/> if the workflow instance exists, or <c>null</c> if the instance does not
+    /// exist or an error occurs retrieving the metadata.
+    /// This method never throws.
     /// </returns>
-    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
     public async Task<WorkflowState?> GetWorkflowStateAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        var metadata = await _innerClient.GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellation);
-        return metadata is null ? null : new WorkflowState(metadata);
+        
+        try
+        {
+            var metadata = await _innerClient.GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellation);
+            return metadata is null ? null : new WorkflowState(metadata);    
+        }
+        catch (RpcException)
+        {
+            // If the state doesn't exist, we typically get an `RpcException`, so this wraps this and just returns null
+            return null;
+        }
     }
     
     /// <summary>
@@ -182,16 +201,11 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
         CancellationToken cancellation = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        
-        // Wait until the workflow completes...
         var metadata = await _innerClient.WaitForWorkflowCompletionAsync(instanceId, false, cancellation);
-        
-        // ... and then retrieve the workflow state with the inputs/outputs (if requested)
         if (getInputsAndOutputs)
         {
-            metadata = await _innerClient.GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellation);
+            metadata = await _innerClient.GetWorkflowMetadataAsync(instanceId, true, cancellation) ?? metadata;
         }
-
         return new WorkflowState(metadata);
     }
     
@@ -306,6 +320,67 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
         return await _innerClient.PurgeInstanceAsync(instanceId, cancellation);
+    }
+
+    /// <summary>
+    /// Lists workflow instance IDs with optional pagination.
+    /// </summary>
+    /// <param name="continuationToken">
+    /// The continuation token from a previous call, or <c>null</c> to retrieve the first page.
+    /// </param>
+    /// <param name="pageSize">
+    /// The maximum number of instance IDs to return per page, or <c>null</c> for no limit.
+    /// </param>
+    /// <param name="cancellation">Token to cancel the list operation.</param>
+    /// <returns>
+    /// A page containing the instance IDs and an optional continuation token for the next page.
+    /// </returns>
+    public async Task<WorkflowInstancePage> ListInstanceIdsAsync(
+        string? continuationToken = null,
+        int? pageSize = null,
+        CancellationToken cancellation = default)
+    {
+        if (pageSize.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize.Value);
+        }
+
+        return await _innerClient.ListInstanceIdsAsync(continuationToken, pageSize, cancellation);
+    }
+
+    /// <summary>
+    /// Gets the full execution history of a workflow instance.
+    /// </summary>
+    /// <param name="instanceId">The unique ID of the workflow instance to get history for.</param>
+    /// <param name="cancellation">Token to cancel the retrieval operation.</param>
+    /// <returns>A read-only list of history events for the workflow instance.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
+    public async Task<IReadOnlyList<WorkflowHistoryEvent>> GetInstanceHistoryAsync(
+        string instanceId,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        return await _innerClient.GetInstanceHistoryAsync(instanceId, cancellation);
+    }
+
+    /// <summary>
+    /// Reruns a workflow from a specific event ID, creating a new workflow instance that replays
+    /// the source workflow's history up to the specified event.
+    /// </summary>
+    /// <param name="sourceInstanceId">The instance ID of the source workflow to rerun from.</param>
+    /// <param name="eventId">The event ID in the source workflow's history to rerun from.</param>
+    /// <param name="options">Optional configuration for the rerun operation.</param>
+    /// <param name="cancellation">Token to cancel the rerun operation.</param>
+    /// <returns>The instance ID of the newly created workflow instance.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="sourceInstanceId"/> is null or empty.</exception>
+    public async Task<string> RerunWorkflowFromEventAsync(
+        string sourceInstanceId,
+        uint eventId,
+        RerunWorkflowFromEventOptions? options = null,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(sourceInstanceId);
+        return await _innerClient.RerunWorkflowFromEventAsync(sourceInstanceId, eventId, options, cancellation);
     }
 
     /// <summary>

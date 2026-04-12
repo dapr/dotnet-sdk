@@ -21,11 +21,10 @@ using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.E2E.Test.Actors.Reentrancy;
 using Xunit;
-using Xunit.Abstractions;
 
 public class ReentrantTests : DaprTestAppLifecycle
 {
-    private static readonly int NumCalls = 10;
+    private const int NumCalls = 10;
     private readonly Lazy<IActorProxyFactory> proxyFactory;
     private IActorProxyFactory ProxyFactory => this.HttpEndpoint == null ? null : this.proxyFactory.Value;
 

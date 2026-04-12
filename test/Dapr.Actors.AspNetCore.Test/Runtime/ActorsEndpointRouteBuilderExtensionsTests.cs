@@ -35,9 +35,9 @@ public class ActorsEndpointRouteBuilderExtensionsTests
         var server = host.GetTestServer();
 
         var httpClient = server.CreateClient();
-        var response = await httpClient.GetAsync("/dapr/config");
+        var response = await httpClient.GetAsync("/dapr/config", TestContext.Current.CancellationToken);
 
-        var text = await response.Content.ReadAsStringAsync();
+        var text = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Equal(@"{""entities"":[""TestActor""],""reentrancy"":{""enabled"":false}}", text);
     }
 

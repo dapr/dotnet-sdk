@@ -13,11 +13,11 @@
 
 using Dapr.Client;
 using Dapr.Testcontainers.Common;
-using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using static Dapr.Testcontainers.Harnesses.DaprTestEnvironment;
 
 namespace Dapr.IntegrationTest.Workflow;
 
@@ -36,8 +36,8 @@ public sealed partial class ExternalInputWorkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -64,14 +64,14 @@ public sealed partial class ExternalInputWorkflowTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(MultiEventWorkflow), workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
         // Raise multiple events
-        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event1", "FirstData");
-        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event2", 42);
-        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event3", true);
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event1", "FirstData", TestContext.Current.CancellationToken);
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event2", 42, TestContext.Current.CancellationToken);
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event3", true, TestContext.Current.CancellationToken);
 
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var output = result.ReadOutputAs<string>();
         Assert.Equal("FirstData-42-True", output);
@@ -83,8 +83,8 @@ public sealed partial class ExternalInputWorkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -134,8 +134,7 @@ public sealed partial class ExternalInputWorkflowTests
         var daprClient = scope.ServiceProvider.GetRequiredService<DaprClient>();
         foreach (var baseInventoryItem in BaseInventory)
         {
-            await daprClient.SaveStateAsync(Testcontainers.Constants.DaprComponentNames.StateManagementComponentName,
-                baseInventoryItem.Name.ToLowerInvariant(), baseInventoryItem);
+            await daprClient.SaveStateAsync(Testcontainers.Constants.DaprComponentNames.StateManagementComponentName, baseInventoryItem.Name.ToLowerInvariant(), baseInventoryItem, cancellationToken: TestContext.Current.CancellationToken);
         }
 
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
@@ -162,7 +161,7 @@ public sealed partial class ExternalInputWorkflowTests
         }
         catch (OperationCanceledException)
         {
-            var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, getInputsAndOutputs: true);
+            var state = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, getInputsAndOutputs: true, cancellation: TestContext.Current.CancellationToken);
             Assert.Fail($"Timed out waiting for workflow completion. Current state: {state?.RuntimeStatus}, CustomStatus: {state?.ReadCustomStatusAs<string>()}");
             throw;
         }
@@ -180,8 +179,8 @@ public sealed partial class ExternalInputWorkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -210,7 +209,7 @@ public sealed partial class ExternalInputWorkflowTests
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(TimeoutWorkflow), workflowInstanceId);
 
         // Don't send event, let it timeout
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var output = result.ReadOutputAs<string>();
@@ -223,8 +222,8 @@ public sealed partial class ExternalInputWorkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
         
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
 
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -251,9 +250,9 @@ public sealed partial class ExternalInputWorkflowTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(DefaultValueWorkflow), workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var output = result.ReadOutputAs<int>();
@@ -324,8 +323,8 @@ public sealed partial class ExternalInputWorkflowTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
-        await environment.StartAsync();
+        await using var environment = await CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
         
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
@@ -352,14 +351,14 @@ public sealed partial class ExternalInputWorkflowTests
         var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
 
         await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(MultiEventWorkflow), workflowInstanceId);
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
 
         // Raise multiple events
-        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event1", "FirstData");
-        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event2", 42);
-        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event3", true);
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event1", "FirstData", cancellation: TestContext.Current.CancellationToken);
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event2", 42, cancellation: TestContext.Current.CancellationToken);
+        await daprWorkflowClient.RaiseEventAsync(workflowInstanceId, "Event3", true, cancellation: TestContext.Current.CancellationToken);
 
-        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId);
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         var output = result.ReadOutputAs<string>();
         Assert.Equal("FirstData-42-True", output);
