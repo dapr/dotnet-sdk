@@ -12,6 +12,9 @@ namespace Dapr.Workflow.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class WorkflowRegistrationAnalyzer : DiagnosticAnalyzer
 {
+    private const string WorkflowVersioningExtensionsMetadataName =
+        "Dapr.Workflow.Versioning.WorkflowVersioningServiceCollectionExtensions";
+
     internal static readonly DiagnosticDescriptor WorkflowDiagnosticDescriptor = new(
         id: "DAPR1301",
          title: new LocalizableResourceString(nameof(Resources.DAPR1301Title), Resources.ResourceManager, typeof(Resources)),
@@ -33,7 +36,13 @@ public class WorkflowRegistrationAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
-        context.RegisterSyntaxNodeAction(AnalyzeWorkflowRegistration, SyntaxKind.InvocationExpression);
+        context.RegisterCompilationStartAction(compilationContext =>
+        {
+            if (CheckIfWorkflowVersioningIsRegistered(compilationContext.Compilation))
+                return;
+
+            compilationContext.RegisterSyntaxNodeAction(AnalyzeWorkflowRegistration, SyntaxKind.InvocationExpression);
+        });
     }
 
     private static void AnalyzeWorkflowRegistration(SyntaxNodeAnalysisContext context)
@@ -58,9 +67,6 @@ public class WorkflowRegistrationAnalyzer : DiagnosticAnalyzer
         
         if (context.SemanticModel.GetSymbolInfo(nameofArgExpr, context.CancellationToken).Symbol is not INamedTypeSymbol workflowTypeSymbol)
             return;
-
-        if (CheckIfWorkflowVersioningIsRegistered(context.SemanticModel, context.CancellationToken))
-            return;
         
         var isRegistered = CheckIfWorkflowIsRegistered(workflowTypeSymbol, context.SemanticModel, context.CancellationToken);
         if (isRegistered)
@@ -73,11 +79,15 @@ public class WorkflowRegistrationAnalyzer : DiagnosticAnalyzer
         context.ReportDiagnostic(diagnostic);
     }
 
-    private static bool CheckIfWorkflowVersioningIsRegistered(SemanticModel semanticModel, CancellationToken cancellationToken)
+    private static bool CheckIfWorkflowVersioningIsRegistered(Compilation compilation)
     {
-        foreach (var syntaxTree in semanticModel.Compilation.SyntaxTrees)
+        var versioningExtensionsType = compilation.GetTypeByMetadataName(WorkflowVersioningExtensionsMetadataName);
+        if (versioningExtensionsType is null)
+            return false;
+
+        foreach (var syntaxTree in compilation.SyntaxTrees)
         {
-            var root = syntaxTree.GetRoot(cancellationToken);
+            var root = syntaxTree.GetRoot();
             foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
             {
                 if (invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
