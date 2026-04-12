@@ -77,10 +77,10 @@ public class WorkflowRuntimeOptionsTests
 
         var sp = new Microsoft.Extensions.DependencyInjection.ServiceCollection().BuildServiceProvider();
 
-        Assert.True(factory.TryCreateWorkflow(new("wf-fn"), sp, out var workflow));
+        Assert.True(factory.TryCreateWorkflow(new("wf-fn"), sp, out var workflow, out _));
         Assert.NotNull(workflow);
 
-        Assert.True(factory.TryCreateActivity(new("act-fn"), sp, out var activity));
+        Assert.True(factory.TryCreateActivity(new("act-fn"), sp, out var activity, out _));
         Assert.NotNull(activity);
     }
     
@@ -123,11 +123,11 @@ public class WorkflowRuntimeOptionsTests
 
         var sp = new ServiceCollection().BuildServiceProvider();
 
-        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("MyCustomWorkflowName"), sp, out var workflow));
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("MyCustomWorkflowName"), sp, out var workflow, out _));
         Assert.NotNull(workflow);
         Assert.IsType<TestWorkflow>(workflow);
 
-        Assert.False(factory.TryCreateWorkflow(new TaskIdentifier(nameof(TestWorkflow)), sp, out _));
+        Assert.False(factory.TryCreateWorkflow(new TaskIdentifier(nameof(TestWorkflow)), sp, out _, out _));
     }
 
     [Fact]
@@ -141,11 +141,11 @@ public class WorkflowRuntimeOptionsTests
 
         var sp = new ServiceCollection().BuildServiceProvider();
 
-        Assert.True(factory.TryCreateActivity(new TaskIdentifier("MyCustomActivityName"), sp, out var activity));
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("MyCustomActivityName"), sp, out var activity, out _));
         Assert.NotNull(activity);
         Assert.IsType<TestActivity>(activity);
 
-        Assert.False(factory.TryCreateActivity(new TaskIdentifier(nameof(TestActivity)), sp, out _));
+        Assert.False(factory.TryCreateActivity(new TaskIdentifier(nameof(TestActivity)), sp, out _, out _));
     }
 
     private sealed class TestWorkflow : IWorkflow
