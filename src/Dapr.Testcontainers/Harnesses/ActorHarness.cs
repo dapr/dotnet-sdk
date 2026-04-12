@@ -16,7 +16,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Containers;
-using Dapr.Testcontainers.Containers.Dapr;
 
 namespace Dapr.Testcontainers.Harnesses;
 
@@ -26,45 +25,48 @@ namespace Dapr.Testcontainers.Harnesses;
 public sealed class ActorHarness : BaseHarness
 {
     private readonly RedisContainer _redis;
-	private readonly DaprPlacementContainer _placement;
-	private readonly DaprSchedulerContainer _schedueler;
-    private readonly string componentsDir;
+    private readonly bool _isSelfHostedRedis;
+    private readonly string _componentsDir;
 
     /// <summary>
     /// Provides an implementation harness for Dapr's actor building block.
     /// </summary>
     /// <param name="componentsDir">The directory to Dapr components.</param>
     /// <param name="startApp">The test app to validate in the harness.</param>
-    /// <param name="options">The dapr runtime options.</param>
-    /// <param name="environment">The isolated environment instance.</param>
-    public ActorHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null) : base(componentsDir, startApp, options, environment)
+    /// <param name="options">The Dapr runtime options.</param>
+    /// <param name="environment">
+    /// An optional shared <see cref="DaprTestEnvironment"/>. When provided the harness reuses
+    /// its Redis, Placement, and Scheduler services instead of starting its own.
+    /// </param>
+    public ActorHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null)
+        : base(componentsDir, startApp, options, environment)
     {
-        this.componentsDir = componentsDir;
-        _placement = new DaprPlacementContainer(options, Network, ContainerLogsDirectory);
-        _schedueler = new DaprSchedulerContainer(options, Network, ContainerLogsDirectory);
-        _redis = new RedisContainer(Network, ContainerLogsDirectory);
+        _componentsDir = componentsDir;
+        _redis = environment?.RedisContainer ?? new RedisContainer(Network, ContainerLogsDirectory);
+        _isSelfHostedRedis = environment?.RedisContainer is null;
     }
 
     /// <inheritdoc />
-	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
-	{
-		// Start infrastructure
-		await _redis.StartAsync(cancellationToken);
-        await _placement.StartAsync(cancellationToken);
-        await _schedueler.StartAsync(cancellationToken);
-        
-		// Emit component YAMLs pointing to Redis
-		RedisContainer.Yaml.WriteStateStoreYamlToFolder(componentsDir, redisHost: $"{_redis.NetworkAlias}:{RedisContainer.ContainerPort}");
+    protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
+    {
+        // Only start Redis if it is not provided by a shared environment.
+        if (_isSelfHostedRedis)
+        {
+            await _redis.StartAsync(cancellationToken);
+        }
 
-        DaprPlacementExternalPort = _placement.ExternalPort;
-        DaprSchedulerExternalPort = _schedueler.ExternalPort;
+        // Write the state-store component YAML that points to the Redis instance.
+        RedisContainer.Yaml.WriteStateStoreYamlToFolder(
+            _componentsDir,
+            redisHost: $"{_redis.NetworkAlias}:{RedisContainer.ContainerPort}");
+
+        // Forward placement and scheduler coordinates from the environment.
+        DaprPlacementExternalPort = Environment.PlacementExternalPort;
+        DaprPlacementAlias = Environment.PlacementAlias;
+        DaprSchedulerExternalPort = Environment.SchedulerExternalPort;
+        DaprSchedulerAlias = Environment.SchedulerAlias;
     }
-	
+
     /// <inheritdoc />
-	protected override async ValueTask OnDisposeAsync()
-	{
-		await _redis.DisposeAsync();
-		await _placement.DisposeAsync();
-		await _schedueler.DisposeAsync();
-	}
+    protected override ValueTask OnDisposeAsync() => ValueTask.CompletedTask;
 }
