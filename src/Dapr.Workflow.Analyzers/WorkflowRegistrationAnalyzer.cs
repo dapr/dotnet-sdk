@@ -58,6 +58,9 @@ public class WorkflowRegistrationAnalyzer : DiagnosticAnalyzer
         
         if (context.SemanticModel.GetSymbolInfo(nameofArgExpr, context.CancellationToken).Symbol is not INamedTypeSymbol workflowTypeSymbol)
             return;
+
+        if (CheckIfWorkflowVersioningIsRegistered(context.SemanticModel, context.CancellationToken))
+            return;
         
         var isRegistered = CheckIfWorkflowIsRegistered(workflowTypeSymbol, context.SemanticModel, context.CancellationToken);
         if (isRegistered)
@@ -68,6 +71,24 @@ public class WorkflowRegistrationAnalyzer : DiagnosticAnalyzer
         var workflowName = workflowTypeSymbol.Name;
         var diagnostic = Diagnostic.Create(WorkflowDiagnosticDescriptor, firstArgument.GetLocation(), workflowName);
         context.ReportDiagnostic(diagnostic);
+    }
+
+    private static bool CheckIfWorkflowVersioningIsRegistered(SemanticModel semanticModel, CancellationToken cancellationToken)
+    {
+        foreach (var syntaxTree in semanticModel.Compilation.SyntaxTrees)
+        {
+            var root = syntaxTree.GetRoot(cancellationToken);
+            foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            {
+                if (invocation.Expression is MemberAccessExpressionSyntax memberAccess &&
+                    memberAccess.Name.Identifier.Text == "AddDaprWorkflowVersioning")
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static bool CheckIfWorkflowIsRegistered(INamedTypeSymbol workflowType, SemanticModel semanticModel, CancellationToken cancellationToken)

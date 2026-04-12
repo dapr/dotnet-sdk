@@ -39,6 +39,50 @@ public sealed class WorkflowRegistrationAnalyzerTests
     }
 
     [Fact]
+    public async Task VerifyWorkflowNotRegisteredButVersioningPresent()
+    {
+        const string testCode = """
+                                                using Dapr.Workflow;
+                                                using System.Threading.Tasks;
+                                
+                                                class OrderProcessingWorkflow : Workflow<OrderPayload, OrderResult>
+                                                { 
+                                                    public override async Task<OrderResult> RunAsync(WorkflowContext context, OrderPayload order)
+                                                    {
+                                                        return new OrderResult("Order processed");
+                                                    }
+                                                }
+                                
+                                                class UseWorkflow()
+                                                {
+                                                    public async Task RunWorkflow(DaprWorkflowClient client, OrderPayload order)
+                                                    {
+                                                        await client.ScheduleNewWorkflowAsync(nameof(OrderProcessingWorkflow), null, order);
+                                                    }
+                                                }
+                                
+                                                record OrderPayload { }
+                                                record OrderResult(string message) { }  
+                                """;
+
+        const string startupCode = """
+                                               using Dapr.Workflow.Versioning;
+                                               using Microsoft.Extensions.DependencyInjection;
+                                   
+                                               internal static class Extensions
+                                               {
+                                                   public static void AddApplicationServices(this IServiceCollection services)
+                                                   {
+                                                       services.AddDaprWorkflowVersioning();
+                                                   }
+                                               }             
+                                   """;
+
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<WorkflowRegistrationAnalyzer>(testCode, startupCode);
+    }
+
+    [Fact]
     public async Task VerifyWorkflowRegistered()
     {
         const string testCode = """           
