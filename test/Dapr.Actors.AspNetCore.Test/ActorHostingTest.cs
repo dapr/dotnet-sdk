@@ -178,7 +178,7 @@ public class ActorServiceCollectionExtensionsOptionsTests
         });
 
         var factory = (ActorProxyFactory)services.BuildServiceProvider().GetRequiredService<IActorProxyFactory>();
-        // GetDefaultHttpEndpoint normalises the URL and may append a trailing slash.
+        // GetDefaultHttpEndpoint normalizes the URL and may append a trailing slash.
         Assert.StartsWith(endpoint, factory.DefaultOptions.HttpEndpoint, StringComparison.Ordinal);
     }
 }
