@@ -11,10 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -147,5 +150,35 @@ public class ActorServiceCollectionExtensionsOptionsTests
 
         var factory = (ActorProxyFactory)services.BuildServiceProvider().GetRequiredService<IActorProxyFactory>();
         Assert.Equal(token, factory.DefaultOptions.DaprApiToken);
+    }
+
+    [Fact]
+    public void AddActors_HttpEndpointFromConfiguration_IsReflectedInProxyFactory()
+    {
+        // Verify that when no explicit HttpEndpoint is set, AddActors falls back to
+        // the DAPR_HTTP_ENDPOINT key in IConfiguration (e.g. in-memory config, not env var).
+        const string endpoint = "http://dapr-from-config:3502";
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddOptions();
+
+        // Populate IConfiguration with the endpoint — simulates what DaprTestApplicationBuilder does.
+        services.AddSingleton<IConfiguration>(
+            new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { "DAPR_HTTP_ENDPOINT", endpoint }
+                })
+                .Build());
+
+        services.AddActors(options =>
+        {
+            // HttpEndpoint is intentionally NOT set; the fallback should read from IConfiguration.
+        });
+
+        var factory = (ActorProxyFactory)services.BuildServiceProvider().GetRequiredService<IActorProxyFactory>();
+        // GetDefaultHttpEndpoint normalises the URL and may append a trailing slash.
+        Assert.StartsWith(endpoint, factory.DefaultOptions.HttpEndpoint, StringComparison.Ordinal);
     }
 }
