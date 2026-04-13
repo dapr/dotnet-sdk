@@ -97,7 +97,95 @@ public sealed class ContainerReadinessProbeTests
     }
 
     // ---------------------------------------------------------------------------
-    // WaitForHttpHealthAsync
+    // WaitForHttpReachableAsync — used by DaprdContainer to eliminate the brief
+    // "Connection refused" window after the TCP port first opens.
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task WaitForHttpReachableAsync_Returns_When2xxIsReceived()
+    {
+        using var httpClient = CreateMockClient(HttpStatusCode.NoContent); // 204
+
+        await ContainerReadinessProbe.WaitForHttpReachableAsync(
+            "http://127.0.0.1:9999/v1.0/healthz",
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken,
+            httpClient);
+    }
+
+    [Fact]
+    public async Task WaitForHttpReachableAsync_Returns_When5xxIsReceived()
+    {
+        // 500 / 503 mean "server is running but not yet healthy" — the reachability
+        // check should return immediately rather than retrying.
+        using var httpClient = CreateMockClient(HttpStatusCode.InternalServerError); // 500
+
+        await ContainerReadinessProbe.WaitForHttpReachableAsync(
+            "http://127.0.0.1:9999/v1.0/healthz",
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken,
+            httpClient);
+    }
+
+    [Fact]
+    public async Task WaitForHttpReachableAsync_Returns_WhenServerFirstRefusesThenResponds()
+    {
+        // First call throws (connection refused); second returns 500 (server now running).
+        int callCount = 0;
+        var handler = new DelegateHandler(async (_, ct) =>
+        {
+            callCount++;
+            if (callCount == 1)
+                throw new HttpRequestException("Simulated connection refused");
+            // 500 is fine — server is up
+            return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+        });
+        using var httpClient = new HttpClient(handler);
+
+        await ContainerReadinessProbe.WaitForHttpReachableAsync(
+            "http://127.0.0.1:9999/v1.0/healthz",
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken,
+            httpClient);
+
+        Assert.Equal(2, callCount);
+    }
+
+    [Fact]
+    public async Task WaitForHttpReachableAsync_ThrowsTimeoutException_WhenConnectionAlwaysRefused()
+    {
+        var handler = new DelegateHandler((_, _) =>
+            throw new HttpRequestException("Simulated connection refused"));
+        using var httpClient = new HttpClient(handler);
+
+        await Assert.ThrowsAsync<TimeoutException>(() =>
+            ContainerReadinessProbe.WaitForHttpReachableAsync(
+                "http://127.0.0.1:9999/v1.0/healthz",
+                TimeSpan.FromMilliseconds(300),
+                TestContext.Current.CancellationToken,
+                httpClient));
+    }
+
+    [Fact]
+    public async Task WaitForHttpReachableAsync_ThrowsOperationCanceledException_WhenTokenCancelled()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var handler = new DelegateHandler((_, _) =>
+            throw new HttpRequestException("Simulated connection refused"));
+        using var httpClient = new HttpClient(handler);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            ContainerReadinessProbe.WaitForHttpReachableAsync(
+                "http://127.0.0.1:9999/v1.0/healthz",
+                TimeSpan.FromSeconds(5),
+                cts.Token,
+                httpClient));
+    }
+
+    // ---------------------------------------------------------------------------
+    // WaitForHttpHealthAsync — stricter check that requires a 2xx response.
     // ---------------------------------------------------------------------------
 
     [Fact]

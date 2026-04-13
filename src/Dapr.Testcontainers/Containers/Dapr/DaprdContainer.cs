@@ -193,13 +193,16 @@ public sealed class DaprdContainer : IAsyncStartable
 
         // Even after the TCP ports start accepting connections the Dapr runtime may still be
         // initializing (connecting to Placement/Scheduler, loading components, starting the
-        // workflow engine). Poll the HTTP health endpoint until Dapr reports itself as ready.
-        // This prevents transient gRPC "Error connecting to subchannel / Connection refused"
-        // errors that occur when the gRPC client first connects while the runtime is still
-        // completing its startup sequence.
-        await ContainerReadinessProbe.WaitForHttpHealthAsync(
+        // workflow engine). Poll the HTTP port until the Dapr HTTP server starts processing
+        // requests. Any HTTP response (including 5xx) confirms that the HTTP server — and by
+        // extension the gRPC server — is actively routing requests, eliminating the brief window
+        // in which the gRPC port accepts TCP connections but the gRPC handlers are not yet
+        // installed. This prevents the transient "Error connecting to subchannel / Connection
+        // refused" errors that occur when the gRPC client first connects while the runtime is
+        // still completing its startup sequence.
+        await ContainerReadinessProbe.WaitForHttpReachableAsync(
             $"http://127.0.0.1:{HttpPort}/v1.0/healthz",
-            TimeSpan.FromSeconds(60),
+            TimeSpan.FromSeconds(30),
             cancellationToken);
     }
 
