@@ -73,6 +73,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private DateTime _currentUtcDateTime;
     private bool _isReplaying;
     private bool _turnInitialized;
+    private bool _preserveUnprocessedEvents;
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
         IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
         string? appId = null, string? executionId = null)
@@ -358,23 +359,51 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             }
         };
 
-        // The Dapr sidecar preserves unprocessed events via its own pending-event queue and
-        // re-delivers them to the new execution automatically. Using the gRPC CarryoverEvents
-        // field causes double-delivery (once from CarryoverEvents, once from the pending queue)
-        // and the sidecar strips the Input field from CarryoverEvents (causing default-value
-        // payloads). We therefore rely on Dapr's natural re-delivery and ignore preserveUnprocessedEvents.
+        // The Dapr sidecar's CarryoverEvents field strips the Input when re-delivering events,
+        // causing all carryover payloads to deserialize as default(T). Instead, we re-queue
+        // unprocessed events as SendEvent actions to self in FinalizeCarryoverEvents(), which
+        // preserves the original Input values and avoids double-delivery.
+        _preserveUnprocessedEvents = preserveUnprocessedEvents;
         _pendingActions.Add(action.Id, action);
     }
 
     /// <summary>
-    /// No-op: the Dapr sidecar automatically re-delivers unprocessed events to the new
-    /// execution after ContinuedAsNew via its own persistent event queue, so we do not
-    /// need to populate <c>CarryoverEvents</c> on the gRPC action. Doing so causes
-    /// double-delivery with a stripped <c>Input</c> field.
+    /// Re-queues unprocessed external events as <c>SendEvent</c> actions to this instance
+    /// so that the new execution (after <c>ContinuedAsNew</c>) receives them with their
+    /// original input values intact.
     /// </summary>
+    /// <remarks>
+    /// Using the gRPC <c>CarryoverEvents</c> field causes the Dapr sidecar to strip the
+    /// <c>Input</c> of each re-delivered event, so all payloads deserialize as
+    /// <c>default(T)</c>.  Emitting <c>SendEvent</c> actions to self avoids that stripping
+    /// because the event data travels through the sidecar's normal event queue path.
+    /// </remarks>
     internal void FinalizeCarryoverEvents()
     {
-        // Intentionally empty – see comment above.
+        if (!_preserveUnprocessedEvents || _externalEventBuffer.Count == 0)
+            return;
+
+        foreach (var action in _pendingActions.Values)
+        {
+            if (action.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew)
+            {
+                foreach (var bufferedEvent in _externalEventBuffer)
+                {
+                    var sendId = _sequenceNumber++;
+                    _pendingActions.Add(sendId, new OrchestratorAction
+                    {
+                        Id = sendId,
+                        SendEvent = new SendEventAction
+                        {
+                            Instance = new OrchestrationInstance { InstanceId = InstanceId },
+                            Name = bufferedEvent.EventRaised.Name,
+                            Data = bufferedEvent.EventRaised.Input
+                        }
+                    });
+                }
+                return;
+            }
+        }
     }
 
     /// <inheritdoc />

@@ -1057,8 +1057,16 @@ public class WorkflowOrchestrationContextTests
         Assert.Equal(typeof(MyExampleType), innerLoggerType.GetGenericArguments()[0]);
     }
 
+    /// <summary>
+    /// When <c>preserveUnprocessedEvents: true</c>, FinalizeCarryoverEvents should emit
+    /// <c>SendEvent</c> actions to self for each buffered event so that the new execution
+    /// receives them via the sidecar's normal event queue path (with Input intact).
+    /// It must NOT populate <c>CarryoverEvents</c> on the ContinuedAsNew action because
+    /// the Dapr sidecar strips the <c>Input</c> field when re-delivering carryover events,
+    /// causing all payloads to deserialize as <c>default(T)</c>.
+    /// </summary>
     [Fact]
-    public void ContinueAsNew_ShouldAddCompleteOrchestrationAction_WithNoCarryoverEvents_WhenPreserveUnprocessedEventsIsTrue()
+    public void ContinueAsNew_ShouldEmitSendEventActionsForBufferedEvents_WhenPreserveUnprocessedEventsIsTrue()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -1071,39 +1079,47 @@ public class WorkflowOrchestrationContextTests
 
         var context = new WorkflowOrchestrationContext(
             name: "wf",
-            instanceId: "i",
+            instanceId: "my-instance",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
             loggerFactory: NullLoggerFactory.Instance,
             tracker);
 
-        context.ProcessEvents(history, true);
+        context.ProcessEvents(history, isReplaying: true);
         context.ContinueAsNew(newInput: new { V = 9 }, preserveUnprocessedEvents: true);
         context.FinalizeCarryoverEvents();
 
-        Assert.Single(context.PendingActions);
-        var action = context.PendingActions.First();
+        // Expect: 1 ContinuedAsNew + 2 SendEvent actions (one per buffered event).
+        Assert.Equal(3, context.PendingActions.Count);
 
-        Assert.NotNull(action.CompleteOrchestration);
-        Assert.Equal(OrchestrationStatus.ContinuedAsNew, action.CompleteOrchestration.OrchestrationStatus);
-        Assert.Contains("\"v\":9", action.CompleteOrchestration.Result);
-        // CarryoverEvents is intentionally empty: Dapr's pending-event queue re-delivers
-        // unprocessed events to the new execution automatically, without needing the SDK
-        // to populate this field (which would cause double-delivery with a stripped Input).
-        Assert.Empty(action.CompleteOrchestration.CarryoverEvents);
+        var continueAction = context.PendingActions.First();
+        Assert.NotNull(continueAction.CompleteOrchestration);
+        Assert.Equal(OrchestrationStatus.ContinuedAsNew, continueAction.CompleteOrchestration.OrchestrationStatus);
+        Assert.Contains("\"v\":9", continueAction.CompleteOrchestration.Result);
+        // CarryoverEvents must be empty to avoid the sidecar's Input-stripping behaviour.
+        Assert.Empty(continueAction.CompleteOrchestration.CarryoverEvents);
+
+        var sendActions = context.PendingActions.Skip(1).ToList();
+        Assert.Equal(2, sendActions.Count);
+        Assert.All(sendActions, a =>
+        {
+            Assert.NotNull(a.SendEvent);
+            Assert.Equal("my-instance", a.SendEvent.Instance.InstanceId);
+        });
+        Assert.Contains(sendActions, a => a.SendEvent!.Name == "e1" && a.SendEvent.Data == "\"x\"");
+        Assert.Contains(sendActions, a => a.SendEvent!.Name == "e2" && a.SendEvent.Data == "\"y\"");
     }
 
     /// <summary>
     /// Validates the full carryover correctness at a unit-test level.
     ///
-    /// The Dapr sidecar re-delivers unconsumed events to new executions via its own
-    /// persistent event queue. This test simulates that re-delivery: the SDK correctly
-    /// delivers buffered events with their original, non-null input values in the next
-    /// execution. This is the unit-test equivalent of the end-to-end validation done
-    /// by <c>ContinueAsNewCarryoverEventsTests</c>.
+    /// When many signals arrive together in one NewEvents batch and the workflow processes
+    /// one per ContinueAsNew cycle, FinalizeCarryoverEvents must re-queue the remaining
+    /// signals via SendEvent so that the new execution receives them with their original
+    /// Input values preserved (not stripped to <c>default(T)</c> as CarryoverEvents would).
     /// </summary>
     [Fact]
-    public async Task ContinueAsNew_WithPreserveUnprocessedEvents_ShouldDeliverBufferedEventsWithCorrectValuesInNextExecution()
+    public async Task ContinueAsNew_WithPreserveUnprocessedEvents_ShouldRequeueBufferedEventsViaSendEventWithCorrectValues()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -1118,7 +1134,7 @@ public class WorkflowOrchestrationContextTests
         // ── First execution ──────────────────────────────────────────────────────────
         var context1 = new WorkflowOrchestrationContext(
             name: "wf",
-            instanceId: "i",
+            instanceId: "my-instance",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
             loggerFactory: NullLoggerFactory.Instance,
@@ -1133,20 +1149,29 @@ public class WorkflowOrchestrationContextTests
         Assert.True(firstEventTask.IsCompleted, "First WaitForExternalEventAsync should complete synchronously.");
         Assert.Equal(1, await firstEventTask);
 
-        // Workflow calls ContinueAsNew; CarryoverEvents must remain empty.
+        // Workflow calls ContinueAsNew; FinalizeCarryoverEvents re-queues the 2 unconsumed events.
         context1.ContinueAsNew(newInput: 1, preserveUnprocessedEvents: true);
         context1.FinalizeCarryoverEvents();
+
+        // 1 ContinuedAsNew + 2 SendEvent (one per unconsumed event).
+        Assert.Equal(3, context1.PendingActions.Count);
 
         var continueAction = context1.PendingActions.First();
         Assert.NotNull(continueAction.CompleteOrchestration);
         Assert.Equal(OrchestrationStatus.ContinuedAsNew, continueAction.CompleteOrchestration.OrchestrationStatus);
         Assert.Empty(continueAction.CompleteOrchestration.CarryoverEvents);
 
-        // ── Second execution (simulates sidecar re-delivering events 2 and 3) ────────
+        // SendEvent actions must carry the original serialized values, not null / default.
+        var sendActions = context1.PendingActions.Skip(1).ToList();
+        Assert.Equal(2, sendActions.Count);
+        Assert.Contains(sendActions, a => a.SendEvent!.Name == "signal" && a.SendEvent.Data == "2");
+        Assert.Contains(sendActions, a => a.SendEvent!.Name == "signal" && a.SendEvent.Data == "3");
+
+        // ── Second execution (simulates sidecar delivering the re-queued events) ─────
         var tracker2 = new WorkflowVersionTracker([]);
         var context2 = new WorkflowOrchestrationContext(
             name: "wf",
-            instanceId: "i",
+            instanceId: "my-instance",
             currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             workflowSerializer: serializer,
             loggerFactory: NullLoggerFactory.Instance,
@@ -1154,19 +1179,19 @@ public class WorkflowOrchestrationContextTests
 
         var secondEventTask = context2.WaitForExternalEventAsync<int>("signal", TestContext.Current.CancellationToken);
 
-        // Sidecar re-delivers only the unconsumed events (2 and 3); event 1 is not re-sent.
+        // Sidecar delivers events 2 and 3 (re-queued via SendEvent); event 1 is not re-sent.
         context2.ProcessEvents(new[] { allEvents[1], allEvents[2] }, isReplaying: false);
 
         Assert.True(secondEventTask.IsCompleted, "Second WaitForExternalEventAsync should complete synchronously.");
 
         // The critical assertion: the value must be 2, not 0/default.
         // The original bug populated CarryoverEvents but the sidecar stripped Input,
-        // causing double-delivery with null inputs that deserialized as 0.
+        // causing payloads to deserialize as 0.  With the SendEvent approach the value is preserved.
         Assert.Equal(2, await secondEventTask);
     }
 
     [Fact]
-    public void ContinueAsNew_ShouldNotCarryOverEvents_WhenPreserveUnprocessedEventsIsFalse()
+    public void ContinueAsNew_ShouldNotEmitSendEventActions_WhenPreserveUnprocessedEventsIsFalse()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -1185,9 +1210,11 @@ public class WorkflowOrchestrationContextTests
             loggerFactory: NullLoggerFactory.Instance,
             tracker);
 
-        context.ProcessEvents(history, true);
+        context.ProcessEvents(history, isReplaying: true);
         context.ContinueAsNew(newInput: null, preserveUnprocessedEvents: false);
+        context.FinalizeCarryoverEvents();
 
+        // Only the ContinuedAsNew action; no SendEvent actions because preserve is false.
         Assert.Single(context.PendingActions);
         var action = context.PendingActions.First();
 
