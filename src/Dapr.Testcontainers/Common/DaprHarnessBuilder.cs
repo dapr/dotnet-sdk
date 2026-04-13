@@ -92,7 +92,11 @@ public sealed class DaprHarnessBuilder
     /// Builds a distributed lock harness.
     /// </summary>
 	public DistributedLockHarness BuildDistributedLock() => new(_componentsDirectory, _startApp, _options, _environment);
-    
+
+    /// <summary>
+    /// Builds a secret store harness.
+    /// </summary>
+	public SecretStoreHarness BuildSecretStore() => new(_componentsDirectory, _startApp, _options, _environment);
     /// <summary>
     /// Builds a conversation harness.
     /// </summary>
