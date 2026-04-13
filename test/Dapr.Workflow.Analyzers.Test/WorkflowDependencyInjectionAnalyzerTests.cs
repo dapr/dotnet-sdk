@@ -330,4 +330,30 @@ public sealed class WorkflowDependencyInjectionAnalyzerTests
         var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
         await analyzer.VerifyAnalyzerAsync<WorkflowDependencyInjectionAnalyzer>(testCode);
     }
+
+    [Fact]
+    public async Task VerifyDiagnostic_WhenIndirectWorkflowSubclassUsesPrimaryConstructorWithParameter()
+    {
+        const string testCode = """
+                                using Dapr.Workflow;
+                                using System.Threading.Tasks;
+
+                                public interface IMyService { }
+
+                                public abstract class BaseOrderWorkflow : Workflow<string, string> { }
+
+                                public sealed class ConcreteOrderWorkflow(IMyService service) : BaseOrderWorkflow
+                                {
+                                    public override Task<string> RunAsync(WorkflowContext context, string input)
+                                        => Task.FromResult(input);
+                                }
+                                """;
+
+        var expected = VerifyAnalyzer.Diagnostic(WorkflowDependencyInjectionAnalyzer.WorkflowDependencyInjectionDescriptor)
+            .WithSpan(8, 43, 8, 61)
+            .WithMessage("Workflow 'ConcreteOrderWorkflow' has constructor parameter 'service' of type 'IMyService', but dependency injection is not supported in workflow implementations. Move dependencies to a WorkflowActivity instead.");
+
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<WorkflowDependencyInjectionAnalyzer>(testCode, expected);
+    }
 }
