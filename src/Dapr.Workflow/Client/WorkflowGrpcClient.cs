@@ -368,8 +368,11 @@ internal sealed class WorkflowGrpcClient(
     /// failed because the workflow client never sends a <c>dapr-app-id</c> header.  This pattern
     /// occurs on older Dapr runtime versions that pre-date the <c>GetInstanceHistory</c>,
     /// <c>ListInstanceIDs</c>, and <c>RerunWorkflowFromEvent</c> RPCs.
+    /// The sidecar emits "failed to proxy request: required metadata dapr-callee-app-id or dapr-app-id not found"
+    /// in this case.
     /// </summary>
     private static bool IsRpcMethodNotSupportedByRuntime(RpcException ex) =>
         ex.StatusCode == StatusCode.Unknown &&
+        ex.Status.Detail.Contains("required metadata", StringComparison.OrdinalIgnoreCase) &&
         ex.Status.Detail.Contains("dapr-app-id", StringComparison.OrdinalIgnoreCase);
 }
