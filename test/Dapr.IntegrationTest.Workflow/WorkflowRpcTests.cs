@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Dapr.Workflow.Client;
 using Microsoft.Extensions.Configuration;
@@ -22,7 +23,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class WorkflowRpcTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17.0")]
     public async Task ListInstanceIds_ShouldReturnScheduledWorkflowInstances()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -57,22 +58,13 @@ public sealed class WorkflowRpcTests
         await client.WaitForWorkflowCompletionAsync(instanceId, cancellation: TestContext.Current.CancellationToken);
 
         // List instance IDs and verify our workflow appears
-        WorkflowInstancePage page;
-        try
-        {
-            page = await client.ListInstanceIdsAsync(cancellation: TestContext.Current.CancellationToken);
-        }
-        catch (NotSupportedException ex)
-        {
-            Assert.Skip($"Skipped: {ex.Message}");
-            return;
-        }
+        var page = await client.ListInstanceIdsAsync(cancellation: TestContext.Current.CancellationToken);
 
         Assert.NotNull(page);
         Assert.Contains(instanceId, page.InstanceIds);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17.0")]
     public async Task GetInstanceHistory_ShouldReturnHistoryForCompletedWorkflow()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -112,16 +104,7 @@ public sealed class WorkflowRpcTests
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
 
         // Get history and verify it has events
-        IReadOnlyList<WorkflowHistoryEvent> history;
-        try
-        {
-            history = await client.GetInstanceHistoryAsync(instanceId, TestContext.Current.CancellationToken);
-        }
-        catch (NotSupportedException ex)
-        {
-            Assert.Skip($"Skipped: {ex.Message}");
-            return;
-        }
+        var history = await client.GetInstanceHistoryAsync(instanceId, TestContext.Current.CancellationToken);
 
         Assert.NotNull(history);
         Assert.NotEmpty(history);
