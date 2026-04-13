@@ -90,23 +90,42 @@ public sealed class WorkflowDependencyInjectionAnalyzer : DiagnosticAnalyzer
 
             foreach (var parameter in constructor.ParameterList.Parameters)
             {
-                var parameterSymbol = context.SemanticModel
-                    .GetDeclaredSymbol(parameter, context.CancellationToken);
-
-                var typeName = parameterSymbol?.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
-                    ?? parameter.Type?.ToString()
-                    ?? "unknown";
-
-                var paramName = parameter.Identifier.Text;
-
-                context.ReportDiagnostic(Diagnostic.Create(
-                    WorkflowDependencyInjectionDescriptor,
-                    parameter.GetLocation(),
-                    classSymbol.Name,
-                    paramName,
-                    typeName));
+                ReportParameterDiagnostic(context, classSymbol, parameter);
             }
         }
+
+        // Also check primary constructors (C# 12+), where the parameter list appears on the class declaration itself.
+        if (classDeclaration.ParameterList is { Parameters.Count: > 0 } primaryCtorParams)
+        {
+            context.CancellationToken.ThrowIfCancellationRequested();
+
+            foreach (var parameter in primaryCtorParams.Parameters)
+            {
+                ReportParameterDiagnostic(context, classSymbol, parameter);
+            }
+        }
+    }
+
+    private static void ReportParameterDiagnostic(
+        SyntaxNodeAnalysisContext context,
+        INamedTypeSymbol classSymbol,
+        ParameterSyntax parameter)
+    {
+        var parameterSymbol = context.SemanticModel
+            .GetDeclaredSymbol(parameter, context.CancellationToken);
+
+        var typeName = parameterSymbol?.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)
+            ?? parameter.Type?.ToString()
+            ?? "unknown";
+
+        var paramName = parameter.Identifier.Text;
+
+        context.ReportDiagnostic(Diagnostic.Create(
+            WorkflowDependencyInjectionDescriptor,
+            parameter.GetLocation(),
+            classSymbol.Name,
+            paramName,
+            typeName));
     }
 
     private static bool DerivesFromWorkflow(INamedTypeSymbol classSymbol, INamedTypeSymbol workflowBaseType)

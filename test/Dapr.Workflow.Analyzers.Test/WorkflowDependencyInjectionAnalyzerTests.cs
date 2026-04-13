@@ -239,4 +239,95 @@ public sealed class WorkflowDependencyInjectionAnalyzerTests
         var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
         await analyzer.VerifyAnalyzerAsync<WorkflowDependencyInjectionAnalyzer>(testCode);
     }
+
+    [Fact]
+    public async Task VerifyDiagnostic_WhenWorkflowUsesPrimaryConstructorWithParameter()
+    {
+        const string testCode = """
+                                using Dapr.Workflow;
+                                using System.Threading.Tasks;
+
+                                public interface IMyService { }
+
+                                public sealed class OrderWorkflow(IMyService service) : Workflow<string, string>
+                                {
+                                    public override Task<string> RunAsync(WorkflowContext context, string input)
+                                        => Task.FromResult(input);
+                                }
+                                """;
+
+        var expected = VerifyAnalyzer.Diagnostic(WorkflowDependencyInjectionAnalyzer.WorkflowDependencyInjectionDescriptor)
+            .WithSpan(6, 35, 6, 53)
+            .WithMessage("Workflow 'OrderWorkflow' has constructor parameter 'service' of type 'IMyService', but dependency injection is not supported in workflow implementations. Move dependencies to a WorkflowActivity instead.");
+
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<WorkflowDependencyInjectionAnalyzer>(testCode, expected);
+    }
+
+    [Fact]
+    public async Task VerifyDiagnostic_WhenWorkflowUsesPrimaryConstructorWithMultipleParameters()
+    {
+        const string testCode = """
+                                using Dapr.Workflow;
+                                using System.Threading.Tasks;
+
+                                public interface IServiceA { }
+                                public interface IServiceB { }
+
+                                public sealed class OrderWorkflow(IServiceA serviceA, IServiceB serviceB) : Workflow<string, string>
+                                {
+                                    public override Task<string> RunAsync(WorkflowContext context, string input)
+                                        => Task.FromResult(input);
+                                }
+                                """;
+
+        var expectedA = VerifyAnalyzer.Diagnostic(WorkflowDependencyInjectionAnalyzer.WorkflowDependencyInjectionDescriptor)
+            .WithSpan(7, 35, 7, 53)
+            .WithMessage("Workflow 'OrderWorkflow' has constructor parameter 'serviceA' of type 'IServiceA', but dependency injection is not supported in workflow implementations. Move dependencies to a WorkflowActivity instead.");
+
+        var expectedB = VerifyAnalyzer.Diagnostic(WorkflowDependencyInjectionAnalyzer.WorkflowDependencyInjectionDescriptor)
+            .WithSpan(7, 55, 7, 73)
+            .WithMessage("Workflow 'OrderWorkflow' has constructor parameter 'serviceB' of type 'IServiceB', but dependency injection is not supported in workflow implementations. Move dependencies to a WorkflowActivity instead.");
+
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<WorkflowDependencyInjectionAnalyzer>(testCode, expectedA, expectedB);
+    }
+
+    [Fact]
+    public async Task NoDiagnostic_WhenWorkflowUsesPrimaryConstructorWithNoParameters()
+    {
+        const string testCode = """
+                                using Dapr.Workflow;
+                                using System.Threading.Tasks;
+
+                                public sealed class OrderWorkflow() : Workflow<string, string>
+                                {
+                                    public override Task<string> RunAsync(WorkflowContext context, string input)
+                                        => Task.FromResult(input);
+                                }
+                                """;
+
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<WorkflowDependencyInjectionAnalyzer>(testCode);
+    }
+
+    [Fact]
+    public async Task NoDiagnostic_WhenActivityUsesPrimaryConstructorWithParameter()
+    {
+        const string testCode = """
+                                using Dapr.Workflow;
+                                using System.Threading.Tasks;
+
+                                public interface IMyService { }
+
+                                public sealed class NotifyActivity(IMyService service) : WorkflowActivity<string, string>
+                                {
+                                    public override Task<string> RunAsync(WorkflowActivityContext context, string input)
+                                        => Task.FromResult(input);
+                                }
+                                """;
+
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<WorkflowDependencyInjectionAnalyzer>(testCode);
+    }
 }
