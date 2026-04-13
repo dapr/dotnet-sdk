@@ -166,49 +166,41 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
-        try
+        await _container.StartAsync(cancellationToken);
+
+        var mappedHttpPort = _container.GetMappedPublicPort(InternalHttpPort);
+        var mappedGrpcPort = _container.GetMappedPublicPort(InternalGrpcPort);
+
+        if (_requestedHttpPort is not null && mappedHttpPort != _requestedHttpPort.Value)
         {
-            await _container.StartAsync(cancellationToken);
-
-            var mappedHttpPort = _container.GetMappedPublicPort(InternalHttpPort);
-            var mappedGrpcPort = _container.GetMappedPublicPort(InternalGrpcPort);
-
-            if (_requestedHttpPort is not null && mappedHttpPort != _requestedHttpPort.Value)
-            {
-                throw new InvalidOperationException(
-                    $"Dapr HTTP port mapping mismatch. Requested {_requestedHttpPort.Value}, but Docker mapped {mappedHttpPort}");
-            }
-
-            if (_requestedGrpcPort is not null && mappedGrpcPort != _requestedGrpcPort.Value)
-            {
-                throw new InvalidOperationException(
-                    $"Dapr gRPC port mapping mismatch. Requested {_requestedGrpcPort.Value}, but Docker mapped {mappedGrpcPort}");
-            }
-
-            HttpPort = mappedHttpPort;
-            GrpcPort = mappedGrpcPort;
-
-            // The container log wait strategy can fire before the host port is actually accepting connections
-            // (especially on Windows). Ensure the ports are reachable from the test process.
-            await ContainerReadinessProbe.WaitForTcpPortAsync("127.0.0.1", HttpPort, TimeSpan.FromSeconds(30), cancellationToken);
-            await ContainerReadinessProbe.WaitForTcpPortAsync("127.0.0.1", GrpcPort, TimeSpan.FromSeconds(30), cancellationToken);
-
-            // Even after the TCP ports start accepting connections the Dapr runtime may still be
-            // initializing (connecting to Placement/Scheduler, loading components, starting the
-            // workflow engine). Poll the HTTP health endpoint until Dapr reports itself as ready.
-            // This prevents transient gRPC "Error connecting to subchannel / Connection refused"
-            // errors that occur when the gRPC client first connects while the runtime is still
-            // completing its startup sequence.
-            await ContainerReadinessProbe.WaitForHttpHealthAsync(
-                $"http://127.0.0.1:{HttpPort}/v1.0/healthz",
-                TimeSpan.FromSeconds(60),
-                cancellationToken);
+            throw new InvalidOperationException(
+                $"Dapr HTTP port mapping mismatch. Requested {_requestedHttpPort.Value}, but Docker mapped {mappedHttpPort}");
         }
-        catch (Exception ex)
+
+        if (_requestedGrpcPort is not null && mappedGrpcPort != _requestedGrpcPort.Value)
         {
-            var msg = ex.Message;
-            throw;
+            throw new InvalidOperationException(
+                $"Dapr gRPC port mapping mismatch. Requested {_requestedGrpcPort.Value}, but Docker mapped {mappedGrpcPort}");
         }
+
+        HttpPort = mappedHttpPort;
+        GrpcPort = mappedGrpcPort;
+
+        // The container log wait strategy can fire before the host port is actually accepting connections
+        // (especially on Windows). Ensure the ports are reachable from the test process.
+        await ContainerReadinessProbe.WaitForTcpPortAsync("127.0.0.1", HttpPort, TimeSpan.FromSeconds(30), cancellationToken);
+        await ContainerReadinessProbe.WaitForTcpPortAsync("127.0.0.1", GrpcPort, TimeSpan.FromSeconds(30), cancellationToken);
+
+        // Even after the TCP ports start accepting connections the Dapr runtime may still be
+        // initializing (connecting to Placement/Scheduler, loading components, starting the
+        // workflow engine). Poll the HTTP health endpoint until Dapr reports itself as ready.
+        // This prevents transient gRPC "Error connecting to subchannel / Connection refused"
+        // errors that occur when the gRPC client first connects while the runtime is still
+        // completing its startup sequence.
+        await ContainerReadinessProbe.WaitForHttpHealthAsync(
+            $"http://127.0.0.1:{HttpPort}/v1.0/healthz",
+            TimeSpan.FromSeconds(60),
+            cancellationToken);
     }
 
     /// <inheritdoc />
