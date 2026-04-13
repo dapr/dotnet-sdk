@@ -108,3 +108,44 @@ public class ActorHostingTest
         }
     }
 }
+
+/// <summary>
+/// Tests for AddActors — verifying HttpEndpoint and DaprApiToken options are propagated to the
+/// resolved <see cref="IActorProxyFactory"/>.
+/// </summary>
+public class ActorServiceCollectionExtensionsOptionsTests
+{
+    [Fact]
+    public void AddActors_HttpEndpoint_IsReflectedInProxyFactory()
+    {
+        const string endpoint = "http://my-custom-dapr:3501";
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddOptions();
+        services.AddActors(options =>
+        {
+            options.HttpEndpoint = endpoint;
+        });
+
+        var factory = (ActorProxyFactory)services.BuildServiceProvider().GetRequiredService<IActorProxyFactory>();
+        Assert.Equal(endpoint, factory.DefaultOptions.HttpEndpoint);
+    }
+
+    [Fact]
+    public void AddActors_DaprApiToken_IsReflectedInProxyFactory()
+    {
+        const string token = "super-secret-token";
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddOptions();
+        services.AddActors(options =>
+        {
+            options.DaprApiToken = token;
+        });
+
+        var factory = (ActorProxyFactory)services.BuildServiceProvider().GetRequiredService<IActorProxyFactory>();
+        Assert.Equal(token, factory.DefaultOptions.DaprApiToken);
+    }
+}
