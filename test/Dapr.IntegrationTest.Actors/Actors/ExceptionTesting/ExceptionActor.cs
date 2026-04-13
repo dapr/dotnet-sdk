@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -21,16 +21,8 @@ namespace Dapr.IntegrationTest.Actors.ExceptionTesting;
 /// Implementation of <see cref="IExceptionActor"/> that unconditionally throws to
 /// validate that the Dapr runtime correctly propagates remote exceptions to callers.
 /// </summary>
-public class ExceptionActor : Actor, IExceptionActor
+public class ExceptionActor(ActorHost host) : Actor(host), IExceptionActor
 {
-    /// <summary>
-    /// Initializes a new instance of <see cref="ExceptionActor"/>.
-    /// </summary>
-    /// <param name="host">The actor host provided by the Dapr runtime.</param>
-    public ExceptionActor(ActorHost host) : base(host)
-    {
-    }
-
     /// <inheritdoc />
     public Task Ping() => Task.CompletedTask;
 

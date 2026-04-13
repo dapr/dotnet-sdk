@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,7 +22,9 @@ namespace Dapr.IntegrationTest.Actors.Timers;
 /// </summary>
 public sealed class StartTimerOptions
 {
-    /// <summary>Gets or sets the total number of ticks after which the timer self-cancels.</summary>
+    /// <summary>
+    /// Gets or sets the total number of ticks after which the timer self-cancels.
+    /// </summary>
     public int Total { get; set; }
 }
 
@@ -31,16 +33,24 @@ public sealed class StartTimerOptions
 /// </summary>
 public sealed class TimerState
 {
-    /// <summary>Gets or sets the number of times the timer callback has fired.</summary>
+    /// <summary>
+    /// Gets or sets the number of times the timer callback has fired.
+    /// </summary>
     public int Count { get; set; }
 
-    /// <summary>Gets or sets a value indicating whether the timer is currently active.</summary>
+    /// <summary>
+    /// Gets or sets a value indicating whether the timer is currently active.
+    /// </summary>
     public bool IsTimerRunning { get; set; }
 
-    /// <summary>Gets or sets the timestamp of the last timer invocation.</summary>
+    /// <summary>
+    /// Gets or sets the timestamp of the last timer invocation.
+    /// </summary>
     public DateTime Timestamp { get; set; }
 
-    /// <summary>Gets or sets the name of the currently registered timer, used for self-cancellation.</summary>
+    /// <summary>
+    /// Gets or sets the name of the currently registered timer, used for self-cancellation.
+    /// </summary>
     public string? ActiveTimerName { get; set; }
 }
 
@@ -49,14 +59,20 @@ public sealed class TimerState
 /// </summary>
 public interface ITimerActor : IPingActor, IActor
 {
-    /// <summary>Starts a self-limiting timer that fires <see cref="StartTimerOptions.Total"/> times.</summary>
+    /// <summary>
+    /// Starts a self-limiting timer that fires <see cref="StartTimerOptions.Total"/> times.
+    /// </summary>
     /// <param name="options">Timer configuration.</param>
     Task StartTimer(StartTimerOptions options);
 
-    /// <summary>Starts a timer that expires after <paramref name="ttl"/>.</summary>
+    /// <summary>
+    /// Starts a timer that expires after <paramref name="ttl"/>.
+    /// </summary>
     /// <param name="ttl">The time-to-live for the timer.</param>
     Task StartTimerWithTtl(TimeSpan ttl);
 
-    /// <summary>Returns the current timer state.</summary>
+    /// <summary>
+    /// Returns the current timer state.
+    /// </summary>
     Task<TimerState> GetState();
 }

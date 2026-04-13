@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -21,16 +21,8 @@ namespace Dapr.IntegrationTest.Actors.Reentrancy;
 /// Implementation of <see cref="IReentrantActor"/> that recursively calls itself
 /// to produce a chain of reentrant invocations.
 /// </summary>
-public class ReentrantActor : Actor, IReentrantActor
+public class ReentrantActor(ActorHost host) : Actor(host), IReentrantActor
 {
-    /// <summary>
-    /// Initializes a new instance of <see cref="ReentrantActor"/>.
-    /// </summary>
-    /// <param name="host">The actor host provided by the Dapr runtime.</param>
-    public ReentrantActor(ActorHost host) : base(host)
-    {
-    }
-
     /// <inheritdoc />
     public Task Ping() => Task.CompletedTask;
 

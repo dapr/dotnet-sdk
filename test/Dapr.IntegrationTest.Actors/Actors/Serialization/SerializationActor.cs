@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,16 +22,8 @@ namespace Dapr.IntegrationTest.Actors.Serialization;
 /// Implementation of <see cref="ISerializationActor"/> that echoes its inputs back
 /// to the caller, allowing tests to verify custom JSON serializer round-trips.
 /// </summary>
-public class SerializationActor : Actor, ISerializationActor
+public class SerializationActor(ActorHost host) : Actor(host), ISerializationActor
 {
-    /// <summary>
-    /// Initializes a new instance of <see cref="SerializationActor"/>.
-    /// </summary>
-    /// <param name="host">The actor host provided by the Dapr runtime.</param>
-    public SerializationActor(ActorHost host) : base(host)
-    {
-    }
-
     /// <inheritdoc />
     public Task Ping() => Task.CompletedTask;
 

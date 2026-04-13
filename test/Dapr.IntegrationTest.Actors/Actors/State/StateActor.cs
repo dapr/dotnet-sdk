@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -21,16 +21,8 @@ namespace Dapr.IntegrationTest.Actors.State;
 /// Implementation of <see cref="IStateActor"/> that stores and retrieves string values
 /// from the Dapr state store, with optional TTL support.
 /// </summary>
-public class StateActor : Actor, IStateActor
+public class StateActor(ActorHost host) : Actor(host), IStateActor
 {
-    /// <summary>
-    /// Initializes a new instance of <see cref="StateActor"/>.
-    /// </summary>
-    /// <param name="host">The actor host provided by the Dapr runtime.</param>
-    public StateActor(ActorHost host) : base(host)
-    {
-    }
-
     /// <inheritdoc />
     public Task Ping() => Task.CompletedTask;
 

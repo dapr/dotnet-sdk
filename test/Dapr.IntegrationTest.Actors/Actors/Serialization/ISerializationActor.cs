@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -27,10 +27,14 @@ namespace Dapr.IntegrationTest.Actors.Serialization;
 /// <param name="Message">The primary message string.</param>
 public record SerializationPayload(string Message)
 {
-    /// <summary>Gets or sets an arbitrary JSON element carried inside the payload.</summary>
+    /// <summary>
+    /// Gets or sets an arbitrary JSON element carried inside the payload.
+    /// </summary>
     public JsonElement Value { get; set; }
 
-    /// <summary>Gets or sets extension data that should survive a round-trip through the actor runtime.</summary>
+    /// <summary>
+    /// Gets or sets extension data that should survive a round-trip through the actor runtime.
+    /// </summary>
     [JsonExtensionData]
     public Dictionary<string, object>? ExtensionData { get; set; }
 }

@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -21,16 +21,8 @@ namespace Dapr.IntegrationTest.Actors.Regression;
 /// Implementation of <see cref="IRegressionActor"/> that reproduces the scenario from
 /// GitHub issue #762: an exception thrown mid-method must roll back pending state changes.
 /// </summary>
-public class RegressionActor : Actor, IRegressionActor
+public class RegressionActor(ActorHost host) : Actor(host), IRegressionActor
 {
-    /// <summary>
-    /// Initializes a new instance of <see cref="RegressionActor"/>.
-    /// </summary>
-    /// <param name="host">The actor host provided by the Dapr runtime.</param>
-    public RegressionActor(ActorHost host) : base(host)
-    {
-    }
-
     /// <inheritdoc />
     public Task Ping() => Task.CompletedTask;
 
@@ -50,18 +42,17 @@ public class RegressionActor : Actor, IRegressionActor
     /// <inheritdoc />
     public async Task SaveState(StateCall call)
     {
-        if (call.Operation == "ThrowException")
+        switch (call.Operation)
         {
-            await StateManager.SetStateAsync<string>(call.Key!, call.Value!);
-            throw new NotImplementedException("Intentional exception to test state rollback.");
-        }
-        else if (call.Operation == "SetState")
-        {
-            await StateManager.SetStateAsync<string>(call.Key!, call.Value!);
-        }
-        else if (call.Operation == "SaveState")
-        {
-            await StateManager.SaveStateAsync();
+            case "ThrowException":
+                await StateManager.SetStateAsync<string>(call.Key!, call.Value!);
+                throw new NotImplementedException("Intentional exception to test state rollback.");
+            case "SetState":
+                await StateManager.SetStateAsync<string>(call.Key!, call.Value!);
+                break;
+            case "SaveState":
+                await StateManager.SaveStateAsync();
+                break;
         }
     }
 }

@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,7 +22,9 @@ namespace Dapr.IntegrationTest.Actors.Reminders;
 /// </summary>
 public sealed class StartReminderOptions
 {
-    /// <summary>Gets or sets the total number of times the reminder should fire before stopping itself.</summary>
+    /// <summary>
+    /// Gets or sets the total number of times the reminder should fire before stopping itself.
+    /// </summary>
     public int Total { get; set; }
 }
 
@@ -31,13 +33,19 @@ public sealed class StartReminderOptions
 /// </summary>
 public sealed class ReminderState
 {
-    /// <summary>Gets or sets the number of times the reminder has fired.</summary>
+    /// <summary>
+    /// Gets or sets the number of times the reminder has fired.
+    /// </summary>
     public int Count { get; set; }
 
-    /// <summary>Gets or sets a value indicating whether the reminder is currently running.</summary>
+    /// <summary>
+    /// Gets or sets a value indicating whether the reminder is currently running.
+    /// </summary>
     public bool IsReminderRunning { get; set; }
 
-    /// <summary>Gets or sets the timestamp of the last reminder invocation.</summary>
+    /// <summary>
+    /// Gets or sets the timestamp of the last reminder invocation.
+    /// </summary>
     public DateTime Timestamp { get; set; }
 }
 
@@ -46,26 +54,38 @@ public sealed class ReminderState
 /// </summary>
 public interface IReminderActor : IPingActor, IActor
 {
-    /// <summary>Starts a self-limiting reminder that fires <see cref="StartReminderOptions.Total"/> times.</summary>
+    /// <summary>
+    /// Starts a self-limiting reminder that fires <see cref="StartReminderOptions.Total"/> times.
+    /// </summary>
     /// <param name="options">Reminder configuration.</param>
     Task StartReminder(StartReminderOptions options);
 
-    /// <summary>Starts a reminder that expires after <paramref name="ttl"/>.</summary>
+    /// <summary>
+    /// Starts a reminder that expires after <paramref name="ttl"/>.
+    /// </summary>
     /// <param name="ttl">The time-to-live for the reminder.</param>
     Task StartReminderWithTtl(TimeSpan ttl);
 
-    /// <summary>Starts a reminder that fires exactly <paramref name="repetitions"/> times.</summary>
+    /// <summary>
+    /// Starts a reminder that fires exactly <paramref name="repetitions"/> times.
+    /// </summary>
     /// <param name="repetitions">The maximum number of reminder invocations.</param>
     Task StartReminderWithRepetitions(int repetitions);
 
-    /// <summary>Starts a reminder that fires at most <paramref name="repetitions"/> times and expires after <paramref name="ttl"/>.</summary>
+    /// <summary>
+    /// Starts a reminder that fires at most <paramref name="repetitions"/> times and expires after <paramref name="ttl"/>.
+    /// </summary>
     /// <param name="ttl">The time-to-live for the reminder.</param>
     /// <param name="repetitions">The maximum number of reminder invocations.</param>
     Task StartReminderWithTtlAndRepetitions(TimeSpan ttl, int repetitions);
 
-    /// <summary>Returns the current reminder state.</summary>
+    /// <summary>
+    /// Returns the current reminder state.
+    /// </summary>
     Task<ReminderState> GetState();
 
-    /// <summary>Returns the serialized JSON representation of the active reminder, or <c>"null"</c> when none is registered.</summary>
+    /// <summary>
+    /// Returns the serialized JSON representation of the active reminder, or <c>"null"</c> when none is registered.
+    /// </summary>
     Task<string> GetReminder();
 }

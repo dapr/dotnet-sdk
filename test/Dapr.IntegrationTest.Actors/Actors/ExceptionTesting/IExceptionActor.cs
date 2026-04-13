@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -21,6 +21,8 @@ namespace Dapr.IntegrationTest.Actors.ExceptionTesting;
 /// </summary>
 public interface IExceptionActor : IPingActor, IActor
 {
-    /// <summary>Always throws an <see cref="System.Exception"/> to validate remote exception handling.</summary>
+    /// <summary>
+    /// Always throws an <see cref="System.Exception"/> to validate remote exception handling.
+    /// </summary>
     Task ExceptionExample();
 }

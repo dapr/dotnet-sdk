@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -22,17 +22,9 @@ namespace Dapr.IntegrationTest.Actors.Reminders;
 /// Implementation of <see cref="IReminderActor"/> that manages Dapr reminders and tracks
 /// invocation counts in actor state.
 /// </summary>
-public class ReminderActor : Actor, IReminderActor, IRemindable
+public class ReminderActor(ActorHost host) : Actor(host), IReminderActor, IRemindable
 {
     private const string StateKey = "reminder-state";
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="ReminderActor"/>.
-    /// </summary>
-    /// <param name="host">The actor host provided by the Dapr runtime.</param>
-    public ReminderActor(ActorHost host) : base(host)
-    {
-    }
 
     /// <inheritdoc />
     public Task Ping() => Task.CompletedTask;

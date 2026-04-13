@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -23,10 +23,14 @@ namespace Dapr.IntegrationTest.Actors.Reentrancy;
 /// </summary>
 public sealed class ReentrantCallOptions
 {
-    /// <summary>Gets or sets the number of additional reentrant calls remaining to make.</summary>
+    /// <summary>
+    /// Gets or sets the number of additional reentrant calls remaining to make.
+    /// </summary>
     public int CallsRemaining { get; set; }
 
-    /// <summary>Gets or sets the zero-based sequence number of the current call.</summary>
+    /// <summary>
+    /// Gets or sets the zero-based sequence number of the current call.
+    /// </summary>
     public int CallNumber { get; set; }
 }
 
@@ -35,13 +39,19 @@ public sealed class ReentrantCallOptions
 /// </summary>
 public sealed class CallRecord
 {
-    /// <summary>Gets or sets a value indicating whether this record represents an entry (<see langword="true"/>) or exit (<see langword="false"/>).</summary>
+    /// <summary>
+    /// Gets or sets a value indicating whether this record represents an entry (<see langword="true"/>) or exit (<see langword="false"/>).
+    /// </summary>
     public bool IsEnter { get; set; }
 
-    /// <summary>Gets or sets the wall-clock time of this event.</summary>
+    /// <summary>
+    /// Gets or sets the wall-clock time of this event.
+    /// </summary>
     public DateTime Timestamp { get; set; }
 
-    /// <summary>Gets or sets the sequence number of the call that produced this record.</summary>
+    /// <summary>
+    /// Gets or sets the sequence number of the call that produced this record.
+    /// </summary>
     public int CallNumber { get; set; }
 }
 
@@ -50,7 +60,9 @@ public sealed class CallRecord
 /// </summary>
 public sealed class ReentrantCallState
 {
-    /// <summary>Gets the ordered list of enter/exit records for a single call number.</summary>
+    /// <summary>
+    /// Gets the ordered list of enter/exit records for a single call number.
+    /// </summary>
     public List<CallRecord> Records { get; init; } = [];
 }
 
@@ -59,11 +71,15 @@ public sealed class ReentrantCallState
 /// </summary>
 public interface IReentrantActor : IPingActor, IActor
 {
-    /// <summary>Initiates a reentrant call chain as described by <paramref name="callOptions"/>.</summary>
+    /// <summary>
+    /// Initiates a reentrant call chain as described by <paramref name="callOptions"/>.
+    /// </summary>
     /// <param name="callOptions">Controls the depth and sequence number of the reentrant chain.</param>
     Task ReentrantCall(ReentrantCallOptions callOptions);
 
-    /// <summary>Returns the enter/exit records accumulated for the given <paramref name="callNumber"/>.</summary>
+    /// <summary>
+    /// Returns the enter/exit records accumulated for the given <paramref name="callNumber"/>.
+    /// </summary>
     /// <param name="callNumber">The zero-based call number to retrieve state for.</param>
     Task<ReentrantCallState> GetState(int callNumber);
 }

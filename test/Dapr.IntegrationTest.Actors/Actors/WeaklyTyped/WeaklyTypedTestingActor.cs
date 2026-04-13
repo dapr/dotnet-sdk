@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -20,16 +20,8 @@ namespace Dapr.IntegrationTest.Actors.WeaklyTyped;
 /// Implementation of <see cref="IWeaklyTypedTestingActor"/> that returns polymorphic
 /// and null responses for weakly-typed actor invocation testing.
 /// </summary>
-public class WeaklyTypedTestingActor : Actor, IWeaklyTypedTestingActor
+public class WeaklyTypedTestingActor(ActorHost host) : Actor(host), IWeaklyTypedTestingActor
 {
-    /// <summary>
-    /// Initializes a new instance of <see cref="WeaklyTypedTestingActor"/>.
-    /// </summary>
-    /// <param name="host">The actor host provided by the Dapr runtime.</param>
-    public WeaklyTypedTestingActor(ActorHost host) : base(host)
-    {
-    }
-
     /// <inheritdoc />
     public Task Ping() => Task.CompletedTask;
 
