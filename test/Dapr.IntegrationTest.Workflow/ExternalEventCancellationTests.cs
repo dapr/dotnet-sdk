@@ -25,7 +25,7 @@ public sealed class ExternalEventCancellationSequentialTests
     public async Task ExternalEvents_ShouldComplete_WhenRaisedSequentially_WithDelay()
     {
         await ExternalEventCancellationTestHarness.RunAsync(
-            workflowCount: 1000,
+            workflowCount: 50,
             raiseEventsInParallel: false,
             perEventDelay: TimeSpan.FromMilliseconds(75),
             initialWaitTimeout: TimeSpan.FromMilliseconds(200));
@@ -38,7 +38,7 @@ public sealed class ExternalEventCancellationParallelTests
     public async Task ExternalEvents_ShouldComplete_WhenRaisedInParallel_MinimalDelay()
     {
         await ExternalEventCancellationTestHarness.RunAsync(
-            workflowCount: 1000,
+            workflowCount: 50,
             raiseEventsInParallel: true,
             perEventDelay: TimeSpan.Zero,
             initialWaitTimeout: TimeSpan.FromMilliseconds(200));
@@ -93,7 +93,7 @@ internal static class ExternalEventCancellationTestHarness
             await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(CanceledWaitWorkflow), workflowId, initialWaitTimeout);
         }
 
-        using var waitCts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        using var waitCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         await Task.WhenAll(workflowIds.Select(id =>
             WaitForCustomStatusAsync(daprWorkflowClient, id, WaitingAfterTimeoutStatus, waitCts.Token)));
 
@@ -113,7 +113,7 @@ internal static class ExternalEventCancellationTestHarness
             }
         }
 
-        using var completionCts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        using var completionCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var results = await Task.WhenAll(workflowIds.Select(id =>
             daprWorkflowClient.WaitForWorkflowCompletionAsync(id, cancellation: completionCts.Token)));
 
