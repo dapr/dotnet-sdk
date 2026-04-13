@@ -1058,7 +1058,7 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
-    public void ContinueAsNew_ShouldAddCompleteOrchestrationAction_WithCarryoverEvents_WhenPreserveUnprocessedEventsIsTrue()
+    public void ContinueAsNew_ShouldAddCompleteOrchestrationAction_WithNoCarryoverEvents_WhenPreserveUnprocessedEventsIsTrue()
     {
         var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -1079,9 +1079,6 @@ public class WorkflowOrchestrationContextTests
 
         context.ProcessEvents(history, true);
         context.ContinueAsNew(newInput: new { V = 9 }, preserveUnprocessedEvents: true);
-        // FinalizeCarryoverEvents must be called after all ProcessEvents calls are done;
-        // CarryoverEvents is populated here rather than inside ContinueAsNew so that events
-        // arriving later in the same NewEvents batch are not missed.
         context.FinalizeCarryoverEvents();
 
         Assert.Single(context.PendingActions);
@@ -1090,7 +1087,10 @@ public class WorkflowOrchestrationContextTests
         Assert.NotNull(action.CompleteOrchestration);
         Assert.Equal(OrchestrationStatus.ContinuedAsNew, action.CompleteOrchestration.OrchestrationStatus);
         Assert.Contains("\"v\":9", action.CompleteOrchestration.Result);
-        Assert.Equal(2, action.CompleteOrchestration.CarryoverEvents.Count);
+        // CarryoverEvents is intentionally empty: Dapr's pending-event queue re-delivers
+        // unprocessed events to the new execution automatically, without needing the SDK
+        // to populate this field (which would cause double-delivery with a stripped Input).
+        Assert.Empty(action.CompleteOrchestration.CarryoverEvents);
     }
 
     [Fact]

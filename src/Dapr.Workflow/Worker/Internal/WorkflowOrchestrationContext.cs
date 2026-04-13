@@ -73,8 +73,6 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private DateTime _currentUtcDateTime;
     private bool _isReplaying;
     private bool _turnInitialized;
-    private bool _preserveUnprocessedEvents;
-
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
         IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
         string? appId = null, string? executionId = null)
@@ -360,33 +358,23 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             }
         };
 
-        // Do NOT snapshot _externalEventBuffer here. ContinueAsNew is called from within
-        // workflow execution, which happens during ProcessEvents. Events arriving later in
-        // the same NewEvents batch will be buffered AFTER this point and would be missed.
-        // FinalizeCarryoverEvents() is called after all ProcessEvents calls are complete.
-        _preserveUnprocessedEvents = preserveUnprocessedEvents;
+        // The Dapr sidecar preserves unprocessed events via its own pending-event queue and
+        // re-delivers them to the new execution automatically. Using the gRPC CarryoverEvents
+        // field causes double-delivery (once from CarryoverEvents, once from the pending queue)
+        // and the sidecar strips the Input field from CarryoverEvents (causing default-value
+        // payloads). We therefore rely on Dapr's natural re-delivery and ignore preserveUnprocessedEvents.
         _pendingActions.Add(action.Id, action);
     }
 
     /// <summary>
-    /// Populates <c>CarryoverEvents</c> on any pending <c>ContinuedAsNew</c> action using the
-    /// final state of <c>_externalEventBuffer</c>. Must be called after all <c>ProcessEvents</c>
-    /// calls for the current turn are complete, so that events arriving later in the same
-    /// <c>NewEvents</c> batch are included.
+    /// No-op: the Dapr sidecar automatically re-delivers unprocessed events to the new
+    /// execution after ContinuedAsNew via its own persistent event queue, so we do not
+    /// need to populate <c>CarryoverEvents</c> on the gRPC action. Doing so causes
+    /// double-delivery with a stripped <c>Input</c> field.
     /// </summary>
     internal void FinalizeCarryoverEvents()
     {
-        if (!_preserveUnprocessedEvents || _externalEventBuffer.Count == 0)
-            return;
-
-        foreach (var action in _pendingActions.Values)
-        {
-            if (action.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew)
-            {
-                action.CompleteOrchestration.CarryoverEvents.AddRange(_externalEventBuffer);
-                return;
-            }
-        }
+        // Intentionally empty – see comment above.
     }
 
     /// <inheritdoc />
