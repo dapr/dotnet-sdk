@@ -245,14 +245,22 @@ internal sealed class WorkflowGrpcClient(
             request.PageSize = (uint)pageSize.Value;
         }
 
-        var grpcCallOptions = CreateCallOptions(cancellationToken);
-        var response = await grpcClient.ListInstanceIDsAsync(request, grpcCallOptions);
+        try
+        {
+            var grpcCallOptions = CreateCallOptions(cancellationToken);
+            var response = await grpcClient.ListInstanceIDsAsync(request, grpcCallOptions);
 
-        logger.LogListInstanceIds(response.InstanceIds.Count);
+            logger.LogListInstanceIds(response.InstanceIds.Count);
 
-        return new WorkflowInstancePage(
-            response.InstanceIds.ToList().AsReadOnly(),
-            response.HasContinuationToken ? response.ContinuationToken : null);
+            return new WorkflowInstancePage(
+                response.InstanceIds.ToList().AsReadOnly(),
+                response.HasContinuationToken ? response.ContinuationToken : null);
+        }
+        catch (RpcException ex) when (IsRpcMethodNotSupportedByRuntime(ex))
+        {
+            throw new NotSupportedException(
+                "ListInstanceIDs is not supported by the current Dapr runtime version. Please upgrade to a newer Dapr release.", ex);
+        }
     }
 
     /// <inheritdoc />
@@ -267,17 +275,25 @@ internal sealed class WorkflowGrpcClient(
             InstanceId = instanceId
         };
 
-        var grpcCallOptions = CreateCallOptions(cancellationToken);
-        var response = await grpcClient.GetInstanceHistoryAsync(request, grpcCallOptions);
+        try
+        {
+            var grpcCallOptions = CreateCallOptions(cancellationToken);
+            var response = await grpcClient.GetInstanceHistoryAsync(request, grpcCallOptions);
 
-        var events = response.Events
-            .Select(ProtoConverters.ToWorkflowHistoryEvent)
-            .ToList()
-            .AsReadOnly();
+            var events = response.Events
+                .Select(ProtoConverters.ToWorkflowHistoryEvent)
+                .ToList()
+                .AsReadOnly();
 
-        logger.LogGetInstanceHistory(instanceId, events.Count);
+            logger.LogGetInstanceHistory(instanceId, events.Count);
 
-        return events;
+            return events;
+        }
+        catch (RpcException ex) when (IsRpcMethodNotSupportedByRuntime(ex))
+        {
+            throw new NotSupportedException(
+                "GetInstanceHistory is not supported by the current Dapr runtime version. Please upgrade to a newer Dapr release.", ex);
+        }
     }
 
     /// <inheritdoc />
@@ -313,12 +329,20 @@ internal sealed class WorkflowGrpcClient(
             request.Input = SerializeToJson(options.Input);
         }
 
-        var grpcCallOptions = CreateCallOptions(cancellationToken);
-        var response = await grpcClient.RerunWorkflowFromEventAsync(request, grpcCallOptions);
+        try
+        {
+            var grpcCallOptions = CreateCallOptions(cancellationToken);
+            var response = await grpcClient.RerunWorkflowFromEventAsync(request, grpcCallOptions);
 
-        logger.LogRerunWorkflowFromEvent(sourceInstanceId, eventId, response.NewInstanceID);
+            logger.LogRerunWorkflowFromEvent(sourceInstanceId, eventId, response.NewInstanceID);
 
-        return response.NewInstanceID;
+            return response.NewInstanceID;
+        }
+        catch (RpcException ex) when (IsRpcMethodNotSupportedByRuntime(ex))
+        {
+            throw new NotSupportedException(
+                "RerunWorkflowFromEvent is not supported by the current Dapr runtime version. Please upgrade to a newer Dapr release.", ex);
+        }
     }
 
     /// <inheritdoc />
@@ -337,4 +361,15 @@ internal sealed class WorkflowGrpcClient(
         status is WorkflowRuntimeStatus.Completed 
             or WorkflowRuntimeStatus.Failed
             or WorkflowRuntimeStatus.Terminated;
+
+    /// <summary>
+    /// Returns <c>true</c> when the <see cref="RpcException"/> indicates that the Dapr sidecar does not
+    /// implement the requested gRPC method and fell back to its service-invocation proxy, which then
+    /// failed because the workflow client never sends a <c>dapr-app-id</c> header.  This pattern
+    /// occurs on older Dapr runtime versions that pre-date the <c>GetInstanceHistory</c>,
+    /// <c>ListInstanceIDs</c>, and <c>RerunWorkflowFromEvent</c> RPCs.
+    /// </summary>
+    private static bool IsRpcMethodNotSupportedByRuntime(RpcException ex) =>
+        ex.StatusCode == StatusCode.Unknown &&
+        ex.Status.Detail.Contains("dapr-app-id", StringComparison.OrdinalIgnoreCase);
 }

@@ -57,7 +57,16 @@ public sealed class WorkflowRpcTests
         await client.WaitForWorkflowCompletionAsync(instanceId, cancellation: TestContext.Current.CancellationToken);
 
         // List instance IDs and verify our workflow appears
-        var page = await client.ListInstanceIdsAsync(cancellation: TestContext.Current.CancellationToken);
+        WorkflowInstancePage page;
+        try
+        {
+            page = await client.ListInstanceIdsAsync(cancellation: TestContext.Current.CancellationToken);
+        }
+        catch (NotSupportedException ex)
+        {
+            Assert.Skip($"Skipped: {ex.Message}");
+            return;
+        }
 
         Assert.NotNull(page);
         Assert.Contains(instanceId, page.InstanceIds);
@@ -103,7 +112,16 @@ public sealed class WorkflowRpcTests
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
 
         // Get history and verify it has events
-        var history = await client.GetInstanceHistoryAsync(instanceId, TestContext.Current.CancellationToken);
+        IReadOnlyList<WorkflowHistoryEvent> history;
+        try
+        {
+            history = await client.GetInstanceHistoryAsync(instanceId, TestContext.Current.CancellationToken);
+        }
+        catch (NotSupportedException ex)
+        {
+            Assert.Skip($"Skipped: {ex.Message}");
+            return;
+        }
 
         Assert.NotNull(history);
         Assert.NotEmpty(history);
