@@ -1093,6 +1093,78 @@ public class WorkflowOrchestrationContextTests
         Assert.Empty(action.CompleteOrchestration.CarryoverEvents);
     }
 
+    /// <summary>
+    /// Validates the full carryover correctness at a unit-test level.
+    ///
+    /// The Dapr sidecar re-delivers unconsumed events to new executions via its own
+    /// persistent event queue. This test simulates that re-delivery: the SDK correctly
+    /// delivers buffered events with their original, non-null input values in the next
+    /// execution. This is the unit-test equivalent of the end-to-end validation done
+    /// by <c>ContinueAsNewCarryoverEventsTests</c>.
+    /// </summary>
+    [Fact]
+    public async Task ContinueAsNew_WithPreserveUnprocessedEvents_ShouldDeliverBufferedEventsWithCorrectValuesInNextExecution()
+    {
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var allEvents = new[]
+        {
+            new HistoryEvent { EventRaised = new EventRaisedEvent { Name = "signal", Input = "1" } },
+            new HistoryEvent { EventRaised = new EventRaisedEvent { Name = "signal", Input = "2" } },
+            new HistoryEvent { EventRaised = new EventRaisedEvent { Name = "signal", Input = "3" } }
+        };
+
+        // ── First execution ──────────────────────────────────────────────────────────
+        var context1 = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        // Register a waiter before events arrive (workflow reaches its first await).
+        var firstEventTask = context1.WaitForExternalEventAsync<int>("signal", TestContext.Current.CancellationToken);
+
+        // All 3 events arrive in the same NewEvents batch; only the first is consumed.
+        context1.ProcessEvents(allEvents, isReplaying: false);
+
+        Assert.True(firstEventTask.IsCompleted, "First WaitForExternalEventAsync should complete synchronously.");
+        Assert.Equal(1, await firstEventTask);
+
+        // Workflow calls ContinueAsNew; CarryoverEvents must remain empty.
+        context1.ContinueAsNew(newInput: 1, preserveUnprocessedEvents: true);
+        context1.FinalizeCarryoverEvents();
+
+        var continueAction = context1.PendingActions.First();
+        Assert.NotNull(continueAction.CompleteOrchestration);
+        Assert.Equal(OrchestrationStatus.ContinuedAsNew, continueAction.CompleteOrchestration.OrchestrationStatus);
+        Assert.Empty(continueAction.CompleteOrchestration.CarryoverEvents);
+
+        // ── Second execution (simulates sidecar re-delivering events 2 and 3) ────────
+        var tracker2 = new WorkflowVersionTracker([]);
+        var context2 = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker2);
+
+        var secondEventTask = context2.WaitForExternalEventAsync<int>("signal", TestContext.Current.CancellationToken);
+
+        // Sidecar re-delivers only the unconsumed events (2 and 3); event 1 is not re-sent.
+        context2.ProcessEvents(new[] { allEvents[1], allEvents[2] }, isReplaying: false);
+
+        Assert.True(secondEventTask.IsCompleted, "Second WaitForExternalEventAsync should complete synchronously.");
+
+        // The critical assertion: the value must be 2, not 0/default.
+        // The original bug populated CarryoverEvents but the sidecar stripped Input,
+        // causing double-delivery with null inputs that deserialized as 0.
+        Assert.Equal(2, await secondEventTask);
+    }
+
     [Fact]
     public void ContinueAsNew_ShouldNotCarryOverEvents_WhenPreserveUnprocessedEventsIsFalse()
     {
