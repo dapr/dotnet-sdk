@@ -34,11 +34,17 @@ public sealed class ContinueAsNewCarryoverEventsTests
     /// into a single NewEvents delivery, the pre-fix code lost every signal after the first.
     /// After the fix the full buffer is captured once all events are processed, so every
     /// signal survives as a carryover event and the workflow counts down to zero.
+    ///
+    /// The signal count is intentionally small (15) so that all signals can be fired
+    /// simultaneously — maximising the chance the sidecar batches several of them into
+    /// a single NewEvents delivery — while keeping the total wall-clock time well under
+    /// 30 seconds. Each ContinueAsNew iteration requires one sidecar round-trip; a larger
+    /// count (e.g. 250) makes the test take 2+ minutes and risks CI timeouts.
     /// </summary>
     [Fact]
     public async Task ContinueAsNew_ShouldCarryOverEvents_WhenMultipleSignalsArriveTogether()
     {
-        const int signalCount = 250;
+        const int signalCount = 15;
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
         var workflowInstanceId = Guid.NewGuid().ToString();
 
@@ -86,16 +92,19 @@ public sealed class ContinueAsNewCarryoverEventsTests
         // All signals must be consumed via carryover before the workflow completes.
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(
             TestContext.Current.CancellationToken);
-        timeoutCts.CancelAfter(TimeSpan.FromMinutes(2));
+        timeoutCts.CancelAfter(TimeSpan.FromSeconds(60));
 
         var result = await client.WaitForWorkflowCompletionAsync(
             workflowInstanceId, cancellation: timeoutCts.Token);
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
 
-        // Every index in [0, signalCount) must appear exactly once in the output — no drops, no duplicates.
+        // Every index in [0, signalCount) must appear exactly once — no drops, no duplicates.
+        // Order() sorts the received values; comparing against Range ensures complete coverage
+        // with the correct payload for each signal (not default(int)=0 from Input stripping).
         var receivedIndexes = result.ReadOutputAs<List<int>>();
         Assert.NotNull(receivedIndexes);
+        Assert.Equal(signalCount, receivedIndexes.Count);
         Assert.Equal(Enumerable.Range(0, signalCount), receivedIndexes.Order());
     }
 
