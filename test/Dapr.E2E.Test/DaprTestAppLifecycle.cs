@@ -12,7 +12,9 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -56,6 +58,15 @@ public class DaprTestAppLifecycle : IClassFixture<DaprTestAppFixture>, IAsyncLif
             var response = await client.GetAsync($"{HttpEndpoint}/v1.0/healthz");
             if (response.IsSuccessStatusCode)
             {
+                // For gRPC apps, also wait for the app port to accept TCP connections before
+                // returning so that the Dapr sidecar can successfully proxy gRPC requests.
+                if (this.Configuration?.UseAppPort == true
+                    && string.Equals(this.Configuration?.AppProtocol, "grpc", StringComparison.OrdinalIgnoreCase)
+                    && (this.state.App?.AppPort ?? 0) > 0)
+                {
+                    await WaitForAppPortAsync(this.state.App.AppPort);
+                }
+
                 return;
             }
 
@@ -63,6 +74,33 @@ public class DaprTestAppLifecycle : IClassFixture<DaprTestAppFixture>, IAsyncLif
         }
 
         throw new TimeoutException("Timed out waiting for daprd health check");
+    }
+
+    private static async Task WaitForAppPortAsync(int port)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        while (!cts.IsCancellationRequested)
+        {
+            try
+            {
+                using var tcpClient = new TcpClient();
+                await tcpClient.ConnectAsync(IPAddress.Loopback, port);
+                return;
+            }
+            catch (Exception)
+            {
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(250), cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+            }
+        }
+
+        throw new TimeoutException($"Timed out waiting for gRPC app to listen on port {port}");
     }
 
     public ValueTask DisposeAsync()
