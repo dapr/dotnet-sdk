@@ -34,7 +34,7 @@ public class WorkflowsFactoryTests
 
         factory.RegisterWorkflow<TestWorkflowWithDependency>();
 
-        var created = factory.TryCreateWorkflow(new TaskIdentifier(nameof(TestWorkflowWithDependency)), sp, out var workflow);
+        var created = factory.TryCreateWorkflow(new TaskIdentifier(nameof(TestWorkflowWithDependency)), sp, out var workflow, out _);
 
         Assert.True(created);
         Assert.NotNull(workflow);
@@ -54,7 +54,7 @@ public class WorkflowsFactoryTests
 
         factory.RegisterActivity<TestActivityWithDependency>();
 
-        var created = factory.TryCreateActivity(new TaskIdentifier(nameof(TestActivityWithDependency)), sp, out var activity);
+        var created = factory.TryCreateActivity(new TaskIdentifier(nameof(TestActivityWithDependency)), sp, out var activity, out _);
 
         Assert.True(created);
         Assert.NotNull(activity);
@@ -71,11 +71,11 @@ public class WorkflowsFactoryTests
 
         var sp = new ServiceCollection().BuildServiceProvider();
 
-        Assert.True(factory.TryCreateActivity(new TaskIdentifier("custom-activity"), sp, out var activity));
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("custom-activity"), sp, out var activity, out _));
         Assert.NotNull(activity);
         Assert.IsType<TestActivityA>(activity);
 
-        Assert.False(factory.TryCreateActivity(new TaskIdentifier(nameof(TestActivityA)), sp, out _));
+        Assert.False(factory.TryCreateActivity(new TaskIdentifier(nameof(TestActivityA)), sp, out _, out _));
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class WorkflowsFactoryTests
 
         var sp = new ServiceCollection().BuildServiceProvider();
 
-        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("myworkflow"), sp, out var workflow));
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("myworkflow"), sp, out var workflow, out _));
         Assert.NotNull(workflow);
         Assert.IsType<TestWorkflowA>(workflow);
     }
@@ -101,11 +101,11 @@ public class WorkflowsFactoryTests
 
         var sp = new ServiceCollection().BuildServiceProvider();
 
-        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("custom-workflow"), sp, out var workflow));
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("custom-workflow"), sp, out var workflow, out _));
         Assert.NotNull(workflow);
         Assert.IsType<TestWorkflowA>(workflow);
 
-        Assert.False(factory.TryCreateWorkflow(new TaskIdentifier(nameof(TestWorkflowA)), sp, out _));
+        Assert.False(factory.TryCreateWorkflow(new TaskIdentifier(nameof(TestWorkflowA)), sp, out _, out _));
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public class WorkflowsFactoryTests
 
         var sp = new ServiceCollection().BuildServiceProvider();
 
-        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("wf"), sp, out var workflow));
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("wf"), sp, out var workflow, out _));
         Assert.NotNull(workflow);
         Assert.IsType<TestWorkflowA>(workflow);
     }
@@ -143,7 +143,7 @@ public class WorkflowsFactoryTests
 
         var sp = new ServiceCollection().BuildServiceProvider();
 
-        Assert.True(factory.TryCreateActivity(new TaskIdentifier("act"), sp, out var activity));
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("act"), sp, out var activity, out _));
         Assert.NotNull(activity);
         Assert.IsType<TestActivityA>(activity);
     }
@@ -166,7 +166,7 @@ public class WorkflowsFactoryTests
 
         var sp = new ServiceCollection().BuildServiceProvider();
 
-        Assert.True(factory.TryCreateActivity(new TaskIdentifier("myactivity"), sp, out var activity));
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("myactivity"), sp, out var activity, out _));
         Assert.NotNull(activity);
         Assert.IsType<TestActivityA>(activity);
     }
@@ -181,7 +181,7 @@ public class WorkflowsFactoryTests
 
         var sp = new ServiceCollection().BuildServiceProvider();
 
-        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("wf"), sp, out var workflow));
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("wf"), sp, out var workflow, out _));
         Assert.NotNull(workflow);
 
         var result = await workflow.RunAsync(new FakeWorkflowContext(), 10);
@@ -199,7 +199,7 @@ public class WorkflowsFactoryTests
 
         var sp = new ServiceCollection().BuildServiceProvider();
 
-        Assert.True(factory.TryCreateActivity(new TaskIdentifier("act"), sp, out var activity));
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("act"), sp, out var activity, out _));
         Assert.NotNull(activity);
 
         var result = await activity.RunAsync(new FakeActivityContext(), 10);
@@ -233,10 +233,11 @@ public class WorkflowsFactoryTests
         var logger = Mock.Of<ILogger<WorkflowsFactory>>();
         var factory = new WorkflowsFactory(logger);
 
-        var created = factory.TryCreateWorkflow(new TaskIdentifier("missing"), sp, out var workflow);
+        var created = factory.TryCreateWorkflow(new TaskIdentifier("missing"), sp, out var workflow, out var activationException);
 
         Assert.False(created);
         Assert.Null(workflow);
+        Assert.Null(activationException);
     }
 
     [Fact]
@@ -246,10 +247,11 @@ public class WorkflowsFactoryTests
         var logger = Mock.Of<ILogger<WorkflowsFactory>>();
         var factory = new WorkflowsFactory(logger);
 
-        var created = factory.TryCreateActivity(new TaskIdentifier("missing"), sp, out var activity);
+        var created = factory.TryCreateActivity(new TaskIdentifier("missing"), sp, out var activity, out var activationException);
 
         Assert.False(created);
         Assert.Null(activity);
+        Assert.Null(activationException);
     }
 
     [Fact]
@@ -263,10 +265,12 @@ public class WorkflowsFactoryTests
 
         factory.RegisterWorkflow<ThrowingWorkflow>();
 
-        var created = factory.TryCreateWorkflow(new TaskIdentifier(nameof(ThrowingWorkflow)), sp, out var workflow);
+        var created = factory.TryCreateWorkflow(new TaskIdentifier(nameof(ThrowingWorkflow)), sp, out var workflow, out var activationException);
 
         Assert.False(created);
         Assert.Null(workflow);
+        Assert.NotNull(activationException);
+        Assert.IsType<InvalidOperationException>(activationException);
     }
 
     [Fact]
@@ -280,10 +284,12 @@ public class WorkflowsFactoryTests
 
         factory.RegisterActivity<ThrowingActivity>();
 
-        var created = factory.TryCreateActivity(new TaskIdentifier(nameof(ThrowingActivity)), sp, out var activity);
+        var created = factory.TryCreateActivity(new TaskIdentifier(nameof(ThrowingActivity)), sp, out var activity, out var activationException);
 
         Assert.False(created);
         Assert.Null(activity);
+        Assert.NotNull(activationException);
+        Assert.IsType<InvalidOperationException>(activationException);
     }
 
     [Fact]
@@ -295,7 +301,7 @@ public class WorkflowsFactoryTests
         factory.RegisterWorkflow<int, string>("wf-fn", (_, x) => Task.FromResult($"v:{x}"));
 
         var sp = new ServiceCollection().BuildServiceProvider();
-        var created = factory.TryCreateWorkflow(new TaskIdentifier("wf-fn"), sp, out var workflow);
+        var created = factory.TryCreateWorkflow(new TaskIdentifier("wf-fn"), sp, out var workflow, out _);
 
         Assert.True(created);
         Assert.NotNull(workflow);
@@ -316,7 +322,7 @@ public class WorkflowsFactoryTests
         factory.RegisterActivity<int, string>("act-fn", (_, x) => Task.FromResult($"v:{x}"));
 
         var sp = new ServiceCollection().BuildServiceProvider();
-        var created = factory.TryCreateActivity(new TaskIdentifier("act-fn"), sp, out var activity);
+        var created = factory.TryCreateActivity(new TaskIdentifier("act-fn"), sp, out var activity, out _);
 
         Assert.True(created);
         Assert.NotNull(activity);
