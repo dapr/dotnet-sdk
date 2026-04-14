@@ -41,9 +41,16 @@ public class DaprTestApp
 
     public string AppId => this.appId;
 
+    public int AppPort { get; private set; }
+
     public (string httpEndpoint, string grpcEndpoint) Start(DaprRunConfiguration configuration)
     {
         var (appPort, httpPort, grpcPort, metricsPort) = GetFreePorts();
+
+        if (configuration.UseAppPort)
+        {
+            this.AppPort = appPort;
+        }
 
         var resourcesPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "components");
         var configPath = Combine(".", "..", "..", "..", "..", "..", "test", "Dapr.E2E.Test", "configuration", "featureconfig.yaml");
