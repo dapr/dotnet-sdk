@@ -211,13 +211,13 @@ public class WorkflowServiceCollectionExtensionsTests
 
         var factory = sp.GetRequiredService<IWorkflowsFactory>();
 
-        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("wf"), sp, out var wf));
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("wf"), sp, out var wf, out _));
         Assert.NotNull(wf);
 
         var wfResult = await wf.RunAsync(new FakeWorkflowContext(), 10);
         Assert.Equal(11, wfResult);
 
-        Assert.True(factory.TryCreateActivity(new TaskIdentifier("act"), sp, out var act));
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("act"), sp, out var act, out _));
         Assert.NotNull(act);
 
         var actResult = await act.RunAsync(new FakeActivityContext(), 10);

@@ -828,6 +828,48 @@ public class WorkflowWorkerTests
         var action = Assert.Single(response.Actions);
         Assert.NotNull(action.CompleteOrchestration);
         Assert.Equal(OrchestrationStatus.Failed, action.CompleteOrchestration.OrchestrationStatus);
+        Assert.Equal("WorkflowNotFound", action.CompleteOrchestration.FailureDetails.ErrorType);
+    }
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldReturnActivationFailure_WhenWorkflowActivationFails()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflowActivationError("wf", new InvalidOperationException("No service for type 'IMyService' has been registered."));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "wf", Input = "123" }
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var activationAction = Assert.Single(response.Actions);
+        Assert.NotNull(activationAction.CompleteOrchestration);
+        Assert.Equal(OrchestrationStatus.Failed, activationAction.CompleteOrchestration.OrchestrationStatus);
+        Assert.NotEqual("WorkflowNotFound", activationAction.CompleteOrchestration.FailureDetails.ErrorType);
+        Assert.Contains("failed to activate", activationAction.CompleteOrchestration.FailureDetails.ErrorMessage);
+        Assert.Contains("IMyService", activationAction.CompleteOrchestration.FailureDetails.ErrorMessage);
     }
 
     [Fact]
@@ -1000,6 +1042,42 @@ public class WorkflowWorkerTests
         Assert.NotNull(response.FailureDetails);
         Assert.Equal("ActivityNotFoundException", response.FailureDetails.ErrorType);
         Assert.Contains("Activity 'act' not found", response.FailureDetails.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task HandleActivityResponseAsync_ShouldReturnActivationFailure_WhenActivityActivationFails()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddActivityActivationError("act", new InvalidOperationException("No service for type 'IEmailSender' has been registered."));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new ActivityRequest
+        {
+            Name = "act",
+            TaskId = 7,
+            OrchestrationInstance = new OrchestrationInstance { InstanceId = "i" },
+            Input = "1"
+        };
+
+        var response = await InvokeHandleActivityResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        Assert.Equal(7, response.TaskId);
+        Assert.NotNull(response.FailureDetails);
+        Assert.NotEqual("ActivityNotFoundException", response.FailureDetails.ErrorType);
+        Assert.Contains("failed to activate", response.FailureDetails.ErrorMessage);
+        Assert.Contains("IEmailSender", response.FailureDetails.ErrorMessage);
     }
 
     [Fact]
@@ -1625,20 +1703,44 @@ public class WorkflowWorkerTests
     {
         private readonly Dictionary<string, IWorkflow> _workflows = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, IWorkflowActivity> _activities = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Exception> _workflowActivationErrors = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Exception> _activityActivationErrors = new(StringComparer.OrdinalIgnoreCase);
 
         public void AddWorkflow(string name, IWorkflow wf) => _workflows[name] = wf;
         public void AddActivity(string name, IWorkflowActivity act) => _activities[name] = act;
+        public void AddWorkflowActivationError(string name, Exception ex) => _workflowActivationErrors[name] = ex;
+        public void AddActivityActivationError(string name, Exception ex) => _activityActivationErrors[name] = ex;
 
         public void RegisterWorkflow<TWorkflow>(string? name = null) where TWorkflow : class, IWorkflow => throw new NotSupportedException();
         public void RegisterWorkflow<TInput, TOutput>(string name, Func<WorkflowContext, TInput, Task<TOutput>> implementation) => throw new NotSupportedException();
         public void RegisterActivity<TActivity>(string? name = null) where TActivity : class, IWorkflowActivity => throw new NotSupportedException();
         public void RegisterActivity<TInput, TOutput>(string name, Func<WorkflowActivityContext, TInput, Task<TOutput>> implementation) => throw new NotSupportedException();
 
-        public bool TryCreateWorkflow(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflow? workflow)
-            => _workflows.TryGetValue(identifier.Name, out workflow);
+        public bool TryCreateWorkflow(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflow? workflow,
+            out Exception? activationException)
+        {
+            if (_workflowActivationErrors.TryGetValue(identifier.Name, out var ex))
+            {
+                activationException = ex;
+                workflow = null;
+                return false;
+            }
+            activationException = null;
+            return _workflows.TryGetValue(identifier.Name, out workflow);
+        }
 
-        public bool TryCreateActivity(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflowActivity? activity)
-            => _activities.TryGetValue(identifier.Name, out activity);
+        public bool TryCreateActivity(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflowActivity? activity,
+            out Exception? activationException)
+        {
+            if (_activityActivationErrors.TryGetValue(identifier.Name, out var ex))
+            {
+                activationException = ex;
+                activity = null;
+                return false;
+            }
+            activationException = null;
+            return _activities.TryGetValue(identifier.Name, out activity);
+        }
     }
 
     private sealed class InlineWorkflow(Type inputType, Func<WorkflowContext, object?, Task<object?>> run) : IWorkflow

@@ -58,17 +58,26 @@ internal interface IWorkflowsFactory
     /// </summary>
     /// <param name="identifier">The identifier of the workflow.</param>
     /// <param name="serviceProvider">The service provider for dependency injection.</param>
-    /// <param name="workflow">The created workflow, or null if not found.</param>
+    /// <param name="workflow">The created workflow, or null if not found or activation failed.</param>
+    /// <param name="activationException">
+    /// The exception thrown during activation, or null if the workflow was not found in the registry.
+    /// This allows callers to distinguish between "not registered" and "registered but failed to activate".
+    /// </param>
     /// <returns>True if the workflow was created; otherwise false.</returns>
-    bool TryCreateWorkflow(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflow? workflow);
+    bool TryCreateWorkflow(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflow? workflow,
+        out Exception? activationException);
 
     /// <summary>
     /// Tries to create an activity instance.
     /// </summary>
     /// <param name="identifier">The identifier of the activity.</param>
     /// <param name="serviceProvider">The service provider for dependency injection.</param>
-    /// <param name="activity">The created activity, or null if not found.</param>
+    /// <param name="activity">The created activity, or null if not found or activation failed.</param>
+    /// <param name="activationException">
+    /// The exception thrown during activation, or null if the activity was not found in the registry.
+    /// This allows callers to distinguish between "not registered" and "registered but failed to activate".
+    /// </param>
     /// <returns>True if the activity was created; otherwise false.</returns>
     bool TryCreateActivity(TaskIdentifier identifier, IServiceProvider serviceProvider,
-        out IWorkflowActivity? activity);
+        out IWorkflowActivity? activity, out Exception? activationException);
 }

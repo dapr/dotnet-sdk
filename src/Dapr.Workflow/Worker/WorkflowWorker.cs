@@ -270,8 +270,36 @@ internal sealed class WorkflowWorker(
 
             // Try to get the workflow from the factory
             var workflowIdentifier = new TaskIdentifier(workflowName);
-            if (!_workflowsFactory.TryCreateWorkflow(workflowIdentifier, scope.ServiceProvider, out var workflow))
+            if (!_workflowsFactory.TryCreateWorkflow(workflowIdentifier, scope.ServiceProvider, out var workflow, out var workflowActivationException))
             {
+                if (workflowActivationException != null)
+                {
+                    _logger.LogWorkerWorkflowHandleOrchestratorRequestActivationFailed(workflowActivationException, workflowName);
+                    
+                    return new OrchestratorResponse
+                    {
+                        InstanceId = request.InstanceId,
+                        CompletionToken = completionToken,
+                        Actions =
+                        {
+                            new OrchestratorAction
+                            {
+                                CompleteOrchestration = new CompleteOrchestrationAction
+                                {
+                                    OrchestrationStatus = OrchestrationStatus.Failed,
+                                    FailureDetails = new()
+                                    {
+                                        IsNonRetriable = true,
+                                        ErrorType = workflowActivationException.GetType().FullName ?? "WorkflowActivationFailed",
+                                        ErrorMessage = $"Workflow '{workflowName}' failed to activate: {workflowActivationException.Message}",
+                                        StackTrace = workflowActivationException.StackTrace ?? string.Empty
+                                    }
+                                }
+                            }
+                        }
+                    };
+                }
+
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(workflowName);
 
                 return new OrchestratorResponse
@@ -489,8 +517,26 @@ internal sealed class WorkflowWorker(
 
             // Try to get the activity from the factory
             var activityIdentifier = new TaskIdentifier(request.Name);
-            if (!_workflowsFactory.TryCreateActivity(activityIdentifier, scope.ServiceProvider, out var activity))
+            if (!_workflowsFactory.TryCreateActivity(activityIdentifier, scope.ServiceProvider, out var activity, out var activityActivationException))
             {
+                if (activityActivationException != null)
+                {
+                    _logger.LogWorkerWorkflowHandleActivityRequestActivationFailed(activityActivationException, request.Name);
+
+                    return new ActivityResponse
+                    {
+                        InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
+                        TaskId = request.TaskId,
+                        CompletionToken = completionToken,
+                        FailureDetails = new()
+                        {
+                            ErrorType = activityActivationException.GetType().FullName ?? "ActivityActivationFailed",
+                            ErrorMessage = $"Activity '{request.Name}' failed to activate: {activityActivationException.Message}",
+                            StackTrace = activityActivationException.StackTrace ?? string.Empty
+                        }
+                    };
+                }
+
                 _logger.LogWorkerWorkflowHandleActivityRequestNotInRegistry(request.Name);
 
                 return new ActivityResponse
