@@ -23,16 +23,16 @@ describe("computeFromTags - core scenarios", () => {
         const out = computeFromTags({
             tags,
             tagPrefix: "v",
-            stableCount: 2, 
+            stableCount: 2,
             rcIdent: "rc"
         });
-        
+
         expect(out.matrix_json).toEqual([
             { version: "1.17.0", channel: "stable" }
         ]);
     });
-    
-    test("stable latest minor has two patches; latest RC for next minor", () => {
+
+    test("RCs from a newer unreleased minor are excluded", () => {
         const tags = [
             "v1.16.7",
             "v1.16.8",
@@ -51,19 +51,18 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
-            { version: "1.17.0-rc.3", channel: "rc" },
             { version: "1.16.8", channel: "stable" },
             { version: "1.16.7", channel: "stable" },
         ]);
     });
 
-    test("rc_count returns latest N RCs from newest RC minor", () => {
+    test("rc_count returns latest N RCs for the stable minor", () => {
         const tags = [
             "v1.16.7",
             "v1.16.8",
-            "v1.17.0-rc.1",
-            "v1.17.0-rc.2",
-            "v1.17.0-rc.3",
+            "v1.16.9-rc.1",
+            "v1.16.9-rc.2",
+            "v1.16.9-rc.3",
         ];
         const out = computeFromTags({
             tags,
@@ -74,8 +73,8 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
-            { version: "1.17.0-rc.3", channel: "rc" },
-            { version: "1.17.0-rc.2", channel: "rc" },
+            { version: "1.16.9-rc.3", channel: "rc" },
+            { version: "1.16.9-rc.2", channel: "rc" },
             { version: "1.16.8", channel: "stable" },
             { version: "1.16.7", channel: "stable" },
         ]);
@@ -84,7 +83,7 @@ describe("computeFromTags - core scenarios", () => {
     test("rc_count returns available RCs when fewer exist", () => {
         const tags = [
             "v1.16.8",
-            "v1.17.0-rc.1",
+            "v1.16.9-rc.1",
         ];
         const out = computeFromTags({
             tags,
@@ -95,12 +94,12 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
-            { version: "1.17.0-rc.1", channel: "rc" },
+            { version: "1.16.9-rc.1", channel: "rc" },
             { version: "1.16.8", channel: "stable" },
         ]);
     });
 
-    test("rc_count returns latest RCs regardless of stable availability", () => {
+    test("RCs from older minors are excluded; only stable minor RCs are returned", () => {
         const tags = [
             "1.18.0",
             "1.18.0-rc.1",
@@ -117,8 +116,30 @@ describe("computeFromTags - core scenarios", () => {
 
         expect(out.matrix_json).toEqual([
             { version: "1.18.1-rc.1", channel: "rc" },
-            { version: "1.17.0-rc.2", channel: "rc" },
             { version: "1.18.0", channel: "stable" },
+        ]);
+    });
+
+    test("RCs for stable minor are included alongside stable patches; older minor excluded", () => {
+        const tags = [
+            "v1.17.0",
+            "v1.17.1",
+            "v1.17.2-rc.1",
+            "v1.16.8",
+            "v1.16.9-rc.1",
+        ];
+        const out = computeFromTags({
+            tags,
+            tagPrefix: "v",
+            stableCount: 2,
+            rcCount: 1,
+            rcIdent: "rc",
+        });
+
+        expect(out.matrix_json).toEqual([
+            { version: "1.17.2-rc.1", channel: "rc" },
+            { version: "1.17.1", channel: "stable" },
+            { version: "1.17.0", channel: "stable" },
         ]);
     });
 
