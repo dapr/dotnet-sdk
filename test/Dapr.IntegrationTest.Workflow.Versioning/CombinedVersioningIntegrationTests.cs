@@ -16,6 +16,7 @@ using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Common.Testing;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Dapr.Workflow.Versioning;
 using Grpc.Core;
@@ -29,7 +30,7 @@ public sealed class CombinedVersioningIntegrationTests
     private const string CanonicalWorkflowName = "CombinedVersionedWorkflow";
     private const string ResumeEventName = "resume";
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldCombinePatchAndNameBasedVersioning()
     {
         var instanceIdV1 = Guid.NewGuid().ToString("N");
