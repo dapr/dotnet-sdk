@@ -14,7 +14,6 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common;
@@ -167,76 +166,44 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken = default)
 	{
-        try
+        await _container.StartAsync(cancellationToken);
+
+        var mappedHttpPort = _container.GetMappedPublicPort(InternalHttpPort);
+        var mappedGrpcPort = _container.GetMappedPublicPort(InternalGrpcPort);
+
+        if (_requestedHttpPort is not null && mappedHttpPort != _requestedHttpPort.Value)
         {
-            await _container.StartAsync(cancellationToken);
-
-            var mappedHttpPort = _container.GetMappedPublicPort(InternalHttpPort);
-            var mappedGrpcPort = _container.GetMappedPublicPort(InternalGrpcPort);
-
-            if (_requestedHttpPort is not null && mappedHttpPort != _requestedHttpPort.Value)
-            {
-                throw new InvalidOperationException(
-                    $"Dapr HTTP port mapping mismatch. Requested {_requestedHttpPort.Value}, but Docker mapped {mappedHttpPort}");
-            }
-
-            if (_requestedGrpcPort is not null && mappedGrpcPort != _requestedGrpcPort.Value)
-            {
-                throw new InvalidOperationException(
-                    $"Dapr gRPC port mapping mismatch. Requested {_requestedGrpcPort.Value}, but Docker mapped {mappedGrpcPort}");
-            }
-
-            HttpPort = mappedHttpPort;
-            GrpcPort = mappedGrpcPort;
-
-            // The container log wait strategy can fire before the host port is actually accepting connections
-            // (especially on Windows). Ensure the ports are reachable from the test process.
-            await WaitForTcpPortAsync("127.0.0.1", HttpPort, TimeSpan.FromSeconds(30), cancellationToken);
-            await WaitForTcpPortAsync("127.0.0.1", GrpcPort, TimeSpan.FromSeconds(30), cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            var msg = ex.Message;
-            throw;
-        }
-    }
-
-    private static async Task WaitForTcpPortAsync(
-        string host,
-        int port,
-        TimeSpan timeout,
-        CancellationToken cancellationToken)
-    {
-        var start = DateTimeOffset.UtcNow;
-        Exception? lastError = null;
-
-        while (DateTimeOffset.UtcNow - start < timeout)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            try
-            {
-                using var client = new TcpClient();
-                var connectTask = client.ConnectAsync(host, port);
-
-                var completed = await Task.WhenAny(connectTask,
-                    Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken));
-                if (completed == connectTask)
-                {
-                    // Will throw if connect failed
-                    await connectTask;
-                    return;
-                }
-            }
-            catch (Exception ex) when (ex is SocketException or InvalidOperationException)
-            {
-                lastError = ex;
-            }
-
-            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
+            throw new InvalidOperationException(
+                $"Dapr HTTP port mapping mismatch. Requested {_requestedHttpPort.Value}, but Docker mapped {mappedHttpPort}");
         }
 
-        throw new TimeoutException($"Timed out waiting for TCP port {host}:{port} to accept connections.", lastError);
+        if (_requestedGrpcPort is not null && mappedGrpcPort != _requestedGrpcPort.Value)
+        {
+            throw new InvalidOperationException(
+                $"Dapr gRPC port mapping mismatch. Requested {_requestedGrpcPort.Value}, but Docker mapped {mappedGrpcPort}");
+        }
+
+        HttpPort = mappedHttpPort;
+        GrpcPort = mappedGrpcPort;
+
+        // The container log wait strategy can fire before the host port is actually accepting connections
+        // (especially on Windows). Ensure the ports are reachable from the test process.
+        await ContainerReadinessProbe.WaitForTcpPortAsync("127.0.0.1", HttpPort, TimeSpan.FromSeconds(30), cancellationToken);
+        await ContainerReadinessProbe.WaitForTcpPortAsync("127.0.0.1", GrpcPort, TimeSpan.FromSeconds(30), cancellationToken);
+
+        // Even after the TCP ports start accepting connections the Dapr runtime may still be
+        // initializing (connecting to Placement/Scheduler, loading components, starting the
+        // workflow engine). Poll the HTTP port until the Dapr HTTP server starts processing
+        // requests. Any HTTP response (including 5xx) confirms that the HTTP server — and by
+        // extension the gRPC server — is actively routing requests, eliminating the brief window
+        // in which the gRPC port accepts TCP connections but the gRPC handlers are not yet
+        // installed. This prevents the transient "Error connecting to subchannel / Connection
+        // refused" errors that occur when the gRPC client first connects while the runtime is
+        // still completing its startup sequence.
+        await ContainerReadinessProbe.WaitForHttpReachableAsync(
+            $"http://127.0.0.1:{HttpPort}/v1.0/healthz",
+            TimeSpan.FromSeconds(30),
+            cancellationToken);
     }
 
     /// <inheritdoc />
