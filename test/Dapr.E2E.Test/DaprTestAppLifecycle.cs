@@ -83,20 +83,28 @@ public class DaprTestAppLifecycle : IClassFixture<DaprTestAppFixture>, IAsyncLif
         {
             try
             {
-                using var tcpClient = new TcpClient();
-                await tcpClient.ConnectAsync(IPAddress.Loopback, port);
-                return;
+                using (var tcpClient = new TcpClient())
+                {
+                    await tcpClient.ConnectAsync(IPAddress.Loopback, port);
+                    return;
+                }
+            }
+            catch (SocketException)
+            {
+                // Port not yet accepting connections — retry after a short delay.
             }
             catch (Exception)
             {
-                try
-                {
-                    await Task.Delay(TimeSpan.FromMilliseconds(250), cts.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
+                // Treat any other connection error as a transient failure and retry.
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(250), cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
         }
 
