@@ -332,6 +332,34 @@ public sealed class WorkflowDependencyInjectionAnalyzerTests
     }
 
     [Fact]
+    public async Task NoDiagnostic_WhenNonDaprGenericBaseClassSubclassHasConstructorParameter()
+    {
+        // A class that derives from a user-defined generic base class — NOT Dapr.Workflow.Workflow<,> —
+        // should never trigger DAPR1305 even if the base class looks structurally similar.
+        const string testCode = """
+                                using System.Threading.Tasks;
+
+                                public interface IMyService { }
+
+                                // Custom generic base class unrelated to Dapr.Workflow
+                                public abstract class Processor<TInput, TOutput>
+                                {
+                                    public abstract Task<TOutput> RunAsync(TInput input);
+                                }
+
+                                public sealed class OrderProcessor : Processor<string, string>
+                                {
+                                    public OrderProcessor(IMyService service) { }
+
+                                    public override Task<string> RunAsync(string input) => Task.FromResult(input);
+                                }
+                                """;
+
+        var analyzer = new VerifyAnalyzer(Utilities.GetReferences());
+        await analyzer.VerifyAnalyzerAsync<WorkflowDependencyInjectionAnalyzer>(testCode);
+    }
+
+    [Fact]
     public async Task VerifyDiagnostic_WhenIndirectWorkflowSubclassUsesPrimaryConstructorWithParameter()
     {
         const string testCode = """
