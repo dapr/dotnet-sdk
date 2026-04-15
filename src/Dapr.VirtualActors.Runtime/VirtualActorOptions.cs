@@ -80,21 +80,127 @@ public sealed class VirtualActorOptions : DaprClientOptions
     public int? RemindersStoragePartitions { get; set; }
 
     /// <summary>
-    /// Registers an actor type with the runtime.
+    /// Registers an actor type with an explicit factory delegate (AOT-safe, no reflection).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// In most cases, you do not need to call this method directly. The
+    /// <c>Dapr.VirtualActors.Generators</c> source generator automatically discovers
+    /// all <see cref="VirtualActor"/> subclasses in your project and generates
+    /// registration code at compile time.
+    /// </para>
+    /// <para>
+    /// Use this method only for advanced scenarios where you need to control
+    /// actor construction explicitly (e.g., wrapping in a decorator).
+    /// </para>
+    /// </remarks>
+    /// <param name="actorTypeName">The actor type name as known to Dapr.</param>
+    /// <param name="interfaceTypes">The actor interfaces implemented by this type.</param>
+    /// <param name="implementationType">The CLR type of the actor implementation.</param>
+    /// <param name="factory">
+    /// An AOT-safe factory delegate that creates actor instances. Receives the
+    /// <see cref="VirtualActorHost"/> and <see cref="IServiceProvider"/> and returns
+    /// a <see cref="VirtualActor"/> instance.
+    /// </param>
+    public void RegisterActor(
+        string actorTypeName,
+        IReadOnlyList<Type> interfaceTypes,
+        Type implementationType,
+        Func<VirtualActorHost, IServiceProvider, VirtualActor> factory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorTypeName);
+        ArgumentNullException.ThrowIfNull(interfaceTypes);
+        ArgumentNullException.ThrowIfNull(implementationType);
+        ArgumentNullException.ThrowIfNull(factory);
+
+        var typeInfo = new ActorTypeInformation(actorTypeName, implementationType, interfaceTypes);
+        _actorRegistrations.Add(new ActorRegistration(typeInfo, factory));
+    }
+
+    /// <summary>
+    /// Registers an actor type using a strongly-typed factory delegate (AOT-safe, no reflection).
     /// </summary>
     /// <typeparam name="TActor">The actor implementation type.</typeparam>
+    /// <param name="factory">
+    /// A factory delegate that creates actor instances given a <see cref="VirtualActorHost"/>.
+    /// </param>
     /// <param name="actorTypeName">
     /// Optional custom actor type name. If not specified, the class name is used.
     /// </param>
-    public void RegisterActor<TActor>(string? actorTypeName = null) where TActor : VirtualActor
+    public void RegisterActor<TActor>(
+        Func<VirtualActorHost, TActor> factory,
+        string? actorTypeName = null)
+        where TActor : VirtualActor
     {
-        var implType = typeof(TActor);
-        var name = actorTypeName ?? implType.Name;
-        var interfaces = implType.GetInterfaces()
-            .Where(i => typeof(IVirtualActor).IsAssignableFrom(i) && i != typeof(IVirtualActor))
-            .ToList();
+        ArgumentNullException.ThrowIfNull(factory);
 
-        var typeInfo = new ActorTypeInformation(name, implType, interfaces);
-        _actorRegistrations.Add(new ActorRegistration(typeInfo));
+        var name = actorTypeName ?? typeof(TActor).Name;
+
+        RegisterActor(
+            name,
+            ActorInterfaceCache<TActor>.InterfaceTypes,
+            typeof(TActor),
+            (host, _) => factory(host));
+    }
+
+    /// <summary>
+    /// Registers an actor type using a factory delegate that receives DI services (AOT-safe, no reflection).
+    /// </summary>
+    /// <typeparam name="TActor">The actor implementation type.</typeparam>
+    /// <param name="factory">
+    /// A factory delegate that creates actor instances given a <see cref="VirtualActorHost"/>
+    /// and an <see cref="IServiceProvider"/> for resolving additional dependencies.
+    /// </param>
+    /// <param name="actorTypeName">
+    /// Optional custom actor type name. If not specified, the class name is used.
+    /// </param>
+    public void RegisterActor<TActor>(
+        Func<VirtualActorHost, IServiceProvider, TActor> factory,
+        string? actorTypeName = null)
+        where TActor : VirtualActor
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+
+        var name = actorTypeName ?? typeof(TActor).Name;
+
+        RegisterActor(
+            name,
+            ActorInterfaceCache<TActor>.InterfaceTypes,
+            typeof(TActor),
+            (host, sp) => factory(host, sp));
+    }
+}
+
+/// <summary>
+/// AOT-safe cache of actor interface types computed once per generic instantiation.
+/// </summary>
+/// <typeparam name="TActor">The actor implementation type.</typeparam>
+/// <remarks>
+/// Uses a static generic class so the interface list is computed once at JIT/AOT time
+/// per concrete actor type, with no runtime reflection overhead on subsequent accesses.
+/// The initial <c>typeof(TActor)</c> metadata access is AOT-safe as it uses compile-time
+/// type information only.
+/// </remarks>
+internal static class ActorInterfaceCache<TActor> where TActor : VirtualActor
+{
+    /// <summary>
+    /// The <see cref="IVirtualActor"/> interfaces implemented by <typeparamref name="TActor"/>.
+    /// </summary>
+    public static readonly IReadOnlyList<Type> InterfaceTypes = GetActorInterfaces();
+
+    private static IReadOnlyList<Type> GetActorInterfaces()
+    {
+        // Note: typeof(TActor).GetInterfaces() is AOT-safe because the generic type
+        // parameter is known at compile time. The .NET runtime preserves interface
+        // metadata for all types even in AOT scenarios.
+        var interfaces = new List<Type>();
+        foreach (var iface in typeof(TActor).GetInterfaces())
+        {
+            if (typeof(IVirtualActor).IsAssignableFrom(iface) && iface != typeof(IVirtualActor))
+            {
+                interfaces.Add(iface);
+            }
+        }
+        return interfaces;
     }
 }

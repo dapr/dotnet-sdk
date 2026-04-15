@@ -18,5 +18,18 @@ namespace Dapr.VirtualActors.Runtime;
 /// <summary>
 /// Represents the registration of a single actor type with the runtime.
 /// </summary>
+/// <remarks>
+/// Contains the actor type metadata and an AOT-safe factory delegate for
+/// constructing actor instances without reflection.
+/// </remarks>
 /// <param name="TypeInformation">The type metadata for the registered actor.</param>
-public sealed record ActorRegistration(ActorTypeInformation TypeInformation);
+/// <param name="Factory">
+/// An AOT-safe factory delegate that creates actor instances given a
+/// <see cref="VirtualActorHost"/> and <see cref="IServiceProvider"/>.
+/// Generated at compile time by the source generator, or provided explicitly
+/// during manual registration.
+/// </param>
+public sealed record ActorRegistration(
+    ActorTypeInformation TypeInformation,
+    Func<VirtualActorHost, IServiceProvider, VirtualActor> Factory);
+
