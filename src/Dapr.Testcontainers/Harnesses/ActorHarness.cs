@@ -26,7 +26,6 @@ public sealed class ActorHarness : BaseHarness
 {
     private readonly RedisContainer _redis;
     private readonly bool _isSelfHostedRedis;
-    private readonly string _componentsDir;
 
     /// <summary>
     /// Provides an implementation harness for Dapr's actor building block.
@@ -41,7 +40,6 @@ public sealed class ActorHarness : BaseHarness
     public ActorHarness(string componentsDir, Func<int, Task>? startApp, DaprRuntimeOptions options, DaprTestEnvironment? environment = null)
         : base(componentsDir, startApp, options, environment)
     {
-        _componentsDir = componentsDir;
         _redis = environment?.RedisContainer ?? new RedisContainer(Network, ContainerLogsDirectory);
         _isSelfHostedRedis = environment?.RedisContainer is null;
     }
@@ -57,7 +55,7 @@ public sealed class ActorHarness : BaseHarness
 
         // Write the state-store component YAML that points to the Redis instance.
         RedisContainer.Yaml.WriteStateStoreYamlToFolder(
-            _componentsDir,
+            ComponentsDirectory,
             redisHost: $"{_redis.NetworkAlias}:{RedisContainer.ContainerPort}");
 
         // Forward placement and scheduler coordinates from the environment.
