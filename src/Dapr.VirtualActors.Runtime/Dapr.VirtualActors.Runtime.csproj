@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <PackageId>Dapr.VirtualActors.Runtime</PackageId>
+        <Description>Runtime implementation for Dapr Virtual Actors using gRPC with DI-first design</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dapr.VirtualActors.Abstractions\Dapr.VirtualActors.Abstractions.csproj" />
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+        <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Grpc.Net.ClientFactory" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" />
+        <PackageReference Include="Microsoft.Extensions.Options" />
+    </ItemGroup>
+
+</Project>
