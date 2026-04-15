@@ -58,11 +58,33 @@ public sealed class ActorHarness : BaseHarness
             ComponentsDirectory,
             redisHost: $"{_redis.NetworkAlias}:{RedisContainer.ContainerPort}");
 
+        // Write a Dapr configuration file that enables the ActorStateTTL feature.
+        WriteActorConfigYaml(ComponentsDirectory);
+        DaprConfigFilePath = "/components/actor-config.yaml";
+
         // Forward placement and scheduler coordinates from the environment.
         DaprPlacementExternalPort = Environment.PlacementExternalPort;
         DaprPlacementAlias = Environment.PlacementAlias;
         DaprSchedulerExternalPort = Environment.SchedulerExternalPort;
         DaprSchedulerAlias = Environment.SchedulerAlias;
+    }
+
+    private static void WriteActorConfigYaml(string componentsDirectory)
+    {
+        const string yaml = """
+            apiVersion: dapr.io/v1alpha1
+            kind: Configuration
+            metadata:
+              name: actorConfig
+            spec:
+              features:
+                - name: "ActorStateTTL"
+                  enabled: true
+            """;
+        System.IO.Directory.CreateDirectory(componentsDirectory);
+        System.IO.File.WriteAllText(
+            System.IO.Path.Combine(componentsDirectory, "actor-config.yaml"),
+            yaml);
     }
 
     /// <inheritdoc />

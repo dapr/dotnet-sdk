@@ -62,7 +62,11 @@ public sealed class SerializationTests
         var result = await proxy.SendAsync("test", payload, cts.Token);
 
         Assert.Equal(payload.Message, result.Message);
-        Assert.Equal(payload.Value.GetRawText(), result.Value.GetRawText());
+        // Compare JSON content semantically: GetRawText() may differ in whitespace/indentation
+        // when WriteIndented is enabled on the round-trip serializer options.
+        Assert.Equal(
+            JsonSerializer.Serialize(payload.Value),
+            JsonSerializer.Serialize(result.Value));
         Assert.NotNull(result.ExtensionData);
         Assert.Equal(payload.ExtensionData!.Count, result.ExtensionData!.Count);
 

@@ -16,7 +16,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
-
 namespace Dapr.IntegrationTest.Actors.Reminders;
 
 /// <summary>
@@ -37,8 +36,18 @@ public class ReminderActor(ActorHost host) : Actor(host), IReminderActor, IRemin
     /// <inheritdoc />
     public async Task<string> GetReminder()
     {
-        var reminder = await GetReminderAsync("test-reminder");
-        return JsonSerializer.Serialize(reminder, Host.JsonSerializerOptions);
+        try
+        {
+            var reminder = await GetReminderAsync("test-reminder");
+            return JsonSerializer.Serialize(reminder, Host.JsonSerializerOptions);
+        }
+        catch (DaprApiException)
+        {
+            // Dapr 1.12+ returns an error when the reminder does not exist.
+            // Return "null" to match the pre-registered / post-stopped state that the
+            // test polls for.
+            return "null";
+        }
     }
 
     /// <inheritdoc />
