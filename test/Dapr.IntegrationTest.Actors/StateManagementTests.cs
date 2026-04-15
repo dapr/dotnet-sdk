@@ -382,12 +382,12 @@ public sealed class StateManagementTests
     // Test infrastructure helpers
     // ------------------------------------------------------------------
 
-    private static async Task<Dapr.Testcontainers.Common.Testing.DaprTestApplication> CreateTestAppAsync(
+    private static async Task<ActorTestContext> CreateTestAppAsync(
         CancellationToken cancellationToken)
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("actor-state-mgmt-components");
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
+        var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
             needsActorState: true,
             cancellationToken: cancellationToken);
         await environment.StartAsync(cancellationToken);
@@ -396,7 +396,7 @@ public sealed class StateManagementTests
             .WithEnvironment(environment)
             .BuildActors();
 
-        return await DaprHarnessBuilder.ForHarness(harness)
+        var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
                 builder.Services.AddActors(options =>
@@ -409,5 +409,6 @@ public sealed class StateManagementTests
                 app.MapActorsHandlers();
             })
             .BuildAndStartAsync();
+        return new ActorTestContext(environment, testApp);
     }
 }

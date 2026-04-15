@@ -78,12 +78,12 @@ public sealed class ReentrancyTests
     // Test infrastructure helpers
     // ------------------------------------------------------------------
 
-    private static async Task<Dapr.Testcontainers.Common.Testing.DaprTestApplication> CreateTestAppAsync(
+    private static async Task<ActorTestContext> CreateTestAppAsync(
         CancellationToken cancellationToken)
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("actor-reentrancy-components");
 
-        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
+        var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
             needsActorState: true,
             cancellationToken: cancellationToken);
         await environment.StartAsync(cancellationToken);
@@ -92,7 +92,7 @@ public sealed class ReentrancyTests
             .WithEnvironment(environment)
             .BuildActors();
 
-        return await DaprHarnessBuilder.ForHarness(harness)
+        var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
                 builder.Services.AddActors(options =>
@@ -106,5 +106,6 @@ public sealed class ReentrancyTests
                 app.MapActorsHandlers();
             })
             .BuildAndStartAsync();
+        return new ActorTestContext(environment, testApp);
     }
 }
