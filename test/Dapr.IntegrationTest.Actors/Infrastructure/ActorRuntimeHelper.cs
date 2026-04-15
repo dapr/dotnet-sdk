@@ -75,7 +75,7 @@ public static class ActorRuntimeHelper
                 // Connection-level error – the sidecar may still be starting up.
             }
 
-            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
         }
     }
 }
