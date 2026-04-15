@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
 
@@ -24,7 +25,7 @@ namespace Dapr.IntegrationTest.Actors.ExceptionTesting;
 public class ExceptionActor(ActorHost host) : Actor(host), IExceptionActor
 {
     /// <inheritdoc />
-    public Task Ping() => Task.CompletedTask;
+    public Task Ping(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <inheritdoc />
     public Task ExceptionExample() =>

@@ -13,6 +13,7 @@
 
 using System;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
 
@@ -27,7 +28,7 @@ public class ReminderActor(ActorHost host) : Actor(host), IReminderActor, IRemin
     private const string StateKey = "reminder-state";
 
     /// <inheritdoc />
-    public Task Ping() => Task.CompletedTask;
+    public Task Ping(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <inheritdoc />
     public Task<ReminderState> GetState() =>

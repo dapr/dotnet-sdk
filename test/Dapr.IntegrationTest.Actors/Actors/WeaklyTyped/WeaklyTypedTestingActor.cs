@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
 
@@ -23,7 +24,7 @@ namespace Dapr.IntegrationTest.Actors.WeaklyTyped;
 public class WeaklyTypedTestingActor(ActorHost host) : Actor(host), IWeaklyTypedTestingActor
 {
     /// <inheritdoc />
-    public Task Ping() => Task.CompletedTask;
+    public Task Ping(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <inheritdoc />
     public Task<ResponseBase?> GetNullResponse() =>

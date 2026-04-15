@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
 
@@ -25,7 +26,7 @@ namespace Dapr.IntegrationTest.Actors.State;
 public class AdvancedStateActor(ActorHost host) : Actor(host), IAdvancedStateActor
 {
     /// <inheritdoc />
-    public Task Ping() => Task.CompletedTask;
+    public Task Ping(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <inheritdoc />
     public async Task<string> SetAndGetWithinSameActivation(string key, string value)

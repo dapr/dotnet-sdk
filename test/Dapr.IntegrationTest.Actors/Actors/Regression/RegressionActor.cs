@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
 
@@ -24,7 +25,7 @@ namespace Dapr.IntegrationTest.Actors.Regression;
 public class RegressionActor(ActorHost host) : Actor(host), IRegressionActor
 {
     /// <inheritdoc />
-    public Task Ping() => Task.CompletedTask;
+    public Task Ping(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <inheritdoc />
     public async Task<string> GetState(string id)

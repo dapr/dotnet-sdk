@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
 
@@ -24,7 +25,7 @@ namespace Dapr.IntegrationTest.Actors.State;
 public class StateActor(ActorHost host) : Actor(host), IStateActor
 {
     /// <inheritdoc />
-    public Task Ping() => Task.CompletedTask;
+    public Task Ping(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <inheritdoc />
     public Task<string> GetState(string key) =>

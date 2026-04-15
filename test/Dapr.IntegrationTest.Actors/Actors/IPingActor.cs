@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors;
 
@@ -24,5 +25,9 @@ public interface IPingActor : IActor
     /// <summary>
     /// Pings the actor to verify that the runtime is available.
     /// </summary>
-    Task Ping();
+    /// <param name="cancellationToken">
+    /// A token that cancels the underlying HTTP request, allowing the caller to impose a
+    /// per-attempt timeout instead of waiting for the HttpClient default (100 s).
+    /// </param>
+    Task Ping(CancellationToken cancellationToken = default);
 }

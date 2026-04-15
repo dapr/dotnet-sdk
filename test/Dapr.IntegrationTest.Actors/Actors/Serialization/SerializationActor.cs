@@ -25,7 +25,7 @@ namespace Dapr.IntegrationTest.Actors.Serialization;
 public class SerializationActor(ActorHost host) : Actor(host), ISerializationActor
 {
     /// <inheritdoc />
-    public Task Ping() => Task.CompletedTask;
+    public Task Ping(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     /// <inheritdoc />
     public Task<SerializationPayload> SendAsync(
