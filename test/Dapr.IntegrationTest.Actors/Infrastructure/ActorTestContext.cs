@@ -31,7 +31,7 @@ public sealed class ActorTestContext : IAsyncDisposable
     private readonly DaprTestApplication _app;
 
     /// <summary>
-    /// Initialises a new <see cref="ActorTestContext"/>.
+    /// Initializes a new <see cref="ActorTestContext"/>.
     /// </summary>
     internal ActorTestContext(DaprTestEnvironment environment, DaprTestApplication app)
     {
