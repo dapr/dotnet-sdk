@@ -12,6 +12,7 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common.Options;
@@ -81,9 +82,9 @@ public sealed class ActorHarness : BaseHarness
                 - name: "ActorStateTTL"
                   enabled: true
             """;
-        System.IO.Directory.CreateDirectory(componentsDirectory);
-        System.IO.File.WriteAllText(
-            System.IO.Path.Combine(componentsDirectory, "actor-config.yaml"),
+        Directory.CreateDirectory(componentsDirectory);
+        File.WriteAllText(
+            Path.Combine(componentsDirectory, "actor-config.yaml"),
             yaml);
     }
 

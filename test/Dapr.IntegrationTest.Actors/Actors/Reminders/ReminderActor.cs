@@ -41,11 +41,11 @@ public class ReminderActor(ActorHost host) : Actor(host), IReminderActor, IRemin
             var reminder = await GetReminderAsync("test-reminder");
             return JsonSerializer.Serialize(reminder, Host.JsonSerializerOptions);
         }
-        catch (DaprApiException)
+        catch (DaprApiException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
         {
-            // Dapr 1.12+ returns an error when the reminder does not exist.
-            // Return "null" to match the pre-registered / post-stopped state that the
-            // test polls for.
+            // Dapr 1.12+ returns a 404 error when the reminder does not exist; earlier
+            // versions returned 500 which the SDK silently mapped to null. Return "null"
+            // to match the pre-registered / post-stopped state that the test polls for.
             return "null";
         }
     }
