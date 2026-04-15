@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.VirtualActors.Runtime.State;
 using Microsoft.Extensions.Logging;
 
 namespace Dapr.VirtualActors.Runtime;

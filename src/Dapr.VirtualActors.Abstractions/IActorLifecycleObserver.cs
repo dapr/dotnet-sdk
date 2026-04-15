@@ -23,7 +23,7 @@ namespace Dapr.VirtualActors;
 /// metrics collection, and integration with external systems.
 /// </para>
 /// <para>
-/// Unlike <see cref="IActorMiddleware"/>, observers do not participate in the method
+/// Unlike middleware, observers do not participate in the method
 /// invocation pipeline and cannot short-circuit or modify requests/responses. Multiple
 /// observers can be registered and will be invoked in registration order.
 /// </para>

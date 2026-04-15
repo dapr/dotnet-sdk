@@ -19,7 +19,7 @@ namespace Dapr.VirtualActors;
 /// <remarks>
 /// <para>
 /// This context is passed through the middleware pipeline and is available to all
-/// <see cref="IActorMiddleware"/> components, lifecycle observers, and the actor itself.
+/// middleware components, lifecycle observers, and the actor itself.
 /// </para>
 /// <para>
 /// Extensions can store custom data in <see cref="Properties"/> to pass information

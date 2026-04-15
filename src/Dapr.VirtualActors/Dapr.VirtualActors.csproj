@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <PackageId>Dapr.VirtualActors</PackageId>
+        <Description>Dapr Virtual Actors SDK — a unified metapackage combining abstractions, runtime, and source generators for building Dapr virtual actors with DI-first, gRPC-based, AOT-safe design</Description>
+        <!-- This is a metapackage: it produces no assembly of its own -->
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dapr.VirtualActors.Abstractions\Dapr.VirtualActors.Abstractions.csproj" />
+        <ProjectReference Include="..\Dapr.VirtualActors.Runtime\Dapr.VirtualActors.Runtime.csproj" />
+        <ProjectReference Include="..\Dapr.VirtualActors.Generators\Dapr.VirtualActors.Generators.csproj"
+                          ReferenceOutputAssembly="false"
+                          OutputItemType="Analyzer" />
+    </ItemGroup>
+
+</Project>
