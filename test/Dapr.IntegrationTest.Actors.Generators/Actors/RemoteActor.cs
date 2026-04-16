@@ -21,31 +21,23 @@ namespace Dapr.IntegrationTest.Actors.Generators.Actors;
 /// <summary>
 /// Implementation of <see cref="IRemoteActor"/> that manages state in memory.
 /// </summary>
-internal sealed class RemoteActor : Actor, IRemoteActor
+internal sealed partial class RemoteActor(ActorHost host, ILogger<RemoteActor> logger) : Actor(host), IRemoteActor
 {
-    private readonly ILogger<RemoteActor> logger;
-
     private RemoteState currentState = new("default");
 
     private int callCount;
 
-    public RemoteActor(ActorHost host, ILogger<RemoteActor> logger)
-        : base(host)
-    {
-        this.logger = logger;
-    }
-
     /// <inheritdoc />
     public Task<RemoteState> GetState()
     {
-        this.logger.LogInformation("GetState called.");
+        logger.LogGetState();
         return Task.FromResult(this.currentState);
     }
 
     /// <inheritdoc />
     public Task SetState(RemoteState state)
     {
-        this.logger.LogInformation("SetState called.");
+        logger.LogSetState();
         this.currentState = state;
         return Task.CompletedTask;
     }
@@ -53,14 +45,14 @@ internal sealed class RemoteActor : Actor, IRemoteActor
     /// <inheritdoc />
     public Task<string> SayHello(string name)
     {
-        this.logger.LogInformation("SayHello called with name: {Name}", name);
+        logger.LogSayHello(name);
         return Task.FromResult($"Hello, {name}!");
     }
 
     /// <inheritdoc />
     public Task IncrementCallCount()
     {
-        this.logger.LogInformation("IncrementCallCount called.");
+        logger.LogIncrementCallCount();
         this.callCount++;
         return Task.CompletedTask;
     }
@@ -68,7 +60,7 @@ internal sealed class RemoteActor : Actor, IRemoteActor
     /// <inheritdoc />
     public Task<int> GetCallCount()
     {
-        this.logger.LogInformation("GetCallCount called.");
+        logger.LogGetCallCount();
         return Task.FromResult(this.callCount);
     }
 
@@ -77,4 +69,22 @@ internal sealed class RemoteActor : Actor, IRemoteActor
     {
         return Task.CompletedTask;
     }
+}
+
+internal static partial class RemoteActorLogMessages
+{
+    [LoggerMessage(LogLevel.Information, "GetState called.")]
+    public static partial void LogGetState(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, "SetState called.")]
+    public static partial void LogSetState(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, "SayHello called with name: {Name}")]
+    public static partial void LogSayHello(this ILogger logger, string name);
+
+    [LoggerMessage(LogLevel.Information, "IncrementCallCount called.")]
+    public static partial void LogIncrementCallCount(this ILogger logger);
+
+    [LoggerMessage(LogLevel.Information, "GetCallCount called.")]
+    public static partial void LogGetCallCount(this ILogger logger);
 }
