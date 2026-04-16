@@ -3,7 +3,7 @@
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <PackageId>Dapr.Workflow.Grpc</PackageId>
+        <IsPackable>false</IsPackable>
         <Title>Dapr Workflow gRPC protocol definitions</Title>
         <Description>The gRPC protocol definitions for Dapr Workflows.</Description>
     </PropertyGroup>

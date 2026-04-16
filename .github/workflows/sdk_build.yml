@@ -356,7 +356,7 @@ jobs:
           files=$(ls packages/*.nupkg | jq -R -s -c '
             split("\n")[:-1]
             | map(select(
-                (test("/Dapr\\.Workflow\\.Versioning\\.(Abstractions|Generators|Runtime)\\.")) | not
+                (test("/Dapr\\.Workflow\\.(Abstractions|Grpc|Analyzers|Runtime|Versioning)")) | not
               ))
           ')
           echo "matrix=$files" >> $GITHUB_OUTPUT

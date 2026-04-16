@@ -3,7 +3,7 @@
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <PackageId>Dapr.Workflow.Abstractions</PackageId>
+        <IsPackable>false</IsPackable>
         <Title>Dapr Workflow Abstractions</Title>
         <Description>Provides abstractions for the Dapr Workflow SDK implementation.</Description>
     </PropertyGroup>
