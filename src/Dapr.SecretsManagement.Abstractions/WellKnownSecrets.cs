@@ -16,7 +16,7 @@ namespace Dapr.SecretsManagement.Abstractions;
 /// <summary>
 /// Well-known names and constants related to Dapr Secrets Management.
 /// </summary>
-public static class WellKnownSecrets
+internal static class WellKnownSecrets
 {
     /// <summary>
     /// The fully qualified name of <see cref="SecretStoreAttribute"/>.

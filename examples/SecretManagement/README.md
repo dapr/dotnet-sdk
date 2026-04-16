@@ -17,7 +17,7 @@ This sample demonstrates how to use the Dapr Secrets Management SDK to retrieve 
 ## Running the Sample
 
 ```bash
-dapr run --app-id secret-sample --app-port 5234 -- dotnet run
+dapr run --app-id secret-sample --app-port 6543 -- dotnet run
 ```
 
 ## Endpoints
@@ -26,6 +26,7 @@ dapr run --app-id secret-sample --app-port 5234 -- dotnet run
 |--------|------|-------------|
 | GET | `/secrets/{storeName}/{key}` | Retrieve a single secret by key |
 | GET | `/secrets/{storeName}` | Retrieve all secrets from a store |
+| GET | `/typed-secrets` | Retrieve secrets using the source-generated typed store |
 
 ## NuGet Package Note
 

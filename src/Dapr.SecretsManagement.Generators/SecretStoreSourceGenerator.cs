@@ -51,10 +51,10 @@ public sealed class SecretStoreSourceGenerator : IIncrementalGenerator
             {
                 spc.ReportDiagnostic(Diagnostic.Create(
                     new DiagnosticDescriptor(
-                        "DAPRSEC001",
+                        "DAPR1601",
                         "SecretStore attribute not found",
-                        "The source generator could not find the type '" + SecretStoreAttributeFullName +
-                        "'. Ensure that Dapr.SecretsManagement.Abstractions is properly referenced.",
+                        "The source generator could not find the SecretStoreAttribute type. " +
+                        "Ensure that the Dapr.SecretsManagement package is properly referenced.",
                         "Dapr.SecretsManagement",
                         DiagnosticSeverity.Warning,
                         isEnabledByDefault: true),
@@ -143,7 +143,8 @@ public sealed class SecretStoreSourceGenerator : IIncrementalGenerator
                 interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 properties);
 
-            var hintName = (namespaceName is not null ? namespaceName + "." : "") + implName + ".g.cs";
+            var fqn = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var hintName = implName + "_" + GetStableHash(fqn).ToString("X8") + ".g.cs";
             spc.AddSource(hintName, source);
         });
     }
@@ -286,4 +287,22 @@ public sealed class SecretStoreSourceGenerator : IIncrementalGenerator
 
     private static string EscapeXml(string value) =>
         value.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+
+    /// <summary>
+    /// Produces a stable, deterministic 32-bit hash from the given string.
+    /// Used to generate unique hint names when multiple types share the same simple name
+    /// across different namespaces.
+    /// </summary>
+    private static uint GetStableHash(string text)
+    {
+        unchecked
+        {
+            uint hash = 2166136261;
+            foreach (var ch in text)
+            {
+                hash = (hash ^ ch) * 16777619;
+            }
+            return hash;
+        }
+    }
 }

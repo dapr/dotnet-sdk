@@ -13,20 +13,14 @@
 
 using Dapr.SecretsManagement;
 using Dapr.SecretsManagement.Extensions;
+using SecretManagementSample;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register the Dapr Secrets Management client with dependency injection.
-// This makes DaprSecretsManagementClient available throughout the application.
-builder.Services.AddDaprSecretsManagementClient();
-
-// If you've defined a typed secret store interface with [SecretStore] and the source generator,
-// you can register it here. For example:
-//
-//   builder.Services.AddDaprSecretsManagementClient()
-//       .AddMyVaultSecrets();   // Generated extension method
-//
-// See IMyVaultSecrets.cs for the typed secret store interface definition.
+// Register the Dapr Secrets Management client and the source-generated typed secret store.
+// AddMyVaultSecrets() is a generated extension method — see IMyVaultSecrets.cs.
+builder.Services.AddDaprSecretsManagementClient()
+    .AddMyVaultSecrets();
 
 var app = builder.Build();
 
@@ -51,16 +45,14 @@ app.MapGet("/secrets/{storeName}", async (
     return Results.Ok(secrets);
 });
 
-// --- Example 3: Using typed secret store (source-generated) ---
-// If you have registered a typed secret store (see IMyVaultSecrets.cs), you can inject it directly:
-//
-// app.MapGet("/typed-secrets", (IMyVaultSecrets secrets) =>
-// {
-//     return Results.Ok(new
-//     {
-//         DatabaseConnection = secrets.DatabaseConnection,
-//         ApiKey = secrets.ApiKey
-//     });
-// });
+// --- Example 3: Using the source-generated typed secret store ---
+app.MapGet("/typed-secrets", (SecretManagementSample.IMyVaultSecrets secrets) =>
+{
+    return Results.Ok(new
+    {
+        DatabaseConnection = secrets.DatabaseConnection,
+        ApiKey = secrets.ApiKey
+    });
+});
 
 app.Run();
