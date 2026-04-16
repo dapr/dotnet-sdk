@@ -71,6 +71,7 @@ public sealed class DaprdContainer : IAsyncStartable
     /// <param name="daprHttpPort">The host HTTP port to bind to.</param>
     /// <param name="daprGrpcPort">The host gRPC port to bind to.</param>
     /// <param name="logDirectory">The directory to write container logs to.</param>
+    /// <param name="configFilePath">The path inside the container of an optional Dapr configuration YAML file.</param>
     public DaprdContainer(
         string appId, 
         string componentsHostFolder, 
@@ -80,7 +81,8 @@ public sealed class DaprdContainer : IAsyncStartable
         HostPortPair? schedulerHostAndPort = null,
         int? daprHttpPort = null,
         int? daprGrpcPort = null,
-        string? logDirectory = null
+        string? logDirectory = null,
+        string? configFilePath = null
         )
     {
         _requestedHttpPort = daprHttpPort;
@@ -100,6 +102,12 @@ public sealed class DaprdContainer : IAsyncStartable
 				"-log-level", options.LogLevel.ToString().ToLowerInvariant(),
 				"-resources-path", componentsPath
 			};
+
+        if (configFilePath is not null)
+        {
+            cmd.Add("-config");
+            cmd.Add(configFilePath);
+        }
 
 		if (placementHostAndPort is not null)
 		{
