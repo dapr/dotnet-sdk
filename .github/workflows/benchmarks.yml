@@ -1,0 +1,78 @@
+name: benchmarks
+
+on:
+  push:
+    branches:
+      - master
+  schedule:
+    # Run weekly on Sundays at 04:00 UTC
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+
+jobs:
+  benchmarks:
+    name: Benchmarks (${{ matrix.display-name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        dotnet-version: ['8.0', '9.0', '10.0']
+        include:
+          - dotnet-version: '8.0'
+            display-name: '.NET 8.0'
+            framework: 'net8.0'
+            install-version: '8.0.x'
+          - dotnet-version: '9.0'
+            display-name: '.NET 9.0'
+            framework: 'net9.0'
+            install-version: '9.0.x'
+          - dotnet-version: '10.0'
+            display-name: '.NET 10.0'
+            framework: 'net10.0'
+            install-version: '10.0.x'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8.0
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+          dotnet-quality: 'ga'
+
+      - name: Setup .NET 9.0
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+          dotnet-quality: 'ga'
+
+      - name: Setup .NET 10.0
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: 'ga'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Run Benchmarks
+        run: |
+          dotnet run \
+            --project test/Dapr.Benchmarks/Dapr.Benchmarks.csproj \
+            --configuration Release \
+            --framework ${{ matrix.framework }} \
+            --no-build \
+            -- \
+            --filter '*' \
+            --artifacts "${{ github.workspace }}/BenchmarkResults"
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ matrix.framework }}
+          path: ${{ github.workspace }}/BenchmarkResults
+          retention-days: 90
