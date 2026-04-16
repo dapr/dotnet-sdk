@@ -20,6 +20,7 @@ using Dapr.Workflow.Worker;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
 using Dapr.Workflow.Abstractions;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -42,7 +43,7 @@ public class TimerOriginTests
     /// <summary>
     /// Test 1 — CreateTimer(delay) sets TimerOriginCreateTimer.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task CreateTimer_SetsTimerOriginCreateTimer()
     {
         var context = CreateContext();
@@ -56,7 +57,7 @@ public class TimerOriginTests
     /// <summary>
     /// Test 2 — finite-timeout WaitForExternalEvent sets TimerOriginExternalEvent.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task WaitForExternalEvent_FiniteTimeout_SetsTimerOriginExternalEvent()
     {
         var context = CreateContext();
@@ -78,7 +79,7 @@ public class TimerOriginTests
     /// <summary>
     /// Test 3 — activity retry timer sets TimerOriginActivityRetry.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task ActivityRetry_SetsTimerOriginActivityRetry()
     {
         var (worker, factory) = CreateWorkerAndFactory();
@@ -137,7 +138,7 @@ public class TimerOriginTests
     /// <summary>
     /// Test 4 — activity retry taskExecutionId is stable across attempts.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task ActivityRetry_TaskExecutionId_IsStableAcrossAttempts()
     {
         var (worker, factory) = CreateWorkerAndFactory();
@@ -237,7 +238,7 @@ public class TimerOriginTests
     /// <summary>
     /// Test 5 — child workflow retry timer sets TimerOriginChildWorkflowRetry.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task ChildWorkflowRetry_SetsTimerOriginChildWorkflowRetry()
     {
         var (worker, factory) = CreateWorkerAndFactory();
@@ -300,7 +301,7 @@ public class TimerOriginTests
     /// Test 6 — child workflow retry instanceId always points to first child.
     /// Verifies the first-child rule across multiple retries.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task ChildWorkflowRetry_InstanceId_AlwaysPointsToFirstChild()
     {
         var (worker, factory) = CreateWorkerAndFactory();
@@ -412,7 +413,7 @@ public class TimerOriginTests
     /// <summary>
     /// Test 7 — indefinite WaitForExternalEvent emits the sentinel optional timer.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task WaitForExternalEvent_Indefinite_EmitsSentinelOptionalTimer()
     {
         var context = CreateContext();
@@ -429,7 +430,7 @@ public class TimerOriginTests
     /// <summary>
     /// Test 8 — zero-timeout WaitForExternalEvent emits no timer.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task WaitForExternalEvent_ZeroTimeout_EmitsNoTimer()
     {
         var context = CreateContext();
@@ -450,7 +451,7 @@ public class TimerOriginTests
     /// <summary>
     /// Test 9 — post-patch replay matches the optional timer normally.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Replay_PostPatch_MatchesOptionalTimerNormally()
     {
         var (worker, factory) = CreateWorkerAndFactory();
@@ -505,7 +506,7 @@ public class TimerOriginTests
     /// <summary>
     /// Test 10 — pre-patch replay, indefinite wait followed by CallActivity.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Replay_PrePatch_IndefiniteWait_FollowedByCallActivity()
     {
         var (worker, factory) = CreateWorkerAndFactory();
@@ -572,7 +573,7 @@ public class TimerOriginTests
     /// <summary>
     /// Test 11 — pre-patch replay, indefinite wait followed by CallChildWorkflow.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Replay_PrePatch_IndefiniteWait_FollowedByCallChildWorkflow()
     {
         var (worker, factory) = CreateWorkerAndFactory();
@@ -637,7 +638,7 @@ public class TimerOriginTests
     /// Test 12 — pre-patch replay, indefinite wait followed by a user CreateTimer.
     /// Asymmetric TimerCreated-specific branch: pending is optional timer, incoming is CreateTimer origin.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Replay_PrePatch_IndefiniteWait_FollowedByUserCreateTimer()
     {
         var (worker, factory) = CreateWorkerAndFactory();
@@ -699,7 +700,7 @@ public class TimerOriginTests
     /// Test 13 — pre-patch replay, two indefinite waits in sequence.
     /// Validates drop-and-shift composes correctly across multiple optional timers.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Replay_PrePatch_TwoIndefiniteWaitsInSequence()
     {
         var (worker, factory) = CreateWorkerAndFactory();
