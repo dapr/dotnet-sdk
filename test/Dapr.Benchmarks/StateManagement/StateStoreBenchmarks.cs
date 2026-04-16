@@ -12,8 +12,11 @@
 // ------------------------------------------------------------------------
 
 using BenchmarkDotNet.Attributes;
-using Dapr.Benchmarks.Infrastructure;
 using Dapr.Client;
+using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Common.Options;
+using Dapr.Testcontainers.Common.Testing;
+using Dapr.Testcontainers.Harnesses;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,10 +31,14 @@ namespace Dapr.Benchmarks.StateManagement;
 [MaxIterationCount(10)]
 [IterationCount(5)]
 [WarmupCount(1)]
-public class StateStoreBenchmarks : DaprBenchmarkBase
+public class StateStoreBenchmarks : IDisposable
 {
     private const string StoreName = "statestore";
     private DaprClient daprClient = null!;
+    private DaprTestEnvironment? environment;
+    private DaprTestApplication? testApp;
+    private IServiceScope? scope;
+    private bool disposed;
 
     /// <summary>
     /// The payload size category for the benchmark.
@@ -44,9 +51,17 @@ public class StateStoreBenchmarks : DaprBenchmarkBase
     [GlobalSetup]
     public async Task Setup()
     {
-        await SetupEnvironmentAsync(
-            builder => builder.BuildStateManagement(),
-            configureServices: appBuilder =>
+        var componentsDir = TestDirectoryManager.CreateTestDirectory($"bench-state-{Guid.NewGuid():N}");
+
+        environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true);
+        await environment.StartAsync();
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildActors(); // Actors harness provides a Redis-backed state store
+
+        testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(appBuilder =>
             {
                 appBuilder.Services.AddDaprClient(configure: (sp, clientBuilder) =>
                 {
@@ -58,9 +73,12 @@ public class StateStoreBenchmarks : DaprBenchmarkBase
                     if (!string.IsNullOrEmpty(httpEndpoint))
                         clientBuilder.UseHttpEndpoint(httpEndpoint);
                 });
-            });
+            })
+            .BuildAndStartAsync();
 
-        daprClient = Scope!.ServiceProvider.GetRequiredService<DaprClient>();
+        scope = testApp.CreateScope();
+
+        daprClient = scope.ServiceProvider.GetRequiredService<DaprClient>();
 
         payload = PayloadSize switch
         {
@@ -85,7 +103,34 @@ public class StateStoreBenchmarks : DaprBenchmarkBase
     }
 
     [GlobalCleanup]
-    public async Task Cleanup() => await TeardownEnvironmentAsync();
+    public async Task Cleanup()
+    {
+        scope?.Dispose();
+        scope = null;
+
+        if (testApp is not null)
+        {
+            await testApp.DisposeAsync();
+            testApp = null;
+        }
+
+        if (environment is not null)
+        {
+            await environment.DisposeAsync();
+            environment = null;
+        }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (disposed) return;
+        disposed = true;
+
+        Cleanup().GetAwaiter().GetResult();
+
+        GC.SuppressFinalize(this);
+    }
 
     [Benchmark(Description = "SaveState")]
     public async Task SaveState()

@@ -67,7 +67,7 @@ public class WorkflowBenchmarks : DaprBenchmarkBase
     {
         var instanceId = Guid.NewGuid().ToString();
         await workflowClient.ScheduleNewWorkflowAsync(nameof(SimpleWorkflow), instanceId, 42);
-        await workflowClient.WaitForWorkflowCompletionAsync(instanceId, fetchPayloads: true);
+        await workflowClient.WaitForWorkflowCompletionAsync(instanceId, getInputsAndOutputs: true);
     }
 
     [Benchmark(Description = "FanOutWorkflow_5Activities")]
@@ -75,7 +75,7 @@ public class WorkflowBenchmarks : DaprBenchmarkBase
     {
         var instanceId = Guid.NewGuid().ToString();
         await workflowClient.ScheduleNewWorkflowAsync(nameof(FanOutWorkflow), instanceId, 5);
-        await workflowClient.WaitForWorkflowCompletionAsync(instanceId, fetchPayloads: true);
+        await workflowClient.WaitForWorkflowCompletionAsync(instanceId, getInputsAndOutputs: true);
     }
 
     /// <summary>
