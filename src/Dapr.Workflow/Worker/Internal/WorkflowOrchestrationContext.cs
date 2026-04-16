@@ -691,26 +691,31 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     }
 
     /// <summary>
+    /// If the pending action at <paramref name="eventId"/> is an optional external event timer,
+    /// drops it and shifts all subsequent actions/tasks down by one.
+    /// </summary>
+    /// <returns><c>true</c> if an optional timer was dropped; <c>false</c> otherwise.</returns>
+    private bool TryDropOptionalTimerAt(int eventId)
+    {
+        if (_pendingActions.TryGetValue(eventId, out var pendingAction)
+            && pendingAction.CreateTimer != null
+            && IsOptionalExternalEventTimerAction(pendingAction))
+        {
+            DropOptionalExternalEventTimerAt(eventId);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Handles a TaskScheduled history event, dropping an optional timer if needed.
     /// </summary>
     private void OnTaskScheduled(HistoryEvent historyEvent)
     {
         var eventId = historyEvent.EventId;
-        if (_pendingActions.TryGetValue(eventId, out var pendingAction))
-        {
-            if (pendingAction.CreateTimer != null && IsOptionalExternalEventTimerAction(pendingAction))
-            {
-                // Type mismatch: incoming is TaskScheduled but pending is an optional timer.
-                // Drop the optional timer and shift.
-                DropOptionalExternalEventTimerAt(eventId);
-                // After shift, the action at eventId should now match. Remove it normally.
-                _pendingActions.Remove(eventId);
-                return;
-            }
-
-            // Normal match
-            _pendingActions.Remove(eventId);
-        }
+        TryDropOptionalTimerAt(eventId);
+        _pendingActions.Remove(eventId);
     }
 
     /// <summary>
@@ -719,17 +724,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private void OnSubOrchestrationCreated(HistoryEvent historyEvent,
         SubOrchestrationInstanceCreatedEvent created)
     {
-        var createdEventId = historyEvent.EventId;
-
-        // Check if the pending action at this slot is an optional timer that needs to be dropped.
-        if (_pendingActions.TryGetValue(createdEventId, out var pendingAction)
-            && pendingAction.CreateTimer != null
-            && IsOptionalExternalEventTimerAction(pendingAction))
-        {
-            DropOptionalExternalEventTimerAt(createdEventId);
-            // After shift, fall through to normal sub-orchestration handling.
-        }
-
+        TryDropOptionalTimerAt(historyEvent.EventId);
         HandleSubOrchestrationCreated(historyEvent, created);
     }
 
@@ -769,26 +764,17 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private void OnTimerCreated(HistoryEvent historyEvent, TimerCreatedEvent timerCreated)
     {
         var eventId = historyEvent.EventId;
-        if (_pendingActions.TryGetValue(eventId, out var pendingAction) && pendingAction.CreateTimer != null)
+
+        // Asymmetric case: pending is an optional timer but incoming TimerCreated is not.
+        if (_pendingActions.TryGetValue(eventId, out var pendingAction)
+            && pendingAction.CreateTimer != null
+            && IsOptionalExternalEventTimerAction(pendingAction)
+            && !IsOptionalExternalEventTimerCreatedEvent(timerCreated))
         {
-            var pendingIsOptional = IsOptionalExternalEventTimerAction(pendingAction);
-            var incomingIsOptional = IsOptionalExternalEventTimerCreatedEvent(timerCreated);
-
-            if (pendingIsOptional && !incomingIsOptional)
-            {
-                // Asymmetric case: pending is optional but incoming is not.
-                // Drop the optional timer and shift, then match normally.
-                DropOptionalExternalEventTimerAt(eventId);
-                _pendingActions.Remove(eventId);
-                return;
-            }
-
-            // Both optional, or neither optional: normal match.
-            _pendingActions.Remove(eventId);
-            return;
+            DropOptionalExternalEventTimerAt(eventId);
         }
 
-        // Fallback: no pending action at this slot (or not a timer)
+        // Normal match (both optional, neither optional, or post-shift)
         _pendingActions.Remove(eventId);
     }
 
