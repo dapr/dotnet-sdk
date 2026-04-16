@@ -23,6 +23,8 @@ using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
+using static Dapr.Workflow.Worker.Internal.TimerOriginHelpers;
+using Timestamp = Google.Protobuf.WellKnownTypes.Timestamp;
 
 namespace Dapr.Workflow.Worker.Internal;
 
@@ -37,17 +39,6 @@ namespace Dapr.Workflow.Worker.Internal;
 /// </remarks>
 internal sealed class WorkflowOrchestrationContext : WorkflowContext
 {
-    /// <summary>
-    /// Sentinel fireAt value for indefinite external event timers.
-    /// Must be exactly 9999-12-31T23:59:59.999999999Z.
-    /// </summary>
-    internal static readonly Google.Protobuf.WellKnownTypes.Timestamp ExternalEventIndefiniteFireAt =
-        new()
-        {
-            Seconds = 253402300799, // 9999-12-31T23:59:59Z
-            Nanos = 999999999
-        };
-
     /// <summary>
     /// Used to track patch-based versioning semantics.
     /// </summary>
@@ -199,20 +190,19 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <inheritdoc />
     public override Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken)
     {
-        return CreateTimerInternal(fireAt, new TimerOriginCreateTimer(), cancellationToken);
+        return CreateTimerInternal(
+            Timestamp.FromDateTime(fireAt), new TimerOriginCreateTimer(), cancellationToken);
     }
 
     /// <summary>
     /// Creates a durable timer with the specified origin metadata.
     /// </summary>
-    internal async Task CreateTimerInternal(DateTime fireAt, IMessage origin, CancellationToken cancellationToken)
+    private async Task CreateTimerInternal(
+        Timestamp fireAt, IMessage origin, CancellationToken cancellationToken)
     {
         var taskId = _sequenceNumber++;
 
-        var createTimerAction = new CreateTimerAction
-        {
-            FireAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(fireAt)
-        };
+        var createTimerAction = new CreateTimerAction { FireAt = fireAt };
         SetTimerOrigin(createTimerAction, origin);
 
         _pendingActions.Add(taskId, new OrchestratorAction
@@ -245,25 +235,6 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         await tcs.Task;
     }
 
-    private static void SetTimerOrigin(CreateTimerAction action, IMessage origin)
-    {
-        switch (origin)
-        {
-            case TimerOriginCreateTimer createTimer:
-                action.OriginCreateTimer = createTimer;
-                break;
-            case TimerOriginExternalEvent externalEvent:
-                action.OriginExternalEvent = externalEvent;
-                break;
-            case TimerOriginActivityRetry activityRetry:
-                action.OriginActivityRetry = activityRetry;
-                break;
-            case TimerOriginChildWorkflowRetry childWorkflowRetry:
-                action.OriginChildWorkflowRetry = childWorkflowRetry;
-                break;
-        }
-    }
-
     /// <summary>
     /// Override that uses <see cref="TimerOriginExternalEvent"/> for the timeout timer and
     /// supports indefinite waits (timeout &lt; 0) via a sentinel optional timer.
@@ -294,7 +265,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         {
             // Finite timeout: emit a timer with origin = ExternalEvent.
             timeoutTask = CreateTimerInternal(
-                CurrentUtcDateTime.Add(timeout),
+                Timestamp.FromDateTime(CurrentUtcDateTime.Add(timeout)),
                 origin,
                 timerCts.Token);
         }
@@ -316,55 +287,14 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     }
 
     /// <summary>
-    /// Creates a durable timer with the sentinel fireAt for indefinite external event waits.
-    /// </summary>
-    private async Task CreateTimerInternal(
-        Google.Protobuf.WellKnownTypes.Timestamp fireAt,
-        IMessage origin,
-        CancellationToken cancellationToken)
-    {
-        var taskId = _sequenceNumber++;
-
-        var createTimerAction = new CreateTimerAction { FireAt = fireAt };
-        SetTimerOrigin(createTimerAction, origin);
-
-        _pendingActions.Add(taskId, new OrchestratorAction
-        {
-            Id = taskId,
-            CreateTimer = createTimerAction
-        });
-
-        var tcs = new TaskCompletionSource<HistoryEvent>();
-        _openTasks.Add(taskId, tcs);
-
-        if (_unmatchedCompletions.Remove(taskId, out var earlyCompletion))
-        {
-            tcs.TrySetResult(earlyCompletion);
-            _openTasks.Remove(taskId);
-        }
-
-        if (cancellationToken.CanBeCanceled)
-        {
-            cancellationToken.Register(() =>
-            {
-                if (tcs.TrySetCanceled())
-                {
-                    _openTasks.Remove(taskId);
-                }
-            });
-        }
-
-        await tcs.Task;
-    }
-
-    /// <summary>
     /// Creates a timer with <see cref="TimerOriginActivityRetry"/> origin.
     /// Called by <see cref="RetryInterceptor{T}"/> for activity retries.
     /// </summary>
     internal Task CreateActivityRetryTimer(TimeSpan delay, string taskExecutionId)
     {
         var origin = new TimerOriginActivityRetry { TaskExecutionId = taskExecutionId };
-        return CreateTimerInternal(CurrentUtcDateTime.Add(delay), origin, CancellationToken.None);
+        return CreateTimerInternal(
+            Timestamp.FromDateTime(CurrentUtcDateTime.Add(delay)), origin, CancellationToken.None);
     }
 
     /// <summary>
@@ -374,28 +304,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     internal Task CreateChildWorkflowRetryTimer(TimeSpan delay, string instanceId)
     {
         var origin = new TimerOriginChildWorkflowRetry { InstanceId = instanceId };
-        return CreateTimerInternal(CurrentUtcDateTime.Add(delay), origin, CancellationToken.None);
-    }
-
-    /// <summary>
-    /// Determines whether a <see cref="CreateTimerAction"/> is an optional external event timer.
-    /// </summary>
-    internal static bool IsOptionalExternalEventTimerAction(OrchestratorAction action)
-    {
-        return action.CreateTimer is { } timer
-               && timer.OriginCase == CreateTimerAction.OriginOneofCase.OriginExternalEvent
-               && timer.FireAt != null
-               && timer.FireAt.Equals(ExternalEventIndefiniteFireAt);
-    }
-
-    /// <summary>
-    /// Determines whether a <see cref="TimerCreatedEvent"/> is an optional external event timer.
-    /// </summary>
-    internal static bool IsOptionalExternalEventTimerCreatedEvent(TimerCreatedEvent timerCreated)
-    {
-        return timerCreated.OriginCase == TimerCreatedEvent.OriginOneofCase.OriginExternalEvent
-               && timerCreated.FireAt != null
-               && timerCreated.FireAt.Equals(ExternalEventIndefiniteFireAt);
+        return CreateTimerInternal(
+            Timestamp.FromDateTime(CurrentUtcDateTime.Add(delay)), origin, CancellationToken.None);
     }
 
     /// <inheritdoc />

@@ -424,7 +424,7 @@ public class TimerOriginTests
         Assert.NotNull(timerAction);
         Assert.Equal(CreateTimerAction.OriginOneofCase.OriginExternalEvent, timerAction!.CreateTimer!.OriginCase);
         Assert.Equal("myEvent", timerAction.CreateTimer.OriginExternalEvent.Name);
-        Assert.Equal(WorkflowOrchestrationContext.ExternalEventIndefiniteFireAt, timerAction.CreateTimer.FireAt);
+        Assert.Equal(TimerOriginHelpers.ExternalEventIndefiniteFireAt, timerAction.CreateTimer.FireAt);
     }
 
     /// <summary>
@@ -476,7 +476,7 @@ public class TimerOriginTests
                     EventId = 0,
                     TimerCreated = new TimerCreatedEvent
                     {
-                        FireAt = WorkflowOrchestrationContext.ExternalEventIndefiniteFireAt,
+                        FireAt = TimerOriginHelpers.ExternalEventIndefiniteFireAt,
                         OriginExternalEvent = new TimerOriginExternalEvent { Name = "myEvent" }
                     }
                 },
