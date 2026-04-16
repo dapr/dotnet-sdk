@@ -93,7 +93,7 @@ public class ExampleBuildValidationTests
 
     private static async Task<(int ExitCode, string Output)> RunDotnetTestAsync(string projectPath)
     {
-        return await RunDotnetCommandAsync($"test \"{projectPath}\" --framework net10.0 --no-build-server");
+        return await RunDotnetCommandAsync($"test \"{projectPath}\" --framework net10.0");
     }
 
     private static async Task<(int ExitCode, string Output)> RunDotnetCommandAsync(string arguments)
