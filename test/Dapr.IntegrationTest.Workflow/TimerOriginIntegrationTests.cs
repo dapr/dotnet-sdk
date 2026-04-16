@@ -27,6 +27,11 @@ namespace Dapr.IntegrationTest.Workflow;
 /// </summary>
 public sealed class TimerOriginIntegrationTests
 {
+    /// <summary>
+    /// Time to allow the workflow to start and begin waiting before raising events.
+    /// </summary>
+    private static readonly TimeSpan WorkflowStartupDelay = TimeSpan.FromSeconds(2);
+
     // ------------------------------------------------------------------
     //  1. CreateTimer completes the workflow after the timer fires
     // ------------------------------------------------------------------
@@ -119,7 +124,7 @@ public sealed class TimerOriginIntegrationTests
             nameof(ExternalEventWithTimeoutWorkflow), workflowInstanceId);
 
         // Give the workflow a moment to start and begin waiting
-        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await Task.Delay(WorkflowStartupDelay, TestContext.Current.CancellationToken);
 
         // Raise the event well before the 60-second timeout
         await client.RaiseEventAsync(
@@ -227,7 +232,7 @@ public sealed class TimerOriginIntegrationTests
             nameof(IndefiniteExternalEventWorkflow), workflowInstanceId);
 
         // Give the workflow time to start and begin waiting
-        await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        await Task.Delay(WorkflowStartupDelay, TestContext.Current.CancellationToken);
 
         // Raise the event
         await client.RaiseEventAsync(
