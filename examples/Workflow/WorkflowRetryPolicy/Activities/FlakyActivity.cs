@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Collections.Concurrent;
 using Dapr.Workflow;
 
 namespace WorkflowRetryPolicyExample.Activities;
@@ -22,32 +23,26 @@ namespace WorkflowRetryPolicyExample.Activities;
 internal sealed class FlakyActivity : WorkflowActivity<FlakyActivityInput, string>
 {
     // Track call counts per workflow instance to simulate transient failures.
-    private static readonly Dictionary<string, int> callCounts = new();
+    private static readonly ConcurrentDictionary<string, int> callCounts = new();
 
     public override Task<string> RunAsync(WorkflowActivityContext context, FlakyActivityInput input)
     {
         var key = $"{context.InstanceId}-{input.ActivityName}";
+        var count = callCounts.AddOrUpdate(key, 1, (_, existing) => existing + 1);
 
-        lock (callCounts)
+        Console.WriteLine(
+            $"[{input.ActivityName}] Attempt {count} of max {input.FailUntilAttempt} " +
+            $"before success (instance: {context.InstanceId})");
+
+        if (count < input.FailUntilAttempt)
         {
-            callCounts.TryGetValue(key, out var count);
-            count++;
-            callCounts[key] = count;
-
-            Console.WriteLine(
-                $"[{input.ActivityName}] Attempt {count} of max {input.FailUntilAttempt} " +
-                $"before success (instance: {context.InstanceId})");
-
-            if (count < input.FailUntilAttempt)
-            {
-                throw new ApplicationException(
-                    $"Simulated transient failure in '{input.ActivityName}' " +
-                    $"(attempt {count}, will succeed on attempt {input.FailUntilAttempt}).");
-            }
-
-            Console.WriteLine($"[{input.ActivityName}] Succeeded on attempt {count}!");
-            return Task.FromResult($"{input.ActivityName} completed after {count} attempt(s)");
+            throw new ApplicationException(
+                $"Simulated transient failure in '{input.ActivityName}' " +
+                $"(attempt {count}, will succeed on attempt {input.FailUntilAttempt}).");
         }
+
+        Console.WriteLine($"[{input.ActivityName}] Succeeded on attempt {count}!");
+        return Task.FromResult($"{input.ActivityName} completed after {count} attempt(s)");
     }
 }
 
