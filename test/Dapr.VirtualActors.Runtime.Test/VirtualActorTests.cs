@@ -155,6 +155,7 @@ public class VirtualActorHostTests
             "",
             new Mock<IActorStateManager>().Object,
             new Mock<IVirtualActorProxyFactory>().Object,
+            new Mock<IActorTimerManager>().Object,
             NullLoggerFactory.Instance));
     }
 
@@ -166,6 +167,7 @@ public class VirtualActorHostTests
             "TestActor",
             null!,
             new Mock<IVirtualActorProxyFactory>().Object,
+            new Mock<IActorTimerManager>().Object,
             NullLoggerFactory.Instance));
     }
 }

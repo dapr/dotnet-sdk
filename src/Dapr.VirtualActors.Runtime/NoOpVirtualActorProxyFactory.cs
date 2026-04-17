@@ -16,7 +16,7 @@ namespace Dapr.VirtualActors.Runtime;
 /// <summary>
 /// A no-op proxy factory used for unit testing.
 /// </summary>
-internal sealed class NoOpVirtualActorProxyFactory : IVirtualActorProxyFactory
+public sealed class NoOpVirtualActorProxyFactory : IVirtualActorProxyFactory
 {
     /// <inheritdoc />
     public TActorInterface CreateProxy<TActorInterface>(VirtualActorId actorId, string? actorType = null)

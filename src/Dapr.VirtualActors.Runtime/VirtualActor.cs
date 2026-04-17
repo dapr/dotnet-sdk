@@ -103,4 +103,72 @@ public abstract class VirtualActor
     /// <returns>A task that represents the asynchronous operation.</returns>
     protected internal virtual Task OnPostActorMethodAsync(ActorMethodContext context, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
+
+    /// <summary>
+    /// Registers a durable reminder on this actor via the Dapr runtime.
+    /// </summary>
+    /// <remarks>
+    /// Actors that call this method should implement <see cref="IVirtualActorRemindable"/>
+    /// to receive reminder callbacks. An analyzer will warn if this method is called
+    /// without implementing that interface.
+    /// </remarks>
+    /// <param name="reminderName">The reminder name. Must be unique within this actor instance.</param>
+    /// <param name="state">Optional state to pass to the reminder callback.</param>
+    /// <param name="dueTime">How long to wait before the first reminder fires.</param>
+    /// <param name="period">How frequently the reminder fires after the first firing.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A task that represents the asynchronous registration.</returns>
+    protected Task RegisterReminderAsync(
+        string reminderName,
+        byte[]? state,
+        TimeSpan dueTime,
+        TimeSpan period,
+        CancellationToken cancellationToken = default) =>
+        Host.TimerManager.RegisterReminderAsync(
+            Host.ActorType, Host.Id, reminderName, state, dueTime, period, cancellationToken: cancellationToken);
+
+    /// <summary>
+    /// Unregisters a previously registered reminder.
+    /// </summary>
+    /// <param name="reminderName">The name of the reminder to unregister.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    protected Task UnregisterReminderAsync(string reminderName, CancellationToken cancellationToken = default) =>
+        Host.TimerManager.UnregisterReminderAsync(Host.ActorType, Host.Id, reminderName, cancellationToken);
+
+    /// <summary>
+    /// Registers a timer on this actor via the Dapr runtime.
+    /// </summary>
+    /// <remarks>
+    /// The callback method must exist on this actor class. An analyzer will warn if the
+    /// named callback method cannot be found.
+    /// </remarks>
+    /// <param name="timerName">The timer name. Must be unique within this actor instance.</param>
+    /// <param name="callbackMethodName">The name of the method to invoke when the timer fires.</param>
+    /// <param name="callbackData">Optional data to pass to the callback.</param>
+    /// <param name="dueTime">How long to wait before the first timer fires.</param>
+    /// <param name="period">How frequently the timer fires after the first firing.</param>
+    /// <param name="ttl">Optional time-to-live. Timer is unregistered after this duration.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A task that represents the asynchronous registration.</returns>
+    protected Task RegisterTimerAsync(
+        string timerName,
+        string callbackMethodName,
+        byte[]? callbackData,
+        TimeSpan dueTime,
+        TimeSpan period,
+        TimeSpan? ttl = null,
+        CancellationToken cancellationToken = default) =>
+        Host.TimerManager.RegisterTimerAsync(
+            Host.ActorType, Host.Id, timerName, callbackMethodName,
+            callbackData, dueTime, period, ttl, cancellationToken);
+
+    /// <summary>
+    /// Unregisters a previously registered timer.
+    /// </summary>
+    /// <param name="timerName">The name of the timer to unregister.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    protected Task UnregisterTimerAsync(string timerName, CancellationToken cancellationToken = default) =>
+        Host.TimerManager.UnregisterTimerAsync(Host.ActorType, Host.Id, timerName, cancellationToken);
 }

@@ -67,6 +67,7 @@ internal sealed class VirtualActorHostFactory
             actorType.ActorTypeName,
             stateManager,
             _proxyFactory,
+            _timerManager,
             _loggerFactory);
     }
 }

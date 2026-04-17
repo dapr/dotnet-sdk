@@ -32,23 +32,27 @@ public sealed class VirtualActorHost
     /// <param name="actorType">The type name of the actor.</param>
     /// <param name="stateManager">The state manager for the actor.</param>
     /// <param name="proxyFactory">The proxy factory for inter-actor communication.</param>
+    /// <param name="timerManager">The timer and reminder manager.</param>
     /// <param name="loggerFactory">The logger factory.</param>
     public VirtualActorHost(
         VirtualActorId id,
         string actorType,
         IActorStateManager stateManager,
         IVirtualActorProxyFactory proxyFactory,
+        IActorTimerManager timerManager,
         ILoggerFactory loggerFactory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
         ArgumentNullException.ThrowIfNull(stateManager);
         ArgumentNullException.ThrowIfNull(proxyFactory);
+        ArgumentNullException.ThrowIfNull(timerManager);
         ArgumentNullException.ThrowIfNull(loggerFactory);
 
         Id = id;
         ActorType = actorType;
         StateManager = stateManager;
         ProxyFactory = proxyFactory;
+        TimerManager = timerManager;
         LoggerFactory = loggerFactory;
     }
 
@@ -73,6 +77,11 @@ public sealed class VirtualActorHost
     public IVirtualActorProxyFactory ProxyFactory { get; }
 
     /// <summary>
+    /// Gets the timer and reminder manager.
+    /// </summary>
+    public IActorTimerManager TimerManager { get; }
+
+    /// <summary>
     /// Gets the logger factory.
     /// </summary>
     public ILoggerFactory LoggerFactory { get; }
@@ -84,12 +93,14 @@ public sealed class VirtualActorHost
     /// <param name="actorId">Optional actor ID. Defaults to a random value.</param>
     /// <param name="stateManager">Optional state manager mock.</param>
     /// <param name="proxyFactory">Optional proxy factory mock.</param>
+    /// <param name="timerManager">Optional timer/reminder manager mock.</param>
     /// <param name="loggerFactory">Optional logger factory.</param>
     /// <returns>A <see cref="VirtualActorHost"/> suitable for unit tests.</returns>
     public static VirtualActorHost CreateForTest<TActor>(
         VirtualActorId? actorId = null,
         IActorStateManager? stateManager = null,
         IVirtualActorProxyFactory? proxyFactory = null,
+        IActorTimerManager? timerManager = null,
         ILoggerFactory? loggerFactory = null) where TActor : VirtualActor
     {
         return new VirtualActorHost(
@@ -97,6 +108,7 @@ public sealed class VirtualActorHost
             typeof(TActor).Name,
             stateManager ?? new NoOpActorStateManager(),
             proxyFactory ?? new NoOpVirtualActorProxyFactory(),
+            timerManager ?? new NoOpActorTimerManager(),
             loggerFactory ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
     }
 }

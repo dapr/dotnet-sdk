@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\..\src\Dapr.VirtualActors.Runtime\Dapr.VirtualActors.Runtime.csproj" />
+        <ProjectReference Include="..\Interfaces\BasicActor.Interfaces.csproj" />
+    </ItemGroup>
+</Project>

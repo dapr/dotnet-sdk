@@ -16,7 +16,7 @@ namespace Dapr.VirtualActors.Runtime;
 /// <summary>
 /// A no-op state manager used for unit testing.
 /// </summary>
-internal sealed class NoOpActorStateManager : IActorStateManager
+public sealed class NoOpActorStateManager : IActorStateManager
 {
     /// <inheritdoc />
     public Task AddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken = default) =>
