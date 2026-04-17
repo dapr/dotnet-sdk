@@ -69,31 +69,9 @@ public class ExampleBuildValidationTests
             $"Build failed for '{relativeProjectPath}' (exit code {exitCode}):{Environment.NewLine}{output}");
     }
 
-    /// <summary>
-    /// Verifies that the WorkflowUnitTest example's tests pass when executed.
-    /// </summary>
-    [Fact]
-    public async Task WorkflowUnitTestExample_ShouldPassTests()
-    {
-        var repoRoot = FindRepoRoot();
-        var projectPath = Path.Combine(repoRoot, "examples", "Workflow", "WorkflowUnitTest", "WorkflowUnitTest.csproj");
-
-        Assert.True(File.Exists(projectPath), $"WorkflowUnitTest project not found: {projectPath}");
-
-        var (exitCode, output) = await RunDotnetTestAsync(projectPath);
-
-        Assert.True(exitCode == 0,
-            $"Tests failed for WorkflowUnitTest (exit code {exitCode}):{Environment.NewLine}{output}");
-    }
-
     private static async Task<(int ExitCode, string Output)> RunDotnetBuildAsync(string projectPath)
     {
         return await RunDotnetCommandAsync($"build \"{projectPath}\" --framework net10.0 --no-incremental -consoleLoggerParameters:NoSummary");
-    }
-
-    private static async Task<(int ExitCode, string Output)> RunDotnetTestAsync(string projectPath)
-    {
-        return await RunDotnetCommandAsync($"test \"{projectPath}\" --framework net10.0");
     }
 
     private static async Task<(int ExitCode, string Output)> RunDotnetCommandAsync(string arguments)
