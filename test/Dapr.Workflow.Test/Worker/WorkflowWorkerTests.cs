@@ -1867,8 +1867,656 @@ public class WorkflowWorkerTests
         Assert.Equal(string.Empty, response.Result);
     }
     
+    // -------------------------------------------------------------------------
+    // RequiresHistoryStreaming
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldStreamHistory_WhenRequiresHistoryStreamingIsTrue()
+    {
+        // When RequiresHistoryStreaming is set, the worker must fetch past history
+        // via StreamInstanceHistory and merge it with the inline PastEvents before
+        // running the workflow. Here we put the ExecutionStarted event inside the
+        // stream (not in PastEvents) so the workflow can only complete if streaming works.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(int),
+            run: (_, input) => Task.FromResult<object?>((int)input! + 1)));
+
+        // The streamed chunk carries the ExecutionStarted event.
+        var streamedChunk = new HistoryChunk();
+        streamedChunk.Events.Add(new HistoryEvent
+        {
+            ExecutionStarted = new ExecutionStartedEvent { Name = "wf", Input = "10" }
+        });
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.StreamInstanceHistory(It.IsAny<StreamInstanceHistoryRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateHistoryStreamingCall(SingleItemAsync(streamedChunk)));
+
+        var worker = new WorkflowWorker(
+            grpcClientMock.Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "stream-i",
+            RequiresHistoryStreaming = true
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("stream-i", response.InstanceId);
+        var complete = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
+        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+        Assert.Equal("11", complete.Result);
+
+        grpcClientMock.Verify(
+            x => x.StreamInstanceHistory(It.IsAny<StreamInstanceHistoryRequest>(), It.IsAny<CallOptions>()),
+            Times.Once());
+    }
+
+    // -------------------------------------------------------------------------
+    // Workflow-name extraction fallbacks
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldExtractWorkflowName_FromHistoryState()
+    {
+        // When no ExecutionStarted event is present, the worker falls back to
+        // HistoryState.OrchestrationState.Name to identify the workflow.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("fallback-wf", new InlineWorkflow(
+            inputType: typeof(object),
+            run: (_, _) => Task.FromResult<object?>(null)));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                // Only a HistoryState event, no ExecutionStarted.
+                new HistoryEvent
+                {
+                    HistoryState = new HistoryStateEvent
+                    {
+                        OrchestrationState = new OrchestrationState { Name = "fallback-wf" }
+                    }
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var complete = Assert.Single(response.Actions).CompleteOrchestration;
+        Assert.NotNull(complete);
+        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+    }
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldExtractWorkflowName_FromOrchestratorStartedVersion()
+    {
+        // Third fallback: OrchestratorStarted.Version.Name when both ExecutionStarted
+        // and HistoryState are absent or have no name.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("version-wf", new InlineWorkflow(
+            inputType: typeof(object),
+            run: (_, _) => Task.FromResult<object?>(null)));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(
+                        new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
+                    OrchestratorStarted = new OrchestratorStartedEvent
+                    {
+                        Version = new OrchestrationVersion { Name = "version-wf" }
+                    }
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var complete = Assert.Single(response.Actions).CompleteOrchestration;
+        Assert.NotNull(complete);
+        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+    }
+
+    // -------------------------------------------------------------------------
+    // IWorkflowRouterRegistry integration
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldResolveFromRouter_WhenHistoryHasNoWorkflowName()
+    {
+        // When the history carries no workflow name, the worker consults
+        // IWorkflowRouterRegistry.TryResolveLatest and stamps the version in the response.
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("routed-wf", new InlineWorkflow(
+            inputType: typeof(object),
+            run: (_, _) => Task.FromResult<object?>(null)));
+
+        var routerRegistry = new Mock<IWorkflowRouterRegistry>();
+        routerRegistry.Setup(r => r.TryResolveLatest(out It.Ref<string>.IsAny))
+            .Returns((out string name) =>
+            {
+                name = "routed-wf";
+                return true;
+            });
+        routerRegistry.Setup(r => r.Contains(It.IsAny<string>())).Returns(true);
+
+        var sp = new ServiceCollection()
+            .AddSingleton(routerRegistry.Object)
+            .BuildServiceProvider();
+
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        // No ExecutionStarted / HistoryState / OrchestratorStarted.Version — name must come from router.
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent { TimerFired = new TimerFiredEvent() }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var complete = Assert.Single(response.Actions).CompleteOrchestration;
+        Assert.NotNull(complete);
+        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+
+        // resolvedFromRouter=true must stamp the version into the response.
+        Assert.NotNull(response.Version);
+        Assert.Equal("routed-wf", response.Version.Name);
+    }
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldReturnWorkflowNameMissingError_WhenRouterCannotResolveLatest()
+    {
+        // If IWorkflowRouterRegistry.TryResolveLatest returns false and no name is
+        // in the history, the worker must fail the orchestration with WorkflowNameMissing.
+        var routerRegistry = new Mock<IWorkflowRouterRegistry>();
+        routerRegistry.Setup(r => r.TryResolveLatest(out It.Ref<string>.IsAny))
+            .Returns((out string name) =>
+            {
+                name = null!;
+                return false;
+            });
+
+        var sp = new ServiceCollection()
+            .AddSingleton(routerRegistry.Object)
+            .BuildServiceProvider();
+
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            new StubWorkflowsFactory(),
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents = { new HistoryEvent { TimerFired = new TimerFiredEvent() } }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        var complete = Assert.Single(response.Actions).CompleteOrchestration;
+        Assert.NotNull(complete);
+        Assert.Equal(OrchestrationStatus.Failed, complete.OrchestrationStatus);
+        Assert.Equal("WorkflowNameMissing", complete.FailureDetails.ErrorType);
+    }
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldReturnWorkflowNotFoundError_WhenRouterDoesNotContainWorkflow()
+    {
+        // If IWorkflowRouterRegistry is present but Contains("wf") returns false,
+        // the worker must fail the orchestration with WorkflowNotFound.
+        var routerRegistry = new Mock<IWorkflowRouterRegistry>();
+        routerRegistry.Setup(r => r.Contains("wf")).Returns(false);
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(object),
+            run: (_, _) => Task.FromResult<object?>(null)));
+
+        var sp = new ServiceCollection()
+            .AddSingleton(routerRegistry.Object)
+            .BuildServiceProvider();
+
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "wf", Input = "" }
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        var complete = Assert.Single(response.Actions).CompleteOrchestration;
+        Assert.NotNull(complete);
+        Assert.Equal(OrchestrationStatus.Failed, complete.OrchestrationStatus);
+        Assert.Equal("WorkflowNotFound", complete.FailureDetails.ErrorType);
+        Assert.Contains("wf", complete.FailureDetails.ErrorMessage);
+    }
+
+    // -------------------------------------------------------------------------
+    // Version stamping via IsPatched
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldIncludeVersionInResponse_WhenWorkflowUsesIsPatched()
+    {
+        // When the workflow calls ctx.IsPatched(), the version tracker sets
+        // IncludeVersionInNextResponse=true and the worker stamps the version into
+        // the OrchestratorResponse.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        const string patchName = "my-feature-patch";
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(object),
+            run: (ctx, _) =>
+            {
+                ctx.IsPatched(patchName);
+                return Task.FromResult<object?>(null);
+            }));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "wf", Input = "" }
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        Assert.NotNull(response.Version);
+        Assert.Equal("wf", response.Version.Name);
+        Assert.Contains(patchName, response.Version.Patches);
+    }
+
+    // -------------------------------------------------------------------------
+    // Yield path (workflow not yet complete)
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldYield_WhenWorkflowAwaitsActivityNotYetComplete()
+    {
+        // First turn: workflow awaits an activity but no completion event is present.
+        // The response must contain a ScheduleTask action and no CompleteOrchestration.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(object),
+            run: async (ctx, _) =>
+            {
+                await ctx.CallActivityAsync<int>("step");
+                return null;
+            }));
+        factory.AddActivity("step", new InlineActivity(
+            inputType: typeof(object),
+            run: (_, _) => Task.FromResult<object?>(42)));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        // Only ExecutionStarted — activity has not been scheduled or completed yet.
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "wf", Input = "" }
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        Assert.DoesNotContain(response.Actions, a => a.CompleteOrchestration != null);
+        Assert.Contains(response.Actions, a => a.ScheduleTask != null);
+    }
+
+    // -------------------------------------------------------------------------
+    // Inner exception path (workflow returns a faulted Task)
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldReturnFailedCompletion_WhenWorkflowReturnsFaultedTask()
+    {
+        // Unlike a synchronous throw (which hits the outer catch), a workflow that
+        // returns an already-faulted Task exercises the inner try/catch around
+        // `await runTask`, where IsNonRetriable is explicitly set to true.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(int),
+            run: (_, _) => Task.FromException<object?>(new InvalidOperationException("task-fault"))));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "wf", Input = "1" }
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var complete = Assert.Single(response.Actions).CompleteOrchestration;
+        Assert.NotNull(complete);
+        Assert.Equal(OrchestrationStatus.Failed, complete.OrchestrationStatus);
+        Assert.NotNull(complete.FailureDetails);
+        Assert.Contains("task-fault", complete.FailureDetails.ErrorMessage);
+        // The inner catch always marks workflow failures as non-retriable.
+        Assert.True(complete.FailureDetails.IsNonRetriable);
+    }
+
+    // -------------------------------------------------------------------------
+    // Outer exception handler (unexpected exception escaping the main logic)
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldReturnFailed_WhenUnexpectedExceptionEscapes()
+    {
+        // An exception thrown by the serializer during input deserialization is
+        // outside the inner try/catch, so it is caught by the outer handler which
+        // returns an OrchestratorResponse with OrchestrationStatus.Failed.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var options = new WorkflowRuntimeOptions();
+
+        var faultySerializer = new Mock<IWorkflowSerializer>();
+        faultySerializer
+            .Setup(s => s.Deserialize(It.IsAny<string>(), It.IsAny<Type>()))
+            .Throws(new InvalidOperationException("serializer-exploded"));
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(object),
+            run: (_, _) => Task.FromResult<object?>(null)));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            faultySerializer.Object,
+            sp,
+            options);
+
+        var request = new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                // Non-empty input triggers Deserialize.
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent { Name = "wf", Input = "\"some-input\"" }
+                }
+            }
+        };
+
+        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        var complete = Assert.Single(response.Actions).CompleteOrchestration;
+        Assert.NotNull(complete);
+        Assert.Equal(OrchestrationStatus.Failed, complete.OrchestrationStatus);
+        Assert.NotNull(complete.FailureDetails);
+        Assert.Contains("serializer-exploded", complete.FailureDetails.ErrorMessage);
+    }
+
+    // -------------------------------------------------------------------------
+    // Activity: TaskExecutionId
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task HandleActivityResponseAsync_ShouldUseTaskExecutionId_WhenProvided()
+    {
+        // When TaskExecutionId is non-empty the activity context execution key must
+        // be the TaskExecutionId string.  We verify this indirectly by confirming
+        // the activity still executes successfully and the correct task id is echoed.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddActivity("act", new InlineActivity(
+            inputType: typeof(int),
+            run: (_, _) => Task.FromResult<object?>(null)));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        const string execId = "exec-abc-123";
+
+        var request = new ActivityRequest
+        {
+            Name = "act",
+            TaskId = 77,
+            TaskExecutionId = execId,
+            OrchestrationInstance = new OrchestrationInstance { InstanceId = "wf-1" },
+            Input = ""
+        };
+
+        var response = await InvokeHandleActivityResponseAsync(worker, request);
+
+        Assert.Null(response.FailureDetails);
+        Assert.Equal("wf-1", response.InstanceId);
+        Assert.Equal(77, response.TaskId);
+    }
+
+    // -------------------------------------------------------------------------
+    // CompletionToken propagation
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldEchoCompletionToken_InAllResponsePaths()
+    {
+        // CompletionToken must be round-tripped back in every response path.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            new StubWorkflowsFactory(),
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        // Suspended path
+        var suspendedResponse = await InvokeHandleOrchestratorResponseAsync(worker, new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents = { new HistoryEvent { ExecutionStarted = new ExecutionStartedEvent { Name = "wf" } } },
+            NewEvents = { new HistoryEvent { ExecutionSuspended = new ExecutionSuspendedEvent() } }
+        });
+        Assert.Equal(CompletionTokenValue, suspendedResponse.CompletionToken);
+
+        // Terminated path
+        var terminatedResponse = await InvokeHandleOrchestratorResponseAsync(worker, new OrchestratorRequest
+        {
+            InstanceId = "i",
+            NewEvents = { new HistoryEvent { ExecutionTerminated = new ExecutionTerminatedEvent() } }
+        });
+        Assert.Equal(CompletionTokenValue, terminatedResponse.CompletionToken);
+
+        // WorkflowNotFound path
+        var notFoundResponse = await InvokeHandleOrchestratorResponseAsync(worker, new OrchestratorRequest
+        {
+            InstanceId = "i",
+            PastEvents = { new HistoryEvent { ExecutionStarted = new ExecutionStartedEvent { Name = "not-registered" } } }
+        });
+        Assert.Equal(CompletionTokenValue, notFoundResponse.CompletionToken);
+    }
+
+    [Fact]
+    public async Task HandleActivityResponseAsync_ShouldEchoCompletionToken_InAllResponsePaths()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddActivity("ok-act", new InlineActivity(
+            inputType: typeof(object),
+            run: (_, _) => Task.FromResult<object?>(null)));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        // Success path
+        var successResponse = await InvokeHandleActivityResponseAsync(worker, new ActivityRequest
+        {
+            Name = "ok-act",
+            TaskId = 1,
+            OrchestrationInstance = new OrchestrationInstance { InstanceId = "i" },
+            Input = ""
+        });
+        Assert.Equal(CompletionTokenValue, successResponse.CompletionToken);
+
+        // Not-found path
+        var notFoundResponse = await InvokeHandleActivityResponseAsync(worker, new ActivityRequest
+        {
+            Name = "missing-act",
+            TaskId = 2,
+            OrchestrationInstance = new OrchestrationInstance { InstanceId = "i" },
+            Input = ""
+        });
+        Assert.Equal(CompletionTokenValue, notFoundResponse.CompletionToken);
+    }
+
     private const string CompletionTokenValue = "abc123";
-    
+
     private static async Task InvokeExecuteAsync(WorkflowWorker worker, CancellationToken token)
     {
         var method = typeof(WorkflowWorker).GetMethod("ExecuteAsync", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -1928,10 +2576,35 @@ public class WorkflowWorkerTests
             () => { });
     }
 
+    private static AsyncServerStreamingCall<HistoryChunk> CreateHistoryStreamingCall(IAsyncEnumerable<HistoryChunk> chunks)
+    {
+        var stream = new TestAsyncStreamReader<HistoryChunk>(chunks);
+
+        return new AsyncServerStreamingCall<HistoryChunk>(
+            stream,
+            Task.FromResult(new Metadata()),
+            () => Status.DefaultSuccess,
+            () => [],
+            () => { });
+    }
+
+    private static async IAsyncEnumerable<T> SingleItemAsync<T>(T item)
+    {
+        await Task.CompletedTask;
+        yield return item;
+    }
+
     private sealed class TestAsyncStreamReader(IAsyncEnumerable<WorkItem> items) : IAsyncStreamReader<WorkItem>
     {
         private readonly IAsyncEnumerator<WorkItem> _enumerator = items.GetAsyncEnumerator();
         public WorkItem Current => _enumerator.Current;
+        public Task<bool> MoveNext(CancellationToken cancellationToken) => _enumerator.MoveNextAsync().AsTask();
+    }
+
+    private sealed class TestAsyncStreamReader<T>(IAsyncEnumerable<T> items) : IAsyncStreamReader<T>
+    {
+        private readonly IAsyncEnumerator<T> _enumerator = items.GetAsyncEnumerator();
+        public T Current => _enumerator.Current;
         public Task<bool> MoveNext(CancellationToken cancellationToken) => _enumerator.MoveNextAsync().AsTask();
     }
 
