@@ -20,7 +20,6 @@ using System.Threading.Tasks;
 using Dapr.AI.Conversation;
 using Dapr.AI.Conversation.ConversationRoles;
 using Dapr.AI.Conversation.Tools;
-using Dapr.AI.Microsoft.Extensions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -39,8 +38,8 @@ public class DaprChatClientTest
     {
         var message = new ResultMessage(text);
         var choice = new ConversationResultChoice(finishReason, 0, message);
-        var output = new ConversationResponseResult(new ConversationResultChoice[] { choice });
-        return new ConversationResponse(new ConversationResponseResult[] { output }, conversationId);
+        var output = new ConversationResponseResult([choice]);
+        return new ConversationResponse([output], conversationId);
     }
 
     #region Constructor
@@ -48,7 +47,7 @@ public class DaprChatClientTest
     [Fact]
     public void Constructor_NullOptions_ShouldThrowArgumentNullException()
     {
-        var fake = new FakeConversationClient(new ConversationResponse(new ConversationResponseResult[0]));
+        var fake = new FakeConversationClient(new ConversationResponse([]));
         var sp = new ServiceCollection().BuildServiceProvider();
 
         var ex = Assert.Throws<ArgumentNullException>(() =>
@@ -67,7 +66,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "Hello") { AuthorName = "alice" } },
+            [new ChatMessage(ChatRole.User, "Hello") { AuthorName = "alice" }],
             cancellationToken: TestContext.Current.CancellationToken);
 
         var msgs = fake.CapturedInputs![0].Messages;
@@ -84,7 +83,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.Assistant, "I can help.") },
+            [new ChatMessage(ChatRole.Assistant, "I can help.")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.IsType<AssistantMessage>(fake.CapturedInputs![0].Messages[0]);
@@ -97,7 +96,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.System, "Be helpful.") },
+            [new ChatMessage(ChatRole.System, "Be helpful.")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.IsType<SystemMessage>(fake.CapturedInputs![0].Messages[0]);
@@ -110,7 +109,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.Tool, "sunny") { AuthorName = "weather_api" } },
+            [new ChatMessage(ChatRole.Tool, "sunny") { AuthorName = "weather_api" }],
             cancellationToken: TestContext.Current.CancellationToken);
 
         var toolMsg = Assert.IsType<ToolMessage>(fake.CapturedInputs![0].Messages[0]);
@@ -125,7 +124,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.Tool, "result") },
+            [new ChatMessage(ChatRole.Tool, "result")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         var toolMsg = Assert.IsType<ToolMessage>(fake.CapturedInputs![0].Messages[0]);
@@ -140,7 +139,7 @@ public class DaprChatClientTest
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
             client.GetResponseAsync(
-                new[] { new ChatMessage(new ChatRole("custom_role"), "text") },
+                [new ChatMessage(new ChatRole("custom_role"), "text")],
                 cancellationToken: TestContext.Current.CancellationToken));
     }
 
@@ -155,7 +154,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions("my-llm"));
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("my-llm", fake.CapturedOptions!.ConversationComponentId);
@@ -168,7 +167,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             new ChatOptions { Temperature = 0.7f },
             TestContext.Current.CancellationToken);
 
@@ -182,7 +181,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             new ChatOptions { ConversationId = "ctx-42" },
             TestContext.Current.CancellationToken);
 
@@ -198,7 +197,7 @@ public class DaprChatClientTest
         var options = new ChatOptions();
         options.AdditionalProperties = new AdditionalPropertiesDictionary { { "max_tokens", 100 } };
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             options,
             TestContext.Current.CancellationToken);
 
@@ -213,7 +212,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             new ChatOptions { AdditionalProperties = null },
             TestContext.Current.CancellationToken);
 
@@ -227,7 +226,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             new ChatOptions { ToolMode = ChatToolMode.Auto },
             TestContext.Current.CancellationToken);
 
@@ -242,7 +241,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             new ChatOptions { ToolMode = ChatToolMode.None },
             TestContext.Current.CancellationToken);
 
@@ -257,7 +256,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             new ChatOptions { ToolMode = ChatToolMode.RequireAny },
             TestContext.Current.CancellationToken);
 
@@ -272,7 +271,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             new ChatOptions { ToolMode = ChatToolMode.RequireSpecific("get_weather") },
             TestContext.Current.CancellationToken);
 
@@ -287,7 +286,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             new ChatOptions { ToolMode = null },
             TestContext.Current.CancellationToken);
 
@@ -306,8 +305,8 @@ public class DaprChatClientTest
             Description = "Gets the weather"
         });
         await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
-            new ChatOptions { Tools = new AITool[] { tool } },
+            [new ChatMessage(ChatRole.User, "hi")],
+            new ChatOptions { Tools = [tool] },
             TestContext.Current.CancellationToken);
 
         Assert.Single(fake.CapturedOptions!.Tools);
@@ -327,7 +326,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal("conv-123", response.ConversationId);
@@ -340,7 +339,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Single(response.Messages);
@@ -354,16 +353,15 @@ public class DaprChatClientTest
         var message = new ResultMessage("");
         var choice = new ConversationResultChoice(null, 0, message);
         var daprResponse = new ConversationResponse(
-            new ConversationResponseResult[]
-            {
-                new ConversationResponseResult(new ConversationResultChoice[] { choice })
-            });
+        [
+            new ConversationResponseResult([choice])
+        ]);
 
         var fake = new FakeConversationClient(daprResponse);
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var chatResponse = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Single(chatResponse.Messages);
@@ -373,11 +371,11 @@ public class DaprChatClientTest
     [Fact]
     public async Task GetResponseAsync_WithEmptyOutputs_ReturnsEmptyMessages()
     {
-        var fake = new FakeConversationClient(new ConversationResponse(new ConversationResponseResult[0]));
+        var fake = new FakeConversationClient(new ConversationResponse([]));
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Empty(response.Messages);
@@ -390,7 +388,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatFinishReason.Stop, response.FinishReason);
@@ -403,7 +401,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatFinishReason.ContentFilter, response.FinishReason);
@@ -416,7 +414,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatFinishReason.Length, response.FinishReason);
@@ -429,7 +427,7 @@ public class DaprChatClientTest
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(ChatFinishReason.ToolCalls, response.FinishReason);
@@ -438,11 +436,11 @@ public class DaprChatClientTest
     [Fact]
     public async Task GetResponseAsync_WithNullFinishReason_ReturnsNullFinishReason()
     {
-        var fake = new FakeConversationClient(BuildResponse("reply", null));
+        var fake = new FakeConversationClient(BuildResponse("reply"));
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Null(response.FinishReason);
@@ -452,19 +450,18 @@ public class DaprChatClientTest
     public async Task GetResponseAsync_WithToolCall_ReturnsFunctionCallContent()
     {
         var toolCall = new CalledToolFunction("get_weather", "{\"city\":\"NYC\"}") { Id = "call-1" };
-        var message = new ResultMessage("") { ToolCalls = new ToolCallBase[] { toolCall } };
+        var message = new ResultMessage("") { ToolCalls = [toolCall] };
         var choice = new ConversationResultChoice(FinishReason.ToolCalls, 0, message);
         var daprResponse = new ConversationResponse(
-            new ConversationResponseResult[]
-            {
-                new ConversationResponseResult(new ConversationResultChoice[] { choice })
-            });
+        [
+            new ConversationResponseResult([choice])
+        ]);
 
         var fake = new FakeConversationClient(daprResponse);
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Single(response.Messages);
@@ -479,19 +476,18 @@ public class DaprChatClientTest
     public async Task GetResponseAsync_WithInvalidJsonArguments_ReturnsEmptyArguments()
     {
         var toolCall = new CalledToolFunction("my_func", "not-valid-json") { Id = "call-2" };
-        var message = new ResultMessage("") { ToolCalls = new ToolCallBase[] { toolCall } };
+        var message = new ResultMessage("") { ToolCalls = [toolCall] };
         var choice = new ConversationResultChoice(FinishReason.ToolCalls, 0, message);
         var daprResponse = new ConversationResponse(
-            new ConversationResponseResult[]
-            {
-                new ConversationResponseResult(new ConversationResultChoice[] { choice })
-            });
+        [
+            new ConversationResponseResult([choice])
+        ]);
 
         var fake = new FakeConversationClient(daprResponse);
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Single(response.Messages);
@@ -506,19 +502,18 @@ public class DaprChatClientTest
     public async Task GetResponseAsync_WithToolCallNullId_UsesEmptyStringForCallId()
     {
         var toolCall = new CalledToolFunction("my_func", "{}");
-        var message = new ResultMessage("") { ToolCalls = new ToolCallBase[] { toolCall } };
+        var message = new ResultMessage("") { ToolCalls = [toolCall] };
         var choice = new ConversationResultChoice(FinishReason.ToolCalls, 0, message);
         var daprResponse = new ConversationResponse(
-            new ConversationResponseResult[]
-            {
-                new ConversationResponseResult(new ConversationResultChoice[] { choice })
-            });
+        [
+            new ConversationResponseResult([choice])
+        ]);
 
         var fake = new FakeConversationClient(daprResponse);
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         var funcCall = Assert.IsType<FunctionCallContent>(response.Messages[0].Contents[0]);
@@ -530,14 +525,14 @@ public class DaprChatClientTest
     {
         var choice1 = new ConversationResultChoice(null, 1, new ResultMessage("second"));
         var choice0 = new ConversationResultChoice(null, 0, new ResultMessage("first"));
-        var output = new ConversationResponseResult(new ConversationResultChoice[] { choice1, choice0 });
-        var daprResponse = new ConversationResponse(new ConversationResponseResult[] { output });
+        var output = new ConversationResponseResult([choice1, choice0]);
+        var daprResponse = new ConversationResponse([output]);
 
         var fake = new FakeConversationClient(daprResponse);
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         var response = await client.GetResponseAsync(
-            new[] { new ChatMessage(ChatRole.User, "hi") },
+            [new ChatMessage(ChatRole.User, "hi")],
             cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Equal(2, response.Messages.Count);
@@ -552,12 +547,12 @@ public class DaprChatClientTest
     [Fact]
     public void GetStreamingResponseAsync_ThrowsNotImplementedException()
     {
-        var fake = new FakeConversationClient(new ConversationResponse(new ConversationResponseResult[0]));
+        var fake = new FakeConversationClient(new ConversationResponse([]));
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
 
         Assert.Throws<NotImplementedException>(() =>
             client.GetStreamingResponseAsync(
-                new[] { new ChatMessage(ChatRole.User, "hi") },
+                [new ChatMessage(ChatRole.User, "hi")],
                 cancellationToken: TestContext.Current.CancellationToken));
     }
 
@@ -572,7 +567,7 @@ public class DaprChatClientTest
         services.AddSingleton<IDisposable, DummyDisposable>();
         var sp = services.BuildServiceProvider();
 
-        var fake = new FakeConversationClient(new ConversationResponse(new ConversationResponseResult[0]));
+        var fake = new FakeConversationClient(new ConversationResponse([]));
         var client = new DaprChatClient(fake, sp, CreateOptions());
 
         var result = client.GetService(typeof(IDisposable));
@@ -589,7 +584,7 @@ public class DaprChatClientTest
         services.AddKeyedSingleton<object>("my-key", dummy);
         var sp = services.BuildServiceProvider();
 
-        var fake = new FakeConversationClient(new ConversationResponse(new ConversationResponseResult[0]));
+        var fake = new FakeConversationClient(new ConversationResponse([]));
         var client = new DaprChatClient(fake, sp, CreateOptions());
 
         var result = client.GetService(typeof(object), "my-key");
@@ -601,7 +596,7 @@ public class DaprChatClientTest
     {
         var sp = new ServiceCollection().BuildServiceProvider();
 
-        var fake = new FakeConversationClient(new ConversationResponse(new ConversationResponseResult[0]));
+        var fake = new FakeConversationClient(new ConversationResponse([]));
         var client = new DaprChatClient(fake, sp, CreateOptions());
 
         var result = client.GetService(typeof(IDisposable));
@@ -615,7 +610,7 @@ public class DaprChatClientTest
     [Fact]
     public void Dispose_DoesNotThrow()
     {
-        var fake = new FakeConversationClient(new ConversationResponse(new ConversationResponseResult[0]));
+        var fake = new FakeConversationClient(new ConversationResponse([]));
         var client = new DaprChatClient(fake, new ServiceCollection().BuildServiceProvider(), CreateOptions());
         client.Dispose(); // Should not throw
     }

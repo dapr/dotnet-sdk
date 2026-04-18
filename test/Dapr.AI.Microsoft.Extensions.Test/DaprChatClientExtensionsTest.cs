@@ -14,7 +14,6 @@
 #nullable enable
 using System;
 using System.Linq;
-using Dapr.AI.Microsoft.Extensions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 
