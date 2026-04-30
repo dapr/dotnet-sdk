@@ -113,20 +113,12 @@ public sealed class DaprHarnessBuilder
     /// <summary>
     /// Builds a PubSub harness.
     /// </summary>
-    /// <param name="componentsDir">The path to the Dapr resources.</param>
-	public PubSubHarness BuildPubSub(string componentsDir) => new(_componentsDirectory, _startApp, _options, _environment);
+	public PubSubHarness BuildPubSub() => new(_componentsDirectory, _startApp, _options, _environment);
  
- //    /// <summary>
- //    /// Builds a state management harness.
- //    /// </summary>
- //    /// <param name="componentsDir">The path to the Dapr resources.</param>
-	// public StateManagementHarness BuildStateManagement(string componentsDir) => new(_componentsDirectory, _startApp, _options, _environment);
- //
- //    /// <summary>
- //    /// Builds an actor harness.
- //    /// </summary>
- //    /// <param name="componentsDir">The path to the Dapr resources.</param>
-	// public ActorHarness BuildActors(string componentsDir) => new(_componentsDirectory, _startApp, _options, _environment);
+    /// <summary>
+    /// Builds an actor harness.
+    /// </summary>
+    public ActorHarness BuildActors() => new(_componentsDirectory, _startApp, _options, _environment);
 
     /// <summary>
     /// Creates a test application builder for the specified harness.

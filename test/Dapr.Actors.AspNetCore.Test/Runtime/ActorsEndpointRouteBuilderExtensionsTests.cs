@@ -41,6 +41,61 @@ public class ActorsEndpointRouteBuilderExtensionsTests
         Assert.Equal(@"{""entities"":[""TestActor""],""reentrancy"":{""enabled"":false}}", text);
     }
 
+    [Fact]
+    public async Task MapActorsHandlers_HealthzEndpointResponds()
+    {
+        using var host = CreateHost<ActorsStartup>(options =>
+        {
+            options.Actors.RegisterActor<TestActor>();
+        });
+        var server = host.GetTestServer();
+        var httpClient = server.CreateClient();
+
+        var response = await httpClient.GetAsync("/healthz", TestContext.Current.CancellationToken);
+        Assert.True(response.IsSuccessStatusCode, $"Expected 2xx but got {response.StatusCode}");
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_InvokeMethodRouteReturnsForRegisteredActor()
+    {
+        using var host = CreateHost<ActorsStartup>(options =>
+        {
+            options.Actors.RegisterActor<RealMethodActor>();
+        });
+        var server = host.GetTestServer();
+        var httpClient = server.CreateClient();
+
+        // PUT /actors/{actorTypeName}/{actorId}/method/{methodName}
+        var request = new System.Net.Http.HttpRequestMessage(
+            System.Net.Http.HttpMethod.Put,
+            $"/actors/RealMethodActor/actor1/method/{nameof(IRealMethodActor.PingAsync)}");
+        var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
+
+        // Not a 404 — route was matched and the method was invoked.
+        Assert.NotEqual(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+        Assert.True(response.IsSuccessStatusCode, $"Expected 2xx but got {response.StatusCode}");
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_UnregisteredActorType_ThrowsInvalidOperationException()
+    {
+        using var host = CreateHost<ActorsStartup>(options =>
+        {
+            options.Actors.RegisterActor<TestActor>();
+        });
+        var server = host.GetTestServer();
+        var httpClient = server.CreateClient();
+
+        // PUT /actors/{unknownType}/{id}/method/{method} — should throw because the type is not registered.
+        var request = new System.Net.Http.HttpRequestMessage(
+            System.Net.Http.HttpMethod.Put,
+            "/actors/DoesNotExist/id1/method/Foo");
+
+        // The TestServer propagates the unhandled exception from the route handler.
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => httpClient.SendAsync(request, TestContext.Current.CancellationToken));
+    }
+
     private static IHost CreateHost<TStartup>(Action<ActorRuntimeOptions> configure) where TStartup : class
     {
         var builder = Host
@@ -97,5 +152,16 @@ public class ActorsEndpointRouteBuilderExtensionsTests
     private class TestActor : Actor, ITestActor
     {
         public TestActor(ActorHost host) : base(host) { }
+    }
+
+    private interface IRealMethodActor : IActor
+    {
+        Task PingAsync();
+    }
+
+    private class RealMethodActor : Actor, IRealMethodActor
+    {
+        public RealMethodActor(ActorHost host) : base(host) { }
+        public Task PingAsync() => Task.CompletedTask;
     }
 }

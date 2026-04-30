@@ -474,4 +474,112 @@ public sealed class ActorRuntimeTests
             return base.DeleteAsync(state);
         }
     }
+
+    // ----- SerializeSettingsAndRegisteredTypes gaps -----
+
+    [Fact]
+    public async Task SerializeSettingsAndRegisteredTypes_ZeroActors_EmptyEntitiesArray()
+    {
+        var options = new ActorRuntimeOptions();
+        var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+        ArrayBufferWriter<byte> writer = new ArrayBufferWriter<byte>();
+        await runtime.SerializeSettingsAndRegisteredTypes(writer);
+
+        var json = Encoding.UTF8.GetString(writer.WrittenSpan.ToArray());
+        var document = JsonDocument.Parse(json);
+        var entities = document.RootElement.GetProperty("entities");
+        Assert.Equal(0, entities.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task SerializeSettingsAndRegisteredTypes_DefaultOptions_OmitsTimeoutAndDrainFields()
+    {
+        var options = new ActorRuntimeOptions();
+        options.Actors.RegisterActor<TestActor>();
+        var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+        ArrayBufferWriter<byte> writer = new ArrayBufferWriter<byte>();
+        await runtime.SerializeSettingsAndRegisteredTypes(writer);
+
+        var json = Encoding.UTF8.GetString(writer.WrittenSpan.ToArray());
+        var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+
+        Assert.False(root.TryGetProperty("actorIdleTimeout", out _),
+            "actorIdleTimeout should not be serialized when not set");
+        Assert.False(root.TryGetProperty("actorScanInterval", out _),
+            "actorScanInterval should not be serialized when not set");
+        Assert.False(root.TryGetProperty("drainOngoingCallTimeout", out _),
+            "drainOngoingCallTimeout should not be serialized when not set");
+        Assert.False(root.TryGetProperty("drainRebalancedActors", out _),
+            "drainRebalancedActors should not be serialized when false (default)");
+    }
+
+    [Fact]
+    public async Task SerializeSettingsAndRegisteredTypes_PerActorReentrancyConfig()
+    {
+        var options = new ActorRuntimeOptions();
+        var perActorOptions = new ActorRuntimeOptions();
+        perActorOptions.ReentrancyConfig.Enabled = true;
+        perActorOptions.ReentrancyConfig.MaxStackDepth = 8;
+        options.Actors.RegisterActor<TestActor>(perActorOptions);
+
+        var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+        ArrayBufferWriter<byte> writer = new ArrayBufferWriter<byte>();
+        await runtime.SerializeSettingsAndRegisteredTypes(writer);
+
+        var json = Encoding.UTF8.GetString(writer.WrittenSpan.ToArray());
+        var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+
+        // Per-actor reentrancy should appear in entitiesConfig.
+        var entitiesConfig = root.GetProperty("entitiesConfig");
+        Assert.Equal(1, entitiesConfig.GetArrayLength());
+
+        var perActor = entitiesConfig[0];
+        Assert.True(perActor.GetProperty("reentrancy").GetProperty("enabled").GetBoolean());
+        Assert.Equal(8, perActor.GetProperty("reentrancy").GetProperty("maxStackDepth").GetInt32());
+    }
+
+    // ----- DispatchWithoutRemotingAsync with unknown actor type -----
+
+    [Fact]
+    public async Task DispatchWithoutRemotingAsync_UnknownActorType_ThrowsInvalidOperationException()
+    {
+        var options = new ActorRuntimeOptions();
+        options.Actors.RegisterActor<MyActor>();
+        var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await runtime.DispatchWithoutRemotingAsync(
+                "NonExistentActorType",
+                "someId",
+                "MyMethod",
+                new MemoryStream(),
+                new MemoryStream(),
+                TestContext.Current.CancellationToken);
+        });
+    }
+
+    [Fact]
+    public async Task DispatchWithoutRemotingAsync_UnknownMethod_ThrowsException()
+    {
+        var options = new ActorRuntimeOptions();
+        options.Actors.RegisterActor<MyActor>();
+        var runtime = new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+
+        await Assert.ThrowsAsync<MissingMethodException>(async () =>
+        {
+            await runtime.DispatchWithoutRemotingAsync(
+                nameof(MyActor),
+                "someId",
+                "NoSuchMethod",
+                new MemoryStream(),
+                new MemoryStream(),
+                TestContext.Current.CancellationToken);
+        });
+    }
 }

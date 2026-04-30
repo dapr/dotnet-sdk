@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Dapr.Workflow.Client;
 using Microsoft.Extensions.Configuration;
@@ -22,7 +23,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class WorkflowRpcTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ListInstanceIds_ShouldReturnScheduledWorkflowInstances()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -63,7 +64,7 @@ public sealed class WorkflowRpcTests
         Assert.Contains(instanceId, page.InstanceIds);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task GetInstanceHistory_ShouldReturnHistoryForCompletedWorkflow()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");

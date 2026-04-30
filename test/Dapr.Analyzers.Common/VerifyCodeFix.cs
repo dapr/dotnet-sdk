@@ -22,19 +22,39 @@ namespace Dapr.Analyzers.Common;
 
 internal static class VerifyCodeFix
 {
+    public static Task RunTest<T>(
+        string code,
+        string expectedChangedCode,
+        string assemblyLocation,
+        IReadOnlyList<MetadataReference> metadataReferences,
+        ImmutableArray<DiagnosticAnalyzer> analyzers) where T : CodeFixProvider, new() =>
+        RunTest<T>(code, expectedChangedCode, assemblyLocation, metadataReferences, analyzers, diagnosticIndex: 0);
+
     public static async Task RunTest<T>(
         string code,
         string expectedChangedCode,
         string assemblyLocation,
         IReadOnlyList<MetadataReference> metadataReferences,
-        ImmutableArray<DiagnosticAnalyzer> analyzers) where T : CodeFixProvider, new()
+        ImmutableArray<DiagnosticAnalyzer> analyzers,
+        int diagnosticIndex) where T : CodeFixProvider, new()
     {
-        var (diagnostics, document, workspace) =
+        var (allDiagnostics, document, workspace) =
             await TestUtilities.GetDiagnosticsAdvanced(code, assemblyLocation, metadataReferences, analyzers);
 
-        Assert.Single(diagnostics);
+        // Filter to only the diagnostics produced by the supplied analyzers, ignoring any
+        // compiler warnings/errors that are incidental to the test code (e.g. CS5001, CS9113).
+        var analyzerDiagnosticIds = analyzers
+            .SelectMany(a => a.SupportedDiagnostics)
+            .Select(d => d.Id)
+            .ToHashSet();
 
-        var diagnostic = diagnostics[0];
+        var diagnostics = allDiagnostics
+            .Where(d => analyzerDiagnosticIds.Contains(d.Id))
+            .ToImmutableArray();
+
+        Assert.NotEmpty(diagnostics);
+
+        var diagnostic = diagnostics[diagnosticIndex];
 
         var codeFixProvider = new T();
 

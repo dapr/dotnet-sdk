@@ -48,7 +48,7 @@ public sealed class DynamicSubscriptionIntegrationTests : IAsyncLifetime
         var componentsDir = TestDirectoryManager.CreateTestDirectory("pubsub-components");
         _harness = new DaprHarnessBuilder(componentsDir)
             .WithOptions(new DaprRuntimeOptions())
-            .BuildPubSub(componentsDir);
+            .BuildPubSub();
         await _harness.InitializeAsync();
 
         _pubSubClient = new DaprPublishSubscribeClientBuilder()

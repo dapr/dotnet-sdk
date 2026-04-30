@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -43,6 +44,44 @@ public class ActivationTests
         Assert.Equal("1", text);
 
         await DeactivateActor(httpClient, "A");
+    }
+
+    [Fact]
+    public async Task InvokeMethod_UnregisteredActorType_ReturnsNonSuccessResponse()
+    {
+        await using var factory = new AppWebApplicationFactory();
+        var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+
+        var request = new HttpRequestMessage(HttpMethod.Put,
+            "http://localhost/actors/NoSuchActorType/someId/method/SomeMethod");
+        var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(response.IsSuccessStatusCode,
+            $"Expected a non-success status code for an unregistered actor type, but got {response.StatusCode}");
+    }
+
+    [Fact]
+    public async Task ConcurrentIncrement_SameActorId_RetainsConsistentState()
+    {
+        await using var factory = new AppWebApplicationFactory();
+        var httpClient = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { HandleCookies = false });
+
+        const string actorId = "concurrent-actor";
+        const int concurrency = 5;
+
+        // Fire `concurrency` increments at the same actor ID in parallel.
+        var tasks = Enumerable.Range(0, concurrency)
+            .Select(_ => IncrementCounterAsync(httpClient, actorId))
+            .ToArray();
+
+        var results = await Task.WhenAll(tasks);
+
+        // Each call should have received a distinct integer from 0 to concurrency-1, proving
+        // that the actor serialised the concurrent requests and no two calls returned the same value.
+        var distinct = results.Select(int.Parse).OrderBy(x => x).ToArray();
+        Assert.Equal(Enumerable.Range(0, concurrency).ToArray(), distinct);
+
+        await DeactivateActor(httpClient, actorId);
     }
 
     private async Task<string> IncrementCounterAsync(HttpClient httpClient, string actorId)
