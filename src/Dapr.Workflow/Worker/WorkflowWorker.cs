@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -561,6 +562,9 @@ internal sealed class WorkflowWorker(
             var context = new WorkflowActivityContextImpl(activityIdentifier,
                 request.OrchestrationInstance?.InstanceId ?? string.Empty, taskExecutionKey);
 
+            // Restore the trace context provided by the sidecar so Activity.Current is non-null
+            using var traceActivity = StartActivityFromRequest(request);
+
             // Deserialize the input
             object? input = null;
             if (!string.IsNullOrEmpty(request.Input))
@@ -616,6 +620,33 @@ internal sealed class WorkflowWorker(
             await _protocolHandler.DisposeAsync();
 
         await base.StopAsync(cancellationToken);
+    }
+    
+    private static readonly ActivitySource WorkflowActivitySource = new ("Dapr.Workflow");
+
+    private static Activity? StartActivityFromRequest(ActivityRequest request)
+    {
+        var traceParent = request.ParentTraceContext?.TraceParent;
+        if (string.IsNullOrEmpty(traceParent))
+            return null;
+
+        var traceState = request.ParentTraceContext?.TraceState;
+        if (ActivityContext.TryParse(traceParent, traceState, out var parentCtx))
+        {
+            return WorkflowActivitySource.StartActivity(
+                name: $"WorkflowActivity {request.Name}",
+                kind: ActivityKind.Internal,
+                parentContext: parentCtx,
+                []);
+        }
+        
+        // Fall back to raw parent ID if parsing fails
+        var act = new Activity($"WorkflowActivity {request.Name}");
+        act.SetParentId(traceParent);
+        if (!string.IsNullOrEmpty(traceState))
+            act.TraceStateString = traceState;
+        act.Start();
+        return act;
     }
 
     private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>
