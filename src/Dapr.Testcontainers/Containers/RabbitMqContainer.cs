@@ -122,20 +122,23 @@ public sealed class RabbitMqContainer : IAsyncStartable
 		}
 
 		private static string GetPubSubYaml(string rabbitmqHost) =>
-			$@"apiVersion: dapr.io/v1alpha
+			$@"apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
   name: {Constants.DaprComponentNames.PubSubComponentName}
 spec:
   type: pubsub.rabbitmq
+  version: v1
   metadata:
   - name: protocol
     value: amqp
   - name: hostname
     value: {rabbitmqHost}
   - name: username
-    value: default
+    value: guest
   - name: password
-    value: default";
+    value: guest
+  - name: requeueInFailure
+    value: true";
 	}
 }

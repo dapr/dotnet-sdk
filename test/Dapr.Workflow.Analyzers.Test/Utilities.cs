@@ -2,6 +2,8 @@
 using Microsoft.CodeAnalysis.Diagnostics;
 using System.Collections.Immutable;
 using Dapr.Analyzers.Common;
+using Dapr.Common;
+using Dapr.Workflow.Versioning;
 using Microsoft.Extensions.Hosting;
 
 namespace Dapr.Workflow.Analyzers.Test;
@@ -11,16 +13,20 @@ internal static class Utilities
     internal static ImmutableArray<DiagnosticAnalyzer> GetAnalyzers() =>
     [
         new WorkflowRegistrationAnalyzer(),
-        new WorkflowActivityRegistrationAnalyzer()
+        new WorkflowActivityRegistrationAnalyzer(),
+        new WorkflowTypeSafetyAnalyzer()
     ];
 
     internal static IReadOnlyList<MetadataReference> GetReferences()
     {
         var metadataReferences = TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowActivityRegistrationAnalyzer)).ToList();
         metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowRegistrationAnalyzer)));
+        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowTypeSafetyAnalyzer)));
         metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(TimeSpan)));
         metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(Workflow<,>)));
         metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowActivity<,>)));
+        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(IDaprClient)));
+        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowVersioningServiceCollectionExtensions)));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(Task).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(DaprWorkflowClient).Assembly.Location));
         metadataReferences.Add(MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.DependencyInjection.ServiceCollection).Assembly.Location));

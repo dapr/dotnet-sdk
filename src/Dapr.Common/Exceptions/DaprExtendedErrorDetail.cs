@@ -71,7 +71,7 @@ public sealed record DaprRetryInfoDetail() : DaprExtendedErrorDetail(DaprExtende
 /// <summary>
 /// Further details relating to a quota violation.
 /// </summary>
-/// <param name="Subject">The subject where the quota violation occured e.g and ip address or remote resource.</param>
+/// <param name="Subject">The subject where the quota violation occurred e.g and ip address or remote resource.</param>
 /// <param name="Description">Further information relating to the quota violation.</param>
 public sealed record DaprQuotaFailureViolation(string Subject, string Description);
 

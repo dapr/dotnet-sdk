@@ -180,4 +180,32 @@ public class DependencyInjectionActorActivatorTests
             return new ValueTask();
         }
     }
+
+    [Fact]
+    public async Task CreateAsync_ActorNotRegisteredWithDI_ThrowsException()
+    {
+        // The services container has no registration for ActorWithUnregisteredDep,
+        // so attempting to activate it should raise a meaningful exception rather than a NullRef.
+        var services = new ServiceCollection();
+        // Intentionally do NOT register UnregisteredService.
+        var serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions() { ValidateScopes = true, });
+        var activator = new DependencyInjectionActorActivator(
+            serviceProvider,
+            ActorTypeInformation.Get(typeof(ActorWithUnregisteredDep), actorTypeName: null));
+
+        var host = ActorHost.CreateForTest<ActorWithUnregisteredDep>();
+
+        var ex = await Assert.ThrowsAnyAsync<Exception>(() => activator.CreateAsync(host));
+        Assert.NotNull(ex);
+    }
+
+    private class UnregisteredService { }
+
+    private class ActorWithUnregisteredDep : Actor, ITestActor
+    {
+        public ActorWithUnregisteredDep(ActorHost host, UnregisteredService svc)
+            : base(host)
+        {
+        }
+    }
 }

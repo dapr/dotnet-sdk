@@ -161,6 +161,13 @@ public abstract class BaseHarness : IAsyncContainerFixture
     protected string? DaprSchedulerAlias { get; set; }
 
     /// <summary>
+    /// The path inside the Dapr sidecar container of an optional Dapr configuration YAML file.
+    /// Set this in <see cref="OnInitializeAsync"/> before the base class creates the sidecar.
+    /// When set, daprd is started with <c>-config &lt;path&gt;</c>.
+    /// </summary>
+    protected string? DaprConfigFilePath { get; set; }
+
+    /// <summary>
     /// Pre-assigns the Dapr ports to use. This is useful when the app starts before the Dapr container.
     /// </summary>
     /// <param name="httpPort">The HTTP port.</param>
@@ -222,7 +229,8 @@ public abstract class BaseHarness : IAsyncContainerFixture
                 ? null : new HostPortPair(DaprSchedulerAlias, DaprSchedulerContainer.InternalPort),
             _daprHttpPortOverride,
             _daprGrpcPortOverride,
-            _logDirectory);
+            _logDirectory,
+            DaprConfigFilePath);
 
         var daprdTask = Task.Run(async () =>
         {

@@ -30,4 +30,22 @@
     <data name="DAPR1302MessageFormat" xml:space="preserve">
         <value>The workflow activity type '{0}' is not registered with the dependency injection provider</value>
     </data>
+    <data name="DAPR1303Title" xml:space="preserve">
+        <value>The provided input type does not match the target workflow or activity input type</value>
+    </data>
+    <data name="DAPR1303MessageFormat" xml:space="preserve">
+        <value>The provided input type '{0}' does not match the expected input type '{1}' for {2} '{3}'</value>
+    </data>
+    <data name="DAPR1304Title" xml:space="preserve">
+        <value>The requested output type does not match the target workflow or activity output type</value>
+    </data>
+    <data name="DAPR1304MessageFormat" xml:space="preserve">
+        <value>The requested output type '{0}' does not match the declared output type '{1}' for {2} '{3}'</value>
+    </data>
+    <data name="DAPR1305Title" xml:space="preserve">
+        <value>Workflow implementations do not support dependency injection via constructors</value>
+    </data>
+    <data name="DAPR1305MessageFormat" xml:space="preserve">
+        <value>Workflow '{0}' has constructor parameter '{1}' of type '{2}', but dependency injection is not supported in workflow implementations. Move dependencies to a WorkflowActivity instead.</value>
+    </data>
 </root>

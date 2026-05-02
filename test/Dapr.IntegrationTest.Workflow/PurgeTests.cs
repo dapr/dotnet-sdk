@@ -14,6 +14,7 @@
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Workflow;
+using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -67,11 +68,107 @@ public sealed class PurgeTests
         Assert.Null(stateAfterPurge);
     }
 
+    [Fact]
+    public async Task PurgeShouldNotWorkOnSuspendedWorkflowInstance()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+        var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprWorkflowBuilder(
+                    opt => opt.RegisterWorkflow<LongRunningWorkflow>(),
+                    configureClient: (sp, cb) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrEmpty(grpcEndpoint))
+                            cb.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(LongRunningWorkflow), workflowInstanceId);
+        var runningState = await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        Assert.Equal(WorkflowRuntimeStatus.Running, runningState.RuntimeStatus);
+
+        await daprWorkflowClient.SuspendWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        var suspendedState = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        Assert.NotNull(suspendedState);
+        Assert.Equal(WorkflowRuntimeStatus.Suspended, suspendedState.RuntimeStatus);
+
+        await Assert.ThrowsAnyAsync<RpcException>(() =>
+            daprWorkflowClient.PurgeInstanceAsync(workflowInstanceId, TestContext.Current.CancellationToken));
+
+        // Terminate the workflow so the test app shuts down cleanly rather than waiting on the suspended instance
+        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task ShouldPurgeTerminatedWorkflowInstance()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+        var workflowInstanceId = Guid.NewGuid().ToString();
+        
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(needsActorState: true, cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir).BuildWorkflow();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprWorkflowBuilder(
+                    opt => opt.RegisterWorkflow<LongRunningWorkflow>(),
+                    configureClient: (sp, cb) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrEmpty(grpcEndpoint))
+                            cb.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(LongRunningWorkflow), workflowInstanceId);
+        var runningState = await daprWorkflowClient.WaitForWorkflowStartAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        Assert.Equal(WorkflowRuntimeStatus.Running, runningState.RuntimeStatus);
+
+        await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        var terminatedState = await daprWorkflowClient.WaitForWorkflowCompletionAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        Assert.Equal(WorkflowRuntimeStatus.Terminated, terminatedState.RuntimeStatus);
+
+        var purged = await daprWorkflowClient.PurgeInstanceAsync(workflowInstanceId, TestContext.Current.CancellationToken);
+        Assert.True(purged);
+
+        var stateAfterPurge = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
+        Assert.Null(stateAfterPurge);
+    }
+
     private sealed class SimpleWorkflow : Workflow<string, string>
     {
         public override Task<string> RunAsync(WorkflowContext context, string input)
         {
             return Task.FromResult($"Processed: {input}");
+        }
+    }
+
+    private sealed class LongRunningWorkflow : Workflow<object?, string>
+    {
+        public override async Task<string> RunAsync(WorkflowContext context, object? input)
+        {
+            await context.WaitForExternalEventAsync<string>("never");
+            return "Completed";
         }
     }
 }

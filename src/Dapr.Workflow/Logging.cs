@@ -25,6 +25,9 @@ internal static partial class Logging
     [LoggerMessage(LogLevel.Error, "Workflow '{WorkflowName}' not found in registry")]
     public static partial void LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(this ILogger logger, string workflowName);
     
+    [LoggerMessage(LogLevel.Error, "Workflow '{WorkflowName}' failed to activate")]
+    public static partial void LogWorkerWorkflowHandleOrchestratorRequestActivationFailed(this ILogger logger, Exception ex, string workflowName);
+    
     [LoggerMessage(LogLevel.Information, "Workflow execution completed: Name='{WorkflowName}', InstanceId='{InstanceId}'")]
     public static partial void LogWorkerWorkflowHandleOrchestratorRequestCompleted(this ILogger logger, string workflowName, string instanceId);
     
@@ -36,6 +39,9 @@ internal static partial class Logging
     
     [LoggerMessage(LogLevel.Error, "Activity '{ActivityName}' not found in registry")]
     public static partial void LogWorkerWorkflowHandleActivityRequestNotInRegistry(this ILogger logger, string activityName);
+    
+    [LoggerMessage(LogLevel.Error, "Activity '{ActivityName}' failed to activate")]
+    public static partial void LogWorkerWorkflowHandleActivityRequestActivationFailed(this ILogger logger, Exception ex, string activityName);
     
     [LoggerMessage(LogLevel.Debug, "Activity execution completed: Name='{ActivityName}', TaskId='{TasKId}'")]
     public static partial void LogWorkerWorkflowHandleActivityRequestCompleted(this ILogger logger, string activityName, int taskId);
@@ -244,4 +250,7 @@ internal static partial class Logging
 
     [LoggerMessage(LogLevel.Information, "Rerun workflow from event: source='{SourceInstanceId}', eventId={EventId}, newInstanceId='{NewInstanceId}'")]
     public static partial void LogRerunWorkflowFromEvent(this ILogger logger, string sourceInstanceId, uint eventId, string newInstanceId);
+
+    [LoggerMessage(LogLevel.Debug, "gRPC protocol handler keepalive Hello call failed")]
+    public static partial void LogGrpcProtocolHandlerKeepaliveFailed(this ILogger logger, Exception ex);
 }

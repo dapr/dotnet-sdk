@@ -94,5 +94,59 @@ namespace Dapr.Workflow.Analyzers {
                 return ResourceManager.GetString("DAPR1302Title", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The provided input type &apos;{0}&apos; does not match the expected input type &apos;{1}&apos; for {2} &apos;{3}&apos;.
+        /// </summary>
+        internal static string DAPR1303MessageFormat {
+            get {
+                return ResourceManager.GetString("DAPR1303MessageFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The provided input type does not match the target workflow or activity input type.
+        /// </summary>
+        internal static string DAPR1303Title {
+            get {
+                return ResourceManager.GetString("DAPR1303Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The requested output type &apos;{0}&apos; does not match the declared output type &apos;{1}&apos; for {2} &apos;{3}&apos;.
+        /// </summary>
+        internal static string DAPR1304MessageFormat {
+            get {
+                return ResourceManager.GetString("DAPR1304MessageFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The requested output type does not match the target workflow or activity output type.
+        /// </summary>
+        internal static string DAPR1304Title {
+            get {
+                return ResourceManager.GetString("DAPR1304Title", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Workflow &apos;{0}&apos; has constructor parameter &apos;{1}&apos; of type &apos;{2}&apos;, but dependency injection is not supported in workflow implementations. Move dependencies to a WorkflowActivity instead.
+        /// </summary>
+        internal static string DAPR1305MessageFormat {
+            get {
+                return ResourceManager.GetString("DAPR1305MessageFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Workflow implementations do not support dependency injection via constructors.
+        /// </summary>
+        internal static string DAPR1305Title {
+            get {
+                return ResourceManager.GetString("DAPR1305Title", resourceCulture);
+            }
+        }
     }
 }

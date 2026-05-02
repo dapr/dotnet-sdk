@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.IntegrationTest.Workflow.Versioning.ReferenceWorkflows;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow.Versioning;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,7 +20,7 @@ namespace Dapr.IntegrationTest.Workflow.Versioning;
 
 public sealed class CrossAssemblyScanIntegrationTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public void ShouldDiscoverReferencedWorkflowsWhenEnabled()
     {
         var services = new ServiceCollection();

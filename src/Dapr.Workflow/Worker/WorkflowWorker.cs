@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -270,8 +271,36 @@ internal sealed class WorkflowWorker(
 
             // Try to get the workflow from the factory
             var workflowIdentifier = new TaskIdentifier(workflowName);
-            if (!_workflowsFactory.TryCreateWorkflow(workflowIdentifier, scope.ServiceProvider, out var workflow))
+            if (!_workflowsFactory.TryCreateWorkflow(workflowIdentifier, scope.ServiceProvider, out var workflow, out var workflowActivationException))
             {
+                if (workflowActivationException != null)
+                {
+                    _logger.LogWorkerWorkflowHandleOrchestratorRequestActivationFailed(workflowActivationException, workflowName);
+                    
+                    return new OrchestratorResponse
+                    {
+                        InstanceId = request.InstanceId,
+                        CompletionToken = completionToken,
+                        Actions =
+                        {
+                            new OrchestratorAction
+                            {
+                                CompleteOrchestration = new CompleteOrchestrationAction
+                                {
+                                    OrchestrationStatus = OrchestrationStatus.Failed,
+                                    FailureDetails = new()
+                                    {
+                                        IsNonRetriable = true,
+                                        ErrorType = workflowActivationException.GetType().FullName ?? "WorkflowActivationFailed",
+                                        ErrorMessage = $"Workflow '{workflowName}' failed to activate: {workflowActivationException.Message}",
+                                        StackTrace = workflowActivationException.StackTrace ?? string.Empty
+                                    }
+                                }
+                            }
+                        }
+                    };
+                }
+
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(workflowName);
 
                 return new OrchestratorResponse
@@ -318,7 +347,12 @@ internal sealed class WorkflowWorker(
                 : _serializer.Deserialize(serializedInput, workflow!.InputType);
 
             // Initialize per-turn state before any workflow code runs.
-            context.InitializeNewTurn(currentTurnTimestamp);
+            // On first execution (no past events) use the current turn's OrchestratorStarted timestamp.
+            // On replay use the first past event's timestamp so the workflow sees the same
+            // CurrentUtcDateTime at its start as it did on the very first execution.
+            // ProcessEvents will advance the clock naturally via OrchestratorStarted history events.
+            var initialTimestamp = allPastEvents.Count > 0 ? currentUtcDateTime : currentTurnTimestamp;
+            context.InitializeNewTurn(initialTimestamp);
             context.SetReplayState(allPastEvents.Count > 0);
 
             // Execute the workflow
@@ -339,6 +373,11 @@ internal sealed class WorkflowWorker(
             {
                 context.ProcessEvents(request.NewEvents, false);
             }
+
+            // Populate CarryoverEvents now that all events in this turn have been processed.
+            // ContinueAsNew cannot do this inline because it runs mid-ProcessEvents; events
+            // arriving later in the same NewEvents batch would be buffered after the snapshot.
+            context.FinalizeCarryoverEvents();
 
             // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
             if (versionTracker.IsStalled)
@@ -479,8 +518,26 @@ internal sealed class WorkflowWorker(
 
             // Try to get the activity from the factory
             var activityIdentifier = new TaskIdentifier(request.Name);
-            if (!_workflowsFactory.TryCreateActivity(activityIdentifier, scope.ServiceProvider, out var activity))
+            if (!_workflowsFactory.TryCreateActivity(activityIdentifier, scope.ServiceProvider, out var activity, out var activityActivationException))
             {
+                if (activityActivationException != null)
+                {
+                    _logger.LogWorkerWorkflowHandleActivityRequestActivationFailed(activityActivationException, request.Name);
+
+                    return new ActivityResponse
+                    {
+                        InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
+                        TaskId = request.TaskId,
+                        CompletionToken = completionToken,
+                        FailureDetails = new()
+                        {
+                            ErrorType = activityActivationException.GetType().FullName ?? "ActivityActivationFailed",
+                            ErrorMessage = $"Activity '{request.Name}' failed to activate: {activityActivationException.Message}",
+                            StackTrace = activityActivationException.StackTrace ?? string.Empty
+                        }
+                    };
+                }
+
                 _logger.LogWorkerWorkflowHandleActivityRequestNotInRegistry(request.Name);
 
                 return new ActivityResponse
@@ -504,6 +561,9 @@ internal sealed class WorkflowWorker(
 
             var context = new WorkflowActivityContextImpl(activityIdentifier,
                 request.OrchestrationInstance?.InstanceId ?? string.Empty, taskExecutionKey);
+
+            // Restore the trace context provided by the sidecar so Activity.Current is non-null
+            using var traceActivity = StartActivityFromRequest(request);
 
             // Deserialize the input
             object? input = null;
@@ -560,6 +620,33 @@ internal sealed class WorkflowWorker(
             await _protocolHandler.DisposeAsync();
 
         await base.StopAsync(cancellationToken);
+    }
+    
+    private static readonly ActivitySource WorkflowActivitySource = new ("Dapr.Workflow");
+
+    private static Activity? StartActivityFromRequest(ActivityRequest request)
+    {
+        var traceParent = request.ParentTraceContext?.TraceParent;
+        if (string.IsNullOrEmpty(traceParent))
+            return null;
+
+        var traceState = request.ParentTraceContext?.TraceState;
+        if (ActivityContext.TryParse(traceParent, traceState, out var parentCtx))
+        {
+            return WorkflowActivitySource.StartActivity(
+                name: $"WorkflowActivity {request.Name}",
+                kind: ActivityKind.Internal,
+                parentContext: parentCtx,
+                []);
+        }
+        
+        // Fall back to raw parent ID if parsing fails
+        var act = new Activity($"WorkflowActivity {request.Name}");
+        act.SetParentId(traceParent);
+        if (!string.IsNullOrEmpty(traceState))
+            act.TraceStateString = traceState;
+        act.Start();
+        return act;
     }
 
     private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>

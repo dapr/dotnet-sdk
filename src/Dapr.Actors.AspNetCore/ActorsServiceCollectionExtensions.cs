@@ -107,6 +107,6 @@ public static class ActorsServiceCollectionExtensions
             : DaprDefaults.GetDefaultDaprApiToken(configuration);
         options.HttpEndpoint = !string.IsNullOrWhiteSpace(options.HttpEndpoint)
             ? options.HttpEndpoint
-            : DaprDefaults.GetDefaultHttpEndpoint();
+            : DaprDefaults.GetDefaultHttpEndpoint(configuration);
     }
 }
