@@ -17,6 +17,33 @@ enum StalledReason {
   VERSION_NAME_MISMATCH = 1;
 }
 
+// HistoryPropagationScope determines which ancestor workflow history events are
+// propagated to a child workflow when it is scheduled.
+enum HistoryPropagationScope {
+  // No history is propagated. This is the default behavior.
+  HISTORY_PROPAGATION_SCOPE_NONE = 0;
+
+  // Only the calling workflow's own history events are propagated to the child.
+  // Ancestor history is excluded, acting as a trust boundary.
+  HISTORY_PROPAGATION_SCOPE_OWN_HISTORY = 1;
+
+  // The calling workflow's history and all ancestor history (the full lineage) is propagated.
+  HISTORY_PROPAGATION_SCOPE_LINEAGE = 2;
+}
+
+// PropagatedHistorySegment represents the history of a single ancestor workflow instance
+// that has been propagated to a child workflow.
+message PropagatedHistorySegment {
+  // The Dapr App ID of the application that ran the ancestor workflow.
+  string app_id = 1;
+  // The orchestration instance ID of the ancestor workflow.
+  string instance_id = 2;
+  // The name of the ancestor workflow.
+  string workflow_name = 3;
+  // The ordered list of history events from the ancestor workflow.
+  repeated HistoryEvent events = 4;
+}
+
 message TaskRouter {
   string sourceAppID = 1;
   optional string targetAppID = 2;
@@ -313,6 +340,11 @@ message CreateSubOrchestrationAction {
   google.protobuf.StringValue version = 3;
   google.protobuf.StringValue input = 4;
   optional TaskRouter router = 5;
+  // Specifies which ancestor history events should be propagated to the child workflow.
+  optional HistoryPropagationScope history_propagation_scope = 6;
+  // The history segments to propagate to the child workflow.
+  // Populated by the SDK based on the history_propagation_scope.
+  repeated PropagatedHistorySegment propagated_history = 7;
 }
 
 message CreateTimerAction {
@@ -372,6 +404,9 @@ message OrchestratorRequest {
   OrchestratorEntityParameters entityParameters = 5;
   bool requiresHistoryStreaming = 6;
   optional TaskRouter router = 7;
+  // Workflow history propagated from ancestor workflow instances.
+  // Populated when the parent scheduled this workflow with a non-None HistoryPropagationScope.
+  repeated PropagatedHistorySegment propagated_history = 8;
 }
 
 message OrchestratorResponse {
