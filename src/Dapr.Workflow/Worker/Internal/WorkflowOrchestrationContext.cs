@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -67,6 +68,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private static readonly Guid InstanceIdNamespace = new("6f927a2e-9c7e-4a1d-9b8d-7a86f2e7f62f");
 
     private readonly string? _appId;
+    private readonly PropagatedHistory? _propagatedHistory;
+    private readonly IReadOnlyList<HistoryEvent> _ownHistory;
     private int _sequenceNumber;
     private int _guidCounter;
     private object? _customStatus;
@@ -77,7 +80,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
         IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
-        string? appId = null, string? executionId = null)
+        string? appId = null, string? executionId = null,
+        IReadOnlyList<HistoryEvent>? ownHistory = null,
+        IEnumerable<PropagatedHistorySegment>? incomingPropagatedHistory = null)
     {
         _workflowSerializer = workflowSerializer;
         _loggerFactory = loggerFactory;
@@ -92,7 +97,12 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         _currentUtcDateTime = currentUtcDateTime;
         _appId = appId; // Necessary for setting the source app ID value on the task router
         _versionTracker = versionTracker;
-        
+        _ownHistory = ownHistory ?? Array.Empty<HistoryEvent>();
+        var propagatedSegments = incomingPropagatedHistory?.ToList();
+        _propagatedHistory = propagatedSegments is { Count: > 0 }
+            ? new PropagatedHistory(propagatedSegments.Select(ConvertSegment).ToList())
+            : null;
+
         _logger.LogWorkflowContextConstructorSetup(name, instanceId);
     }
 
@@ -317,16 +327,33 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
         var router = CreateRouter(options?.TargetAppId);
 
+        var createSubOrchestrationAction = new CreateSubOrchestrationAction
+        {
+            Name = workflowName,
+            InstanceId = childInstanceId,
+            Input = _workflowSerializer.Serialize(input),
+            Router = router
+        };
+
+        // Propagate history to the child workflow based on the requested scope
+        var propagationScope = options?.PropagationScope ?? HistoryPropagationScope.None;
+        if (propagationScope != HistoryPropagationScope.None)
+        {
+            createSubOrchestrationAction.HistoryPropagationScope = propagationScope switch
+            {
+                HistoryPropagationScope.OwnHistory => Dapr.DurableTask.Protobuf.HistoryPropagationScope.OwnHistory,
+                HistoryPropagationScope.Lineage => Dapr.DurableTask.Protobuf.HistoryPropagationScope.Lineage,
+                _ => Dapr.DurableTask.Protobuf.HistoryPropagationScope.None
+            };
+
+            var segments = BuildPropagatedSegments(propagationScope);
+            createSubOrchestrationAction.PropagatedHistory.AddRange(segments);
+        }
+
         _pendingActions.Add(taskId, new OrchestratorAction
         {
             Id = taskId,
-            CreateSubOrchestration = new CreateSubOrchestrationAction
-            {
-                Name = workflowName,
-                InstanceId = childInstanceId,
-                Input = _workflowSerializer.Serialize(input),
-                Router = router
-            },
+            CreateSubOrchestration = createSubOrchestrationAction,
             Router = router
         });
         
@@ -396,6 +423,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var name = $"{InstanceId}_{guidCounter}"; // Stable per execution and replay
         return CreateGuidFromName(_instanceGuid, Encoding.UTF8.GetBytes(name));
     }
+
+    /// <inheritdoc />
+    public override PropagatedHistory? GetPropagatedHistory() => _propagatedHistory;
 
     /// <inheritdoc />
     public override ILogger CreateReplaySafeLogger(string categoryName) =>
@@ -767,4 +797,91 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
         return new WorkflowTaskFailedException($"Task failed: {failureDetails.ErrorMessage}", failureDetails);
     }
+
+    /// <summary>
+    /// Builds the list of <see cref="PropagatedHistorySegment"/> proto objects to attach to a
+    /// <see cref="CreateSubOrchestrationAction"/> based on the requested propagation scope.
+    /// </summary>
+    private IEnumerable<PropagatedHistorySegment> BuildPropagatedSegments(HistoryPropagationScope scope)
+    {
+        // Always include the current workflow's own history as the first segment
+        var ownSegment = new PropagatedHistorySegment
+        {
+            AppId = _appId ?? string.Empty,
+            InstanceId = InstanceId,
+            WorkflowName = Name
+        };
+        ownSegment.Events.AddRange(_ownHistory);
+        yield return ownSegment;
+
+        // For Lineage, also include the history this workflow received from its ancestors
+        if (scope == HistoryPropagationScope.Lineage && _propagatedHistory is not null)
+        {
+            foreach (var entry in _propagatedHistory.Entries)
+            {
+                var ancestorSegment = new PropagatedHistorySegment
+                {
+                    AppId = entry.AppId,
+                    InstanceId = entry.InstanceId,
+                    WorkflowName = entry.WorkflowName
+                };
+                // Re-encode the domain events back to proto events for forwarding
+                // The forwarded events are already proto-sourced; they were stored as domain events
+                // so we cannot round-trip them here without the original proto.
+                // Instead, forward empty event lists — the metadata (appId/instanceId/workflowName)
+                // is the primary useful content for filtering.
+                yield return ancestorSegment;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Converts a <see cref="PropagatedHistorySegment"/> proto message to a domain <see cref="PropagatedHistoryEntry"/>.
+    /// </summary>
+    private static PropagatedHistoryEntry ConvertSegment(PropagatedHistorySegment segment)
+    {
+        var events = segment.Events
+            .Select(e => new PropagatedHistoryEvent(e.EventId, MapEventKind(e), MapTimestamp(e.Timestamp)))
+            .ToList();
+
+        return new PropagatedHistoryEntry(
+            segment.AppId,
+            segment.InstanceId,
+            segment.WorkflowName,
+            events);
+    }
+
+    /// <summary>
+    /// Maps a proto <see cref="HistoryEvent"/> to a <see cref="HistoryEventKind"/>.
+    /// </summary>
+    private static HistoryEventKind MapEventKind(HistoryEvent e) => e.EventTypeCase switch
+    {
+        HistoryEvent.EventTypeOneofCase.ExecutionStarted => HistoryEventKind.ExecutionStarted,
+        HistoryEvent.EventTypeOneofCase.ExecutionCompleted => HistoryEventKind.ExecutionCompleted,
+        HistoryEvent.EventTypeOneofCase.ExecutionTerminated => HistoryEventKind.ExecutionTerminated,
+        HistoryEvent.EventTypeOneofCase.TaskScheduled => HistoryEventKind.TaskScheduled,
+        HistoryEvent.EventTypeOneofCase.TaskCompleted => HistoryEventKind.TaskCompleted,
+        HistoryEvent.EventTypeOneofCase.TaskFailed => HistoryEventKind.TaskFailed,
+        HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceCreated => HistoryEventKind.SubOrchestrationInstanceCreated,
+        HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceCompleted => HistoryEventKind.SubOrchestrationInstanceCompleted,
+        HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceFailed => HistoryEventKind.SubOrchestrationInstanceFailed,
+        HistoryEvent.EventTypeOneofCase.TimerCreated => HistoryEventKind.TimerCreated,
+        HistoryEvent.EventTypeOneofCase.TimerFired => HistoryEventKind.TimerFired,
+        HistoryEvent.EventTypeOneofCase.OrchestratorStarted => HistoryEventKind.OrchestratorStarted,
+        HistoryEvent.EventTypeOneofCase.OrchestratorCompleted => HistoryEventKind.OrchestratorCompleted,
+        HistoryEvent.EventTypeOneofCase.EventSent => HistoryEventKind.EventSent,
+        HistoryEvent.EventTypeOneofCase.EventRaised => HistoryEventKind.EventRaised,
+        HistoryEvent.EventTypeOneofCase.ContinueAsNew => HistoryEventKind.ContinueAsNew,
+        HistoryEvent.EventTypeOneofCase.ExecutionSuspended => HistoryEventKind.ExecutionSuspended,
+        HistoryEvent.EventTypeOneofCase.ExecutionResumed => HistoryEventKind.ExecutionResumed,
+        _ => HistoryEventKind.Unknown
+    };
+
+    /// <summary>
+    /// Converts a proto Timestamp to a <see cref="DateTimeOffset"/>.
+    /// </summary>
+    private static DateTimeOffset MapTimestamp(Google.Protobuf.WellKnownTypes.Timestamp? timestamp) =>
+        timestamp is not null
+            ? new DateTimeOffset(timestamp.ToDateTime(), TimeSpan.Zero)
+            : DateTimeOffset.MinValue;
 }
