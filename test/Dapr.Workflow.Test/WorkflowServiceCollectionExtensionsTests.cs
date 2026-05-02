@@ -527,6 +527,7 @@ public class WorkflowServiceCollectionExtensionsTests
         public override ILogger CreateReplaySafeLogger(string categoryName) => throw new NotSupportedException();
         public override ILogger CreateReplaySafeLogger(Type type) => throw new NotSupportedException();
         public override ILogger CreateReplaySafeLogger<T>() => throw new NotSupportedException();
+        public override PropagatedHistory? GetPropagatedHistory() => null;
     }
 
     private sealed class FakeActivityContext : WorkflowActivityContext
