@@ -19,7 +19,7 @@ namespace Dapr.Workflow;
 /// <summary>
 /// Represents a snapshot of a workflow instance's current state, including runtime status.
 /// </summary>
-public sealed class WorkflowState
+public class WorkflowState
 {
     private readonly WorkflowMetadata? _metadata;
 
@@ -33,19 +33,29 @@ public sealed class WorkflowState
     }
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="WorkflowState"/> class.
+    /// </summary>
+    /// <remarks>
+    /// This constructor is intended for use in derived types to enable unit testing scenarios.
+    /// </remarks>
+    protected WorkflowState()
+    {
+    }
+
+    /// <summary>
     /// Gets a value indicating whether the requested workflow instance exists.
     /// </summary>
-    public bool Exists => _metadata is not null;
+    public virtual bool Exists => _metadata is not null;
 
     /// <summary>
     /// Gets a value indicating whether the requested workflow is in a running state.
     /// </summary>
-    public bool IsWorkflowRunning => _metadata?.RuntimeStatus == WorkflowRuntimeStatus.Running;
+    public virtual bool IsWorkflowRunning => _metadata?.RuntimeStatus == WorkflowRuntimeStatus.Running;
 
     /// <summary>
     /// Gets a value indicating whether the requested workflow is in a terminal state.
     /// </summary>
-    public bool IsWorkflowCompleted => _metadata?.RuntimeStatus is
+    public virtual bool IsWorkflowCompleted => _metadata?.RuntimeStatus is
         WorkflowRuntimeStatus.Completed or
         WorkflowRuntimeStatus.Failed or
         WorkflowRuntimeStatus.Terminated;
@@ -53,21 +63,21 @@ public sealed class WorkflowState
     /// <summary>
     /// Gets the time at which this workflow instance was created.
     /// </summary>
-    public DateTimeOffset CreatedAt => _metadata?.CreatedAt is { } dt && dt != default
+    public virtual DateTimeOffset CreatedAt => _metadata?.CreatedAt is { } dt && dt != default
         ? new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc))
         : default;
 
     /// <summary>
     /// Gets the time at which this workflow instance last had its state updated.
     /// </summary>
-    public DateTimeOffset LastUpdatedAt => _metadata?.LastUpdatedAt is { } dt && dt != default
+    public virtual DateTimeOffset LastUpdatedAt => _metadata?.LastUpdatedAt is { } dt && dt != default
         ? new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc))
         : default;
 
     /// <summary>
     /// Gets the execution status of the workflow.
     /// </summary>
-    public WorkflowRuntimeStatus RuntimeStatus => _metadata?.RuntimeStatus ?? WorkflowRuntimeStatus.Unknown;
+    public virtual WorkflowRuntimeStatus RuntimeStatus => _metadata?.RuntimeStatus ?? WorkflowRuntimeStatus.Unknown;
 
     /// <summary>
     /// Gets the failure details, if any, for the workflow instance.
@@ -77,26 +87,26 @@ public sealed class WorkflowState
     /// state, and only if this instance metadata was fetched with the option to include output data.
     /// </remarks>
     /// <value>The failure details if the workflow was in a failed state; <c>null</c> otherwise.</value>
-    public WorkflowTaskFailureDetails? FailureDetails => _metadata?.FailureDetails;
+    public virtual WorkflowTaskFailureDetails? FailureDetails => _metadata?.FailureDetails;
 
     /// <summary>
     /// Deserializes the workflow input into <typeparamref name="T"/>.
     /// </summary>
     /// <typeparam name="T">The type to deserialize the workflow input into.</typeparam>
     /// <returns>Returns the input as <typeparamref name="T"/>, or returns a default value if the workflow doesn't exist.</returns>
-    public T? ReadInputAs<T>() => _metadata is null ? default : _metadata.ReadInputAs<T>();
+    public virtual T? ReadInputAs<T>() => _metadata is null ? default : _metadata.ReadInputAs<T>();
 
     /// <summary>
     /// Deserializes the workflow output into <typeparamref name="T"/>.
     /// </summary>
     /// <typeparam name="T">The type to deserialize the workflow output into.</typeparam>
     /// <returns>Returns the output as <typeparamref name="T"/>, or returns a default value if the workflow doesn't exist.</returns>
-    public T? ReadOutputAs<T>() => _metadata is null ? default : _metadata.ReadOutputAs<T>();
+    public virtual T? ReadOutputAs<T>() => _metadata is null ? default : _metadata.ReadOutputAs<T>();
 
     /// <summary>
     /// Deserializes the workflow's custom status into <typeparamref name="T"/>.
     /// </summary>
     /// <typeparam name="T">The type to deserialize the workflow's custom status into.</typeparam>
     /// <returns>Returns the custom status as <typeparamref name="T"/>, or returns a default value if the workflow doesn't exist.</returns>
-    public T? ReadCustomStatusAs<T>() => _metadata is null ? default : _metadata.ReadCustomStatusAs<T>();
+    public virtual T? ReadCustomStatusAs<T>() => _metadata is null ? default : _metadata.ReadCustomStatusAs<T>();
 }
