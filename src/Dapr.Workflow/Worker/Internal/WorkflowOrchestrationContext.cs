@@ -17,6 +17,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
 using Dapr.Workflow.Serialization;
@@ -49,7 +50,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private readonly Dictionary<int, string> _taskIdToExecutionId = [];
     private readonly Dictionary<string, int> _executionIdToTaskId = new(StringComparer.Ordinal);
     private readonly SortedDictionary<int, OrchestratorAction> _pendingActions = [];
-    private readonly IWorkflowSerializer _workflowSerializer;
+    private readonly IDaprSerializer _workflowSerializer;
     private readonly ILogger<WorkflowOrchestrationContext> _logger;
     private readonly ILoggerFactory _loggerFactory;
     // Maps runtime sub-orchestration created EventId -> parent action/task id (our local task id).
@@ -79,7 +80,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private bool _preserveUnprocessedEvents;
 
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
-        IWorkflowSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
+        IDaprSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
         string? appId = null, string? executionId = null)
     {
         _workflowSerializer = workflowSerializer;

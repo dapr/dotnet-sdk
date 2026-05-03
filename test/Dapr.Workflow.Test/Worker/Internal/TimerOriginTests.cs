@@ -14,6 +14,7 @@
 using System.Reflection;
 using System.Text.Json;
 using Dapr.DurableTask.Protobuf;
+using Dapr.Common.Serialization;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker;
@@ -799,7 +800,7 @@ public class TimerOriginTests
 
     private static WorkflowOrchestrationContext CreateContext()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
         return new WorkflowOrchestrationContext(
             name: "wf",
@@ -813,7 +814,7 @@ public class TimerOriginTests
     private static (WorkflowWorker worker, StubWorkflowsFactory factory) CreateWorkerAndFactory()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
         var factory = new StubWorkflowsFactory();
 
