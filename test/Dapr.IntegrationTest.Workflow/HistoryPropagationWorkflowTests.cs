@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Testing;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -44,7 +45,7 @@ public sealed class HistoryPropagationWorkflowTests
     /// Verifies that scheduling a child workflow with <see cref="HistoryPropagationScope.None"/>
     /// (the default) completes successfully.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task ShouldCompleteSuccessfully_WithNoPropagationScope()
     {
         var instanceId = Guid.NewGuid().ToString();
@@ -74,7 +75,7 @@ public sealed class HistoryPropagationWorkflowTests
     /// Verifies that scheduling a child workflow with <see cref="HistoryPropagationScope.OwnHistory"/>
     /// does not produce any errors and both workflows complete.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task ShouldCompleteSuccessfully_WithOwnHistoryPropagationScope()
     {
         var instanceId = Guid.NewGuid().ToString();
@@ -101,7 +102,7 @@ public sealed class HistoryPropagationWorkflowTests
     /// Verifies that scheduling a child workflow with <see cref="HistoryPropagationScope.Lineage"/>
     /// does not produce any errors and both workflows complete.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task ShouldCompleteSuccessfully_WithLineagePropagationScope()
     {
         var instanceId = Guid.NewGuid().ToString();
@@ -127,7 +128,7 @@ public sealed class HistoryPropagationWorkflowTests
     /// Verifies that calling GetPropagatedHistory() inside a child workflow scheduled with
     /// None scope returns null, not an exception.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task GetPropagatedHistory_ReturnsNull_WhenScheduledWithNoneScope()
     {
         var instanceId = Guid.NewGuid().ToString();
@@ -155,7 +156,7 @@ public sealed class HistoryPropagationWorkflowTests
     /// Verifies propagation scope option is preserved through the WorkflowTaskOptions.WithHistoryPropagation
     /// fluent builder and that the child workflow completes successfully.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task WithHistoryPropagation_FluentBuilder_WorksCorrectly()
     {
         var instanceId = Guid.NewGuid().ToString();
@@ -175,8 +176,6 @@ public sealed class HistoryPropagationWorkflowTests
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
     }
-
-    // ── Helper ────────────────────────────────────────────────────────────────
 
     private static async Task<DaprTestApplication> BuildTestAppAsync(Action<WorkflowRuntimeOptions> configureRuntime)
     {
@@ -207,13 +206,9 @@ public sealed class HistoryPropagationWorkflowTests
             .BuildAndStartAsync();
     }
 
-    // ── Shared result type ────────────────────────────────────────────────────
-
     private sealed record PropagationTestResult(
         bool ChildReceivedPropagatedHistory,
         int PropagatedEntryCount);
-
-    // ── Workflow implementations ──────────────────────────────────────────────
 
     /// <summary>
     /// Parent workflow that schedules a child with no propagation scope (default).
