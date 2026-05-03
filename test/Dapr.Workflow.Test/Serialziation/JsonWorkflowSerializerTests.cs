@@ -14,6 +14,8 @@
 using System.Text.Json;
 using Dapr.Workflow.Serialization;
 
+#pragma warning disable CS0618 // JsonWorkflowSerializer is tested here for backward-compatibility coverage
+
 namespace Dapr.Workflow.Test.Serialziation;
 
 public class JsonWorkflowSerializerTests

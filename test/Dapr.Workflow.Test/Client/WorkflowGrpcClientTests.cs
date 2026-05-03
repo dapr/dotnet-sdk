@@ -13,6 +13,7 @@
 
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
+using Dapr.Common.Serialization;
 using Dapr.Workflow.Serialization;
 using Grpc.Core;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -127,7 +128,7 @@ public class WorkflowGrpcClientTests
     [Fact]
     public async Task GetWorkflowMetadataAsync_ShouldPassThroughGetInputsAndOutputsFlag()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         GetInstanceRequest? captured = null;
 
@@ -153,7 +154,7 @@ public class WorkflowGrpcClientTests
     [Fact]
     public async Task WaitForWorkflowStartAsync_ShouldReturnImmediately_WhenStatusIsNotPending()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
@@ -180,7 +181,7 @@ public class WorkflowGrpcClientTests
     [Fact]
     public async Task WaitForWorkflowStartAsync_ShouldThrowInvalidOperationException_WhenInstanceDoesNotExist()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
@@ -195,7 +196,7 @@ public class WorkflowGrpcClientTests
     [Fact]
     public async Task WaitForWorkflowCompletionAsync_ShouldReturnImmediately_WhenStatusIsTerminal()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
@@ -537,7 +538,7 @@ public class WorkflowGrpcClientTests
     [Fact]
     public async Task WaitForWorkflowStartAsync_ShouldPollUntilStatusIsNotPending()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var grpcClientMock = CreateGrpcClientMock();
 
@@ -581,7 +582,7 @@ public class WorkflowGrpcClientTests
     [Fact]
     public async Task WaitForWorkflowCompletionAsync_ShouldPollUntilTerminalStatus()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var grpcClientMock = CreateGrpcClientMock();
 
@@ -631,7 +632,7 @@ public class WorkflowGrpcClientTests
         OrchestrationStatus protoStatus,
         WorkflowRuntimeStatus expectedStatus)
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
@@ -658,7 +659,7 @@ public class WorkflowGrpcClientTests
     [Fact]
     public async Task WaitForWorkflowCompletionAsync_ShouldThrowInvalidOperationException_WhenInstanceDoesNotExist()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
@@ -676,7 +677,7 @@ public class WorkflowGrpcClientTests
     [Fact]
     public async Task WaitForWorkflowCompletionAsync_ShouldRespectCancellationToken_WhileWaiting()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock

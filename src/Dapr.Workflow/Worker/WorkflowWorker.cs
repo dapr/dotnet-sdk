@@ -12,10 +12,12 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
+using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Serialization;
@@ -37,8 +39,8 @@ internal sealed class WorkflowWorker(
     TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, 
     IWorkflowsFactory workflowsFactory, 
     ILoggerFactory loggerFactory, 
-    IWorkflowSerializer workflowSerializer, 
-    IServiceProvider serviceProvider, 
+    IDaprSerializer workflowSerializer,
+    IServiceProvider serviceProvider,
     WorkflowRuntimeOptions options,
     IConfiguration? configuration = null) : BackgroundService
 {
@@ -47,7 +49,7 @@ internal sealed class WorkflowWorker(
     private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     private readonly ILogger<WorkflowWorker> _logger = loggerFactory.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly WorkflowRuntimeOptions _options = options ?? throw new ArgumentNullException(nameof(options));
-    private readonly IWorkflowSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
+    private readonly IDaprSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
     private readonly string? _daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
     
     private GrpcProtocolHandler? _protocolHandler;
@@ -561,6 +563,9 @@ internal sealed class WorkflowWorker(
             var context = new WorkflowActivityContextImpl(activityIdentifier,
                 request.OrchestrationInstance?.InstanceId ?? string.Empty, taskExecutionKey);
 
+            // Restore the trace context provided by the sidecar so Activity.Current is non-null
+            using var traceActivity = StartActivityFromRequest(request);
+
             // Deserialize the input
             object? input = null;
             if (!string.IsNullOrEmpty(request.Input))
@@ -616,6 +621,33 @@ internal sealed class WorkflowWorker(
             await _protocolHandler.DisposeAsync();
 
         await base.StopAsync(cancellationToken);
+    }
+    
+    private static readonly ActivitySource WorkflowActivitySource = new ("Dapr.Workflow");
+
+    private static Activity? StartActivityFromRequest(ActivityRequest request)
+    {
+        var traceParent = request.ParentTraceContext?.TraceParent;
+        if (string.IsNullOrEmpty(traceParent))
+            return null;
+
+        var traceState = request.ParentTraceContext?.TraceState;
+        if (ActivityContext.TryParse(traceParent, traceState, out var parentCtx))
+        {
+            return WorkflowActivitySource.StartActivity(
+                name: $"WorkflowActivity {request.Name}",
+                kind: ActivityKind.Internal,
+                parentContext: parentCtx,
+                []);
+        }
+        
+        // Fall back to raw parent ID if parsing fails
+        var act = new Activity($"WorkflowActivity {request.Name}");
+        act.SetParentId(traceParent);
+        if (!string.IsNullOrEmpty(traceState))
+            act.TraceStateString = traceState;
+        act.Start();
+        return act;
     }
 
     private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>

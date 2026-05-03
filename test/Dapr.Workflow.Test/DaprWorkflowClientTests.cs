@@ -120,7 +120,7 @@ public class DaprWorkflowClientTests
             RuntimeStatus: WorkflowRuntimeStatus.Running,
             CreatedAt: DateTime.MinValue,
             LastUpdatedAt: DateTime.MinValue,
-            Serializer: new Serialization.JsonWorkflowSerializer());
+            Serializer: new Common.Serialization.JsonDaprSerializer());
 
         var inner = new CapturingWorkflowClient { GetWorkflowMetadataResult = metadata };
         var client = new DaprWorkflowClient(inner);
@@ -151,7 +151,7 @@ public class DaprWorkflowClientTests
             RuntimeStatus: WorkflowRuntimeStatus.Running,
             CreatedAt: DateTime.MinValue,
             LastUpdatedAt: DateTime.MinValue,
-            Serializer: new Serialization.JsonWorkflowSerializer());
+            Serializer: new Common.Serialization.JsonDaprSerializer());
 
         var inner = new CapturingWorkflowClient { WaitForStartResult = metadata };
         var client = new DaprWorkflowClient(inner);
@@ -182,7 +182,7 @@ public class DaprWorkflowClientTests
             RuntimeStatus: WorkflowRuntimeStatus.Completed,
             CreatedAt: DateTime.MinValue,
             LastUpdatedAt: DateTime.MinValue,
-            Serializer: new Serialization.JsonWorkflowSerializer());
+            Serializer: new Common.Serialization.JsonDaprSerializer());
 
         var metadataWithInputs = new WorkflowMetadata(
             InstanceId: "i",
@@ -190,7 +190,7 @@ public class DaprWorkflowClientTests
             RuntimeStatus: WorkflowRuntimeStatus.Completed,
             CreatedAt: DateTime.MinValue,
             LastUpdatedAt: DateTime.MinValue,
-            Serializer: new Serialization.JsonWorkflowSerializer());
+            Serializer: new Common.Serialization.JsonDaprSerializer());
 
         var inner = new CapturingWorkflowClient
         {
@@ -217,7 +217,7 @@ public class DaprWorkflowClientTests
             RuntimeStatus: WorkflowRuntimeStatus.Completed,
             CreatedAt: DateTime.MinValue,
             LastUpdatedAt: DateTime.MinValue,
-            Serializer: new Serialization.JsonWorkflowSerializer());
+            Serializer: new Common.Serialization.JsonDaprSerializer());
 
         var inner = new CapturingWorkflowClient { WaitForCompletionResult = completionMetadata };
         var client = new DaprWorkflowClient(inner);
@@ -361,13 +361,13 @@ public class DaprWorkflowClientTests
         public string? LastWaitForStartInstanceId { get; private set; }
         public bool LastWaitForStartGetInputsAndOutputs { get; private set; }
         public WorkflowMetadata WaitForStartResult { get; set; } =
-            new("i", "wf", WorkflowRuntimeStatus.Running, DateTime.MinValue, DateTime.MinValue, new Serialization.JsonWorkflowSerializer());
+            new("i", "wf", WorkflowRuntimeStatus.Running, DateTime.MinValue, DateTime.MinValue, new Common.Serialization.JsonDaprSerializer());
 
         public string? LastWaitForCompletionInstanceId { get; private set; }
         public bool LastWaitForCompletionGetInputsAndOutputs { get; private set; }
         public CancellationToken LastWaitForCompletionCancellationToken { get; private set; }
         public WorkflowMetadata WaitForCompletionResult { get; set; } =
-            new("i", "wf", WorkflowRuntimeStatus.Completed, DateTime.MinValue, DateTime.MinValue, new Serialization.JsonWorkflowSerializer());
+            new("i", "wf", WorkflowRuntimeStatus.Completed, DateTime.MinValue, DateTime.MinValue, new Common.Serialization.JsonDaprSerializer());
 
         public string? LastRaiseEventInstanceId { get; private set; }
         public string? LastRaiseEventName { get; private set; }
