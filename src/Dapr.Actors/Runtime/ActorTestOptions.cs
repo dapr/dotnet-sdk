@@ -15,6 +15,7 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Dapr.Actors.Client;
+using Dapr.Common.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -52,6 +53,15 @@ public sealed class ActorTestOptions
     /// Gets or sets the <see cref="ActorTimerManager" />.
     /// </summary>
     public ActorTimerManager TimerManager { get; set; } = new InvalidTimerManager();
+
+    /// <summary>
+    /// Gets or sets the <see cref="IDaprSerializer" /> to use for actor state persistence and message serialization in tests.
+    /// </summary>
+    /// <remarks>
+    /// When set, the <see cref="IDaprSerializer"/> will be used for actor state and message serialization,
+    /// taking precedence over <see cref="JsonSerializerOptions"/>.
+    /// </remarks>
+    public IDaprSerializer DaprSerializer { get; set; }
 
     private class InvalidProxyFactory : IActorProxyFactory
     {

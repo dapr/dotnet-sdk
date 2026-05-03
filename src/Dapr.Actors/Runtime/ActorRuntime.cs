@@ -58,7 +58,8 @@ public sealed class ActorRuntime
                 this.options.UseJsonSerialization,
                 loggerFactory, 
                 proxyFactory,
-                daprInteractor);
+                daprInteractor,
+                this.options.DaprSerializer);
         }
     }
 

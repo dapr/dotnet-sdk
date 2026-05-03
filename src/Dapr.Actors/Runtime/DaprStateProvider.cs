@@ -21,6 +21,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Communication;
+using Dapr.Common.Serialization;
 
 /// <summary>
 /// State Provider to interact with Dapr runtime.
@@ -29,6 +30,7 @@ internal class DaprStateProvider
 {
     private readonly IActorStateSerializer actorStateSerializer;
     private readonly JsonSerializerOptions jsonSerializerOptions;
+    private readonly IDaprSerializer daprSerializer;
 
     private readonly IDaprInteractor daprInteractor;
 
@@ -44,6 +46,12 @@ internal class DaprStateProvider
         this.daprInteractor = daprInteractor;
     }
 
+    public DaprStateProvider(IDaprInteractor daprInteractor, IDaprSerializer daprSerializer)
+    {
+        this.daprSerializer = daprSerializer ?? throw new ArgumentNullException(nameof(daprSerializer));
+        this.daprInteractor = daprInteractor;
+    }
+
     public async Task<ConditionalValue<ActorStateResponse<T>>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
     {
         var result = new ConditionalValue<ActorStateResponse<T>>(false, default);
@@ -53,8 +61,12 @@ internal class DaprStateProvider
         {
             T typedResult;
 
-            // perform default json de-serialization if custom serializer was not provided.
-            if (this.actorStateSerializer != null)
+            // IDaprSerializer takes precedence, then custom binary serializer, then default JSON.
+            if (this.daprSerializer != null)
+            {
+                typedResult = this.daprSerializer.Deserialize<T>(response.Value);
+            }
+            else if (this.actorStateSerializer != null)
             {
                 var byteResult = Convert.FromBase64String(response.Value.Trim('"'));
                 typedResult = this.actorStateSerializer.Deserialize<T>(byteResult);
@@ -122,8 +134,18 @@ internal class DaprStateProvider
                 case StateChangeKind.Update:
                     writer.WriteString("key", stateChange.StateName);
 
-                    // perform default json serialization if custom serializer was not provided.
-                    if (this.actorStateSerializer != null)
+                    // IDaprSerializer takes precedence, then custom binary serializer, then default JSON.
+                    if (this.daprSerializer != null)
+                    {
+                        var serialized = this.daprSerializer.Serialize(stateChange.Value, stateChange.Type);
+                        writer.WritePropertyName("value");
+                        // Write the serialized JSON string as a raw JSON value
+                        using (var doc = JsonDocument.Parse(serialized))
+                        {
+                            doc.RootElement.WriteTo(writer);
+                        }
+                    }
+                    else if (this.actorStateSerializer != null)
                     {
                         var buffer = this.actorStateSerializer.Serialize(stateChange.Type, stateChange.Value);
                         writer.WriteBase64String("value", buffer);

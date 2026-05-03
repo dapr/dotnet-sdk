@@ -21,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Communication;
 using Dapr.Actors.Communication.Client;
+using Dapr.Common.Serialization;
 
 /// <summary>
 /// Provides the base implementation for the proxy to the remote actor objects implementing <see cref="IActor"/> interfaces.
@@ -53,6 +54,7 @@ public class ActorProxy : IActorProxy
 
     internal IActorMessageBodyFactory ActorMessageBodyFactory { get; set; }
     internal JsonSerializerOptions JsonSerializerOptions { get; set; }
+    internal IDaprSerializer DaprSerializer { get; set; }
     internal string DaprApiToken;
 
     /// <summary>
@@ -117,11 +119,26 @@ public class ActorProxy : IActorProxy
     /// <returns>Response form server.</returns>
     public async Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(string method, TRequest data, CancellationToken cancellationToken = default)
     {
-        using var stream = new MemoryStream();
-        await JsonSerializer.SerializeAsync<TRequest>(stream, data, JsonSerializerOptions);
-        await stream.FlushAsync();
-        var jsonPayload = Encoding.UTF8.GetString(stream.ToArray());
+        string jsonPayload;
+        if (this.DaprSerializer != null)
+        {
+            jsonPayload = this.DaprSerializer.Serialize(data, typeof(TRequest));
+        }
+        else
+        {
+            using var stream = new MemoryStream();
+            await JsonSerializer.SerializeAsync<TRequest>(stream, data, JsonSerializerOptions);
+            await stream.FlushAsync();
+            jsonPayload = Encoding.UTF8.GetString(stream.ToArray());
+        }
         var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
+
+        if (this.DaprSerializer != null)
+        {
+            using var reader = new StreamReader(response, Encoding.UTF8);
+            var responseString = await reader.ReadToEndAsync();
+            return this.DaprSerializer.Deserialize<TResponse>(responseString);
+        }
         return await JsonSerializer.DeserializeAsync<TResponse>(response, JsonSerializerOptions);
     }
 
@@ -135,10 +152,18 @@ public class ActorProxy : IActorProxy
     /// <returns>Response form server.</returns>
     public async Task InvokeMethodAsync<TRequest>(string method, TRequest data, CancellationToken cancellationToken = default)
     {
-        using var stream = new MemoryStream();
-        await JsonSerializer.SerializeAsync<TRequest>(stream, data, JsonSerializerOptions);
-        await stream.FlushAsync();
-        var jsonPayload = Encoding.UTF8.GetString(stream.ToArray());
+        string jsonPayload;
+        if (this.DaprSerializer != null)
+        {
+            jsonPayload = this.DaprSerializer.Serialize(data, typeof(TRequest));
+        }
+        else
+        {
+            using var stream = new MemoryStream();
+            await JsonSerializer.SerializeAsync<TRequest>(stream, data, JsonSerializerOptions);
+            await stream.FlushAsync();
+            jsonPayload = Encoding.UTF8.GetString(stream.ToArray());
+        }
         await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
     }
 
@@ -152,6 +177,13 @@ public class ActorProxy : IActorProxy
     public async Task<TResponse> InvokeMethodAsync<TResponse>(string method, CancellationToken cancellationToken = default)
     {
         var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, null, cancellationToken);
+
+        if (this.DaprSerializer != null)
+        {
+            using var reader = new StreamReader(response, Encoding.UTF8);
+            var responseString = await reader.ReadToEndAsync();
+            return this.DaprSerializer.Deserialize<TResponse>(responseString);
+        }
         return await JsonSerializer.DeserializeAsync<TResponse>(response, JsonSerializerOptions);
     }
 
@@ -181,6 +213,7 @@ public class ActorProxy : IActorProxy
         this.ActorMessageBodyFactory = client.GetRemotingMessageBodyFactory();
         this.JsonSerializerOptions = options?.JsonSerializerOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
         this.DaprApiToken = options?.DaprApiToken;
+        this.DaprSerializer = options?.DaprSerializer;
     }
 
     /// <summary>
@@ -196,6 +229,7 @@ public class ActorProxy : IActorProxy
         this.ActorId = actorId;
         this.ActorType = actorType;
         this.JsonSerializerOptions = options?.JsonSerializerOptions ?? this.JsonSerializerOptions;
+        this.DaprSerializer = options?.DaprSerializer;
     }
 
     /// <summary>

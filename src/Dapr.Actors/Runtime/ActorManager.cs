@@ -23,6 +23,7 @@ using System.Threading.Tasks;
 using Dapr.Actors;
 using Dapr.Actors.Client;
 using Dapr.Actors.Communication;
+using Dapr.Common.Serialization;
 using Microsoft.Extensions.Logging;
 
 // The ActorManager serves as a cache for a variety of different concerns related to an Actor type
@@ -42,6 +43,7 @@ internal sealed class ActorManager
     private readonly ActorMessageSerializersManager serializersManager;
     private readonly IActorMessageBodyFactory messageBodyFactory;
     private readonly JsonSerializerOptions jsonSerializerOptions;
+    private readonly IDaprSerializer daprSerializer;
 
     // method dispatchermap used by remoting calls.
     private readonly ActorMethodDispatcherMap methodDispatcherMap;
@@ -60,7 +62,8 @@ internal sealed class ActorManager
         bool useJsonSerialization,
         ILoggerFactory loggerFactory,
         IActorProxyFactory proxyFactory,
-        IDaprInteractor daprInteractor)
+        IDaprInteractor daprInteractor,
+        IDaprSerializer daprSerializer = null)
     {
         this.registration = registration;
         this.activator = activator;
@@ -68,6 +71,7 @@ internal sealed class ActorManager
         this.loggerFactory = loggerFactory;
         this.proxyFactory = proxyFactory;
         this.daprInteractor = daprInteractor;
+        this.daprSerializer = daprSerializer;
 
         this.timerManager = new DefaultActorTimerManager(this.daprInteractor);
 
@@ -80,9 +84,13 @@ internal sealed class ActorManager
         this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
         this.timerMethodContext = ActorMethodContext.CreateForTimer(TimerMethodName);
 
-        // provide a serializer if 'useJsonSerialization' is true and no serialization provider is provided.
+        // IDaprSerializer takes precedence for remoting serialization, then useJsonSerialization, then DataContract.
         IActorMessageBodySerializationProvider serializationProvider = null;
-        if (useJsonSerialization)
+        if (this.daprSerializer != null)
+        {
+            serializationProvider = new ActorMessageBodyDaprSerializerProvider(this.daprSerializer);
+        }
+        else if (useJsonSerialization)
         {
             serializationProvider = new ActorMessageBodyJsonSerializationProvider(jsonSerializerOptions);
         }
@@ -156,7 +164,17 @@ internal sealed class ActorManager
             {
                 // deserialize using stream.
                 var type = parameters[0].ParameterType;
-                var deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type, jsonSerializerOptions);
+                object deserializedType;
+                if (this.daprSerializer != null)
+                {
+                    using var reader = new StreamReader(requestBodyStream, Encoding.UTF8, leaveOpen: true);
+                    var json = await reader.ReadToEndAsync();
+                    deserializedType = this.daprSerializer.Deserialize(json, type);
+                }
+                else
+                {
+                    deserializedType = await JsonSerializer.DeserializeAsync(requestBodyStream, type, jsonSerializerOptions);
+                }
                 awaitable = methodInfo.Invoke(actor, parameters.Length == 1 ? new object[] { deserializedType } : new object[] { deserializedType, ct });
             }
             else
@@ -186,13 +204,22 @@ internal sealed class ActorManager
         // Serialize result if it has result (return type was not just Task.)
         if (methodInfo.ReturnType.Name != typeof(Task).Name)
         {
+            if (this.daprSerializer != null)
+            {
+                var resultType = methodInfo.ReturnType.GenericTypeArguments[0];
+                var json = this.daprSerializer.Serialize(result, resultType);
+                var bytes = Encoding.UTF8.GetBytes(json);
+                await responseBodyStream.WriteAsync(bytes, 0, bytes.Length);
+            }
+            else
+            {
 #if NET7_0_OR_GREATER
-            var resultType = methodInfo.ReturnType.GenericTypeArguments[0];
-            await JsonSerializer.SerializeAsync(responseBodyStream, result, resultType, jsonSerializerOptions);
+                var resultType = methodInfo.ReturnType.GenericTypeArguments[0];
+                await JsonSerializer.SerializeAsync(responseBodyStream, result, resultType, jsonSerializerOptions);
 #else
                 await JsonSerializer.SerializeAsync<object>(responseBodyStream, result, jsonSerializerOptions); 
 #endif
-
+            }
         }
     }
 
@@ -346,11 +373,24 @@ internal sealed class ActorManager
     private async Task<ActorActivatorState> CreateActorAsync(ActorId actorId)
     {
         this.logger.LogDebug("Creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
-        var host = new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory, this.timerManager)
+
+        DaprStateProvider stateProvider;
+        if (this.daprSerializer != null)
         {
-            StateProvider = new DaprStateProvider(this.daprInteractor, this.jsonSerializerOptions),
-        };
-        var state =  await this.activator.CreateAsync(host);
+            stateProvider = new DaprStateProvider(this.daprInteractor, this.daprSerializer);
+        }
+        else
+        {
+            stateProvider = new DaprStateProvider(this.daprInteractor, this.jsonSerializerOptions);
+        }
+
+        var host = this.daprSerializer != null
+            ? new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory, this.timerManager, this.daprSerializer)
+            : new ActorHost(this.ActorTypeInfo, actorId, this.jsonSerializerOptions, this.loggerFactory, this.proxyFactory, this.timerManager);
+
+        host.StateProvider = stateProvider;
+
+        var state = await this.activator.CreateAsync(host);
         this.logger.LogDebug("Finished creating Actor of type {ActorType} with ActorId {ActorId}", this.ActorTypeInfo.ImplementationType, actorId);
         return state;
     }

@@ -15,6 +15,7 @@
 
 using System;
 using System.Text.Json;
+using Dapr.Common.Serialization;
 
 namespace Dapr.Actors.Runtime;
 
@@ -234,4 +235,16 @@ public sealed class ActorRuntimeOptions
     /// </remarks>
     /// <value></value>
     public string? HttpEndpoint { get; set; }
+
+    /// <summary>
+    /// Gets or sets an optional <see cref="IDaprSerializer"/> to use for actor state persistence
+    /// and message deserialization on the server side.
+    /// </summary>
+    /// <remarks>
+    /// When set, this serializer is used for actor state persistence and method invocation
+    /// deserialization, taking precedence over <see cref="JsonSerializerOptions"/> and
+    /// <see cref="UseJsonSerialization"/>. This provides a unified serialization experience
+    /// consistent with other Dapr SDK components.
+    /// </remarks>
+    public IDaprSerializer? DaprSerializer { get; set; }
 }

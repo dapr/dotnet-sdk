@@ -15,6 +15,7 @@ namespace Dapr.Actors.Client;
 
 using System;
 using System.Text.Json;
+using Dapr.Common.Serialization;
 
 /// <summary>
 /// The class containing customizable options for how the Actor Proxy is initialized.
@@ -67,4 +68,14 @@ public class ActorProxyOptions
     /// Enable JSON serialization for actor proxy message serialization in both remoting and non-remoting invocations.
     /// </summary>
     public bool UseJsonSerialization { get; set; }
+
+    /// <summary>
+    /// Gets or sets an optional <see cref="IDaprSerializer"/> to use for all actor proxy serialization.
+    /// </summary>
+    /// <remarks>
+    /// When set, this serializer is used for both remoting and non-remoting invocations, taking precedence
+    /// over <see cref="JsonSerializerOptions"/> and <see cref="UseJsonSerialization"/>.
+    /// This provides a unified serialization experience consistent with other Dapr SDK components.
+    /// </remarks>
+    public IDaprSerializer DaprSerializer { get; set; }
 }

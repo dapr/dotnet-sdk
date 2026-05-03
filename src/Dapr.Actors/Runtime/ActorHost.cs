@@ -16,6 +16,7 @@ namespace Dapr.Actors.Runtime;
 using System;
 using System.Text.Json;
 using Dapr.Actors.Client;
+using Dapr.Common.Serialization;
 using Microsoft.Extensions.Logging;
 
 /// <summary>
@@ -75,6 +76,18 @@ public sealed class ActorHost
 
         options ??= new ActorTestOptions();
 
+        if (options.DaprSerializer != null)
+        {
+            return new ActorHost(
+                ActorTypeInformation.Get(actorType, actorTypeName),
+                options.ActorId,
+                options.JsonSerializerOptions,
+                options.LoggerFactory,
+                options.ProxyFactory,
+                options.TimerManager,
+                options.DaprSerializer);
+        }
+
         return new ActorHost(
             ActorTypeInformation.Get(actorType, actorTypeName),
             options.ActorId,
@@ -132,6 +145,27 @@ public sealed class ActorHost
     }
 
     /// <summary>
+    /// Initializes a new instance of the <see cref="ActorHost"/> class with an <see cref="IDaprSerializer"/>.
+    /// </summary>
+    internal ActorHost(
+        ActorTypeInformation actorTypeInfo,
+        ActorId id,
+        JsonSerializerOptions jsonSerializerOptions,
+        ILoggerFactory loggerFactory,
+        IActorProxyFactory proxyFactory,
+        ActorTimerManager timerManager,
+        IDaprSerializer daprSerializer)
+    {
+        this.ActorTypeInfo = actorTypeInfo;
+        this.Id = id;
+        this.JsonSerializerOptions = jsonSerializerOptions;
+        this.LoggerFactory = loggerFactory;
+        this.ProxyFactory = proxyFactory;
+        this.TimerManager = timerManager;
+        this.DaprSerializer = daprSerializer;
+    }
+
+    /// <summary>
     /// Gets the ActorTypeInformation for actor service.
     /// </summary>
     public ActorTypeInformation ActorTypeInfo { get; }
@@ -160,6 +194,11 @@ public sealed class ActorHost
     /// Gets the <see cref="ActorTimerManager" />.
     /// </summary>
     public ActorTimerManager TimerManager { get; }
+
+    /// <summary>
+    /// Gets the <see cref="IDaprSerializer" /> used for actor state serialization, if configured.
+    /// </summary>
+    public IDaprSerializer DaprSerializer { get; }
 
     internal DaprStateProvider StateProvider { get; set; }
 }

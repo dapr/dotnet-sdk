@@ -18,6 +18,7 @@ using System.Net.Http;
 using Dapr.Actors.Builder;
 using Dapr.Actors.Communication;
 using Dapr.Actors.Communication.Client;
+using Dapr.Common.Serialization;
 
 /// <summary>
 /// Represents a factory class to create a proxy to the remote actor objects.
@@ -81,9 +82,13 @@ public class ActorProxyFactory : IActorProxyFactory
 
         var daprInteractor = new DaprHttpInteractor(this.handler, options.HttpEndpoint, options.DaprApiToken, options.RequestTimeout);
             
-        // provide a serializer if 'useJsonSerialization' is true and no serialization provider is provided.
+        // Determine serialization provider: IDaprSerializer takes precedence, then UseJsonSerialization.
         IActorMessageBodySerializationProvider serializationProvider = null;
-        if (options.UseJsonSerialization)
+        if (options.DaprSerializer != null)
+        {
+            serializationProvider = new ActorMessageBodyDaprSerializerProvider(options.DaprSerializer);
+        }
+        else if (options.UseJsonSerialization)
         {
             serializationProvider = new ActorMessageBodyJsonSerializationProvider(options.JsonSerializerOptions);
         }
