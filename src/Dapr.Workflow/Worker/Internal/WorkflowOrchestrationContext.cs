@@ -22,7 +22,10 @@ using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
+using Google.Protobuf;
 using Microsoft.Extensions.Logging;
+using static Dapr.Workflow.Worker.Internal.TimerOriginHelpers;
+using Timestamp = Google.Protobuf.WellKnownTypes.Timestamp;
 
 namespace Dapr.Workflow.Worker.Internal;
 
@@ -142,8 +145,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         if (options?.RetryPolicy is { } retryPolicy)
         {
             var attemptOptions = options with { RetryPolicy = null };
+            // Generate a stable taskExecutionId for the entire retry chain.
+            // This ID is generated before any sequence number changes so it remains
+            // consistent across replays.
+            var retryTaskExecutionId = CreateTaskExecutionId(_sequenceNumber, name);
             var interceptor = new RetryInterceptor<T>(this, retryPolicy,
-                () => CallActivityInternalAsync<T>(name, input, attemptOptions));
+                () => CallActivityInternalAsync<T>(name, input, attemptOptions),
+                delay => CreateActivityRetryTimer(delay, retryTaskExecutionId));
             var result = await interceptor.Invoke();
             return result!;
         }
@@ -190,17 +198,27 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     }
 
     /// <inheritdoc />
-    public override async Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken)
+    public override Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken)
+    {
+        return CreateTimerInternal(
+            Timestamp.FromDateTime(fireAt), new TimerOriginCreateTimer(), cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates a durable timer with the specified origin metadata.
+    /// </summary>
+    private async Task CreateTimerInternal(
+        Timestamp fireAt, IMessage origin, CancellationToken cancellationToken)
     {
         var taskId = _sequenceNumber++;
+
+        var createTimerAction = new CreateTimerAction { FireAt = fireAt };
+        SetTimerOrigin(createTimerAction, origin);
 
         _pendingActions.Add(taskId, new OrchestratorAction
         {
             Id = taskId,
-            CreateTimer = new CreateTimerAction
-            {
-                FireAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(fireAt)
-            }
+            CreateTimer = createTimerAction
         });
 
         var tcs = new TaskCompletionSource<HistoryEvent>();
@@ -225,6 +243,79 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         }
 
         await tcs.Task;
+    }
+
+    /// <summary>
+    /// Override that uses <see cref="TimerOriginExternalEvent"/> for the timeout timer and
+    /// supports indefinite waits (timeout &lt; 0) via a sentinel optional timer.
+    /// </summary>
+    public override async Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout)
+    {
+        if (timeout == TimeSpan.Zero)
+        {
+            // Zero timeout: return an already-canceled task, no timer emitted.
+            throw new TaskCanceledException(
+                $"WaitForExternalEvent '{eventName}' timed out immediately (zero timeout).");
+        }
+
+        var origin = new TimerOriginExternalEvent { Name = eventName };
+
+        using CancellationTokenSource timerCts = new();
+        Task timeoutTask;
+
+        if (timeout < TimeSpan.Zero)
+        {
+            // Indefinite wait: emit a synthetic optional timer with the sentinel fireAt.
+            timeoutTask = CreateTimerInternal(
+                ExternalEventIndefiniteFireAt,
+                origin,
+                timerCts.Token);
+        }
+        else
+        {
+            // Finite timeout: emit a timer with origin = ExternalEvent.
+            timeoutTask = CreateTimerInternal(
+                Timestamp.FromDateTime(CurrentUtcDateTime.Add(timeout)),
+                origin,
+                timerCts.Token);
+        }
+
+        using CancellationTokenSource eventCts = new();
+        Task<T> externalEventTask = WaitForExternalEventAsync<T>(eventName, eventCts.Token);
+
+        Task winner = await Task.WhenAny(timeoutTask, externalEventTask);
+        if (winner == externalEventTask)
+        {
+            timerCts.Cancel();
+        }
+        else
+        {
+            eventCts.Cancel();
+        }
+
+        return await externalEventTask;
+    }
+
+    /// <summary>
+    /// Creates a timer with <see cref="TimerOriginActivityRetry"/> origin.
+    /// Called by <see cref="RetryInterceptor{T}"/> for activity retries.
+    /// </summary>
+    internal Task CreateActivityRetryTimer(TimeSpan delay, string taskExecutionId)
+    {
+        var origin = new TimerOriginActivityRetry { TaskExecutionId = taskExecutionId };
+        return CreateTimerInternal(
+            Timestamp.FromDateTime(CurrentUtcDateTime.Add(delay)), origin, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Creates a timer with <see cref="TimerOriginChildWorkflowRetry"/> origin.
+    /// Called by <see cref="RetryInterceptor{T}"/> for child workflow retries.
+    /// </summary>
+    internal Task CreateChildWorkflowRetryTimer(TimeSpan delay, string instanceId)
+    {
+        var origin = new TimerOriginChildWorkflowRetry { InstanceId = instanceId };
+        return CreateTimerInternal(
+            Timestamp.FromDateTime(CurrentUtcDateTime.Add(delay)), origin, CancellationToken.None);
     }
 
     /// <inheritdoc />
@@ -303,9 +394,12 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     {
         if (options?.RetryPolicy is { } retryPolicy)
         {
+            // First-child rule: capture the first child's instance ID for the entire retry chain.
+            var firstChildInstanceId = options.InstanceId ?? NewGuid().ToString();
             var attemptOptions = options with { RetryPolicy = null };
             var interceptor = new RetryInterceptor<TResult>(this, retryPolicy,
-                () => CallChildWorkflowInternalAsync<TResult>(workflowName, input, attemptOptions));
+                () => CallChildWorkflowInternalAsync<TResult>(workflowName, input, attemptOptions),
+                delay => CreateChildWorkflowRetryTimer(delay, firstChildInstanceId));
             var result = await interceptor.Invoke();
             return result!;
         }
@@ -466,7 +560,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
                     break;
 
                 case { TaskScheduled: not null }:
-                    HandleActionCreated(historyEvent);
+                    OnTaskScheduled(historyEvent);
                     break;
 
                 case { TaskCompleted: { } completed }:
@@ -478,7 +572,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
                     break;
 
                 case { SubOrchestrationInstanceCreated: {} created }:
-                    HandleSubOrchestrationCreated(historyEvent, created);
+                    OnSubOrchestrationCreated(historyEvent, created);
                     break;
 
                 case { SubOrchestrationInstanceCompleted: { } completed }:
@@ -489,8 +583,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
                     HandleActionCompleted(historyEvent, failed.TaskScheduledId);
                     break;
 
-                case { TimerCreated: not null }:
-                    HandleActionCreated(historyEvent);
+                case { TimerCreated: { } timerCreated }:
+                    OnTimerCreated(historyEvent, timerCreated);
                     break;
 
                 case { TimerFired: { } fired }:
@@ -536,6 +630,44 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         _pendingActions.Remove(historyEvent.EventId);
     }
 
+    /// <summary>
+    /// If the pending action at <paramref name="eventId"/> is an optional external event timer,
+    /// drops it and shifts all subsequent actions/tasks down by one.
+    /// </summary>
+    /// <returns><c>true</c> if an optional timer was dropped; <c>false</c> otherwise.</returns>
+    private bool TryDropOptionalTimerAt(int eventId)
+    {
+        if (_pendingActions.TryGetValue(eventId, out var pendingAction)
+            && pendingAction.CreateTimer != null
+            && IsOptionalExternalEventTimerAction(pendingAction))
+        {
+            DropOptionalExternalEventTimerAt(eventId);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Handles a TaskScheduled history event, dropping an optional timer if needed.
+    /// </summary>
+    private void OnTaskScheduled(HistoryEvent historyEvent)
+    {
+        var eventId = historyEvent.EventId;
+        TryDropOptionalTimerAt(eventId);
+        _pendingActions.Remove(eventId);
+    }
+
+    /// <summary>
+    /// Handles a SubOrchestrationInstanceCreated history event, dropping an optional timer if needed.
+    /// </summary>
+    private void OnSubOrchestrationCreated(HistoryEvent historyEvent,
+        SubOrchestrationInstanceCreatedEvent created)
+    {
+        TryDropOptionalTimerAt(historyEvent.EventId);
+        HandleSubOrchestrationCreated(historyEvent, created);
+    }
+
     private void HandleSubOrchestrationCreated(HistoryEvent historyEvent,
         SubOrchestrationInstanceCreatedEvent created)
     {
@@ -564,6 +696,87 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
         // Fallback to old behavior if we can't correlate
         _pendingActions.Remove(createdEventId);
+    }
+
+    /// <summary>
+    /// Handles a TimerCreated history event with optional timer asymmetric-case handling.
+    /// </summary>
+    private void OnTimerCreated(HistoryEvent historyEvent, TimerCreatedEvent timerCreated)
+    {
+        var eventId = historyEvent.EventId;
+
+        // Asymmetric case: pending is an optional timer but incoming TimerCreated is not.
+        if (_pendingActions.TryGetValue(eventId, out var pendingAction)
+            && pendingAction.CreateTimer != null
+            && IsOptionalExternalEventTimerAction(pendingAction)
+            && !IsOptionalExternalEventTimerCreatedEvent(timerCreated))
+        {
+            DropOptionalExternalEventTimerAt(eventId);
+        }
+
+        // Normal match (both optional, neither optional, or post-shift)
+        _pendingActions.Remove(eventId);
+    }
+
+    /// <summary>
+    /// Drops the optional external event timer at the specified ID and shifts all subsequent
+    /// pending actions and tasks down by one.
+    /// </summary>
+    private void DropOptionalExternalEventTimerAt(int atId)
+    {
+        // Remove the optional timer action
+        _pendingActions.Remove(atId);
+
+        // Remove any open task (TCS) bound to this ID and cancel it
+        if (_openTasks.Remove(atId, out var tcs))
+        {
+            tcs.TrySetCanceled();
+        }
+
+        // Shift all pending actions with id > atId down by one
+        var actionsToShift = new List<KeyValuePair<int, OrchestratorAction>>();
+        foreach (var kvp in _pendingActions)
+        {
+            if (kvp.Key > atId)
+            {
+                actionsToShift.Add(kvp);
+            }
+        }
+
+        foreach (var kvp in actionsToShift)
+        {
+            _pendingActions.Remove(kvp.Key);
+        }
+
+        foreach (var kvp in actionsToShift)
+        {
+            var newId = kvp.Key - 1;
+            kvp.Value.Id = newId;
+            _pendingActions[newId] = kvp.Value;
+        }
+
+        // Shift open tasks with id > atId down by one
+        var tasksToShift = new List<KeyValuePair<int, TaskCompletionSource<HistoryEvent>>>();
+        foreach (var kvp in _openTasks)
+        {
+            if (kvp.Key > atId)
+            {
+                tasksToShift.Add(kvp);
+            }
+        }
+
+        foreach (var kvp in tasksToShift)
+        {
+            _openTasks.Remove(kvp.Key);
+        }
+
+        foreach (var kvp in tasksToShift)
+        {
+            _openTasks[kvp.Key - 1] = kvp.Value;
+        }
+
+        // Decrement the sequence number counter
+        _sequenceNumber--;
     }
     
     private void HandleActionCompleted(HistoryEvent historyEvent, int taskId)

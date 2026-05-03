@@ -194,6 +194,14 @@ message TimerCreatedEvent {
   // If defined, indicates that this task was the starting point of a new
   // workflow execution as the result of a rerun operation.
   optional RerunParentInstanceInfo rerunParentInstanceInfo = 3;
+
+  // Indicates the reason this timer was created.
+  oneof origin {
+    TimerOriginCreateTimer originCreateTimer = 4;
+    TimerOriginExternalEvent originExternalEvent = 5;
+    TimerOriginActivityRetry originActivityRetry = 6;
+    TimerOriginChildWorkflowRetry originChildWorkflowRetry = 7;
+  }
 }
 
 message TimerFiredEvent {
@@ -347,9 +355,36 @@ message CreateSubOrchestrationAction {
   repeated PropagatedHistorySegment propagated_history = 7;
 }
 
+// Timer created explicitly by the workflow via CreateTimer().
+message TimerOriginCreateTimer {
+}
+
+// Timer created to track the timeout of a WaitForExternalEvent call.
+message TimerOriginExternalEvent {
+  string name = 1;
+}
+
+// Timer created to manage the retry delay of an activity.
+message TimerOriginActivityRetry {
+  string taskExecutionId = 1;
+}
+
+// Timer created to manage the retry delay of a child workflow.
+message TimerOriginChildWorkflowRetry {
+  string instanceId = 1;
+}
+
 message CreateTimerAction {
   google.protobuf.Timestamp fireAt = 1;
   optional string name = 2;
+
+  // Indicates the reason this timer is being created.
+  oneof origin {
+    TimerOriginCreateTimer originCreateTimer = 3;
+    TimerOriginExternalEvent originExternalEvent = 4;
+    TimerOriginActivityRetry originActivityRetry = 5;
+    TimerOriginChildWorkflowRetry originChildWorkflowRetry = 6;
+  }
 }
 
 message SendEventAction {
