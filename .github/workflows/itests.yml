@@ -134,6 +134,7 @@ jobs:
             --no-restore \
             --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
             --logger "GitHubActions;report-warnings=false" \
+            --logger "console;verbosity=detailed" \
             --results-directory "${{ github.workspace }}/TestResults" \
             /p:CollectCoverage=true \
             /p:CoverletOutputFormat=opencover \

@@ -96,7 +96,8 @@ internal sealed class WorkflowsFactory(ILogger<WorkflowsFactory> logger) : IWork
     }
     
     /// <inheritdoc />
-    public bool TryCreateWorkflow(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflow? workflow)
+    public bool TryCreateWorkflow(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflow? workflow,
+        out Exception? activationException)
     {
         if (_workflowFactories.TryGetValue(identifier.Name, out var factory))
         {
@@ -104,23 +105,27 @@ internal sealed class WorkflowsFactory(ILogger<WorkflowsFactory> logger) : IWork
             {
                 workflow = factory(serviceProvider);
                 logger.LogCreateWorkflowInstanceSuccess(identifier.Name);
+                activationException = null;
                 return true;
             }
             catch (Exception ex)
             {
                 logger.LogCreateWorkflowFailure(ex, identifier.Name);
+                activationException = ex;
                 workflow = null;
                 return false;
             }
         }
         
         logger.LogCreateWorkflowNotFoundInRegistry(identifier.Name);
+        activationException = null;
         workflow = null;
         return false;
     }
 
     /// <inheritdoc />
-    public bool TryCreateActivity(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflowActivity? activity)
+    public bool TryCreateActivity(TaskIdentifier identifier, IServiceProvider serviceProvider, out IWorkflowActivity? activity,
+        out Exception? activationException)
     {
         if (_activityFactories.TryGetValue(identifier.Name, out var factory))
         {
@@ -128,17 +133,20 @@ internal sealed class WorkflowsFactory(ILogger<WorkflowsFactory> logger) : IWork
             {
                 activity = factory(serviceProvider);
                 logger.LogCreateActivityInstanceSuccess(identifier.Name);
+                activationException = null;
                 return true;
             }
             catch (Exception ex)
             {
                 logger.LogCreateActivityFailure(ex, identifier.Name);
+                activationException = ex;
                 activity = null;
                 return false;
             }
         }
         
         logger.LogCreateActivityNotFoundInRegistry(identifier.Name);
+        activationException = null;
         activity = null;
         return false;
     }

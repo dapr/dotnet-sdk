@@ -126,4 +126,75 @@ public class DaprStateProviderTest
         resp = await provider.TryLoadStateAsync<string>("actorType", "actorId", "key", token);
         Assert.False(resp.HasValue);
     }
+
+    [Fact]
+    public async Task SaveStateAsync_Remove_EmitsDeleteOperation()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var provider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var token = new CancellationToken();
+
+        var stateChanges = new List<ActorStateChange>
+        {
+            new ActorStateChange("key1", typeof(string), null, StateChangeKind.Remove, null),
+        };
+
+        string capturedContent = null;
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, CancellationToken>((_, _, data, _) => capturedContent = data)
+            .Returns(Task.CompletedTask);
+
+        await provider.SaveStateAsync("actorType", "actorId", stateChanges, token);
+
+        Assert.NotNull(capturedContent);
+        Assert.Equal(
+            "[{\"operation\":\"delete\",\"request\":{\"key\":\"key1\"}}]",
+            capturedContent);
+    }
+
+    [Fact]
+    public async Task SaveStateAsync_Update_EmitsUpsertOperation()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var provider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var token = new CancellationToken();
+
+        var stateChanges = new List<ActorStateChange>
+        {
+            new ActorStateChange("key1", typeof(string), "updated", StateChangeKind.Update, null),
+        };
+
+        string capturedContent = null;
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, CancellationToken>((_, _, data, _) => capturedContent = data)
+            .Returns(Task.CompletedTask);
+
+        await provider.SaveStateAsync("actorType", "actorId", stateChanges, token);
+
+        Assert.NotNull(capturedContent);
+        Assert.Equal(
+            "[{\"operation\":\"upsert\",\"request\":{\"key\":\"key1\",\"value\":\"updated\"}}]",
+            capturedContent);
+    }
+
+    [Fact]
+    public async Task TryLoadStateAsync_ReturnsFalseWhenTTLExpireTimeIsExactlyNow()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var provider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var token = new CancellationToken();
+
+        // TTL exactly equal to UtcNow means the entry has just expired (boundary condition).
+        var ttl = DateTime.UtcNow;
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value\"", ttl)));
+
+        var resp = await provider.TryLoadStateAsync<string>("actorType", "actorId", "key", token);
+        Assert.False(resp.HasValue);
+    }
 }

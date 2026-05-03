@@ -254,6 +254,19 @@ public sealed class GrpcProtocolHandlerTests
         await handler.DisposeAsync();
         await handler.DisposeAsync();
     }
+
+    [Fact]
+    public async Task DisposeAsync_ShouldNotThrow_WhenCalledConcurrently()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        // Fire both calls simultaneously so they race through the idempotency guard.
+        var t1 = handler.DisposeAsync().AsTask();
+        var t2 = handler.DisposeAsync().AsTask();
+
+        await Task.WhenAll(t1, t2);
+    }
     
     [Fact]
     public async Task StartAsync_ShouldSendGetWorkItemsRequest_WithConfiguredConcurrencyLimits()
