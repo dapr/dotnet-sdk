@@ -119,7 +119,7 @@ internal class ActorMessageBodyDaprSerializerProvider : IActorMessageBodySeriali
             }
 
             using var stream = new MemoryStream();
-            messageBody.CopyTo(stream);
+            await messageBody.CopyToAsync(stream);
 
             if (stream.Length == 0)
             {

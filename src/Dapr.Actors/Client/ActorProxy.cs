@@ -119,27 +119,9 @@ public class ActorProxy : IActorProxy
     /// <returns>Response form server.</returns>
     public async Task<TResponse> InvokeMethodAsync<TRequest, TResponse>(string method, TRequest data, CancellationToken cancellationToken = default)
     {
-        string jsonPayload;
-        if (this.DaprSerializer != null)
-        {
-            jsonPayload = this.DaprSerializer.Serialize(data, typeof(TRequest));
-        }
-        else
-        {
-            using var stream = new MemoryStream();
-            await JsonSerializer.SerializeAsync<TRequest>(stream, data, JsonSerializerOptions);
-            await stream.FlushAsync();
-            jsonPayload = Encoding.UTF8.GetString(stream.ToArray());
-        }
+        var jsonPayload = await SerializeRequestAsync(data, typeof(TRequest));
         var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
-
-        if (this.DaprSerializer != null)
-        {
-            using var reader = new StreamReader(response, Encoding.UTF8);
-            var responseString = await reader.ReadToEndAsync();
-            return this.DaprSerializer.Deserialize<TResponse>(responseString);
-        }
-        return await JsonSerializer.DeserializeAsync<TResponse>(response, JsonSerializerOptions);
+        return await DeserializeResponseAsync<TResponse>(response);
     }
 
     /// <summary>
@@ -152,18 +134,7 @@ public class ActorProxy : IActorProxy
     /// <returns>Response form server.</returns>
     public async Task InvokeMethodAsync<TRequest>(string method, TRequest data, CancellationToken cancellationToken = default)
     {
-        string jsonPayload;
-        if (this.DaprSerializer != null)
-        {
-            jsonPayload = this.DaprSerializer.Serialize(data, typeof(TRequest));
-        }
-        else
-        {
-            using var stream = new MemoryStream();
-            await JsonSerializer.SerializeAsync<TRequest>(stream, data, JsonSerializerOptions);
-            await stream.FlushAsync();
-            jsonPayload = Encoding.UTF8.GetString(stream.ToArray());
-        }
+        var jsonPayload = await SerializeRequestAsync(data, typeof(TRequest));
         await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, jsonPayload, cancellationToken);
     }
 
@@ -177,14 +148,7 @@ public class ActorProxy : IActorProxy
     public async Task<TResponse> InvokeMethodAsync<TResponse>(string method, CancellationToken cancellationToken = default)
     {
         var response = await this.actorNonRemotingClient.InvokeActorMethodWithoutRemotingAsync(this.ActorType, this.ActorId.ToString(), method, null, cancellationToken);
-
-        if (this.DaprSerializer != null)
-        {
-            using var reader = new StreamReader(response, Encoding.UTF8);
-            var responseString = await reader.ReadToEndAsync();
-            return this.DaprSerializer.Deserialize<TResponse>(responseString);
-        }
-        return await JsonSerializer.DeserializeAsync<TResponse>(response, JsonSerializerOptions);
+        return await DeserializeResponseAsync<TResponse>(response);
     }
 
     /// <summary>
@@ -349,5 +313,30 @@ public class ActorProxy : IActorProxy
         }
 
         return false;
+    }
+
+    private async Task<string> SerializeRequestAsync<TRequest>(TRequest data, Type requestType)
+    {
+        if (this.DaprSerializer != null)
+        {
+            return this.DaprSerializer.Serialize(data, requestType);
+        }
+
+        using var stream = new MemoryStream();
+        await JsonSerializer.SerializeAsync<TRequest>(stream, data, JsonSerializerOptions);
+        await stream.FlushAsync();
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private async Task<TResponse> DeserializeResponseAsync<TResponse>(Stream response)
+    {
+        if (this.DaprSerializer != null)
+        {
+            using var reader = new StreamReader(response, Encoding.UTF8);
+            var responseString = await reader.ReadToEndAsync();
+            return this.DaprSerializer.Deserialize<TResponse>(responseString);
+        }
+
+        return await JsonSerializer.DeserializeAsync<TResponse>(response, JsonSerializerOptions);
     }
 }
