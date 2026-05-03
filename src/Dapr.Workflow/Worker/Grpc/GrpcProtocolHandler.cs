@@ -47,6 +47,7 @@ internal sealed class GrpcProtocolHandler(
 
     private AsyncServerStreamingCall<WorkItem>? _streamingCall;
     private int _activeWorkItemCount;
+    private int _disposed;
 
     /// <summary>
     /// Starts the streaming connection with the Dapr sidecar.
@@ -372,12 +373,14 @@ internal sealed class GrpcProtocolHandler(
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        if (_disposalCts.IsCancellationRequested)
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 
         _logger.LogGrpcProtocolHandlerDisposing();
 
-        await _disposalCts.CancelAsync();
+        try { await _disposalCts.CancelAsync(); }
+        catch (ObjectDisposedException) { }
+
         _streamingCall?.Dispose();
         _disposalCts.Dispose();
         _orchestrationSemaphore.Dispose();
