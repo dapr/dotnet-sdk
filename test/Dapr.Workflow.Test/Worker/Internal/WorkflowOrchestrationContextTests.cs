@@ -13,6 +13,7 @@
 
 using System.Text.Json;
 using Dapr.DurableTask.Protobuf;
+using Dapr.Common.Serialization;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Internal;
@@ -27,7 +28,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldComplete_WhenCompletionCorrelationIdMatchesParentTaskId()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -66,7 +67,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldComplete_WhenRuntimeUsesCreatedEventIdAsCompletionCorrelationId()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -116,7 +117,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void CallChildWorkflowAsync_ShouldPutRouterOnCreateSubOrchestrationAction_WhenAppIdProvided()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         const string sourceAppId = "workflow-app-1";
@@ -152,7 +153,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void CallActivityAsync_ShouldNotSetRouter_WhenAppIdNotProvided()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
         var context = new WorkflowOrchestrationContext(
             name: "wf",
@@ -174,7 +175,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallActivityAsync_ShouldComplete_WhenCompletionArrivesBeforeCall()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -209,7 +210,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void CallActivityAsync_ShouldPutRouterOnScheduleTaskAction_WhenAppIdProvided()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         const string sourceAppId = "workflow-app-1";
@@ -244,7 +245,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void CallActivityAsync_ShouldScheduleTaskAction_WhenNotReplaying()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -269,7 +270,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallActivityAsync_ShouldReturnCompletedResult_FromHistoryTaskCompleted()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -306,7 +307,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallActivityAsync_ShouldMatchCompletion_WhenTaskScheduledIdDoesNotMatch()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
         var context = new WorkflowOrchestrationContext(
             name: "wf",
@@ -343,7 +344,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallActivityAsync_ShouldReturnCompletedResult_FromCallFooTaskCompletedFirst()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -402,7 +403,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallActivityAsync_ShouldReturnCompletedResult_FromCallBarTaskCompletedFirst()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -461,7 +462,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallActivityAsync_ShouldThrowWorkflowTaskFailedException_FromHistoryTaskFailed()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -505,7 +506,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallActivityAsync_ShouldRetry_WhenRetryPolicyProvided()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -596,7 +597,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldRetry_WhenRetryPolicyProvided()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -687,7 +688,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task WaitForExternalEventAsync_ShouldReturnDeserializedValue_WhenEventInHistory_IgnoringCase()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -716,7 +717,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task WaitForExternalEventAsync_ShouldReturnCompletedTask_WhenEventInHistory()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -748,7 +749,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task WaitForExternalEventAsync_ShouldReturnUncompletedTask_WhenEventNotInHistory()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -769,7 +770,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldReturnCompletedTask_WhenEventReceived()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -800,7 +801,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldCancel_WhenEventNotReceived()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -832,7 +833,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void SetCustomStatus_ShouldUpdateCustomStatusProperty()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -858,7 +859,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void IsReplaying_ShouldBeTrue_WhenHistoryHasUnconsumedEvents_AndFalseAfterConsumption()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -889,7 +890,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CreateTimer_ShouldReturnCompletedTask_WhenTimerFiredInHistory()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -923,7 +924,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void SendEvent_ShouldAddSendEventAction_WithSerializedPayload()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -948,7 +949,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void CreateReplaySafeLogger_ShouldReturnLoggerThatIsDisabledDuringReplay()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -982,7 +983,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void CreateReplaySafeLogger_StringOverload_ShouldReturnReplaySafeLogger()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -1006,7 +1007,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void CreateReplaySafeLogger_TypeOverload_ShouldReturnReplaySafeLogger()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
         var recordingFactory = new RecordingLoggerFactory();
 
@@ -1033,7 +1034,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void CreateReplaySafeLogger_GenericOverload_ShouldReturnReplaySafeLogger()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
         var recordingFactory = new RecordingLoggerFactory();
 
@@ -1060,7 +1061,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void ContinueAsNew_ShouldAddCompleteOrchestrationAction_WithCarryoverEvents_WhenPreserveUnprocessedEventsIsTrue()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -1096,7 +1097,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void ContinueAsNew_ShouldNotCarryOverEvents_WhenPreserveUnprocessedEventsIsFalse()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -1127,7 +1128,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void NewGuid_ShouldBeDeterministic_ForSameInstanceIdAndTimestamp()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var now = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
         var tracker = new WorkflowVersionTracker([]);
 
@@ -1146,7 +1147,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void NewGuid_ShouldVary_ForDifferentExecutionIds()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var c1 = new WorkflowOrchestrationContext("wf", "same-instance",
@@ -1166,7 +1167,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void NewGuid_ShouldBeDeterministic_ForNonGuidInstanceId()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var now = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
         var tracker = new WorkflowVersionTracker([]);
 
@@ -1185,7 +1186,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallActivityAsync_ShouldThrowArgumentException_WhenNameIsNullOrWhitespace()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -1202,7 +1203,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallActivityAsync_ShouldThrowInvalidOperationException_WhenHistoryEventIsUnexpectedType()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -1231,7 +1232,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task WaitForExternalEventAsync_ShouldReturnDefault_WhenEventInHistoryHasNullInput()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -1260,7 +1261,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldReturnResult_WhenEventIsInHistory()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -1289,7 +1290,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void CallChildWorkflowAsync_ShouldScheduleSubOrchestration_WhenNotReplaying_AndUseProvidedInstanceId()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var context = new WorkflowOrchestrationContext(
@@ -1319,7 +1320,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldReturnCompletedResult_FromHistorySubOrchestrationCompleted()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -1353,7 +1354,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldThrowWorkflowTaskFailedException_FromHistorySubOrchestrationFailed()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -1397,7 +1398,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldThrowJsonDeserializationException_WhenHistoryEventIsUnexpectedType()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]
@@ -1426,7 +1427,7 @@ public class WorkflowOrchestrationContextTests
     [Fact]
     public void CreateReplaySafeLogger_TypeAndGenericOverloads_ShouldBehaveLikeCategoryOverload()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
 
         var history = new[]

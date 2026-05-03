@@ -16,6 +16,7 @@ using System.Reflection;
 using System.Text.Json;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
+using Dapr.Common.Serialization;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker;
@@ -45,7 +46,7 @@ public class WorkflowWorkerTests
         ActivitySource.AddActivityListener(listener);
 
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         // W3C traceparent: version-traceId-spanId-flags
@@ -123,7 +124,7 @@ public class WorkflowWorkerTests
         using var userSource = new ActivitySource("User.Code");
 
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         const string expectedTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
@@ -177,7 +178,7 @@ public class WorkflowWorkerTests
         ActivitySource.AddActivityListener(listener);
 
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         Activity? observedCurrent = null;
@@ -229,7 +230,7 @@ public class WorkflowWorkerTests
         ActivitySource.AddActivityListener(listener);
 
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         const string malformedParentId = "not-a-valid-w3c-traceparent";
@@ -366,7 +367,7 @@ public class WorkflowWorkerTests
     public async Task ExecuteAsync_ShouldComplete_WhenGrpcStreamCompletesImmediately()
     {
         var services = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -402,7 +403,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldReturnTerminatedCompletion_WhenReplayLatestEventIsExecutionTerminated()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         // Intentionally no workflow registrations: this verifies the termination path
@@ -446,7 +447,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldNotReturnTerminatedCompletion_WhenReplayLatestEventIsNotExecutionTerminated()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         // Intentionally no workflow registrations. If the termination short-circuit does NOT trigger,
@@ -495,7 +496,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldReturnEmptyResponse_WhenLatestEventIsExecutionSuspended()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var worker = new WorkflowWorker(
@@ -535,7 +536,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldNotShortCircuit_WhenLatestEventIsExecutionResumed()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var worker = new WorkflowWorker(
@@ -577,7 +578,7 @@ public class WorkflowWorkerTests
     public async Task ExecuteAsync_ShouldSwallowOperationCanceledException_WhenStoppingTokenIsCanceled()
     {
         var services = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -609,7 +610,7 @@ public class WorkflowWorkerTests
     public async Task ExecuteAsync_ShouldRethrow_WhenOptionsHaveInvalidConcurrency()
     {
         var services = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         // Bypass property validation to simulate corrupted configuration.
@@ -632,7 +633,7 @@ public class WorkflowWorkerTests
     public void CreateCallOptions_ShouldIncludeUserAgentAndApiToken_WhenConfigured()
     {
         var services = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var configuration = new ConfigurationBuilder()
@@ -665,7 +666,7 @@ public class WorkflowWorkerTests
     public void CreateCallOptions_ShouldNotIncludeApiTokenHeader_WhenTokenIsEmpty()
     {
         var services = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var configuration = new ConfigurationBuilder()
@@ -693,7 +694,7 @@ public class WorkflowWorkerTests
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldComplete_WhenCompletionEventArrivesLater()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
         var context = new WorkflowOrchestrationContext(
             name: "wf",
@@ -744,7 +745,7 @@ public class WorkflowWorkerTests
         const string appId1 = "this-app";
         const string appId2 = "remote-app";
         
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]), appId1);
@@ -761,7 +762,7 @@ public class WorkflowWorkerTests
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldComplete_WhenCompletionArrivedBeforeCall()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
@@ -801,7 +802,7 @@ public class WorkflowWorkerTests
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldIgnoreDuplicateCompletionEvents()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
@@ -842,7 +843,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldAllowWorkflowToComplete_OnSecondPass_WhenChildCompletionInHistory()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -920,7 +921,7 @@ public class WorkflowWorkerTests
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldOnlyCompleteAfterCreation_WhenCompletionArrivesFirst()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
@@ -954,7 +955,7 @@ public class WorkflowWorkerTests
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldCompleteOnlyForMatchingTaskScheduledId_WhenReplaySchedulesAgain()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
             serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
@@ -1006,7 +1007,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldReturnEmptyActions_WhenWorkflowNameMissingInHistory()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var worker = new WorkflowWorker(
@@ -1035,7 +1036,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldReturnEmptyActions_WhenWorkflowNotInRegistry()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var worker = new WorkflowWorker(
@@ -1071,7 +1072,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldReturnActivationFailure_WhenWorkflowActivationFails()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1112,7 +1113,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldCompleteWorkflow_AndIncludeOutputAndCustomStatus()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1161,7 +1162,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldNotAddCompletedAction_WhenWorkflowContinuesAsNew()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1209,7 +1210,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldReturnFailedCompletion_WhenWorkflowThrows()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1252,7 +1253,7 @@ public class WorkflowWorkerTests
     public async Task HandleActivityResponseAsync_ShouldReturnNotFoundFailure_WhenActivityNotInRegistry()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var worker = new WorkflowWorker(
@@ -1284,7 +1285,7 @@ public class WorkflowWorkerTests
     public async Task HandleActivityResponseAsync_ShouldReturnActivationFailure_WhenActivityActivationFails()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1320,7 +1321,7 @@ public class WorkflowWorkerTests
     public async Task HandleActivityResponseAsync_ShouldExecuteActivity_AndSerializeResult()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1360,7 +1361,7 @@ public class WorkflowWorkerTests
     public async Task HandleActivityResponseAsync_ShouldReturnFailureDetails_WhenActivityThrows()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1396,7 +1397,7 @@ public class WorkflowWorkerTests
     public async Task ExecuteAsync_ShouldRetry_WhenGrpcProtocolHandlerStartFailsWithException()
     {
         var services = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1436,7 +1437,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldUseFirstEventTimestamp_WhenPresent_AndSerializeEmptyResult_WhenOutputIsNull()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1492,7 +1493,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldAdvanceCurrentUtcDateTime_WhenTimerFires()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
         var beginDateTime = new DateTime(2025, 01, 01, 12, 0, 0, DateTimeKind.Utc);
 
@@ -1574,7 +1575,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_CurrentUtcDateTime_IsConsistentBeforeFirstAwait_OnReplay()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var t1 = new DateTime(2025, 01, 01, 12, 0, 0, DateTimeKind.Utc); // workflow started
@@ -1669,7 +1670,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldCompleted_WhenEventReceived()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
         var beginDateTime = new DateTime(2025, 01, 01, 12, 0, 0, DateTimeKind.Utc);
 
@@ -1752,7 +1753,7 @@ public class WorkflowWorkerTests
     public async Task HandleOrchestratorResponseAsync_ShouldReturnFailureDetails_WhenTimerFires()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
         var beginDateTime = new DateTime(2025, 01, 01, 12, 0, 0, DateTimeKind.Utc);
 
@@ -1835,7 +1836,7 @@ public class WorkflowWorkerTests
     public async Task HandleActivityResponseAsync_ShouldUseEmptyInstanceId_WhenOrchestrationInstanceIsNull_AndReturnEmptyResult_WhenOutputIsNull()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1879,7 +1880,7 @@ public class WorkflowWorkerTests
         // running the workflow. Here we put the ExecutionStarted event inside the
         // stream (not in PastEvents) so the workflow can only complete if streaming works.
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1935,7 +1936,7 @@ public class WorkflowWorkerTests
         // When no ExecutionStarted event is present, the worker falls back to
         // HistoryState.OrchestrationState.Name to identify the workflow.
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -1981,7 +1982,7 @@ public class WorkflowWorkerTests
         // Third fallback: OrchestratorStarted.Version.Name when both ExecutionStarted
         // and HistoryState are absent or have no name.
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -2049,7 +2050,7 @@ public class WorkflowWorkerTests
             .AddSingleton(routerRegistry.Object)
             .BuildServiceProvider();
 
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var worker = new WorkflowWorker(
@@ -2099,7 +2100,7 @@ public class WorkflowWorkerTests
             .AddSingleton(routerRegistry.Object)
             .BuildServiceProvider();
 
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var worker = new WorkflowWorker(
@@ -2141,7 +2142,7 @@ public class WorkflowWorkerTests
             .AddSingleton(routerRegistry.Object)
             .BuildServiceProvider();
 
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var worker = new WorkflowWorker(
@@ -2184,7 +2185,7 @@ public class WorkflowWorkerTests
         // IncludeVersionInNextResponse=true and the worker stamps the version into
         // the OrchestratorResponse.
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         const string patchName = "my-feature-patch";
@@ -2236,7 +2237,7 @@ public class WorkflowWorkerTests
         // First turn: workflow awaits an activity but no completion event is present.
         // The response must contain a ScheduleTask action and no CompleteOrchestration.
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -2290,7 +2291,7 @@ public class WorkflowWorkerTests
         // returns an already-faulted Task exercises the inner try/catch around
         // `await runTask`, where IsNonRetriable is explicitly set to true.
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -2395,7 +2396,7 @@ public class WorkflowWorkerTests
         // be the TaskExecutionId string.  We verify this indirectly by confirming
         // the activity still executes successfully and the correct task id is echoed.
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
@@ -2438,7 +2439,7 @@ public class WorkflowWorkerTests
     {
         // CompletionToken must be round-tripped back in every response path.
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
         var worker = new WorkflowWorker(
             CreateGrpcClientMock().Object,
@@ -2478,7 +2479,7 @@ public class WorkflowWorkerTests
     public async Task HandleActivityResponseAsync_ShouldEchoCompletionToken_InAllResponsePaths()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var options = new WorkflowRuntimeOptions();
 
         var factory = new StubWorkflowsFactory();
