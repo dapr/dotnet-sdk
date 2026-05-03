@@ -53,7 +53,9 @@ public sealed record DaprSubscriptionOptions(MessageHandlingPolicy MessageHandli
     /// <summary>
     /// An optional error handler that is invoked when background tasks (sidecar streaming, acknowledgement processing,
     /// message processing) fault after a successful initial subscription. If not configured, exceptions will become
-    /// unobserved task exceptions following the default .NET behavior.
+    /// unobserved task exceptions following the default .NET behavior, which may terminate the application depending on
+    /// runtime configuration. If the error handler itself throws, those exceptions are suppressed to prevent cascading
+    /// failures.
     /// </summary>
     public SubscriptionErrorHandler? ErrorHandler { get; init; }
 }

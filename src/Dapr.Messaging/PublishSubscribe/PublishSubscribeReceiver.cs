@@ -141,6 +141,7 @@ internal sealed class PublishSubscribeReceiver : IAsyncDisposable
         }
 
         //Retrieve the messages from the sidecar and write to the messages channel - start without awaiting so this isn't blocking
+        // CancellationToken.None is used for continuations to ensure error handling runs even during disposal
         _ = FetchDataFromSidecarAsync(stream, topicMessagesChannel.Writer, cancellationToken)
             .ContinueWith(task => HandleTaskCompletion(task), CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted,
                 TaskScheduler.Default);
