@@ -11,7 +11,16 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr;
+
 namespace Dapr.Messaging.PublishSubscribe;
+
+/// <summary>
+/// A delegate that handles errors occurring during the subscription lifecycle after a successful initial connection.
+/// </summary>
+/// <param name="exception">The exception that occurred.</param>
+/// <returns>A task representing the asynchronous error handling operation.</returns>
+public delegate Task SubscriptionErrorHandler(DaprException exception);
 
 /// <summary>
 /// Options used to configure the dynamic Dapr subscription.
@@ -40,5 +49,12 @@ public sealed record DaprSubscriptionOptions(MessageHandlingPolicy MessageHandli
     /// been signaled.
     /// </summary>
     public TimeSpan MaximumCleanupTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// An optional error handler that is invoked when background tasks (sidecar streaming, acknowledgement processing,
+    /// message processing) fault after a successful initial subscription. If not configured, exceptions will become
+    /// unobserved task exceptions following the default .NET behavior.
+    /// </summary>
+    public SubscriptionErrorHandler? ErrorHandler { get; init; }
 }
 
