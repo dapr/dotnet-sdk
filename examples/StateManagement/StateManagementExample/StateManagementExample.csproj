@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <!--
+            In your own projects, reference the Dapr.StateManagement NuGet package instead
+            of the individual project references below. The sub-packages
+            (Dapr.StateManagement.Abstractions, Dapr.StateManagement.Runtime) are not
+            published separately to NuGet; only Dapr.StateManagement is.
+
+            <PackageReference Include="Dapr.StateManagement" Version="*" />
+        -->
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Project references used only within this repository -->
+        <ProjectReference Include="..\..\..\src\Dapr.StateManagement.Abstractions\Dapr.StateManagement.Abstractions.csproj" />
+        <ProjectReference Include="..\..\..\src\Dapr.StateManagement.Runtime\Dapr.StateManagement.Runtime.csproj" />
+    </ItemGroup>
+
+</Project>

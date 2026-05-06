@@ -1,0 +1,105 @@
+﻿<Project Sdk="Microsoft.Build.NoTargets/3.7.0">
+
+    <PropertyGroup>
+        <IsPackable>true</IsPackable>
+        <PackageId>Dapr.StateManagement</PackageId>
+        <Description>Dapr State Management SDK for .NET — provides a gRPC-backed client for the Dapr state management building block, with full dependency injection support.</Description>
+
+        <!-- Create the package on build -->
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+
+        <!-- This aggregator produces no own binaries -->
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+
+        <!-- We embed children; do NOT emit dependency groups -->
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+
+        <!-- Aggregator package has lib assets but no dependencies -->
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+        <!-- Avoid creating an empty .snupkg -->
+        <IncludeSymbols>false</IncludeSymbols>
+
+        <!-- Per-TFM content hook (runs once per TFM) -->
+        <TargetsForTfmSpecificContentInPackage>
+            $(TargetsForTfmSpecificContentInPackage);
+            _BuildChildrenForCurrentTFM;
+            _CollectChildOutputsForCurrentTFM
+        </TargetsForTfmSpecificContentInPackage>
+    </PropertyGroup>
+
+    <!-- Fail fast if TargetFrameworks from src/Directory.Build.props is not applied -->
+    <Target Name="_EnsureTargetFrameworks" BeforeTargets="Pack">
+        <PropertyGroup>
+            <_ExpectedDirectoryBuildProps>$(MSBuildProjectDirectory)\..\Directory.Build.props</_ExpectedDirectoryBuildProps>
+        </PropertyGroup>
+        <Error Condition="'$(TargetFrameworks)' == ''"
+               Text="TargetFrameworks is empty. This project relies on $(_ExpectedDirectoryBuildProps) for its TFM list. Ensure ImportDirectoryBuildProps is enabled and the file is imported." />
+    </Target>
+
+    <ItemGroup>
+        <!-- Build children but do NOT turn them into NuGet dependencies -->
+        <ProjectReference Include="..\Dapr.StateManagement.Abstractions\Dapr.StateManagement.Abstractions.csproj"
+                          PrivateAssets="all" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\Dapr.StateManagement.Runtime\Dapr.StateManagement.Runtime.csproj"
+                          PrivateAssets="all" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <!-- Build child libs for the current TFM -->
+    <Target Name="_BuildChildrenForCurrentTFM">
+        <MSBuild Projects="@(ProjectReference)"
+                 Targets="Build"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)"
+                 BuildInParallel="true" />
+    </Target>
+
+    <!-- Collect per-TFM outputs and map them into lib/<tfm>/ in the package -->
+    <Target Name="_CollectChildOutputsForCurrentTFM" DependsOnTargets="_BuildChildrenForCurrentTFM">
+        <!-- Ask children for their TargetPath for THIS TFM -->
+        <MSBuild Projects="@(ProjectReference)"
+                 Targets="GetTargetPath"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)">
+            <Output TaskParameter="TargetOutputs" ItemName="_BuiltChildOutputs" />
+        </MSBuild>
+
+        <!-- Derive the NuGet folder name for lib/<tfm> -->
+        <PropertyGroup>
+            <_EffectiveTfmFolder>$(NuGetTargetFrameworkFolderName)</_EffectiveTfmFolder>
+            <_EffectiveTfmFolder Condition="'$(_EffectiveTfmFolder)'==''">$(TargetFramework)</_EffectiveTfmFolder>
+        </PropertyGroup>
+
+        <Message Importance="high"
+                 Text="[Dapr.StateManagement] TFM=$(TargetFramework); Folder=$(_EffectiveTfmFolder); outputs: @(_BuiltChildOutputs->'%(Identity)')" />
+
+        <ItemGroup>
+            <!-- Only DLLs -->
+            <_ChildDll Include="@(_BuiltChildOutputs)" Condition="'%(_BuiltChildOutputs.Extension)'=='.dll'" />
+
+            <!-- Optional XML documentation and PDB alongside -->
+            <_ChildXml Include="%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).xml"
+                       Condition="Exists('%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).xml')" />
+            <_ChildPdb Include="%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).pdb"
+                       Condition="Exists('%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).pdb')" />
+
+            <!-- Map each file into lib/<resolved-tfm>/ -->
+            <TfmSpecificPackageFile Include="@(_ChildDll)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_EffectiveTfmFolder)/%(_ChildDll.Filename)%(_ChildDll.Extension)</PackagePath>
+            </TfmSpecificPackageFile>
+
+            <TfmSpecificPackageFile Include="@(_ChildXml)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_EffectiveTfmFolder)/%(_ChildXml.Filename).xml</PackagePath>
+            </TfmSpecificPackageFile>
+
+            <TfmSpecificPackageFile Include="@(_ChildPdb)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_EffectiveTfmFolder)/%(_ChildPdb.Filename).pdb</PackagePath>
+            </TfmSpecificPackageFile>
+        </ItemGroup>
+    </Target>
+
+    <ItemGroup>
+        <Folder Include="Properties\" />
+    </ItemGroup>
+</Project>
