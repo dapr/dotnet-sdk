@@ -2,7 +2,6 @@
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.Workflow;
 
 namespace Dapr.Workflow.Client;
 
@@ -13,7 +12,16 @@ namespace Dapr.Workflow.Client;
 /// <param name="context">The workflow context used for scheduling timers.</param>
 /// <param name="retryPolicy">The retry policy to apply.</param>
 /// <param name="retryCall">The operation to invoke and retry.</param>
-public sealed class RetryInterceptor<T>(IWorkflowContext context, WorkflowRetryPolicy retryPolicy, Func<Task<T>> retryCall)
+/// <param name="retryTimerFactory">
+/// Creates the retry delay timer with the appropriate origin metadata.
+/// Receives the delay <see cref="TimeSpan"/> and returns a <see cref="Task"/> that completes when the timer fires.
+/// When <c>null</c>, falls back to a plain <see cref="WorkflowContext.CreateTimer(TimeSpan, CancellationToken)"/> call.
+/// </param>
+public sealed class RetryInterceptor<T>(
+    IWorkflowContext context,
+    WorkflowRetryPolicy retryPolicy,
+    Func<Task<T>> retryCall,
+    Func<TimeSpan, Task>? retryTimerFactory = null)
 {
     /// <summary>
     /// Executes the operation and applies the retry policy when failures occur.
@@ -45,7 +53,11 @@ public sealed class RetryInterceptor<T>(IWorkflowContext context, WorkflowRetryP
             if (nextDelay == TimeSpan.Zero)
                 break;
 
-            if (context is WorkflowContext workflowContext)
+            if (retryTimerFactory != null)
+            {
+                await retryTimerFactory(nextDelay);
+            }
+            else if (context is WorkflowContext workflowContext)
             {
                 await workflowContext.CreateTimer(nextDelay);
             }
@@ -99,5 +111,3 @@ public sealed class RetryInterceptor<T>(IWorkflowContext context, WorkflowRetryP
         return nextDelay;
     }
 }
-
-

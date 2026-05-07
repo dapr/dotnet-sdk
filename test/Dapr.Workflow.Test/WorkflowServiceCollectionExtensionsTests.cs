@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Client;
@@ -23,7 +24,7 @@ public class WorkflowServiceCollectionExtensionsTests
     public void AddDaprWorkflow_Parameterless_ShouldThrowArgumentNullException_WhenServiceCollectionIsNull()
     {
         IServiceCollection services = null!;
-        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflow());
+        Assert.Throws<ArgumentNullException>(services.AddDaprWorkflow);
     }
 
     [Fact]
@@ -60,7 +61,7 @@ public class WorkflowServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var builder = services.AddDaprWorkflowBuilder(null);
 
-        Assert.Throws<ArgumentNullException>(() => builder.WithSerializer((IWorkflowSerializer)null!));
+        Assert.Throws<ArgumentNullException>(() => builder.WithSerializer((IDaprSerializer)null!));
     }
 
     [Fact]
@@ -82,18 +83,50 @@ public class WorkflowServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddDaprWorkflow_ShouldNotOverrideCustomSerializer_WhenUserRegistersSerializerBeforeCallingAddDaprWorkflow()
+    public void AddDaprWorkflow_ShouldNotOverrideCustomSerializer_WhenUserRegistersIDaprSerializerBeforeCallingAddDaprWorkflow()
     {
         var services = new ServiceCollection();
         services.AddLogging();
 
-        services.AddSingleton<IWorkflowSerializer>(MockSerializer.Instance);
+        services.AddSingleton<IDaprSerializer>(MockSerializer.Instance);
         services.AddDaprWorkflow(_ => { });
 
         var sp = services.BuildServiceProvider();
-        var serializer = sp.GetRequiredService<IWorkflowSerializer>();
+        var serializer = sp.GetRequiredService<IDaprSerializer>();
 
         Assert.Same(MockSerializer.Instance, serializer);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldForwardLegacyIWorkflowSerializer_WhenRegisteredInDI()
+    {
+        // Backward compat: consumers who registered IWorkflowSerializer directly in DI
+        // (rather than via WithSerializer) should have it honored via the forwarding factory.
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+#pragma warning disable CS0618
+        services.AddSingleton<IWorkflowSerializer>(MockSerializer.Instance);
+#pragma warning restore CS0618
+        services.AddDaprWorkflow(_ => { });
+
+        var sp = services.BuildServiceProvider();
+        var serializer = sp.GetRequiredService<IDaprSerializer>();
+
+        Assert.Same(MockSerializer.Instance, serializer);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldUseDefaultJsonDaprSerializer_WhenNoSerializerRegistered()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDaprWorkflow(_ => { });
+
+        var sp = services.BuildServiceProvider();
+        var serializer = sp.GetRequiredService<IDaprSerializer>();
+
+        Assert.IsType<JsonDaprSerializer>(serializer);
     }
 
     [Fact]
@@ -107,9 +140,9 @@ public class WorkflowServiceCollectionExtensionsTests
             .WithJsonSerializer(new JsonSerializerOptions { PropertyNamingPolicy = null });
 
         var sp = services.BuildServiceProvider();
-        var serializer = sp.GetRequiredService<IWorkflowSerializer>();
+        var serializer = sp.GetRequiredService<IDaprSerializer>();
 
-        Assert.IsType<JsonWorkflowSerializer>(serializer);
+        Assert.IsType<JsonDaprSerializer>(serializer);
     }
 
     [Fact]
@@ -125,7 +158,7 @@ public class WorkflowServiceCollectionExtensionsTests
             .WithSerializer(serializer);
 
         var sp = services.BuildServiceProvider();
-        var resolved = sp.GetRequiredService<IWorkflowSerializer>();
+        var resolved = sp.GetRequiredService<IDaprSerializer>();
 
         Assert.Same(serializer, resolved);
     }
@@ -147,7 +180,7 @@ public class WorkflowServiceCollectionExtensionsTests
             });
 
         var sp = services.BuildServiceProvider();
-        var serializer = sp.GetRequiredService<IWorkflowSerializer>();
+        var serializer = sp.GetRequiredService<IDaprSerializer>();
 
         var typed = Assert.IsType<DependencyBasedSerializer>(serializer);
         Assert.Equal("dep-1", typed.Dep.Value);

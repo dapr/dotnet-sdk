@@ -13,6 +13,7 @@
 
 using System;
 using System.Text.Json;
+using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
 using Dapr.Workflow.Grpc.Extensions;
@@ -45,16 +46,16 @@ public static class WorkflowServiceCollectionExtensions
         public IServiceCollection Services { get; }
 
         /// <summary>
-        /// Configures a custom workflow serializer to replace the default JSON serializer. 
+        /// Configures a custom workflow serializer to replace the default JSON serializer.
         /// </summary>
         /// <param name="serializer">The custom serializer instance to use.</param>
-        public DaprWorkflowBuilder WithSerializer(IWorkflowSerializer serializer)
+        public DaprWorkflowBuilder WithSerializer(IDaprSerializer serializer)
         {
             ArgumentNullException.ThrowIfNull(serializer);
-            Services.Replace(ServiceDescriptor.Singleton(typeof(IWorkflowSerializer), serializer));
+            Services.Replace(ServiceDescriptor.Singleton(typeof(IDaprSerializer), serializer));
             return this;
         }
-        
+
         /// <summary>
         /// Configures gRPC message size limits for the workflow sidecar client.
         /// </summary>
@@ -74,18 +75,18 @@ public static class WorkflowServiceCollectionExtensions
         {
             ArgumentNullException.ThrowIfNull(serializerFactory);
 
-            Services.Replace(ServiceDescriptor.Singleton(typeof(IWorkflowSerializer), serializerFactory));
+            Services.Replace(ServiceDescriptor.Singleton(typeof(IDaprSerializer), serializerFactory));
             return this;
         }
 
         /// <summary>
-        /// Configures the default System.Text.Json serializer with custom options. 
+        /// Configures the default System.Text.Json serializer with custom options.
         /// </summary>
         /// <param name="jsonOptions">The JSON serializer options to use.</param>
         public DaprWorkflowBuilder WithJsonSerializer(JsonSerializerOptions jsonOptions)
         {
             ArgumentNullException.ThrowIfNull(jsonOptions);
-            return WithSerializer(new JsonWorkflowSerializer(jsonOptions));
+            return WithSerializer(new JsonDaprSerializer(jsonOptions));
         }
     }
     
@@ -176,9 +177,11 @@ public static class WorkflowServiceCollectionExtensions
         // Register options as a singleton as they don't change at runtime
         serviceCollection.AddSingleton(options);
 
-        // Register default JSON serializer if no custom serializer is registered
-        serviceCollection.TryAddSingleton<IWorkflowSerializer>(
-            new JsonWorkflowSerializer());
+        // Register the serializer. The factory first checks for a legacy IWorkflowSerializer
+        // registration (backward compat) and falls back to the default JsonDaprSerializer.
+#pragma warning disable CS0618
+        RegisterIWorkflowSerializerBackwardCompat(serviceCollection);
+#pragma warning restore CS0618
 
         // Register the workflow factory
         serviceCollection.TryAddSingleton<IWorkflowsFactory>(sp =>
@@ -200,7 +203,7 @@ public static class WorkflowServiceCollectionExtensions
             var configuration = sp.GetService<IConfiguration>();
             var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
             var logger = loggerFactory.CreateLogger<WorkflowGrpcClient>();
-            var serializer = sp.GetRequiredService<IWorkflowSerializer>();
+            var serializer = sp.GetRequiredService<IDaprSerializer>();
             var daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
             return new WorkflowGrpcClient(grpcClient, logger, serializer, daprApiToken);
         });
@@ -324,5 +327,17 @@ public static class WorkflowServiceCollectionExtensions
         {
             ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(value.Value, 0, paramName);
         }
+    }
+
+    /// <summary>
+    /// Registers a backward-compatibility bridge that forwards an <see cref="IWorkflowSerializer"/>
+    /// DI registration to <see cref="IDaprSerializer"/>, so consumers who registered their serializer
+    /// under the old interface are still honored without code changes.
+    /// </summary>
+    [Obsolete("Support for IWorkflowSerializer DI registration has been deprecated in favor of IDaprSerializer and will be removed with the SDK release coinciding with the release of the Dapr v1.20 runtime. Register your serializer as IDaprSerializer instead.")]
+    private static void RegisterIWorkflowSerializerBackwardCompat(IServiceCollection serviceCollection)
+    {
+        serviceCollection.TryAddSingleton<IDaprSerializer>(
+            sp => (IDaprSerializer?)sp.GetService<IWorkflowSerializer>() ?? new JsonDaprSerializer());
     }
 }
