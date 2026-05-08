@@ -3,7 +3,7 @@
     <PropertyGroup>
         <IsPackable>true</IsPackable>
         <PackageId>Dapr.StateManagement</PackageId>
-        <Description>Dapr State Management SDK for .NET — provides a gRPC-backed client for the Dapr state management building block, with full dependency injection support.</Description>
+        <Description>Dapr State Management SDK for .NET — provides a gRPC-backed client for the Dapr state management building block, with full dependency injection support and optional source generator for typed store clients.</Description>
 
         <!-- Create the package on build -->
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -24,8 +24,12 @@
         <TargetsForTfmSpecificContentInPackage>
             $(TargetsForTfmSpecificContentInPackage);
             _BuildChildrenForCurrentTFM;
-            _CollectChildOutputsForCurrentTFM
+            _CollectChildOutputsForCurrentTFM;
+            _AddAnalyzerOnce
         </TargetsForTfmSpecificContentInPackage>
+
+        <!-- One-shot (outer build) hook for non-TFM content, e.g., analyzer -->
+        <TargetsForPack>$(TargetsForPack);_BuildGeneratorOnce</TargetsForPack>
     </PropertyGroup>
 
     <!-- Fail fast if TargetFrameworks from src/Directory.Build.props is not applied -->
@@ -97,6 +101,38 @@
                 <PackagePath>lib/$(_EffectiveTfmFolder)/%(_ChildPdb.Filename).pdb</PackagePath>
             </TfmSpecificPackageFile>
         </ItemGroup>
+    </Target>
+
+    <!-- Build the generator once (outer build, TargetFramework=netstandard2.0) -->
+    <Target Name="_BuildGeneratorOnce">
+        <MSBuild Projects="..\Dapr.StateManagement.Generators\Dapr.StateManagement.Generators.csproj"
+                 Targets="Build"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0" />
+    </Target>
+
+    <!-- Resolve and add the generator DLL under analyzers/dotnet/cs/ (once, on the first TFM) -->
+    <Target Name="_AddAnalyzerOnce">
+        <PropertyGroup>
+            <_IsFirstTfm Condition="'$(TargetFramework)' == 'net8.0'">true</_IsFirstTfm>
+        </PropertyGroup>
+
+        <MSBuild Condition="'$(_IsFirstTfm)' == 'true'"
+                 Projects="..\Dapr.StateManagement.Generators\Dapr.StateManagement.Generators.csproj"
+                 Targets="GetTargetPath"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0">
+            <Output TaskParameter="TargetOutputs" ItemName="_AnalyzerOut" />
+        </MSBuild>
+
+        <ItemGroup Condition="'$(_IsFirstTfm)' == 'true'">
+            <TfmSpecificPackageFile Include="@(_AnalyzerOut)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>analyzers/dotnet/cs/%(_AnalyzerOut.Filename)%(_AnalyzerOut.Extension)</PackagePath>
+            </TfmSpecificPackageFile>
+        </ItemGroup>
+
+        <Message Condition="'$(_IsFirstTfm)' == 'true'"
+                 Importance="high"
+                 Text="[Dapr.StateManagement] Added generator @(_AnalyzerOut->'%(Filename)%(Extension)') to analyzers/dotnet/cs/" />
     </Target>
 
     <ItemGroup>

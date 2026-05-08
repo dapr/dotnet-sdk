@@ -7,8 +7,9 @@
         <!--
             In your own projects, reference the Dapr.StateManagement NuGet package instead
             of the individual project references below. The sub-packages
-            (Dapr.StateManagement.Abstractions, Dapr.StateManagement.Runtime) are not
-            published separately to NuGet; only Dapr.StateManagement is.
+            (Dapr.StateManagement.Abstractions, Dapr.StateManagement.Runtime,
+            Dapr.StateManagement.Generators) are not published separately to NuGet;
+            only Dapr.StateManagement is.
 
             <PackageReference Include="Dapr.StateManagement" Version="*" />
         -->
@@ -18,6 +19,10 @@
         <!-- Project references used only within this repository -->
         <ProjectReference Include="..\..\..\src\Dapr.StateManagement.Abstractions\Dapr.StateManagement.Abstractions.csproj" />
         <ProjectReference Include="..\..\..\src\Dapr.StateManagement.Runtime\Dapr.StateManagement.Runtime.csproj" />
+        <!-- Include the source generator as an analyzer -->
+        <ProjectReference Include="..\..\..\src\Dapr.StateManagement.Generators\Dapr.StateManagement.Generators.csproj"
+                          ReferenceOutputAssembly="false"
+                          OutputItemType="Analyzer" />
     </ItemGroup>
 
 </Project>

@@ -11,8 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Common;
-using Microsoft.Extensions.Configuration;
+using Dapr.Common.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.StateManagement.Extensions;
@@ -40,26 +39,7 @@ public static class DaprStateManagementServiceCollectionExtensions
     public static IDaprStateManagementBuilder AddDaprStateManagementClient(
         this IServiceCollection services,
         Action<IServiceProvider, DaprStateManagementClientBuilder>? configure = null,
-        ServiceLifetime lifetime = ServiceLifetime.Singleton)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        services.AddHttpClient();
-
-        var registration = new Func<IServiceProvider, DaprStateManagementClient>(provider =>
-        {
-            var configuration = provider.GetService<IConfiguration>();
-            var builder = new DaprStateManagementClientBuilder(configuration);
-
-            // Apply Dapr API token from environment/configuration before user overrides.
-            builder.UseDaprApiToken(DaprDefaults.GetDefaultDaprApiToken(configuration));
-
-            configure?.Invoke(provider, builder);
-
-            return builder.Build();
-        });
-
-        services.Add(new ServiceDescriptor(typeof(DaprStateManagementClient), registration, lifetime));
-        return new DaprStateManagementBuilder(services);
-    }
+        ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
+        services.AddDaprClient<DaprStateManagementClient, DaprStateManagementGrpcClient,
+            DaprStateManagementBuilder, DaprStateManagementClientBuilder>(configure, lifetime);
 }

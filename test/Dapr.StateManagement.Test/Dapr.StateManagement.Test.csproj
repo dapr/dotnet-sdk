@@ -25,6 +25,10 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\Dapr.StateManagement.Runtime\Dapr.StateManagement.Runtime.csproj" />
+        <!-- Reference the generator as an analyzer so generated code is available in tests -->
+        <ProjectReference Include="..\..\src\Dapr.StateManagement.Generators\Dapr.StateManagement.Generators.csproj"
+                          ReferenceOutputAssembly="false"
+                          OutputItemType="Analyzer" />
     </ItemGroup>
 
 </Project>

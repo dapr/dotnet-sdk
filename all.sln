@@ -268,6 +268,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.StateManagement.Abstra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.StateManagement.Runtime", "src\Dapr.StateManagement.Runtime\Dapr.StateManagement.Runtime.csproj", "{0D02AC42-FF5A-4FBF-B7AF-B014FCF692DF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.StateManagement.Generators", "src\Dapr.StateManagement.Generators\Dapr.StateManagement.Generators.csproj", "{A3F7C8B2-1D45-4E92-B5F6-3C8D9E0A2F71}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.StateManagement", "src\Dapr.StateManagement\Dapr.StateManagement.csproj", "{7532B57D-DEAC-42B6-BA88-0135C7F5EA21}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.StateManagement.Test", "test\Dapr.StateManagement.Test\Dapr.StateManagement.Test.csproj", "{F212E2DF-BEBB-485D-ABB4-21918A1B2A24}"
