@@ -110,7 +110,9 @@
                  Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0" />
     </Target>
 
-    <!-- Resolve and add the generator DLL under analyzers/dotnet/cs/ (once, on the first TFM) -->
+    <!-- Resolve and add the generator DLL under analyzers/dotnet/cs/ (once, on the first TFM).
+         We gate on net8.0 because src/Directory.Build.props lists it first in TargetFrameworks.
+         If the TFM list ever changes, update this condition to match the new first entry. -->
     <Target Name="_AddAnalyzerOnce">
         <PropertyGroup>
             <_IsFirstTfm Condition="'$(TargetFramework)' == 'net8.0'">true</_IsFirstTfm>

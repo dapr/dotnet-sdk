@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <!-- Explicitly clear the multi-target list set by Directory.Build.props so that
+         this project targets only netstandard2.0 as required by Roslyn generators. -->
     <TargetFrameworks></TargetFrameworks>
     <TargetFramework>netstandard2.0</TargetFramework>
     <IsPackable>false</IsPackable>

@@ -154,8 +154,10 @@ public sealed class StateStoreSourceGenerator : IIncrementalGenerator
         string extensionsClassName = $"{baseName}StateStoreClientExtensions";
         string addMethodName = $"Add{baseName}";
 
-        // Use a stable hash of the FQN to avoid hint-name collisions when two namespaces
-        // define an interface with the same simple name.
+        // Use a stable hash of the fully-qualified name as a suffix on the hint name so that
+        // two interfaces with the same simple name in different namespaces (e.g.
+        // Foo.IMyStore and Bar.IMyStore) always get distinct generated file names and never
+        // overwrite each other in the source output.
         string hintName = $"{implClassName}_{Fnv1aHash(fqInterfaceName):X8}.g.cs";
 
         string source = BuildSource(
