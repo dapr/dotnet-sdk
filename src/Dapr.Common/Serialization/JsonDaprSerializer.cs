@@ -11,6 +11,7 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace Dapr.Common.Serialization;
@@ -47,6 +48,12 @@ public class JsonDaprSerializer : IDaprSerializer
     }
 
     /// <inheritdoc />
+    public string Serialize<T>(T value) =>
+        value is null ? string.Empty : JsonSerializer.Serialize(value, _options);
+
+    /// <inheritdoc />
+    [RequiresUnreferencedCode("JSON serialization with a runtime Type may require types that cannot be statically analyzed.")]
+    [RequiresDynamicCode("JSON serialization with a runtime Type requires dynamic code generation.")]
     public string Serialize(object? value, Type? inputType = null)
     {
         if (value is null)
@@ -61,6 +68,8 @@ public class JsonDaprSerializer : IDaprSerializer
     public T? Deserialize<T>(string? data) => string.IsNullOrEmpty(data) ? default : JsonSerializer.Deserialize<T>(data, _options);
 
     /// <inheritdoc />
+    [RequiresUnreferencedCode("JSON deserialization with a runtime Type may require types that cannot be statically analyzed.")]
+    [RequiresDynamicCode("JSON deserialization with a runtime Type requires dynamic code generation.")]
     public object? Deserialize(string? data, Type returnType)
     {
         ArgumentNullException.ThrowIfNull(returnType);

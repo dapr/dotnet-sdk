@@ -22,22 +22,31 @@ namespace Dapr.Common.Extensions;
 internal static class DaprClientBuilderExtensions
 {
     /// <summary>
-    /// Registers the necessary base functionality for a Dapr client.
+    /// Registers the necessary base functionality for a Dapr client without using reflection.
     /// </summary>
-    /// <typeparam name="TServiceBuilder">The type of the DI-builder wrapper returned to the caller.</typeparam>
     /// <typeparam name="TClient">The abstract Dapr client type being created.</typeparam>
     /// <typeparam name="TConcreteClient">
-    /// The concrete Dapr client type. This type parameter is retained for backward compatibility
-    /// with existing callers; the implementation delegates to the builder's <c>Build()</c> method
-    /// rather than reflectively constructing <typeparamref name="TConcreteClient"/> directly.
+    /// The concrete Dapr client type. Retained as a type constraint for callers; construction is
+    /// delegated to <paramref name="clientBuilderFactory"/> so no reflection is required.
     /// </typeparam>
+    /// <typeparam name="TServiceBuilder">The type of the DI-builder wrapper returned to the caller.</typeparam>
     /// <typeparam name="TClientBuilder">The strongly-typed builder used to configure and construct the Dapr client.</typeparam>
     /// <param name="services">The collection of services to which the Dapr client and associated services are being registered.</param>
+    /// <param name="clientBuilderFactory">
+    /// A factory that creates a <typeparamref name="TClientBuilder"/> from an optional <see cref="IConfiguration"/>.
+    /// Typically <c>config => new TClientBuilder(config)</c>.
+    /// </param>
+    /// <param name="serviceBuilderFactory">
+    /// A factory that creates a <typeparamref name="TServiceBuilder"/> from the <see cref="IServiceCollection"/>.
+    /// Typically <c>svc => new TServiceBuilder(svc)</c>.
+    /// </param>
     /// <param name="configure">An optional method used to provide additional configurations to the client builder.</param>
     /// <param name="lifetime">The registered lifetime of the Dapr client.</param>
     /// <returns>The <typeparamref name="TServiceBuilder"/> that wraps the service collection for further configuration.</returns>
     internal static TServiceBuilder AddDaprClient<TClient, TConcreteClient, TServiceBuilder, TClientBuilder>(
         this IServiceCollection services,
+        Func<IConfiguration?, TClientBuilder> clientBuilderFactory,
+        Func<IServiceCollection, TServiceBuilder> serviceBuilderFactory,
         Action<IServiceProvider, TClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton)
         where TClient : class, IDaprClient
@@ -46,19 +55,17 @@ internal static class DaprClientBuilderExtensions
         where TClientBuilder : DaprGenericClientBuilder<TClient>
     {
         ArgumentNullException.ThrowIfNull(services, nameof(services));
-
-        if (typeof(TServiceBuilder).IsInterface || typeof(TServiceBuilder).IsAbstract)
-        {
-            throw new ArgumentException($"{typeof(TServiceBuilder).Name} must be a concrete class",
-                nameof(TServiceBuilder));
-        }
+        ArgumentNullException.ThrowIfNull(clientBuilderFactory, nameof(clientBuilderFactory));
+        ArgumentNullException.ThrowIfNull(serviceBuilderFactory, nameof(serviceBuilderFactory));
 
         services.AddHttpClient();
 
         var registration = new Func<IServiceProvider, TClient>(provider =>
         {
             var configuration = provider.GetService<IConfiguration>();
-            var builder = (TClientBuilder)Activator.CreateInstance(typeof(TClientBuilder), configuration)!;
+
+            // Construct the builder via the caller-supplied factory — no reflection.
+            var builder = clientBuilderFactory(configuration);
 
             builder.UseDaprApiToken(DaprDefaults.GetDefaultDaprApiToken(configuration));
             configure?.Invoke(provider, builder);
@@ -71,6 +78,7 @@ internal static class DaprClientBuilderExtensions
 
         services.Add(new ServiceDescriptor(typeof(TClient), registration, lifetime));
 
-        return (TServiceBuilder)Activator.CreateInstance(typeof(TServiceBuilder), services)!;
+        // Construct the service builder via the caller-supplied factory — no reflection.
+        return serviceBuilderFactory(services);
     }
 }

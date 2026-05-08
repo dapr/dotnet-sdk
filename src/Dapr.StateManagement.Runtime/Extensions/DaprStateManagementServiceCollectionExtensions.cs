@@ -41,5 +41,9 @@ public static class DaprStateManagementServiceCollectionExtensions
         Action<IServiceProvider, DaprStateManagementClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
         services.AddDaprClient<DaprStateManagementClient, DaprStateManagementGrpcClient,
-            DaprStateManagementBuilder, DaprStateManagementClientBuilder>(configure, lifetime);
+            DaprStateManagementBuilder, DaprStateManagementClientBuilder>(
+            config => new DaprStateManagementClientBuilder(config),
+            svc => new DaprStateManagementBuilder(svc),
+            configure,
+            lifetime);
 }
