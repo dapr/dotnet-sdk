@@ -14,6 +14,7 @@
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,7 +28,7 @@ public sealed class MultiAppChildWorkflowAndActivityTests
     private static readonly string App2Id = $"workflow-app-2-{UniqueId}";
     private static readonly string App3Id = $"workflow-app-3-{UniqueId}";
     
-    [Fact]
+    [MinimumDaprRuntimeFact("1.16")]
     public async Task ShouldScheduleChildWorkflowOnRemoteApp_ThatCallsActivityOnAnotherRemoteApp_UsingAppIds()
     {
         var options1 = new DaprRuntimeOptions().WithAppId(App1Id);
