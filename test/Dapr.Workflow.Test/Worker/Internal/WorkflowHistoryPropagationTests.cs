@@ -12,9 +12,9 @@
 // ------------------------------------------------------------------------
 
 using System.Text.Json;
+using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Testcontainers.Xunit.Attributes;
-using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Internal;
 using Google.Protobuf.WellKnownTypes;
@@ -34,7 +34,7 @@ public class WorkflowHistoryPropagationTests
         IReadOnlyList<HistoryEvent>? ownHistory = null,
         IEnumerable<PropagatedHistorySegment>? incomingPropagatedHistory = null)
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
         return new WorkflowOrchestrationContext(
             name: name,

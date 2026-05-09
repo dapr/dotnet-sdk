@@ -17,6 +17,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
+using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Serialization;
@@ -38,8 +39,8 @@ internal sealed class WorkflowWorker(
     TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, 
     IWorkflowsFactory workflowsFactory, 
     ILoggerFactory loggerFactory, 
-    IWorkflowSerializer workflowSerializer, 
-    IServiceProvider serviceProvider, 
+    IDaprSerializer workflowSerializer,
+    IServiceProvider serviceProvider,
     WorkflowRuntimeOptions options,
     IConfiguration? configuration = null) : BackgroundService
 {
@@ -48,7 +49,7 @@ internal sealed class WorkflowWorker(
     private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     private readonly ILogger<WorkflowWorker> _logger = loggerFactory.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly WorkflowRuntimeOptions _options = options ?? throw new ArgumentNullException(nameof(options));
-    private readonly IWorkflowSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
+    private readonly IDaprSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
     private readonly string? _daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
     
     private GrpcProtocolHandler? _protocolHandler;
