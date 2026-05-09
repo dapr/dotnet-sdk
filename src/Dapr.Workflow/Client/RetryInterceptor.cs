@@ -2,8 +2,6 @@
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Dapr.Workflow;
-using Dapr.Workflow.Worker.Internal;
 
 namespace Dapr.Workflow.Client;
 
