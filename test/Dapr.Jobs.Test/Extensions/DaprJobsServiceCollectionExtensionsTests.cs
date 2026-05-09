@@ -88,7 +88,7 @@ public class DaprJobsServiceCollectionExtensionsTest
         services.AddDaprJobsClient((provider, builder) =>
         {
             var configProvider = provider.GetRequiredService<TestSecretRetriever>();
-            var apiToken = configProvider.GetApiTokenValue();
+            var apiToken = TestSecretRetriever.GetApiTokenValue();
             builder.UseDaprApiToken(apiToken);
         });
 
@@ -162,6 +162,6 @@ public class DaprJobsServiceCollectionExtensionsTest
 
     private class TestSecretRetriever
     {
-        public string GetApiTokenValue() => "abcdef";
+        public static string GetApiTokenValue() => "abcdef";
     }
 }
