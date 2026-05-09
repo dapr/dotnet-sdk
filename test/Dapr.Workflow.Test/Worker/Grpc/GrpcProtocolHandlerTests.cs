@@ -859,6 +859,129 @@ public sealed class GrpcProtocolHandlerTests
         Assert.Equal(totalItems, Volatile.Read(ref completedCount));
     }
 
+    /// <summary>
+    /// Regression test for: "Task failed: Status(StatusCode="Unknown", Detail="no such instance exists")"
+    ///
+    /// Root cause: the old code had a single try/catch that wrapped both the handler execution and
+    /// the CompleteActivityTaskAsync delivery call. When the delivery call threw an RpcException
+    /// (e.g. "no such instance exists" — a transient sidecar condition), the exception was caught and
+    /// a *secondary* CompleteActivityTaskAsync call was made carrying FailureDetails. The sidecar
+    /// recorded this as a TaskFailed event. On the next workflow replay, HandleFailedActivityFromHistory
+    /// threw WorkflowTaskFailedException("Task failed: Status(StatusCode=Unknown, Detail=no such
+    /// instance exists)"), propagating the transport error as a business-logic failure.
+    ///
+    /// Fix: the delivery call is now in its own try/catch so a transport failure is logged and
+    /// abandoned — it does NOT produce a secondary failure response.
+    /// </summary>
+    [Fact]
+    public async Task StartAsync_ShouldCallCompleteActivityTaskOnce_WhenActivitySucceeds_AndCompleteActivityTaskThrowsRpcException()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+
+        var workItems = new[]
+        {
+            new WorkItem
+            {
+                ActivityRequest = new ActivityRequest
+                {
+                    Name = "act",
+                    TaskId = 42,
+                    OrchestrationInstance = new OrchestrationInstance { InstanceId = "i-1" }
+                }
+            }
+        };
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCall(workItems));
+
+        var completeCallCount = 0;
+        ActivityResponse? capturedResponse = null;
+
+        grpcClientMock
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
+            .Callback<ActivityResponse, CallOptions>((r, _) =>
+            {
+                Interlocked.Increment(ref completeCallCount);
+                capturedResponse = r;
+            })
+            .Throws(new RpcException(new Status(StatusCode.Unknown, "no such instance exists")));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        await RunHandlerUntilAsync(
+            handler,
+            workflowHandler: (_, _) => Task.FromResult(new OrchestratorResponse()),
+            activityHandler: (req, tok) => Task.FromResult(new ActivityResponse
+            {
+                InstanceId = req.OrchestrationInstance.InstanceId,
+                TaskId = req.TaskId,
+                Result = "success",
+                CompletionToken = tok
+            }),
+            untilCondition: () => Volatile.Read(ref completeCallCount) >= 1,
+            timeout: TimeSpan.FromSeconds(2));
+
+        // CompleteActivityTaskAsync must be called exactly once — with the success result.
+        // The old code would call it a second time with FailureDetails set, causing a TaskFailed
+        // history event that propagates the transport error as a workflow-level activity failure.
+        Assert.Equal(1, Volatile.Read(ref completeCallCount));
+        Assert.NotNull(capturedResponse);
+        Assert.Null(capturedResponse!.FailureDetails); // success result, no failure details
+        Assert.Equal("success", capturedResponse.Result);
+    }
+
+    /// <summary>
+    /// Regression test for the orchestrator path of the same bug. When a workflow turn completes
+    /// successfully but CompleteOrchestratorTaskAsync fails transiently, the handler must log and
+    /// abandon rather than sending a secondary failure response that would corrupt workflow history.
+    /// </summary>
+    [Fact]
+    public async Task StartAsync_ShouldCallCompleteOrchestratorTaskOnce_WhenWorkflowHandlerSucceeds_AndCompleteOrchestratorTaskThrowsRpcException()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+
+        var workItems = new[]
+        {
+            new WorkItem
+            {
+                OrchestratorRequest = new OrchestratorRequest { InstanceId = "i-1" }
+            }
+        };
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCall(workItems));
+
+        var completeCallCount = 0;
+        OrchestratorResponse? capturedResponse = null;
+
+        grpcClientMock
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
+            .Callback<OrchestratorResponse, CallOptions>((r, _) =>
+            {
+                Interlocked.Increment(ref completeCallCount);
+                capturedResponse = r;
+            })
+            .Throws(new RpcException(new Status(StatusCode.Unknown, "no such instance exists")));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        await RunHandlerUntilAsync(
+            handler,
+            workflowHandler: (req, _) => Task.FromResult(new OrchestratorResponse { InstanceId = req.InstanceId }),
+            activityHandler: (_, _) => Task.FromResult(new ActivityResponse()),
+            untilCondition: () => Volatile.Read(ref completeCallCount) >= 1,
+            timeout: TimeSpan.FromSeconds(2));
+
+        // CompleteOrchestratorTaskAsync must be called exactly once — with the success result.
+        // The old code would call it a second time with OrchestrationStatus.Failed, corrupting history.
+        Assert.Equal(1, Volatile.Read(ref completeCallCount));
+        Assert.NotNull(capturedResponse);
+        Assert.DoesNotContain(capturedResponse!.Actions,
+            a => a.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.Failed);
+    }
+
     [Fact]
     public async Task DelayOrStopAsync_ShouldSwallowCancellation_WhenTokenIsCanceled()
     {
