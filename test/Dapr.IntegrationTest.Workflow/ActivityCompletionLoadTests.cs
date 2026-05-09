@@ -23,7 +23,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class ActivityCompletionLoadTests
 {
-    [Fact]
+    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
     public async Task ActivityCompletions_ShouldBeAcknowledged_UnderLoad()
     {
         const int activityCount = 50;

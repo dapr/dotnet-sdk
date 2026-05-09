@@ -22,7 +22,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class ActivityCompletionAcknowledgementTests
 {
-    [Fact]
+    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
     public async Task ActivityCompletion_ShouldNotBeRetried_WhenAcknowledged()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");

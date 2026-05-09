@@ -23,7 +23,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class MultiAppChildWorkflowTests
 {
-    [MinimumDaprRuntimeFact("1.16")]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldScheduleChildWorkflowOnRemoteAppUsingAppId()
     {
         var guid = Guid.NewGuid().ToString("N");

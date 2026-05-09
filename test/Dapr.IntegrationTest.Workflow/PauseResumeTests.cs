@@ -21,7 +21,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class PauseResumeTests
 {
-    [Fact]
+    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldReportPausedStatusWhenWorkflowIsSuspended()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");

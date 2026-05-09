@@ -22,7 +22,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class MultiAppActivityTests
 {
-    [Fact]
+    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldScheduleActivityOnRemoteAppUsingAppId()
     {
         var guid = Guid.NewGuid().ToString("N");

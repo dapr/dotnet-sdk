@@ -63,7 +63,7 @@ public sealed class ErrorHandlingTests
         Assert.Equal("Success after retries", output);
     }
     
-    [Fact]
+    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldCancelTimerOnExternalEvent()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");

@@ -30,7 +30,7 @@ public sealed partial class ExternalInputWorkflowTests
         new("Computers", 500, 100)
     ];
 
-    [Fact]
+    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldHandleMultipleExternalEvents_Simple()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -173,7 +173,7 @@ public sealed partial class ExternalInputWorkflowTests
         Assert.True(resultValue.Processed);
     }
 
-    [Fact]
+    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldHandleExternalEventTimeout()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -317,7 +317,7 @@ public sealed partial class ExternalInputWorkflowTests
         Rejected = 2
     }
 
-    [Fact]
+    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldHandleMultipleExternalEvents()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");

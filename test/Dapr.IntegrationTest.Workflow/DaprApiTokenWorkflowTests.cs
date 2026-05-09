@@ -24,7 +24,7 @@ public sealed class DaprApiTokenWorkflowTests
 {
     private const string DaprApiTokenEnvVarName = "DAPR_API_TOKEN";
 
-    [Fact]
+    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldRunWorkflowWithDaprApiTokenFromEnvVar()
     {
         const string daprApiToken = "workflow-env-token";
