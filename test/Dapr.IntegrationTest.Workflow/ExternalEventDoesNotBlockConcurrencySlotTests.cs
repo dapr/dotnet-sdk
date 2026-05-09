@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,7 +35,7 @@ public sealed class ExternalEventDoesNotBlockConcurrencySlotTests
     /// 3 workflows that each wait on an external event, then schedule a 4th workflow and
     /// confirm it completes before releasing the waiting ones.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task FourthWorkflow_ShouldComplete_WhileFirstThreeAreWaitingOnExternalEvent()
     {
         const int concurrencyLimit = 3;

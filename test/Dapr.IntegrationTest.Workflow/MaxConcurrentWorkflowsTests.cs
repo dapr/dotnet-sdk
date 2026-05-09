@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,7 +26,7 @@ public sealed class MaxConcurrentWorkflowsTests
     /// Verifies that setting <see cref="WorkflowRuntimeOptions.MaxConcurrentWorkflows"/> to 1
     /// does not deadlock the runtime and that all scheduled workflows eventually complete.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldCompleteAllWorkflowsWhenLimitIsOne()
     {
         const int workflowCount = 3;
@@ -86,7 +87,7 @@ public sealed class MaxConcurrentWorkflowsTests
     /// Verifies that a custom <see cref="WorkflowRuntimeOptions.MaxConcurrentWorkflows"/> value
     /// greater than 1 does not deadlock the runtime and that all scheduled workflows complete.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldCompleteAllWorkflowsWithCustomConcurrencyLimit()
     {
         const int limit = 2;
