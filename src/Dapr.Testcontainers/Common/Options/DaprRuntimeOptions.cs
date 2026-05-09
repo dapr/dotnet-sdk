@@ -122,10 +122,19 @@ public sealed record DaprRuntimeOptions
     /// <summary>
     /// Sets the application protocol used by the Dapr sidecar to communicate with the app.
     /// </summary>
-    /// <param name="appProtocol">The protocol to use ("http" or "grpc").</param>
+    /// <param name="appProtocol">The protocol to use. Must be "http" or "grpc".</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="appProtocol"/> is not "http" or "grpc".</exception>
     public DaprRuntimeOptions WithAppProtocol(string appProtocol)
     {
-        AppProtocol = appProtocol;
+        if (!string.Equals(appProtocol, "http", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(appProtocol, "grpc", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                $"Invalid app protocol '{appProtocol}'. Must be \"http\" or \"grpc\".",
+                nameof(appProtocol));
+        }
+
+        AppProtocol = appProtocol.ToLowerInvariant();
         return this;
     }
 
