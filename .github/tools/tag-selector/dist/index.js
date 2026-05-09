@@ -25443,38 +25443,48 @@ function computeFromTags(input) {
     if (cleaned) versions.push(cleaned);
   }
   if (versions.length === 0) {
-    return {
-      matrix_json: []
-    };
+    return { matrix_json: [] };
   }
   const stable = versions.filter((v) => !import_semver.default.prerelease(v));
   const prerelease = versions.filter((v) => !!import_semver.default.prerelease(v));
-  let stableMinor = "";
-  let stablePatches = [];
+  const allSorted = [...versions].sort(import_semver.default.rcompare);
+  const highestOverall = allSorted[0];
+  const highestMajor = import_semver.default.major(highestOverall);
+  const highestMinor = import_semver.default.minor(highestOverall);
+  const highestMinorHasStable = stable.some(
+    (v) => import_semver.default.major(v) === highestMajor && import_semver.default.minor(v) === highestMinor
+  );
+  let latestRcs = [];
+  let stableBaseMinor = highestMinor;
+  if (!highestMinorHasStable && rcCount > 0) {
+    const stablePatchSet = new Set(
+      stable.map((v) => `${import_semver.default.major(v)}.${import_semver.default.minor(v)}.${import_semver.default.patch(v)}`)
+    );
+    const rcCandidates = prerelease.filter((v) => {
+      const pr = import_semver.default.prerelease(v) || [];
+      return import_semver.default.major(v) === highestMajor && import_semver.default.minor(v) === highestMinor && pr[0] === rcIdent && !stablePatchSet.has(`${import_semver.default.major(v)}.${import_semver.default.minor(v)}.${import_semver.default.patch(v)}`);
+    });
+    latestRcs = [...rcCandidates].sort(import_semver.default.rcompare).slice(0, rcCount);
+    stableBaseMinor = highestMinor - 1;
+  }
+  const stablePatches = [];
   if (stable.length > 0) {
     const stableSorted = [...stable].sort(import_semver.default.rcompare);
-    const newestStable = stableSorted[0];
-    const sMajor = import_semver.default.major(newestStable);
-    const sMinor = import_semver.default.minor(newestStable);
-    stableMinor = `${sMajor}.${sMinor}`;
-    stablePatches = stableSorted.filter((v) => import_semver.default.major(v) === sMajor && import_semver.default.minor(v) === sMinor).slice(0, stableCount);
-  }
-  const stablePatchSet = new Set(stable.map((v) => `${import_semver.default.major(v)}.${import_semver.default.minor(v)}.${import_semver.default.patch(v)}`));
-  const rcVersions = prerelease.filter((v) => {
-    if (stablePatchSet.has(`${import_semver.default.major(v)}.${import_semver.default.minor(v)}.${import_semver.default.patch(v)}`)) {
-      return false;
+    const stableMajor = import_semver.default.major(stableSorted[0]);
+    let minor = stableBaseMinor;
+    while (stablePatches.length < stableCount && minor >= 0) {
+      const best = stableSorted.find(
+        (v) => import_semver.default.major(v) === stableMajor && import_semver.default.minor(v) === minor
+      );
+      if (best) stablePatches.push(best);
+      minor--;
     }
-    const pr = import_semver.default.prerelease(v) || [];
-    return pr[0] === rcIdent;
-  });
-  const latestRcs = rcCount > 0 ? [...rcVersions].sort(import_semver.default.rcompare).slice(0, rcCount) : [];
+  }
   const matrix = [
     ...latestRcs.map((v) => ({ version: v, channel: "rc" })),
     ...stablePatches.map((v) => ({ version: v, channel: "stable" }))
   ];
-  return {
-    matrix_json: matrix
-  };
+  return { matrix_json: matrix };
 }
 
 // src/index.ts
