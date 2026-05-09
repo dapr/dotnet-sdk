@@ -115,8 +115,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <inheritdoc />
     public override bool IsPatched(string patchName)
     {
-        var hasPatchHistory = _versionTracker.AggregatedPatchesOrdered.Count > 0;
-        return _versionTracker.RequestPatch(patchName, isReplaying: this.IsReplaying && hasPatchHistory);
+        return _versionTracker.RequestPatch(patchName, isReplaying: this.IsReplaying);
     }
 
     /// <summary>
