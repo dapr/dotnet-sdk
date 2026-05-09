@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,59 +13,33 @@
 
 using System;
 using System.Text.Json;
+using Dapr.Common.Serialization;
 
 namespace Dapr.Workflow.Serialization;
 
 /// <summary>
 /// JSON-based implementation of <see cref="IWorkflowSerializer"/> using System.Text.Json.
 /// </summary>
-public sealed class JsonWorkflowSerializer : IWorkflowSerializer
+/// <remarks>
+/// This class extends <see cref="JsonDaprSerializer"/> from <c>Dapr.Common</c> and exists for
+/// backward compatibility. New code should prefer <see cref="JsonDaprSerializer"/> directly.
+/// </remarks>
+[Obsolete("The JsonWorkflowSerializer has been deprecated in favor of Dapr.Common.JsonDaprSerializer and will be removed with the SDK release coinciding with the release of the Dapr v1.20 runtime.")]
+public sealed class JsonWorkflowSerializer : JsonDaprSerializer, IWorkflowSerializer
 {
-    private readonly JsonSerializerOptions _options;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="JsonWorkflowSerializer"/> class with default JSON options.
     /// </summary>
-    /// <remarks>
-    /// Uses <see cref="JsonSerializerDefaults.Web"/> which provides camelCase naming and other web-friendly defaults.
-    /// </remarks>
-    public JsonWorkflowSerializer() : this(new JsonSerializerOptions(JsonSerializerDefaults.Web)
-    {
-        IncludeFields = true // https://github.com/dapr/dotnet-sdk/issues/1757
-    })
+    public JsonWorkflowSerializer()
     {
     }
-    
+
     /// <summary>
     /// Initializes a new instance of the <see cref="JsonWorkflowSerializer"/> class with custom JSON options.
     /// </summary>
     /// <param name="options">The JSON serializer options to use for all serialization operations.</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="options"/> is null.</exception>
-    public JsonWorkflowSerializer(JsonSerializerOptions options)
+    public JsonWorkflowSerializer(JsonSerializerOptions options) : base(options)
     {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
-    }
-    
-    /// <inheritdoc />
-    public string Serialize(object? value, Type? inputType = null)
-    {
-        if (value is null)
-            return string.Empty;
-
-        // Use provided type hint for better serialization fidelity
-        return inputType is not null 
-            ? JsonSerializer.Serialize(value, inputType, _options) 
-            : JsonSerializer.Serialize(value, _options);
-    }
-
-    /// <inheritdoc />
-    public T? Deserialize<T>(string? data) => string.IsNullOrEmpty(data) ? default : JsonSerializer.Deserialize<T>(data, _options);
-
-    /// <inheritdoc />
-    public object? Deserialize(string? data, Type returnType)
-    {
-        ArgumentNullException.ThrowIfNull(returnType);
-        
-        return string.IsNullOrEmpty(data) ? null : JsonSerializer.Deserialize(data, returnType, _options);
     }
 }

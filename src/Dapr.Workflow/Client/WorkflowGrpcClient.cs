@@ -17,7 +17,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
-using Dapr.Workflow.Serialization;
+using Dapr.Common.Serialization;
 using Grpc.Core;
 using grpc = Dapr.DurableTask.Protobuf;
 using Microsoft.Extensions.Logging;
@@ -30,7 +30,7 @@ namespace Dapr.Workflow.Client;
 internal sealed class WorkflowGrpcClient(
     grpc.TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient,
     ILogger<WorkflowGrpcClient> logger,
-    IWorkflowSerializer serializer,
+    IDaprSerializer serializer,
     string? daprApiToken = null) : WorkflowClient
 {
     /// <inheritdoc />
