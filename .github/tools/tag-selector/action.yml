@@ -1,5 +1,5 @@
 name: "Dapr Version Tag Selector"
-description: "Extracts the latest 2 stable patches and latest optional RC"
+description: "Extracts the latest stable patch for each of N minor versions (N-2 policy) plus the latest RC if the newest minor is pre-release only"
 author: "Dapr Contributors"
 runs:
   using: "node20"
@@ -13,9 +13,9 @@ inputs:
     required: false
     default: ""
   stable_count:
-    description: "Number of latest stable patches to return"
+    description: "Number of distinct stable minor versions to return (one latest patch each)"
     required: false
-    default: "2"
+    default: "3"
   rc_count:
     description: "Number of latest RC versions to return"
     required: false
