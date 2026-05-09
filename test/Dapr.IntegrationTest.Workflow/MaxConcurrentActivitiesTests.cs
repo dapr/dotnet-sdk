@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,7 +26,7 @@ public sealed class MaxConcurrentActivitiesTests
     /// Verifies that <see cref="WorkflowRuntimeOptions.MaxConcurrentActivities"/> = 1 limits
     /// activity execution to a single concurrent activity even when the workflow fans out more.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldRespectMaxConcurrentActivitiesLimitOfOne()
     {
         const int limit = 1;
@@ -82,7 +83,7 @@ public sealed class MaxConcurrentActivitiesTests
     /// Verifies that <see cref="WorkflowRuntimeOptions.MaxConcurrentActivities"/> = 3 allows up to
     /// 3 concurrent activities and that all activities complete successfully.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldRespectMaxConcurrentActivitiesLimitOfThree()
     {
         const int limit = 3;
