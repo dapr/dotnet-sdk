@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +22,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class ParallelExecutionTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17.0")]
     public async Task ShouldExecuteActivitiesInParallel()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
