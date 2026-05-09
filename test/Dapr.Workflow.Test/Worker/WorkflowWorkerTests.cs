@@ -268,7 +268,73 @@ public class WorkflowWorkerTests
         Assert.Null(response.FailureDetails);
         Assert.Equal(malformedParentId, observedParentId);
     }
-    
+
+    [Fact]
+    public async Task HandleActivityResponseAsync_ShouldPopulateActivityCurrent_WithoutRegisteredListener()
+    {
+        // Regression test for issue #1749: Activity.Current must be non-null inside user activity
+        // code even when NO ActivityListener is registered for "Dapr.Workflow". The original patch
+        // in #1795 used WorkflowActivitySource.StartActivity(), which returns null when there is
+        // no listener — leaving Activity.Current null for users who haven't wired up OpenTelemetry.
+        // Explicitly do NOT register any ActivityListener here to reproduce the real-world scenario.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var options = new WorkflowRuntimeOptions();
+
+        const string expectedTraceId = "0af7651916cd43dd8448eb211c80319c";
+        const string parentSpanId = "b7ad6b7169203331";
+        const string traceParent = $"00-{expectedTraceId}-{parentSpanId}-01";
+        const string traceState = "vendor=value";
+
+        Activity? observedCurrent = null;
+        string? observedTraceId = null;
+        string? observedParentSpanId = null;
+        string? observedTraceState = null;
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddActivity("act", new InlineActivity(
+            inputType: typeof(int),
+            run: (_, _) =>
+            {
+                observedCurrent = Activity.Current;
+                observedTraceId = Activity.Current?.TraceId.ToHexString();
+                observedParentSpanId = Activity.Current?.ParentSpanId.ToHexString();
+                observedTraceState = Activity.Current?.TraceStateString;
+                return Task.FromResult<object?>(null);
+            }));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp,
+            options);
+
+        Activity.Current = null;
+
+        var request = new ActivityRequest
+        {
+            Name = "act",
+            TaskId = 5,
+            Input = string.Empty,
+            OrchestrationInstance = new OrchestrationInstance { InstanceId = "wf-5" },
+            ParentTraceContext = new TraceContext
+            {
+                TraceParent = traceParent,
+                TraceState = traceState
+            }
+        };
+
+        var response = await InvokeHandleActivityResponseAsync(worker, request);
+
+        Assert.Null(response.FailureDetails);
+        Assert.NotNull(observedCurrent);
+        Assert.Equal(expectedTraceId, observedTraceId);
+        Assert.Equal(parentSpanId, observedParentSpanId);
+        Assert.Equal(traceState, observedTraceState);
+    }
+
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenGrpcClientIsNull()
     {
