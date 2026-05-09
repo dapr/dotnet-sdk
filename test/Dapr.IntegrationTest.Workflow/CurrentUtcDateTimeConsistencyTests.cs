@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,7 +54,7 @@ public sealed class CurrentUtcDateTimeConsistencyTests
     /// while checkpoint (2) returns the <em>second</em> turn's timestamp, so the
     /// sequence is not monotonically non-decreasing and the assertion fails.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task CurrentUtcDateTime_IsMonotonicallyNonDecreasing_AcrossReplays()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
