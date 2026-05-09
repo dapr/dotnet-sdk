@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +23,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed partial class ReplaySafetyTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ReplaySafeLogger_ShouldNotDuplicateLogsOnReplay()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -64,7 +65,7 @@ public sealed partial class ReplaySafetyTests
         Assert.Equal("Completed", output);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task Workflow_ShouldUseDeterministicGuidGeneration()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -110,7 +111,7 @@ public sealed partial class ReplaySafetyTests
         Assert.All(guids, g => Assert.NotEqual(Guid.Empty, g));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task NewGuid_ShouldRemainStableAcrossReplays()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
