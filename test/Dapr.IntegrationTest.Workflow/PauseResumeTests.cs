@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +22,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class PauseResumeTests
 {
-    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldReportPausedStatusWhenWorkflowIsSuspended()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -63,7 +64,7 @@ public sealed class PauseResumeTests
         Assert.Equal(WorkflowRuntimeStatus.Suspended, pausedState.RuntimeStatus);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldPauseAndResumeWorkflow()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");

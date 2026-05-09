@@ -28,7 +28,7 @@ public sealed class MultiAppChildWorkflowAndActivityTests
     private static readonly string App2Id = $"workflow-app-2-{UniqueId}";
     private static readonly string App3Id = $"workflow-app-3-{UniqueId}";
     
-    [MinimumDaprRuntimeFact("1.16")]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldScheduleChildWorkflowOnRemoteApp_ThatCallsActivityOnAnotherRemoteApp_UsingAppIds()
     {
         var options1 = new DaprRuntimeOptions().WithAppId(App1Id);

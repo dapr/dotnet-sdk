@@ -14,6 +14,7 @@
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,7 +25,7 @@ public sealed class DaprApiTokenWorkflowTests
 {
     private const string DaprApiTokenEnvVarName = "DAPR_API_TOKEN";
 
-    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldRunWorkflowWithDaprApiTokenFromEnvVar()
     {
         const string daprApiToken = "workflow-env-token";

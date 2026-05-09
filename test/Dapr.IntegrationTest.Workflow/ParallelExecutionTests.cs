@@ -71,7 +71,7 @@ public sealed class ParallelExecutionTests
         Assert.True(duration.TotalSeconds < 5, $"Expected parallel execution to complete in < 5 seconds, took {duration.TotalSeconds}");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldFanOutFanInWithActivities()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");

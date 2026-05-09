@@ -13,6 +13,7 @@
 
 using Dapr.Client;
 using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +31,7 @@ public sealed partial class ExternalInputWorkflowTests
         new("Computers", 500, 100)
     ];
 
-    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldHandleMultipleExternalEvents_Simple()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -77,7 +78,7 @@ public sealed partial class ExternalInputWorkflowTests
         Assert.Equal("FirstData-42-True", output);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldHandleStandardWorkflowsWithDependencyInjection()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -173,7 +174,7 @@ public sealed partial class ExternalInputWorkflowTests
         Assert.True(resultValue.Processed);
     }
 
-    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldHandleExternalEventTimeout()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -216,7 +217,7 @@ public sealed partial class ExternalInputWorkflowTests
         Assert.Equal("Timeout", output);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldHandleExternalEventWithDefaultValue()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -317,7 +318,7 @@ public sealed partial class ExternalInputWorkflowTests
         Rejected = 2
     }
 
-    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldHandleMultipleExternalEvents()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");

@@ -14,6 +14,7 @@
 using System.Collections.Concurrent;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,7 +28,7 @@ public sealed class ChildWorkflowRetryPolicyBackoffTests
     private static readonly TimeSpan FirstRetryInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan AllowedSkew = TimeSpan.FromSeconds(1);
 
-    [Dapr.Testcontainers.Xunit.Attributes.MinimumDaprRuntimeFact("1.17")]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldRetryChildWorkflowWithBackoff()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
