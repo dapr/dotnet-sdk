@@ -231,23 +231,36 @@ internal sealed class GrpcProtocolHandler(
         {
             _logger.LogGrpcProtocolHandlerWorkflowProcessorStart(request.InstanceId, activeCount);
 
-            var result = await handler(request, completionToken);
-            
-            // Send the result back to Dapr
-            var grpcCallOptions = CreateCallOptions(cancellationToken);
-            await _grpcClient.CompleteOrchestratorTaskAsync(result, grpcCallOptions);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogGrpcProtocolHandlerWorkflowProcessorCanceled(request.InstanceId);
-        }
-        catch (Exception ex)
-        {
+            // Execute the orchestrator and determine the response (normal actions or application failure).
+            // This try/catch must NOT include the CompleteOrchestratorTaskAsync call below — a transport
+            // failure during delivery must not be converted into an orchestrator-level failure, as that
+            // would incorrectly mark a healthy workflow turn as failed.
+            OrchestratorResponse result;
             try
             {
-                var failureResult = CreateWorkflowFailureResult(request, completionToken, ex);
+                result = await handler(request, completionToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerWorkflowProcessorCanceled(request.InstanceId);
+                return;
+            }
+            catch (Exception ex)
+            {
+                result = CreateWorkflowFailureResult(request, completionToken, ex);
+            }
+
+            // Send the result back to Dapr. If delivery fails (e.g. transient gRPC error or
+            // "no such instance exists"), log and abandon — do NOT send a secondary failure
+            // response, as that would corrupt the workflow history.
+            try
+            {
                 var grpcCallOptions = CreateCallOptions(cancellationToken);
-                await _grpcClient.CompleteOrchestratorTaskAsync(failureResult, grpcCallOptions);
+                await _grpcClient.CompleteOrchestratorTaskAsync(result, grpcCallOptions);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerWorkflowProcessorCanceled(request.InstanceId);
             }
             catch (Exception resultEx)
             {
@@ -274,26 +287,39 @@ internal sealed class GrpcProtocolHandler(
         {
             _logger.LogGrpcProtocolHandlerActivityProcessorStart(request.OrchestrationInstance.InstanceId, request.Name,
                 request.TaskId, activeCount);
-            var result = await handler(request, completionToken);
 
-            // Send the result back to Dapr
-            var grpcCallOptions = CreateCallOptions(cancellationToken);
-            await _grpcClient.CompleteActivityTaskAsync(result, grpcCallOptions);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            _logger.LogGrpcProtocolHandlerActivityProcessorCanceled(request.Name);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogGrpcProtocolHandlerActivityProcessorError(ex, request.Name,
-                request.OrchestrationInstance?.InstanceId);
-
+            // Execute the activity and determine the result (success or application failure).
+            // This try/catch must NOT include the CompleteActivityTaskAsync call below — a transport
+            // failure during delivery must not be converted into an application-level activity failure,
+            // as that would incorrectly mark a successfully-executed activity as failed.
+            ActivityResponse result;
             try
             {
-                var failureResult = CreateActivityFailureResult(request, completionToken, ex);
+                result = await handler(request, completionToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerActivityProcessorCanceled(request.Name);
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogGrpcProtocolHandlerActivityProcessorError(ex, request.Name,
+                    request.OrchestrationInstance?.InstanceId);
+                result = CreateActivityFailureResult(request, completionToken, ex);
+            }
+
+            // Send the result back to Dapr. If delivery fails (e.g. transient gRPC error or
+            // "no such instance exists"), log and abandon — do NOT send a secondary failure
+            // response, as that would corrupt the workflow history.
+            try
+            {
                 var grpcCallOptions = CreateCallOptions(cancellationToken);
-                await _grpcClient.CompleteActivityTaskAsync(failureResult, grpcCallOptions);
+                await _grpcClient.CompleteActivityTaskAsync(result, grpcCallOptions);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogGrpcProtocolHandlerActivityProcessorCanceled(request.Name);
             }
             catch (Exception resultEx)
             {
