@@ -12,8 +12,8 @@
 // ------------------------------------------------------------------------
 
 using System;
+using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
-using Dapr.Workflow.Serialization;
 
 namespace Dapr.Workflow.Client;
 
@@ -25,7 +25,7 @@ internal static class ProtoConverters
     /// <summary>
     /// Converts proto <see cref="OrchestrationState"/> to <see cref="WorkflowMetadata"/>.
     /// </summary>
-    public static WorkflowMetadata ToWorkflowMetadata(OrchestrationState state, IWorkflowSerializer serializer) =>
+    public static WorkflowMetadata ToWorkflowMetadata(OrchestrationState state, IDaprSerializer serializer) =>
         new(state.InstanceId, state.Name, ToRuntimeStatus(state.OrchestrationStatus),
             state.CreatedTimestamp?.ToDateTime() ?? DateTime.MinValue,
             state.LastUpdatedTimestamp?.ToDateTime() ?? DateTime.MinValue, serializer)

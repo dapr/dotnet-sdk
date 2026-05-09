@@ -14,6 +14,7 @@
 using System.Text.Json;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
+using Dapr.Common.Serialization;
 using Dapr.Workflow.Serialization;
 using Google.Protobuf.WellKnownTypes;
 
@@ -51,7 +52,7 @@ public class ProtoConvertersTests
     [Fact]
     public void ToWorkflowMetadata_ShouldMapCoreFields_AndPreserveSerializerInstance()
     {
-        var serializer = new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
         var createdUtc = new DateTime(2025, 01, 02, 03, 04, 05, DateTimeKind.Utc);
         var updatedUtc = new DateTime(2025, 02, 03, 04, 05, 06, DateTimeKind.Utc);
@@ -86,7 +87,7 @@ public class ProtoConvertersTests
     [Fact]
     public void ToWorkflowMetadata_ShouldSetMinValueTimestamps_WhenProtoTimestampsAreNull()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var state = new OrchestrationState
         {
@@ -106,7 +107,7 @@ public class ProtoConvertersTests
     [Fact]
     public void ToWorkflowMetadata_ShouldSetSerializedFieldsToNull_WhenProtoStringsAreNullOrEmpty()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var state = new OrchestrationState
         {
@@ -128,7 +129,7 @@ public class ProtoConvertersTests
     [Fact]
     public void ToWorkflowMetadata_ShouldKeepSerializedFields_WhenProtoStringsContainWhitespace()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var state = new OrchestrationState
         {
@@ -150,7 +151,7 @@ public class ProtoConvertersTests
     [Fact]
     public void ToWorkflowMetadata_ShouldMapRuntimeStatus_UsingToRuntimeStatus()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
 
         var state = new OrchestrationState
         {
