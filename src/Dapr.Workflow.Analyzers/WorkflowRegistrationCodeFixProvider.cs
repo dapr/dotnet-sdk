@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Formatting;
 namespace Dapr.Workflow.Analyzers;
 
 /// <summary>
-/// Provides code fixes for DAPR1001 diagnostic.
+/// Provides code fixes for DAPR1301 diagnostic.
 /// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(WorkflowRegistrationCodeFixProvider))]
 public sealed class WorkflowRegistrationCodeFixProvider : CodeFixProvider
@@ -17,7 +17,7 @@ public sealed class WorkflowRegistrationCodeFixProvider : CodeFixProvider
     /// <summary>
     /// Gets the diagnostic IDs that this provider can fix.
     /// </summary>
-    public override ImmutableArray<string> FixableDiagnosticIds => ["DAPR1001"];
+    public override ImmutableArray<string> FixableDiagnosticIds => ["DAPR1301"];
 
     /// <summary>
     /// Registers the code fix for the diagnostic.
