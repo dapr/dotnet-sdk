@@ -44,7 +44,7 @@ internal static class DaprClientBuilderExtensions
         where TServiceBuilder : class, IDaprServiceBuilder
         where TClientBuilder : DaprGenericClientBuilder<TClient>
     {
-        ArgumentNullException.ThrowIfNull(services, nameof(services));
+        ArgumentNullException.ThrowIfNull(services);
         
         //Ensure that TConcreteClient is a concrete class
         if (typeof(TConcreteClient).IsInterface || typeof(TConcreteClient).IsAbstract)
