@@ -17,6 +17,7 @@ using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ namespace Dapr.IntegrationTest.Jobs;
 
 public sealed class JobsTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.16")]
     public async Task ShouldScheduleAndReceiveJob()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
