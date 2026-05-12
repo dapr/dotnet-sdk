@@ -72,6 +72,7 @@ public class WorkflowContextDelegationTests
         public override Microsoft.Extensions.Logging.ILogger CreateReplaySafeLogger<T>() => new NullLogger();
         public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true) { }
         public override Guid NewGuid() => Guid.Empty;
+        public override PropagatedHistory? GetPropagatedHistory() => null;
 
         private sealed class NullLogger : Microsoft.Extensions.Logging.ILogger
         {
