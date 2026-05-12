@@ -248,12 +248,142 @@ public class SerializationCompatibilityTests
         Assert.True(builder.JsonSerializerOptions.PropertyNameCaseInsensitive);
     }
 
-    // ── Shared fixture type ───────────────────────────────────────────────────
+    // ── Inheritance serialization ─────────────────────────────────────────────
 
-    private sealed class SampleData
+    /// <summary>
+    /// Confirms that a derived type serialized by one client can be deserialized as the
+    /// base type by the other client (derived properties are silently dropped, base
+    /// properties are preserved).
+    /// </summary>
+    [Fact]
+    public void DerivedType_WrittenByDaprClient_CanBeReadAsBySateManagementClient_AsBaseType()
+    {
+        var value = new DerivedSampleData { Name = "Alice", Count = 3, IsActive = true, Extra = "bonus" };
+        var bytes = DaprClientSerialize(value);
+        var result = StateManagementDeserialize<SampleData>(bytes);
+        Assert.NotNull(result);
+        Assert.Equal(value.Name, result.Name);
+        Assert.Equal(value.Count, result.Count);
+        Assert.Equal(value.IsActive, result.IsActive);
+    }
+
+    [Fact]
+    public void DerivedType_WrittenByStateManagementClient_CanBeReadByDaprClient_AsBaseType()
+    {
+        var value = new DerivedSampleData { Name = "Bob", Count = 7, IsActive = false, Extra = "bonus" };
+        var bytes = StateManagementSerialize(value);
+        var result = DaprClientDeserialize<SampleData>(bytes);
+        Assert.NotNull(result);
+        Assert.Equal(value.Name, result.Name);
+        Assert.Equal(value.Count, result.Count);
+        Assert.Equal(value.IsActive, result.IsActive);
+    }
+
+    [Fact]
+    public void DerivedType_WrittenByDaprClient_CanBeReadByStateManagementClient_AsDerivedType()
+    {
+        var value = new DerivedSampleData { Name = "Carol", Count = 5, IsActive = true, Extra = "extended" };
+        var bytes = DaprClientSerialize(value);
+        var result = StateManagementDeserialize<DerivedSampleData>(bytes);
+        Assert.NotNull(result);
+        Assert.Equal(value.Name, result.Name);
+        Assert.Equal(value.Count, result.Count);
+        Assert.Equal(value.IsActive, result.IsActive);
+        Assert.Equal(value.Extra, result.Extra);
+    }
+
+    [Fact]
+    public void DerivedType_WrittenByStateManagementClient_CanBeReadByDaprClient_AsDerivedType()
+    {
+        var value = new DerivedSampleData { Name = "Dave", Count = 12, IsActive = false, Extra = "extra info" };
+        var bytes = StateManagementSerialize(value);
+        var result = DaprClientDeserialize<DerivedSampleData>(bytes);
+        Assert.NotNull(result);
+        Assert.Equal(value.Name, result.Name);
+        Assert.Equal(value.Count, result.Count);
+        Assert.Equal(value.IsActive, result.IsActive);
+        Assert.Equal(value.Extra, result.Extra);
+    }
+
+    // ── Enum serialization ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Both clients default to numeric enum serialization (JsonSerializerDefaults.Web does not
+    /// alter enum handling). Confirms that enum values round-trip correctly across clients.
+    /// </summary>
+    [Fact]
+    public void Enum_WrittenByDaprClient_CanBeReadByStateManagementClient()
+    {
+        const SampleStatus value = SampleStatus.Active;
+        var bytes = DaprClientSerialize(value);
+        var result = StateManagementDeserialize<SampleStatus>(bytes);
+        Assert.Equal(value, result);
+    }
+
+    [Fact]
+    public void Enum_WrittenByStateManagementClient_CanBeReadByDaprClient()
+    {
+        const SampleStatus value = SampleStatus.Inactive;
+        var bytes = StateManagementSerialize(value);
+        var result = DaprClientDeserialize<SampleStatus>(bytes);
+        Assert.Equal(value, result);
+    }
+
+    [Fact]
+    public void EnumInComplexObject_WrittenByDaprClient_CanBeReadByStateManagementClient()
+    {
+        var value = new SampleWithEnum { Label = "test", Status = SampleStatus.Pending };
+        var bytes = DaprClientSerialize(value);
+        var result = StateManagementDeserialize<SampleWithEnum>(bytes);
+        Assert.NotNull(result);
+        Assert.Equal(value.Label, result.Label);
+        Assert.Equal(value.Status, result.Status);
+    }
+
+    [Fact]
+    public void EnumInComplexObject_WrittenByStateManagementClient_CanBeReadByDaprClient()
+    {
+        var value = new SampleWithEnum { Label = "another", Status = SampleStatus.Active };
+        var bytes = StateManagementSerialize(value);
+        var result = DaprClientDeserialize<SampleWithEnum>(bytes);
+        Assert.NotNull(result);
+        Assert.Equal(value.Label, result.Label);
+        Assert.Equal(value.Status, result.Status);
+    }
+
+    [Fact]
+    public void BothClients_ProduceSameBytes_ForEnum()
+    {
+        const SampleStatus value = SampleStatus.Active;
+        var daprClientBytes = DaprClientSerialize(value);
+        var stateManagementBytes = StateManagementSerialize(value);
+        Assert.Equal(daprClientBytes, stateManagementBytes);
+    }
+
+    // ── Shared fixture types ──────────────────────────────────────────────────
+
+    private class SampleData
     {
         public string Name { get; set; } = string.Empty;
         public int Count { get; set; }
         public bool IsActive { get; set; }
+    }
+
+    private sealed class DerivedSampleData : SampleData
+    {
+        public string Extra { get; set; } = string.Empty;
+    }
+
+    private enum SampleStatus
+    {
+        Pending = 0,
+        Active = 1,
+        Inactive = 2,
+    }
+
+    private sealed class SampleWithEnum
+    {
+        public string Label { get; set; } = string.Empty;
+        public SampleStatus Status { get; set; }
     }
 }
