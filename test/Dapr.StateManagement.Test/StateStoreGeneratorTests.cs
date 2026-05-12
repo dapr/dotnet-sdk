@@ -33,10 +33,10 @@ public class StateStoreGeneratorTests
     [Fact]
     public void GeneratedAddExtension_RegistersInterface()
     {
-        // Arrange: AddTestWidgetStore() is entirely generated code.
+        // Arrange: WithTestWidgetStore() is entirely generated code.
         var services = new ServiceCollection();
         services.AddDaprStateManagementClient()
-            .AddTestWidgetStore();   // <-- generated extension method
+            .WithTestWidgetStore();   // <-- generated extension method
 
         // Assert: The interface is registered.
         var descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ITestWidgetStore));
@@ -51,7 +51,7 @@ public class StateStoreGeneratorTests
         // the factory is only evaluated on first resolution.
         var services = new ServiceCollection();
         services.AddDaprStateManagementClient()
-            .AddTestWidgetStore();
+            .WithTestWidgetStore();
 
         Assert.Contains(services, d => d.ServiceType == typeof(ITestWidgetStore));
     }

@@ -28,7 +28,7 @@ public interface IDaprSerializer
     /// <summary>
     /// Serializes a value of a known type to its string representation.
     /// </summary>
-    /// <typeparam name="T">The compile-time type of the value being serialized. This overload is AOT-safe.</typeparam>
+    /// <typeparam name="T">The compile-time type of the value being serialized.</typeparam>
     /// <param name="value">The value to serialize. Can be null.</param>
     /// <returns>
     /// A string representation of the value. Returns an empty string if <paramref name="value"/> is null.
@@ -36,11 +36,10 @@ public interface IDaprSerializer
     string Serialize<T>(T value);
 
     /// <summary>
-    /// Serializes an object to a string representation using an optional runtime type hint.
+    /// Serializes an object to a string representation using an optional type hint.
     /// </summary>
     /// <remarks>
     /// Prefer <see cref="Serialize{T}"/> when the type is known at compile time.
-    /// This overload requires dynamic code generation and is not compatible with Native AOT.
     /// </remarks>
     /// <param name="value">The object to serialize. Can be null.</param>
     /// <param name="inputType">
@@ -57,7 +56,7 @@ public interface IDaprSerializer
     /// <summary>
     /// Deserializes a string to an object of the specified type.
     /// </summary>
-    /// <typeparam name="T">The target type to deserialize to. This overload is AOT-safe when <typeparamref name="T"/> is known at compile time.</typeparam>
+    /// <typeparam name="T">The target type to deserialize to.</typeparam>
     /// <param name="data">The string data to deserialize. Can be null or empty.</param>
     /// <returns>
     /// The deserialized object of type <typeparamref name="T"/>, or <c>default(T)</c> if <paramref name="data"/> is null or empty.
@@ -65,11 +64,10 @@ public interface IDaprSerializer
     T? Deserialize<T>(string? data);
 
     /// <summary>
-    /// Deserializes a string to an object of the specified runtime type.
+    /// Deserializes a string to an object of the specified type.
     /// </summary>
     /// <remarks>
     /// Prefer <see cref="Deserialize{T}"/> when the type is known at compile time.
-    /// This overload requires dynamic code generation and is not compatible with Native AOT.
     /// </remarks>
     /// <param name="data">The string data to deserialize. Can be null or empty.</param>
     /// <param name="returnType">The target type to deserialize to.</param>

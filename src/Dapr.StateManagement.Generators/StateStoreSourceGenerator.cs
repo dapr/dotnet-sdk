@@ -32,7 +32,7 @@ namespace Dapr.StateManagement;
 ///   <item>A <c>sealed internal</c> implementation class that forwards all
 ///   <c>IDaprStateStoreClient</c> operations to a <c>DaprStateManagementClient</c> with the
 ///   store name pre-filled.</item>
-///   <item>A <c>public static</c> extension-method class with an <c>Add{Name}()</c> method on
+///   <item>A <c>public static</c> extension-method class with a <c>With{Name}()</c> method on
 ///   <c>IDaprStateManagementBuilder</c> that registers the implementation with the DI
 ///   container.</item>
 /// </list>
@@ -136,29 +136,29 @@ public sealed class StateStoreSourceGenerator : IIncrementalGenerator
             return;
         }
 
-        string namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
+        var namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
             ? string.Empty
             : interfaceSymbol.ContainingNamespace.ToDisplayString();
 
-        string interfaceName = interfaceSymbol.Name;         // e.g. "IMyStateStore"
-        string fqInterfaceName = string.IsNullOrEmpty(namespaceName)
+        var interfaceName = interfaceSymbol.Name;         // e.g. "IMyStateStore"
+        var fqInterfaceName = string.IsNullOrEmpty(namespaceName)
             ? interfaceName
             : $"{namespaceName}.{interfaceName}";
 
         // Strip leading "I" when deriving the class/extension name.
-        string baseName = interfaceName.StartsWith("I", StringComparison.Ordinal) && interfaceName.Length > 1
+        var baseName = interfaceName.StartsWith("I", StringComparison.Ordinal) && interfaceName.Length > 1
             ? interfaceName.Substring(1)
             : interfaceName;
 
-        string implClassName = $"{baseName}StateStoreClient";
-        string extensionsClassName = $"{baseName}StateStoreClientExtensions";
-        string addMethodName = $"Add{baseName}";
+        var implClassName = $"{baseName}StateStoreClient";
+        var extensionsClassName = $"{baseName}StateStoreClientExtensions";
+        var addMethodName = $"With{baseName}";
 
         // Use a stable hash of the fully-qualified name as a suffix on the hint name so that
         // two interfaces with the same simple name in different namespaces (e.g.
         // Foo.IMyStore and Bar.IMyStore) always get distinct generated file names and never
         // overwrite each other in the source output.
-        string hintName = $"{implClassName}_{Fnv1aHash(fqInterfaceName):X8}.g.cs";
+        var hintName = $"{implClassName}_{Fnv1aHash(fqInterfaceName):X8}.g.cs";
 
         string source = BuildSource(
             namespaceName,

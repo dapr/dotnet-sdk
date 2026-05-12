@@ -3,7 +3,6 @@
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <RootNamespace>Dapr.StateManagement</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

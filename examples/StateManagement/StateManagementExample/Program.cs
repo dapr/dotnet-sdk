@@ -26,14 +26,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 // ── Dependency-injection setup ────────────────────────────────────────────────
 //
-// AddWidgetStore() is generated at compile time from [StateStore("statestore")] on
-// IWidgetStore (see IWidgetStore.cs). It registers a WidgetStateStoreClient
-// singleton that forwards all IDaprStateStoreClient calls with the store name
-// pre-filled — no magic string "statestore" at call sites.
+// AddDaprStateManagementClient() returns IDaprStateManagementBuilder. WithWidgetStore() is
+// generated at compile time from [StateStore("statestore")] on IWidgetStore (see IWidgetStore.cs).
+// It registers a WidgetStateStoreClient singleton that forwards all IDaprStateStoreClient calls
+// with the store name pre-filled — no magic string "statestore" at call sites.
 
 var services = new ServiceCollection();
 services.AddDaprStateManagementClient()
-    .AddWidgetStore();   // <-- 100% generated; produced from IWidgetStore : IDaprStateStoreClient
+    .WithWidgetStore();   // <-- 100% generated; produced from IWidgetStore : IDaprStateStoreClient
 
 await using var provider = services.BuildServiceProvider();
 

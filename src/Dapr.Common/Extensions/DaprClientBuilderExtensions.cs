@@ -22,13 +22,10 @@ namespace Dapr.Common.Extensions;
 internal static class DaprClientBuilderExtensions
 {
     /// <summary>
-    /// Registers the necessary base functionality for a Dapr client without using reflection.
+    /// Registers the necessary base functionality for a Dapr client.
     /// </summary>
     /// <typeparam name="TClient">The abstract Dapr client type being created.</typeparam>
-    /// <typeparam name="TConcreteClient">
-    /// The concrete Dapr client type. Retained as a type constraint for callers; construction is
-    /// delegated to <paramref name="clientBuilderFactory"/> so no reflection is required.
-    /// </typeparam>
+    /// <typeparam name="TConcreteClient">The concrete Dapr client type being created.</typeparam>
     /// <typeparam name="TServiceBuilder">The type of the DI-builder wrapper returned to the caller.</typeparam>
     /// <typeparam name="TClientBuilder">The strongly-typed builder used to configure and construct the Dapr client.</typeparam>
     /// <param name="services">The collection of services to which the Dapr client and associated services are being registered.</param>
@@ -58,13 +55,26 @@ internal static class DaprClientBuilderExtensions
         ArgumentNullException.ThrowIfNull(clientBuilderFactory, nameof(clientBuilderFactory));
         ArgumentNullException.ThrowIfNull(serviceBuilderFactory, nameof(serviceBuilderFactory));
 
+        // Ensure that TConcreteClient is a concrete class.
+        if (typeof(TConcreteClient).IsInterface || typeof(TConcreteClient).IsAbstract)
+        {
+            throw new ArgumentException($"{typeof(TConcreteClient).Name} must be a concrete class",
+                nameof(TConcreteClient));
+        }
+
+        // Ensure that TServiceBuilder is a concrete class.
+        if (typeof(TServiceBuilder).IsInterface || typeof(TServiceBuilder).IsAbstract)
+        {
+            throw new ArgumentException($"{typeof(TServiceBuilder).Name} must be a concrete class",
+                nameof(TServiceBuilder));
+        }
+
         services.AddHttpClient();
 
         var registration = new Func<IServiceProvider, TClient>(provider =>
         {
             var configuration = provider.GetService<IConfiguration>();
 
-            // Construct the builder via the caller-supplied factory — no reflection.
             var builder = clientBuilderFactory(configuration);
 
             builder.UseDaprApiToken(DaprDefaults.GetDefaultDaprApiToken(configuration));
@@ -78,7 +88,6 @@ internal static class DaprClientBuilderExtensions
 
         services.Add(new ServiceDescriptor(typeof(TClient), registration, lifetime));
 
-        // Construct the service builder via the caller-supplied factory — no reflection.
         return serviceBuilderFactory(services);
     }
 }

@@ -3,7 +3,7 @@
     <PropertyGroup>
         <IsPackable>true</IsPackable>
         <PackageId>Dapr.StateManagement</PackageId>
-        <Description>Dapr State Management SDK for .NET — provides a gRPC-backed client for the Dapr state management building block, with full dependency injection support and optional source generator for typed store clients.</Description>
+        <Description>Dapr State Management SDK for .NET</Description>
 
         <!-- Create the package on build -->
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
