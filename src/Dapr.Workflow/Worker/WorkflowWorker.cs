@@ -339,8 +339,13 @@ internal sealed class WorkflowWorker(
                 ?? currentUtcDateTime;
 
             // Initialize the context with the FULL history
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, 
-                _serializer, loggerFactory, versionTracker, appId, request.ExecutionId);
+            var incomingPropagatedHistory = request.PropagatedHistory.Count > 0
+                ? request.PropagatedHistory
+                : null;
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime,
+                _serializer, loggerFactory, versionTracker, appId, request.ExecutionId,
+                allPastEvents,
+                incomingPropagatedHistory);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
