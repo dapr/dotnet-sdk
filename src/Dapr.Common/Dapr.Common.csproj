@@ -7,6 +7,9 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+        <ProjectReference Include="..\Dapr.Common.Generators\Dapr.Common.Generators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
         <PackageReference Include="Google.Api.CommonProtos" />
         <PackageReference Include="Grpc.Net.Client" />
         <PackageReference Include="Grpc.Reflection" />
@@ -14,5 +17,25 @@
         <PackageReference Include="Microsoft.Extensions.Configuration" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
     </ItemGroup>
+
+    <ItemGroup>
+        <None Include="build\Dapr.Common.props" Pack="true" PackagePath="build\" />
+    </ItemGroup>
+
+    <!-- Bundle the source generator DLL into the analyzers folder of the NuGet package so
+         consumers get the generator transparently when they install Dapr.Common. -->
+    <Target Name="BundleGeneratorInPackage" BeforeTargets="_GetPackageFiles">
+        <MSBuild Projects="..\Dapr.Common.Generators\Dapr.Common.Generators.csproj"
+                 Targets="GetTargetPath"
+                 Properties="Configuration=$(Configuration)">
+            <Output TaskParameter="TargetOutputs" ItemName="_GeneratorDll" />
+        </MSBuild>
+        <ItemGroup>
+            <None Include="@(_GeneratorDll)"
+                  Pack="true"
+                  PackagePath="analyzers/dotnet/cs"
+                  Visible="false" />
+        </ItemGroup>
+    </Target>
 
 </Project>
