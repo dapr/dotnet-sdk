@@ -15,6 +15,8 @@ internal sealed class DaprRuntimeCapabilities(GrpcChannel channel) : IDaprRuntim
     private readonly SemaphoreSlim _gate = new(1, 1);
     private HashSet<string>? _cachedServices = null;
     private readonly Dictionary<string, HashSet<string>> _cachedMethodsByService = [];
+
+    public const string Namespace = "dapr.proto.runtime.v1.Dapr";
     
     /// <inheritdocs />
     public async Task<bool> SupportsMethodAsync(string fullyQualifiedMethodName, CancellationToken cancellationToken = default)
