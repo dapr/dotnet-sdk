@@ -18,13 +18,11 @@ using Dapr.Common.Serialization;
 using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker;
-using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
 using Dapr.Workflow.Abstractions;
 using Dapr.Testcontainers.Xunit.Attributes;
 using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
