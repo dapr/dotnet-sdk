@@ -203,7 +203,7 @@ public sealed class WrapperCodeEmitterTests
         var groups = Analyze(StubCompilation.WithObsoleteAlphaVariant());
         var source = WrapperCodeEmitter.EmitClass(groups!);
 
-        Assert.Contains("#pragma warning disable CS0618", source);
+        Assert.Contains("#pragma warning disable CS0612, CS0618", source);
     }
 
     [Fact]

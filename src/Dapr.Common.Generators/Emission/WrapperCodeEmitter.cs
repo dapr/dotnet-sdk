@@ -391,7 +391,8 @@ internal static class WrapperCodeEmitter
         sb.AppendLine("#nullable enable");
         sb.AppendLine("// The generated fallback chain intentionally calls [Obsolete]-tagged alpha/beta gRPC");
         sb.AppendLine("// stub methods so that older Dapr runtimes are still supported.");
-        sb.AppendLine("#pragma warning disable CS0618");
+        sb.AppendLine("// CS0612: [Obsolete] with no message. CS0618: [Obsolete(\"message\")].");
+        sb.AppendLine("#pragma warning disable CS0612, CS0618");
         sb.AppendLine();
     }
 }
