@@ -42,6 +42,14 @@ internal sealed class DaprRuntimeCapabilities(GrpcChannel channel) : IDaprRuntim
             // and handle StatusCode.Unimplemented as the runtime-version fallback signal.
             return true;
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // The HTTP/2 stream underlying the reflection call was internally cancelled
+            // (e.g. connection reset, keep-alive expiry, or stream setup race on .NET 9+).
+            // This is NOT a caller cancellation — treat it the same as an unavailable
+            // reflection service and proceed optimistically.
+            return true;
+        }
     }
 
     /// <inheritdocs />
