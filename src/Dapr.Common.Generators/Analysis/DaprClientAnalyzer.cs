@@ -101,10 +101,9 @@ internal static class DaprClientAnalyzer
         if (!method.Name.EndsWith("Async"))
             return false;
 
-        // Skip obsolete methods — they represent superseded API variants that
-        // should not be included in the version-aware dispatch chain.
-        if (method.GetAttributes().Any(a => a.AttributeClass?.Name == "ObsoleteAttribute"))
-            return false;
+        // Note: obsolete methods ARE included. The [Obsolete] attribute on gRPC stubs
+        // marks the older alpha/beta variants that have been promoted to stable — those
+        // are precisely the fallback targets we need for older Dapr runtimes.
 
         if (method.Parameters.Length != 2)
             return false;

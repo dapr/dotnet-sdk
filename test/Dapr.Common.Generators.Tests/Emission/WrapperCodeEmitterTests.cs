@@ -192,6 +192,35 @@ public sealed class WrapperCodeEmitterTests
     }
 
     // -------------------------------------------------------------------------
+    // Class emission – obsolete-warning suppression
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void EmitClass_ContainsPragmaDisableObsoleteWarning()
+    {
+        // The generated class file must suppress CS0618 because it intentionally calls
+        // [Obsolete]-tagged alpha/beta stubs as fallback targets for older runtimes.
+        var groups = Analyze(StubCompilation.WithObsoleteAlphaVariant());
+        var source = WrapperCodeEmitter.EmitClass(groups!);
+
+        Assert.Contains("#pragma warning disable CS0618", source);
+    }
+
+    [Fact]
+    public void EmitClass_ObsoleteAlpha_GeneratesAutoCompatibleFallback()
+    {
+        // When the Alpha1 variant is [Obsolete], the class must still emit the full
+        // capability-check + try/catch + fallback chain (not a simple PassThrough).
+        var groups = Analyze(StubCompilation.WithObsoleteAlphaVariant());
+        var source = WrapperCodeEmitter.EmitClass(groups!);
+
+        Assert.Contains("SupportsMethodAsync(\"dapr.proto.runtime.v1.Dapr/Corf\"", source);
+        Assert.Contains("SupportsMethodAsync(\"dapr.proto.runtime.v1.Dapr/CorfAlpha1\"", source);
+        Assert.Contains("CorfAlpha1Async", source);
+        Assert.Contains("async global::System.Threading.Tasks.Task", source);
+    }
+
+    // -------------------------------------------------------------------------
     // Class emission – constructor and fields
     // -------------------------------------------------------------------------
 

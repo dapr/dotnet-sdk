@@ -194,6 +194,24 @@ public sealed class DaprClientAnalyzerTests
     }
 
     [Fact]
+    public void AnalyzeCompilation_AutoCompatible_ObsoleteAlphaVariantIncludedAsFallback()
+    {
+        // Regression test: the real Dapr gRPC stubs mark Alpha1 methods [Obsolete] once the
+        // stable API is promoted. The analyzer must NOT skip those — they are the fallback targets
+        // for older runtimes that only support the alpha API.
+        var compilation = StubCompilation.WithObsoleteAlphaVariant();
+        var groups = DaprClientAnalyzer.AnalyzeCompilation(compilation);
+
+        Assert.NotNull(groups);
+        var group = Assert.Single(groups);
+        Assert.Equal("Corf", group.BaseName);
+        Assert.Equal(MethodClassification.AutoCompatible, group.Classification);
+        Assert.Single(group.Fallbacks);
+        Assert.Equal("CorfAsync", group.MostRecent.CSharpMethodName);
+        Assert.Equal("CorfAlpha1Async", group.Fallbacks[0].CSharpMethodName);
+    }
+
+    [Fact]
     public void AnalyzeCompilation_MultipleGroups_ReturnsOneGroupPerBaseName()
     {
         var compilation = StubCompilation.Create(

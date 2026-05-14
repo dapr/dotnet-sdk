@@ -133,6 +133,22 @@ internal static class StubCompilation
             public class BazResponseAlpha2 { public int TotallyDifferentResult { get; set; } }
             """);
 
+    /// <summary>
+    /// Stable variant + [Obsolete]-tagged Alpha1 variant with identical types — mirrors the
+    /// real Dapr gRPC stubs where alpha methods are marked deprecated once the stable API lands.
+    /// Expected classification: AutoCompatible (obsolete is included as a fallback).
+    /// </summary>
+    public static Compilation WithObsoleteAlphaVariant() => Create(
+        daprClientMethods: """
+            public global::Grpc.Core.AsyncUnaryCall<CorfResponse> CorfAsync(CorfRequest r, global::Grpc.Core.CallOptions o) { return null; }
+            [global::System.ObsoleteAttribute]
+            public global::Grpc.Core.AsyncUnaryCall<CorfResponse> CorfAlpha1Async(CorfRequest r, global::Grpc.Core.CallOptions o) { return null; }
+            """,
+        extraTypes: """
+            public class CorfRequest  { }
+            public class CorfResponse { }
+            """);
+
     /// <summary>Single stable variant with no prior Alpha. Expected: PassThrough.</summary>
     public static Compilation WithSingleStableVariant() => Create(
         daprClientMethods: """
