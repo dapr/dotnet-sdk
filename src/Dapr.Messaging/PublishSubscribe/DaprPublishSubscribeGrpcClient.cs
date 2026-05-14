@@ -22,10 +22,10 @@ namespace Dapr.Messaging.PublishSubscribe;
 internal sealed class DaprPublishSubscribeGrpcClient(
     P.DaprClient client,
     HttpClient httpClient,
-    DaprRuntimeCapabilities runtimeCapabilities,
+    IDaprRuntimeCapabilities runtimeCapabilities,
     string? daprApiToken = null) : DaprPublishSubscribeClient(client, httpClient,daprApiToken)
 {
-    private readonly DaprRuntimeCapabilities runtimeCapabilities = runtimeCapabilities;
+    private readonly IDaprRuntimeCapabilities runtimeCapabilities = runtimeCapabilities;
 
     /// <summary>
     /// Dynamically subscribes to a Publish/Subscribe component and topic.
