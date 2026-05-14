@@ -30,8 +30,18 @@ internal sealed class DaprRuntimeCapabilities(GrpcChannel channel) : IDaprRuntim
         var service = fullyQualifiedMethodName[..slash];
         var method = fullyQualifiedMethodName[(slash + 1)..];
 
-        var methods = await GetMethodsForServiceAsync(service, cancellationToken).ConfigureAwait(false);
-        return methods.Contains(method);
+        try
+        {
+            var methods = await GetMethodsForServiceAsync(service, cancellationToken).ConfigureAwait(false);
+            return methods.Contains(method);
+        }
+        catch (RpcException)
+        {
+            // gRPC reflection is unavailable or returned an error for this service.
+            // Return true (optimistic) so the version-aware caller will attempt the method
+            // and handle StatusCode.Unimplemented as the runtime-version fallback signal.
+            return true;
+        }
     }
 
     /// <inheritdocs />
@@ -55,6 +65,7 @@ internal sealed class DaprRuntimeCapabilities(GrpcChannel channel) : IDaprRuntim
             using var call = _reflectionClient.ServerReflectionInfo(cancellationToken: cancellationToken);
             await call.RequestStream.WriteAsync(new ServerReflectionRequest { ListServices = "" }, cancellationToken)
                 .ConfigureAwait(false);
+            await call.RequestStream.CompleteAsync().ConfigureAwait(false);
 
             var set = new HashSet<string>(StringComparer.Ordinal);
             await foreach (var response in call.ResponseStream.ReadAllAsync(cancellationToken).ConfigureAwait(false))

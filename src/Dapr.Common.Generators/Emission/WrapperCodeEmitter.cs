@@ -165,9 +165,26 @@ internal static class WrapperCodeEmitter
         sb.AppendLine("        var __ct = options.CancellationToken;");
         sb.AppendLine();
 
-        // Most-recent variant (first check)
+        // Most-recent variant: check capability then call, catching Unimplemented so that a method
+        // defined in the runtime's proto but not yet backed by a handler falls through to the older variant.
+        // Also catch Unknown with the Dapr proxy-routing error that older runtimes emit when they cannot
+        // match the method internally and attempt (and fail) to forward it as a service invocation.
         sb.AppendLine($"        if (await {CapabilitiesFieldName}.SupportsMethodAsync(\"{mostRecent.FullyQualifiedMethodName}\", __ct).ConfigureAwait(false))");
-        sb.AppendLine($"            return await {InnerFieldName}.{mostRecent.CSharpMethodName}(request, options).ResponseAsync.ConfigureAwait(false);");
+        sb.AppendLine("        {");
+        sb.AppendLine("            try");
+        sb.AppendLine("            {");
+        sb.AppendLine($"                return await {InnerFieldName}.{mostRecent.CSharpMethodName}(request, options).ResponseAsync.ConfigureAwait(false);");
+        sb.AppendLine("            }");
+        sb.AppendLine("            catch (global::Grpc.Core.RpcException __implEx) when (");
+        sb.AppendLine("                __implEx.StatusCode == global::Grpc.Core.StatusCode.Unimplemented ||");
+        sb.AppendLine("                (__implEx.StatusCode == global::Grpc.Core.StatusCode.Unknown &&");
+        sb.AppendLine("                 __implEx.Status.Detail.Contains(\"dapr-callee-app-id or dapr-app-id not found\")))");
+        sb.AppendLine("            {");
+        sb.AppendLine("                // Method is in the runtime proto but not yet implemented, or the runtime");
+        sb.AppendLine("                // does not recognise the method and attempted to proxy it as a service invocation.");
+        sb.AppendLine("                // Either way, fall through to the older variant.");
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
         sb.AppendLine();
 
         // Fallback variants
@@ -218,9 +235,26 @@ internal static class WrapperCodeEmitter
         sb.AppendLine("        var __ct = options.CancellationToken;");
         sb.AppendLine();
 
-        // Most-recent variant
+        // Most-recent variant: catch Unimplemented so a proto-defined-but-not-yet-handled method
+        // falls through to the schema-divergent NotSupportedException path rather than surfacing a raw RpcException.
+        // Also catch Unknown with the Dapr proxy-routing error that older runtimes emit when they cannot
+        // match the method internally and attempt (and fail) to forward it as a service invocation.
         sb.AppendLine($"        if (await {CapabilitiesFieldName}.SupportsMethodAsync(\"{mostRecent.FullyQualifiedMethodName}\", __ct).ConfigureAwait(false))");
-        sb.AppendLine($"            return await {InnerFieldName}.{mostRecent.CSharpMethodName}(request, options).ResponseAsync.ConfigureAwait(false);");
+        sb.AppendLine("        {");
+        sb.AppendLine("            try");
+        sb.AppendLine("            {");
+        sb.AppendLine($"                return await {InnerFieldName}.{mostRecent.CSharpMethodName}(request, options).ResponseAsync.ConfigureAwait(false);");
+        sb.AppendLine("            }");
+        sb.AppendLine("            catch (global::Grpc.Core.RpcException __implEx) when (");
+        sb.AppendLine("                __implEx.StatusCode == global::Grpc.Core.StatusCode.Unimplemented ||");
+        sb.AppendLine("                (__implEx.StatusCode == global::Grpc.Core.StatusCode.Unknown &&");
+        sb.AppendLine("                 __implEx.Status.Detail.Contains(\"dapr-callee-app-id or dapr-app-id not found\")))");
+        sb.AppendLine("            {");
+        sb.AppendLine("                // Method is in the runtime proto but not yet implemented, or the runtime");
+        sb.AppendLine("                // does not recognise the method and attempted to proxy it as a service invocation.");
+        sb.AppendLine("                // Either way, fall through to the older variant.");
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
         sb.AppendLine();
 
         // Older, incompatible variants → NotSupportedException

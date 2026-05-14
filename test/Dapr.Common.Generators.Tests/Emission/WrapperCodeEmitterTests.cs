@@ -133,6 +133,65 @@ public sealed class WrapperCodeEmitterTests
     }
 
     // -------------------------------------------------------------------------
+    // Class emission – Unimplemented fallback guard
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void EmitClass_AutoCompatible_MostRecentVariant_ContainsUnimplementedCatch()
+    {
+        var groups = Analyze(StubCompilation.WithIdenticalTypeVariants());
+        var source = WrapperCodeEmitter.EmitClass(groups!);
+
+        // The most-recent variant should be wrapped in a try-catch for StatusCode.Unimplemented
+        // so that a runtime which defines but doesn't implement the method falls through to Alpha1.
+        Assert.Contains("StatusCode.Unimplemented", source);
+        Assert.Contains("catch (global::Grpc.Core.RpcException __implEx)", source);
+    }
+
+    [Fact]
+    public void EmitClass_SchemaDivergent_MostRecentVariant_ContainsUnimplementedCatch()
+    {
+        var groups = Analyze(StubCompilation.WithIncompatibleAlphaVariants());
+        var source = WrapperCodeEmitter.EmitClass(groups!);
+
+        Assert.Contains("StatusCode.Unimplemented", source);
+        Assert.Contains("catch (global::Grpc.Core.RpcException __implEx)", source);
+    }
+
+    [Fact]
+    public void EmitClass_PassThrough_DoesNotContainUnimplementedCatch()
+    {
+        // PassThrough methods have only one variant — no fallback, no UNIMPLEMENTED guard needed.
+        var groups = Analyze(StubCompilation.WithSingleStableVariant());
+        var source = WrapperCodeEmitter.EmitClass(groups!);
+
+        Assert.DoesNotContain("StatusCode.Unimplemented", source);
+    }
+
+    [Fact]
+    public void EmitClass_AutoCompatible_MostRecentVariant_ContainsUnknownProxyErrorCatch()
+    {
+        // Older Dapr runtimes return StatusCode.Unknown with a proxy-routing error message when
+        // they receive a gRPC method they don't recognise. This must also trigger fallback.
+        var groups = Analyze(StubCompilation.WithIdenticalTypeVariants());
+        var source = WrapperCodeEmitter.EmitClass(groups!);
+
+        Assert.Contains("StatusCode.Unknown", source);
+        Assert.Contains("dapr-callee-app-id or dapr-app-id not found", source);
+    }
+
+    [Fact]
+    public void EmitClass_SchemaDivergent_MostRecentVariant_ContainsUnknownProxyErrorCatch()
+    {
+        // Same proxy-routing fallback must also be present for SchemaDivergent methods.
+        var groups = Analyze(StubCompilation.WithIncompatibleAlphaVariants());
+        var source = WrapperCodeEmitter.EmitClass(groups!);
+
+        Assert.Contains("StatusCode.Unknown", source);
+        Assert.Contains("dapr-callee-app-id or dapr-app-id not found", source);
+    }
+
+    // -------------------------------------------------------------------------
     // Class emission – constructor and fields
     // -------------------------------------------------------------------------
 
