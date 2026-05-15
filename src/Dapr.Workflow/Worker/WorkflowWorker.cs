@@ -339,8 +339,13 @@ internal sealed class WorkflowWorker(
                 ?? currentUtcDateTime;
 
             // Initialize the context with the FULL history
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, 
-                _serializer, loggerFactory, versionTracker, appId, request.ExecutionId);
+            var incomingPropagatedHistory = request.PropagatedHistory.Count > 0
+                ? request.PropagatedHistory
+                : null;
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime,
+                _serializer, loggerFactory, versionTracker, appId, request.ExecutionId,
+                allPastEvents,
+                incomingPropagatedHistory);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
@@ -632,16 +637,24 @@ internal sealed class WorkflowWorker(
             return null;
 
         var traceState = request.ParentTraceContext?.TraceState;
-        if (ActivityContext.TryParse(traceParent, traceState, out var parentCtx))
+        if (ActivityContext.TryParse(traceParent, traceState, isRemote: true, out var parentCtx))
         {
-            return WorkflowActivitySource.StartActivity(
+            // Prefer ActivitySource so registered telemetry listeners (e.g. OpenTelemetry) receive the span.
+            var started = WorkflowActivitySource.StartActivity(
                 name: $"WorkflowActivity {request.Name}",
                 kind: ActivityKind.Internal,
                 parentContext: parentCtx,
                 []);
+            if (started != null)
+                return started;
+
+            // ActivitySource.StartActivity returns null when no listener is registered for "Dapr.Workflow".
+            // Fall through to ensure Activity.Current is always non-null inside user activity code,
+            // regardless of whether OpenTelemetry or another telemetry listener is configured.
         }
-        
-        // Fall back to raw parent ID if parsing fails
+
+        // Always create an Activity directly (not via ActivitySource) so that Activity.Current is
+        // non-null in user activity code even when no telemetry listener is registered.
         var act = new Activity($"WorkflowActivity {request.Name}");
         act.SetParentId(traceParent);
         if (!string.IsNullOrEmpty(traceState))
