@@ -6,6 +6,9 @@
         <PackageId>Dapr.Jobs</PackageId>
         <Title>Dapr Jobs Authoring SDK</Title>
         <Description>Dapr Jobs SDK for scheduling jobs and tasks with Dapr</Description>
+        <!-- Enables the DaprVersionAwareGenerator to emit IVersionAwareDaprClient and
+             VersionAwareDaprClient for this project's gRPC client. -->
+        <IsDaprSdkProject>true</IsDaprSdkProject>
     </PropertyGroup>
 
     <ItemGroup>
@@ -22,6 +25,10 @@
     <ItemGroup>
       <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
       <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+      <!-- Generator reference: outputs IVersionAwareDaprClient + VersionAwareDaprClient -->
+      <ProjectReference Include="..\Dapr.Common.Generators\Dapr.Common.Generators.csproj"
+                        OutputItemType="Analyzer"
+                        ReferenceOutputAssembly="false" />
     </ItemGroup>
 
 </Project>
