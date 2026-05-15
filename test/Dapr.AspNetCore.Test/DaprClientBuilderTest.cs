@@ -60,9 +60,34 @@ public class DaprClientBuilderTest
     {
         var builder = new DaprClientBuilder();
         builder.UseGrpcEndpoint("ftp://example.com");
-            
+
         var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
-        Assert.Equal("The gRPC endpoint must use http or https.", ex.Message);
+        Assert.Equal(
+            "The gRPC endpoint must use 'http', 'https', or the canonical gRPC URI form 'dns://host:port?tls=<bool>'.",
+            ex.Message);
+    }
+
+    [Theory]
+    [InlineData("dns://example.com:50001?tls=true")]
+    [InlineData("dns://example.com:50001?tls=false")]
+    public void DaprClientBuilder_AcceptsCanonicalGrpcDnsScheme(string endpoint)
+    {
+        var builder = new DaprClientBuilder();
+        builder.UseGrpcEndpoint(endpoint);
+
+        // Build must succeed — the dns:// form is translated to http(s) before reaching GrpcChannel.ForAddress.
+        var ex = Record.Exception(() => builder.Build());
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public void DaprClientBuilder_DnsSchemeRequiresTlsQueryParameter()
+    {
+        var builder = new DaprClientBuilder();
+        builder.UseGrpcEndpoint("dns://example.com:50001");
+
+        var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
+        Assert.Contains("missing or has an invalid 'tls'", ex.Message);
     }
 
     [Fact]
