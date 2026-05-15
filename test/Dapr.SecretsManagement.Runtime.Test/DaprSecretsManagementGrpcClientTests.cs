@@ -86,9 +86,9 @@ public sealed class DaprSecretsManagementGrpcClientTests
 
         var client = new DaprSecretsManagementGrpcClient(mockClient, httpClient, null);
 
-        await Assert.ThrowsAsync<ArgumentNullException>(async () =>
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            await client.GetSecretAsync(null!, "my-key", cancellationToken: TestContext.Current.CancellationToken);
+            await client.GetSecretAsync("", "my-key", cancellationToken: TestContext.Current.CancellationToken);
         });
     }
 
@@ -100,9 +100,9 @@ public sealed class DaprSecretsManagementGrpcClientTests
 
         var client = new DaprSecretsManagementGrpcClient(mockClient, httpClient, null);
 
-        await Assert.ThrowsAsync<ArgumentNullException>(async () =>
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            await client.GetBulkSecretAsync(null!, cancellationToken: TestContext.Current.CancellationToken);
+            await client.GetBulkSecretAsync("", cancellationToken: TestContext.Current.CancellationToken);
         });
     }
 
