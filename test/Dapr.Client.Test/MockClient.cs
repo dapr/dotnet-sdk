@@ -16,7 +16,9 @@ namespace Dapr.Client;
 using System;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Common;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Moq;
@@ -26,7 +28,18 @@ public class MockClient
     public MockClient()
     {
         Mock = new Mock<Autogen.Grpc.v1.Dapr.DaprClient>(MockBehavior.Strict);
-        DaprClient = new DaprClientGrpc(GrpcChannel.ForAddress("http://localhost"), Mock.Object, new HttpClient(), new Uri("http://localhost:3500"), new JsonSerializerOptions(), default);
+        DaprClient = new DaprClientGrpc(GrpcChannel.ForAddress("http://localhost"), Mock.Object, new HttpClient(), new Uri("http://localhost:3500"), new JsonSerializerOptions(), default, new AlwaysAvailableCapabilities());
+    }
+
+    // Reports every gRPC method as available so tests that mock the DaprClient directly
+    // are not required to handle the gRPC reflection round-trip.
+    private sealed class AlwaysAvailableCapabilities : IDaprRuntimeCapabilities
+    {
+        public Task<bool> SupportsMethodAsync(string fullyQualifiedMethodName, CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
+
+        public Task<bool> SupportsServiceAsync(string serviceName, CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
     }
 
     public Mock<Autogen.Grpc.v1.Dapr.DaprClient> Mock { get; }

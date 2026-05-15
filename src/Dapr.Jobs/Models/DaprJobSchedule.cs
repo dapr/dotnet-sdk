@@ -22,16 +22,16 @@ namespace Dapr.Jobs.Models;
 /// Used to build a schedule for a job.
 /// </summary>
 [JsonConverter(typeof(DaprJobScheduleConverter))]
-public sealed class DaprJobSchedule
+public sealed partial class DaprJobSchedule
 {
     /// <summary>
     /// A regular expression used to evaluate whether a given prefix period embodies an @every statement.
     /// </summary>
-    private static readonly Regex isEveryExpression = new(@"^@every (\d+(m?s|m|h))+$", RegexOptions.Compiled);
+    private static readonly Regex IsEveryExpression = IsEveryExpressionRegex();
     /// <summary>
     /// The various prefixed period values allowed.
     /// </summary>
-    private static readonly string[] acceptablePeriodValues = { "yearly", "monthly", "weekly", "daily", "midnight", "hourly" };
+    private static readonly string[] AcceptablePeriodValues = { "yearly", "monthly", "weekly", "daily", "midnight", "hourly" };
 
     /// <summary>
     /// The value of the expression represented by the schedule.
@@ -114,8 +114,8 @@ public sealed class DaprJobSchedule
     /// </summary>
     public bool IsPrefixedPeriodExpression =>
         ExpressionValue.StartsWith('@') &&
-        (isEveryExpression.IsMatch(ExpressionValue) ||
-         ExpressionValue.EndsWithAny(acceptablePeriodValues, StringComparison.InvariantCulture));
+        (IsEveryExpression.IsMatch(ExpressionValue) ||
+         ExpressionValue.EndsWithAny(AcceptablePeriodValues, StringComparison.InvariantCulture));
 
     /// <summary>
     /// Reflects that the schedule represents a fixed point in time.
@@ -131,4 +131,7 @@ public sealed class DaprJobSchedule
     /// Reflects that the schedule represents a Cron expression.
     /// </summary>
     public bool IsCronExpression => CronExpressionBuilder.IsCronExpression(ExpressionValue);
+
+    [GeneratedRegex(@"^@every (\d+(m?s|m|h))+$", RegexOptions.Compiled)]
+    private static partial Regex IsEveryExpressionRegex();
 }
