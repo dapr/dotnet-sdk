@@ -535,6 +535,7 @@ public class WorkflowServiceCollectionExtensionsTests
     {
         public SerializerDependency Dep { get; } = dep;
 
+        public string Serialize<T>(T value) => "x";
         public string Serialize(object? value, Type? inputType = null) => "x";
         public T? Deserialize<T>(string? data) => default;
         public object? Deserialize(string? data, Type returnType) => null;
@@ -574,6 +575,7 @@ public class WorkflowServiceCollectionExtensionsTests
     {
         public static MockSerializer Instance { get; } = new();
 
+        public string Serialize<T>(T value) => "mock";
         public string Serialize(object? value, Type? inputType = null) => "mock";
         public T? Deserialize<T>(string? data) => default;
         public object? Deserialize(string? data, Type returnType) => null;

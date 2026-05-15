@@ -143,6 +143,8 @@ public class WorkflowMetadataTests
         public string? LastGenericDeserializeData { get; private set; }
         public object? NextGenericResult { get; set; }
 
+        public string Serialize<T>(T value) => throw new NotSupportedException();
+
         public string Serialize(object? value, Type? inputType = null) => throw new NotSupportedException();
 
         public T? Deserialize<T>(string? data)

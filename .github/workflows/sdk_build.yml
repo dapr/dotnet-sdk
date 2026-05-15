@@ -358,6 +358,9 @@ jobs:
             | map(select(
                 (test("/Dapr\\.Workflow\\.Versioning\\.(Abstractions|Generators|Runtime)\\.")) | not
               ))
+            | map(select(
+                (test("/Dapr\\.StateManagement\\.(Abstractions|Generators|Runtime)\\.")) | not
+              ))
           ')
           echo "matrix=$files" >> $GITHUB_OUTPUT
   
