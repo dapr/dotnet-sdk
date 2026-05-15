@@ -90,6 +90,12 @@ public sealed record DaprRuntimeOptions
     public bool PreserveContainerLogs { get; private set; }
 
     /// <summary>
+    /// The application protocol used by the Dapr sidecar to communicate with the app.
+    /// Valid values are "http" (default) and "grpc".
+    /// </summary>
+    public string AppProtocol { get; private set; } = "http";
+
+    /// <summary>
     /// The image tag for the Dapr runtime.
     /// </summary>
 	public string RuntimeImageTag => $"daprio/daprd:{Version}";
@@ -110,6 +116,25 @@ public sealed record DaprRuntimeOptions
     {
         LogLevel = logLevel;
         TryEnableContainerLogsForCi(logLevel);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the application protocol used by the Dapr sidecar to communicate with the app.
+    /// </summary>
+    /// <param name="appProtocol">The protocol to use. Must be "http" or "grpc".</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="appProtocol"/> is not "http" or "grpc".</exception>
+    public DaprRuntimeOptions WithAppProtocol(string appProtocol)
+    {
+        if (!string.Equals(appProtocol, "http", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(appProtocol, "grpc", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                $"Invalid app protocol '{appProtocol}'. Must be \"http\" or \"grpc\".",
+                nameof(appProtocol));
+        }
+
+        AppProtocol = appProtocol.ToLowerInvariant();
         return this;
     }
 

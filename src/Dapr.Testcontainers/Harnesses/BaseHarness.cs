@@ -89,6 +89,11 @@ public abstract class BaseHarness : IAsyncContainerFixture
     }
 
     /// <summary>
+    /// Gets the Dapr application ID configured for this harness.
+    /// </summary>
+    public string AppId => options.AppId;
+
+    /// <summary>
     /// Gets the shared Docker network used by this instance.
     /// </summary>
     public INetwork Network => _environment.Network;
