@@ -2276,7 +2276,7 @@ public class WorkflowWorkerTests
         var request = new OrchestratorRequest
         {
             InstanceId = "i",
-            PastEvents =
+            NewEvents =
             {
                 new HistoryEvent
                 {
