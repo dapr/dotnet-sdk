@@ -51,4 +51,78 @@ public sealed class DaprSecretsManagementServiceCollectionExtensionsTests
 
         Assert.Same(services, builder.Services);
     }
+
+    [Fact]
+    public void AddDaprSecretsManagementClient_ScopedLifetimeRegistersCorrectly()
+    {
+        var services = new ServiceCollection();
+        services.AddDaprSecretsManagementClient(lifetime: ServiceLifetime.Scoped);
+
+        var descriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(DaprSecretsManagementClient));
+        Assert.NotNull(descriptor);
+        Assert.Equal(ServiceLifetime.Scoped, descriptor.Lifetime);
+    }
+
+    [Fact]
+    public void AddDaprSecretsManagementClient_ConfigureCallbackIsAccepted()
+    {
+        var services = new ServiceCollection();
+        var callbackInvoked = false;
+
+        services.AddDaprSecretsManagementClient((sp, builder) =>
+        {
+            callbackInvoked = true;
+            builder.UseGrpcEndpoint("http://custom-host:50001");
+        });
+
+        // The callback is deferred until resolution, so just verify registration succeeds.
+        var descriptor = services.FirstOrDefault(sd => sd.ServiceType == typeof(DaprSecretsManagementClient));
+        Assert.NotNull(descriptor);
+        // callbackInvoked will be false here since it's only called during resolution.
+        Assert.False(callbackInvoked);
+    }
+
+    [Fact]
+    public void AddDaprSecretsManagementClient_ResolvesClientFromServiceProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddDaprSecretsManagementClient();
+
+        using var provider = services.BuildServiceProvider();
+        var client = provider.GetService<DaprSecretsManagementClient>();
+
+        Assert.NotNull(client);
+        Assert.IsType<DaprSecretsManagementGrpcClient>(client);
+    }
+
+    [Fact]
+    public void AddDaprSecretsManagementClient_ConfigureCallbackIsInvokedDuringResolution()
+    {
+        var services = new ServiceCollection();
+        var callbackInvoked = false;
+
+        services.AddDaprSecretsManagementClient((sp, builder) =>
+        {
+            callbackInvoked = true;
+        });
+
+        using var provider = services.BuildServiceProvider();
+        var client = provider.GetService<DaprSecretsManagementClient>();
+
+        Assert.NotNull(client);
+        Assert.True(callbackInvoked);
+    }
+
+    [Fact]
+    public void AddDaprSecretsManagementClient_MultipleRegistrationsDoNotConflict()
+    {
+        var services = new ServiceCollection();
+        services.AddDaprSecretsManagementClient();
+        services.AddDaprSecretsManagementClient();
+
+        // Should have registrations, and resolution should not throw.
+        using var provider = services.BuildServiceProvider();
+        var client = provider.GetService<DaprSecretsManagementClient>();
+        Assert.NotNull(client);
+    }
 }
