@@ -266,4 +266,260 @@ public sealed class DaprClientAnalyzerTests
 
         Assert.False(DaprClientAnalyzer.AreFieldsCompatible(newer, older));
     }
+
+    [Fact]
+    public void AreFieldsCompatible_EmptyOlderType_ReturnsTrue()
+    {
+        // An older type with no user-visible properties maps trivially to any newer type.
+        var compilation = StubCompilation.WithIncompatibleAlphaVariants();
+        // PlughResponseAlpha1 is empty — use it as the "older" side
+        var compilation2 = StubCompilation.WithIncompatibleFieldTypes();
+        var emptyType = compilation2.GetTypeByMetadataName("Dapr.Client.Autogen.Grpc.v1.PlughResponseAlpha1")!;
+        var anyType   = compilation2.GetTypeByMetadataName("Dapr.Client.Autogen.Grpc.v1.PlughResponseAlpha2")!;
+
+        Assert.True(DaprClientAnalyzer.AreFieldsCompatible(anyType, emptyType));
+    }
+
+    [Fact]
+    public void AreFieldsCompatible_SameFieldName_DifferentFieldType_ReturnsFalse()
+    {
+        // PlughRequestAlpha1.Value is string; PlughRequestAlpha2.Value is int — type mismatch.
+        var compilation = StubCompilation.WithIncompatibleFieldTypes();
+        var newer = compilation.GetTypeByMetadataName("Dapr.Client.Autogen.Grpc.v1.PlughRequestAlpha2")!;
+        var older = compilation.GetTypeByMetadataName("Dapr.Client.Autogen.Grpc.v1.PlughRequestAlpha1")!;
+
+        Assert.False(DaprClientAnalyzer.AreFieldsCompatible(newer, older));
+    }
+
+    // -------------------------------------------------------------------------
+    // ParseMaturityLevel – via AnalyzeCompilation
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void AnalyzeCompilation_AutoCompatible_BetaVariant_HasBetaFallback()
+    {
+        var compilation = StubCompilation.WithBetaVariants();
+        var groups = DaprClientAnalyzer.AnalyzeCompilation(compilation);
+
+        Assert.NotNull(groups);
+        var group = Assert.Single(groups);
+        Assert.Equal("Garply", group.BaseName);
+        Assert.Equal(MethodClassification.AutoCompatible, group.Classification);
+        Assert.Single(group.Fallbacks);
+        Assert.Equal(MaturityLevel.Stable, group.MostRecent.Level);
+        Assert.Equal(MaturityLevel.Beta, group.Fallbacks[0].Level);
+        Assert.Equal(1, group.Fallbacks[0].LevelNumber);
+        Assert.Equal("GarplyBeta1Async", group.Fallbacks[0].CSharpMethodName);
+    }
+
+    [Fact]
+    public void AnalyzeCompilation_AutoCompatible_RCVariant_HasRCFallback()
+    {
+        var compilation = StubCompilation.WithRCVariants();
+        var groups = DaprClientAnalyzer.AnalyzeCompilation(compilation);
+
+        Assert.NotNull(groups);
+        var group = Assert.Single(groups);
+        Assert.Equal("Waldo", group.BaseName);
+        Assert.Equal(MethodClassification.AutoCompatible, group.Classification);
+        Assert.Single(group.Fallbacks);
+        Assert.Equal(MaturityLevel.Stable, group.MostRecent.Level);
+        Assert.Equal(MaturityLevel.ReleaseCandidate, group.Fallbacks[0].Level);
+        Assert.Equal(1, group.Fallbacks[0].LevelNumber);
+        Assert.Equal("WaldoRC1Async", group.Fallbacks[0].CSharpMethodName);
+    }
+
+    // -------------------------------------------------------------------------
+    // Multiple fallbacks ordering
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void AnalyzeCompilation_MultipleFallbacks_OrderedByDescendingLevelNumber()
+    {
+        var compilation = StubCompilation.WithMultipleFallbacks();
+        var groups = DaprClientAnalyzer.AnalyzeCompilation(compilation);
+
+        Assert.NotNull(groups);
+        var group = Assert.Single(groups);
+        Assert.Equal("Grault", group.BaseName);
+        Assert.Equal(MethodClassification.AutoCompatible, group.Classification);
+        Assert.Equal(2, group.Fallbacks.Count);
+        // Alpha2 (higher number) must come before Alpha1
+        Assert.Equal(2, group.Fallbacks[0].LevelNumber);
+        Assert.Equal(1, group.Fallbacks[1].LevelNumber);
+        Assert.Equal("GraultAlpha2Async", group.Fallbacks[0].CSharpMethodName);
+        Assert.Equal("GraultAlpha1Async", group.Fallbacks[1].CSharpMethodName);
+    }
+
+    // -------------------------------------------------------------------------
+    // IsAsyncUnaryWithCallOptions – indirect via AnalyzeCompilation
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void AnalyzeCompilation_ExcludesMethodsWithoutAsyncSuffix()
+    {
+        // All methods in this stub fail at least one IsAsyncUnaryWithCallOptions check.
+        var compilation = StubCompilation.WithOnlyNonMatchingMethods();
+        var groups = DaprClientAnalyzer.AnalyzeCompilation(compilation);
+
+        Assert.Null(groups);
+    }
+
+    // -------------------------------------------------------------------------
+    // TypeNamesCompatible – indirect via AreFieldsCompatible / AnalyzeCompilation
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void AnalyzeCompilation_SchemaDivergent_WhenSameFieldNameDifferentType()
+    {
+        // PlughAlpha1 has string Value, PlughAlpha2 has int Value — same name, different type.
+        var compilation = StubCompilation.WithIncompatibleFieldTypes();
+        var groups = DaprClientAnalyzer.AnalyzeCompilation(compilation);
+
+        Assert.NotNull(groups);
+        var group = Assert.Single(groups);
+        Assert.Equal(MethodClassification.SchemaDivergent, group.Classification);
+    }
+
+    [Fact]
+    public void AreFieldsCompatible_SameCollectionType_DifferentGenericArgs_ReturnsFalse()
+    {
+        // TroxRequestAlpha2.Entries is RepeatedField<ItemA>; TroxRequestAlpha1.Entries is RepeatedField<ItemB>.
+        // TypeNamesCompatible must recurse into the type argument and find "ItemA" != "ItemB".
+        var compilation = StubCompilation.WithIncompatibleGenericArgTypes();
+        var newer = compilation.GetTypeByMetadataName("Dapr.Client.Autogen.Grpc.v1.TroxRequestAlpha2")!;
+        var older = compilation.GetTypeByMetadataName("Dapr.Client.Autogen.Grpc.v1.TroxRequestAlpha1")!;
+
+        Assert.False(DaprClientAnalyzer.AreFieldsCompatible(newer, older));
+    }
+
+    [Fact]
+    public void AnalyzeCompilation_SchemaDivergent_WhenSameCollectionTypeDifferentGenericArgs()
+    {
+        var compilation = StubCompilation.WithIncompatibleGenericArgTypes();
+        var groups = DaprClientAnalyzer.AnalyzeCompilation(compilation);
+
+        Assert.NotNull(groups);
+        var group = Assert.Single(groups);
+        Assert.Equal(MethodClassification.SchemaDivergent, group.Classification);
+    }
+
+    // -------------------------------------------------------------------------
+    // IsAsyncUnaryWithCallOptions – each rejection branch tested independently
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void AnalyzeCompilation_ExcludesMethod_WhenNoAsyncSuffix()
+    {
+        var compilation = StubCompilation.Create(
+            daprClientMethods: "public global::Grpc.Core.AsyncUnaryCall<NopResponse> NopGet(NopRequest r, global::Grpc.Core.CallOptions o) { return null; }",
+            extraTypes: "public class NopRequest {} public class NopResponse {}");
+
+        Assert.Null(DaprClientAnalyzer.AnalyzeCompilation(compilation));
+    }
+
+    [Fact]
+    public void AnalyzeCompilation_ExcludesMethod_WhenSingleParameter()
+    {
+        var compilation = StubCompilation.Create(
+            daprClientMethods: "public global::Grpc.Core.AsyncUnaryCall<NopResponse> NopAsync(global::Grpc.Core.CallOptions o) { return null; }",
+            extraTypes: "public class NopResponse {}");
+
+        Assert.Null(DaprClientAnalyzer.AnalyzeCompilation(compilation));
+    }
+
+    [Fact]
+    public void AnalyzeCompilation_ExcludesMethod_WhenSecondParamIsNotCallOptions()
+    {
+        var compilation = StubCompilation.Create(
+            daprClientMethods: "public global::Grpc.Core.AsyncUnaryCall<NopResponse> NopAsync(NopRequest r, string s) { return null; }",
+            extraTypes: "public class NopRequest {} public class NopResponse {}");
+
+        Assert.Null(DaprClientAnalyzer.AnalyzeCompilation(compilation));
+    }
+
+    [Fact]
+    public void AnalyzeCompilation_ExcludesMethod_WhenReturnTypeIsNotAsyncUnaryCall()
+    {
+        var compilation = StubCompilation.Create(
+            daprClientMethods: "public global::System.Threading.Tasks.Task<NopResponse> NopAsync(NopRequest r, global::Grpc.Core.CallOptions o) { return null; }",
+            extraTypes: "public class NopRequest {} public class NopResponse {}");
+
+        Assert.Null(DaprClientAnalyzer.AnalyzeCompilation(compilation));
+    }
+
+    // -------------------------------------------------------------------------
+    // ParseVariant – null return when type args are not INamedTypeSymbol
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void AnalyzeCompilation_ExcludesMethod_WhenResponseTypeIsArray()
+    {
+        // int[] is IArrayTypeSymbol, not INamedTypeSymbol — ParseVariant returns null.
+        var compilation = StubCompilation.Create(
+            daprClientMethods: "public global::Grpc.Core.AsyncUnaryCall<int[]> PlumeAsync(PlumeRequest r, global::Grpc.Core.CallOptions o) { return null; }",
+            extraTypes: "public class PlumeRequest {}");
+
+        Assert.Null(DaprClientAnalyzer.AnalyzeCompilation(compilation));
+    }
+
+    [Fact]
+    public void AnalyzeCompilation_ExcludesMethod_WhenRequestTypeIsArray()
+    {
+        // int[] as the first parameter type is IArrayTypeSymbol — ParseVariant returns null.
+        var compilation = StubCompilation.Create(
+            daprClientMethods: "public global::Grpc.Core.AsyncUnaryCall<PlumeResponse> PlumeAsync(int[] r, global::Grpc.Core.CallOptions o) { return null; }",
+            extraTypes: "public class PlumeResponse {}");
+
+        Assert.Null(DaprClientAnalyzer.AnalyzeCompilation(compilation));
+    }
+
+    // -------------------------------------------------------------------------
+    // FindDaprClientType – indirect via AnalyzeCompilation
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public void AnalyzeCompilation_ReturnsNull_WhenNoSourceTrees()
+    {
+        // A compilation with no syntax trees has no DaprClient type — FindDaprClientType returns null.
+        var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create(
+            assemblyName: "Empty",
+            references: [Microsoft.CodeAnalysis.MetadataReference.CreateFromFile(typeof(object).Assembly.Location)],
+            options: new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(
+                Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary));
+
+        var result = DaprClientAnalyzer.AnalyzeCompilation(compilation);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void AnalyzeCompilation_ReturnsNull_WhenDaprClientNestedClassAbsent()
+    {
+        // The outer Dapr class exists in the expected namespace but has no DaprClient nested class.
+        // FindDaprClientType reaches the namespace-walk fallback and finds no member named DaprClient.
+        const string source = """
+            namespace Grpc.Core { public struct CallOptions {} public class AsyncUnaryCall<T> {} }
+            namespace Dapr.Client.Autogen.Grpc.v1 { public static class Dapr { /* no DaprClient */ } }
+            """;
+
+        var compilation = Microsoft.CodeAnalysis.CSharp.CSharpCompilation.Create(
+            assemblyName: "NoDaprClient",
+            syntaxTrees: [Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(source, cancellationToken: TestContext.Current.CancellationToken)],
+            references: [Microsoft.CodeAnalysis.MetadataReference.CreateFromFile(typeof(object).Assembly.Location)],
+            options: new Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions(
+                Microsoft.CodeAnalysis.OutputKind.DynamicallyLinkedLibrary));
+
+        Assert.Null(DaprClientAnalyzer.AnalyzeCompilation(compilation));
+    }
+
+    [Fact]
+    public void AnalyzeCompilation_ReturnsNull_WhenDaprClientHasNoMatchingMethods()
+    {
+        // DaprClient type exists but has no async-unary methods → variants empty → null.
+        var compilation = StubCompilation.Create(daprClientMethods: "");
+        var result = DaprClientAnalyzer.AnalyzeCompilation(compilation);
+
+        Assert.Null(result);
+    }
 }
