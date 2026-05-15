@@ -70,8 +70,9 @@ internal static class DaprClientBuilderExtensions
         }
 
         services.AddHttpClient();
-
-        var registration = new Func<IServiceProvider, TClient>(provider =>
+        
+        // Register the TClient type for use by the SDKs
+        services.Add(new ServiceDescriptor(typeof(TClient), provider =>
         {
             var configuration = provider.GetService<IConfiguration>();
 

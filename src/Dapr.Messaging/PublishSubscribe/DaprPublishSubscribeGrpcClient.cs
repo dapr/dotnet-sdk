@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Common;
 using P = Dapr.Client.Autogen.Grpc.v1.Dapr;
 
 namespace Dapr.Messaging.PublishSubscribe;
@@ -21,8 +22,11 @@ namespace Dapr.Messaging.PublishSubscribe;
 internal sealed class DaprPublishSubscribeGrpcClient(
     P.DaprClient client,
     HttpClient httpClient,
-    string? daprApiToken = null) : DaprPublishSubscribeClient(client, httpClient, daprApiToken)
+    IDaprRuntimeCapabilities runtimeCapabilities,
+    string? daprApiToken = null) : DaprPublishSubscribeClient(client, httpClient,daprApiToken)
 {
+    private readonly IDaprRuntimeCapabilities runtimeCapabilities = runtimeCapabilities;
+
     /// <summary>
     /// Dynamically subscribes to a Publish/Subscribe component and topic.
     /// </summary>
