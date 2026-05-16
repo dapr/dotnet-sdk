@@ -386,13 +386,18 @@ public sealed class HistoryPropagationWorkflowTests
     /// </summary>
     private sealed class PropagatedHistoryReceiver : Workflow<object?, PropagationTestResult>
     {
-        public override Task<PropagationTestResult> RunAsync(WorkflowContext context, object? input)
+        public override async Task<PropagationTestResult> RunAsync(WorkflowContext context, object? input)
         {
             var propagated = context.GetPropagatedHistory();
-            var result = new PropagationTestResult(
+            // Yield via a zero-duration timer so this sub-orchestration completes through
+            // a proper async round-trip with the sidecar rather than synchronously on its
+            // first turn. All Dapr sub-orchestrations must be asynchronous — a synchronous
+            // first-turn completion causes the parent to hang waiting for the completion
+            // event that the sidecar never delivers for same-turn completions.
+            await context.CreateTimer(TimeSpan.Zero);
+            return new PropagationTestResult(
                 ChildReceivedPropagatedHistory: propagated is not null,
                 PropagatedEntryCount: propagated?.Entries.Count ?? 0);
-            return Task.FromResult(result);
         }
     }
 
