@@ -11,17 +11,12 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Dapr.Testcontainers.Common;
-using Dapr.Testcontainers.Common.Testing;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace Dapr.IntegrationTest.Workflow;
 
@@ -49,12 +44,34 @@ public sealed class HistoryPropagationWorkflowTests
     public async Task ShouldCompleteSuccessfully_WithNoPropagationScope()
     {
         var instanceId = Guid.NewGuid().ToString();
-        await using var testApp = await BuildTestAppAsync(
-            opt =>
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
+            needsActorState: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
             {
-                opt.RegisterWorkflow<NoPropagationParent>();
-                opt.RegisterWorkflow<PropagatedHistoryReceiver>();
-            });
+                builder.Services.AddDaprWorkflowBuilder(
+                    configureRuntime: opt =>
+                    {
+                        opt.RegisterWorkflow<NoPropagationParent>();
+                        opt.RegisterWorkflow<PropagatedHistoryReceiver>();
+                    },
+                    configureClient: (sp, clientBuilder) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrWhiteSpace(grpcEndpoint))
+                            clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
 
         using var scope = testApp.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
@@ -79,14 +96,36 @@ public sealed class HistoryPropagationWorkflowTests
     public async Task ShouldCompleteSuccessfully_WithOwnHistoryPropagationScope()
     {
         var instanceId = Guid.NewGuid().ToString();
-        await using var testApp = await BuildTestAppAsync(
-            opt =>
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
+            needsActorState: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
             {
-                opt.RegisterWorkflow<OwnHistoryPropagationParent>();
-                opt.RegisterWorkflow<PropagatedHistoryReceiver>();
-                opt.RegisterWorkflow<SimpleActivityWorkflow>();
-                opt.RegisterActivity<EchoActivity>();
-            });
+                builder.Services.AddDaprWorkflowBuilder(
+                    configureRuntime: opt =>
+                    {
+                        opt.RegisterWorkflow<OwnHistoryPropagationParent>();
+                        opt.RegisterWorkflow<PropagatedHistoryReceiver>();
+                        opt.RegisterWorkflow<SimpleActivityWorkflow>();
+                        opt.RegisterActivity<EchoActivity>();
+                    },
+                    configureClient: (sp, clientBuilder) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrWhiteSpace(grpcEndpoint))
+                            clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
 
         using var scope = testApp.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
@@ -106,13 +145,35 @@ public sealed class HistoryPropagationWorkflowTests
     public async Task ShouldCompleteSuccessfully_WithLineagePropagationScope()
     {
         var instanceId = Guid.NewGuid().ToString();
-        await using var testApp = await BuildTestAppAsync(
-            opt =>
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
+            needsActorState: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
             {
-                opt.RegisterWorkflow<LineagePropagationParent>();
-                opt.RegisterWorkflow<LineagePropagationMiddle>();
-                opt.RegisterWorkflow<PropagatedHistoryReceiver>();
-            });
+                builder.Services.AddDaprWorkflowBuilder(
+                    configureRuntime: opt =>
+                    {
+                        opt.RegisterWorkflow<LineagePropagationParent>();
+                        opt.RegisterWorkflow<LineagePropagationMiddle>();
+                        opt.RegisterWorkflow<PropagatedHistoryReceiver>();
+                    },
+                    configureClient: (sp, clientBuilder) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrWhiteSpace(grpcEndpoint))
+                            clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
 
         using var scope = testApp.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
@@ -132,12 +193,34 @@ public sealed class HistoryPropagationWorkflowTests
     public async Task GetPropagatedHistory_ReturnsNull_WhenScheduledWithNoneScope()
     {
         var instanceId = Guid.NewGuid().ToString();
-        await using var testApp = await BuildTestAppAsync(
-            opt =>
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
+            needsActorState: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
             {
-                opt.RegisterWorkflow<NoPropagationParent>();
-                opt.RegisterWorkflow<PropagatedHistoryReceiver>();
-            });
+                builder.Services.AddDaprWorkflowBuilder(
+                    configureRuntime: opt =>
+                    {
+                        opt.RegisterWorkflow<NoPropagationParent>();
+                        opt.RegisterWorkflow<PropagatedHistoryReceiver>();
+                    },
+                    configureClient: (sp, clientBuilder) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrWhiteSpace(grpcEndpoint))
+                            clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
 
         using var scope = testApp.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
@@ -160,28 +243,9 @@ public sealed class HistoryPropagationWorkflowTests
     public async Task WithHistoryPropagation_FluentBuilder_WorksCorrectly()
     {
         var instanceId = Guid.NewGuid().ToString();
-        await using var testApp = await BuildTestAppAsync(
-            opt =>
-            {
-                opt.RegisterWorkflow<FluentBuilderParent>();
-                opt.RegisterWorkflow<PropagatedHistoryReceiver>();
-            });
-
-        using var scope = testApp.CreateScope();
-        var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
-
-        await client.ScheduleNewWorkflowAsync(nameof(FluentBuilderParent), instanceId);
-        var result = await client.WaitForWorkflowCompletionAsync(instanceId,
-            cancellation: TestContext.Current.CancellationToken);
-
-        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
-    }
-
-    private static async Task<DaprTestApplication> BuildTestAppAsync(Action<WorkflowRuntimeOptions> configureRuntime)
-    {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
 
-        var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
             needsActorState: true,
             cancellationToken: TestContext.Current.CancellationToken);
         await environment.StartAsync(TestContext.Current.CancellationToken);
@@ -189,12 +253,15 @@ public sealed class HistoryPropagationWorkflowTests
         var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
             .BuildWorkflow();
-
-        return await DaprHarnessBuilder.ForHarness(harness)
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
                 builder.Services.AddDaprWorkflowBuilder(
-                    configureRuntime: configureRuntime,
+                    configureRuntime: opt =>
+                    {
+                        opt.RegisterWorkflow<FluentBuilderParent>();
+                        opt.RegisterWorkflow<PropagatedHistoryReceiver>();
+                    },
                     configureClient: (sp, clientBuilder) =>
                     {
                         var config = sp.GetRequiredService<IConfiguration>();
@@ -204,6 +271,15 @@ public sealed class HistoryPropagationWorkflowTests
                     });
             })
             .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+        await client.ScheduleNewWorkflowAsync(nameof(FluentBuilderParent), instanceId);
+        var result = await client.WaitForWorkflowCompletionAsync(instanceId,
+            cancellation: TestContext.Current.CancellationToken);
+
+        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
     }
 
     private sealed record PropagationTestResult(
