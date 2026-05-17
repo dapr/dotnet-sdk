@@ -890,7 +890,7 @@ public class WorkflowOrchestrationContextTests
     /// <summary>
     /// Verifies that CreateTimer with a zero (or past) fireAt always emits a timer
     /// strictly AFTER the orchestration-started timestamp. Dapr runtimes validate that
-    /// CreateTimerAction.fireAt &gt;= orchestrationStartTime; passing a timestamp equal to
+    /// CreateTimerAction.fireAt >= orchestrationStartTime; passing a timestamp equal to
     /// or before the start time causes silent rejection, which hangs the workflow.
     /// </summary>
     [Fact]
