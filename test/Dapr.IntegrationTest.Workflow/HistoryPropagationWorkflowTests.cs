@@ -89,6 +89,61 @@ public sealed class HistoryPropagationWorkflowTests
     }
 
     /// <summary>
+    /// Variant of <see cref="ShouldCompleteSuccessfully_WithNoPropagationScope"/> where the child workflow
+    /// yields via an activity round-trip instead of a zero-duration timer. This exercises the same
+    /// "child sub-orchestration must perform at least one async operation" requirement but through
+    /// a different awaitable so both yield mechanisms are covered.
+    /// </summary>
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task ShouldCompleteSuccessfully_WithNoPropagationScope_ChildYieldsViaActivity()
+    {
+        var instanceId = Guid.NewGuid().ToString();
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
+            needsActorState: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprWorkflowBuilder(
+                    configureRuntime: opt =>
+                    {
+                        opt.RegisterWorkflow<NoPropagationParentWithActivityChild>();
+                        opt.RegisterWorkflow<PropagatedHistoryReceiverWithActivity>();
+                        opt.RegisterActivity<EchoActivity>();
+                    },
+                    configureClient: (sp, clientBuilder) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrWhiteSpace(grpcEndpoint))
+                            clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+        await client.ScheduleNewWorkflowAsync(nameof(NoPropagationParentWithActivityChild), instanceId);
+        var result = await client.WaitForWorkflowCompletionAsync(instanceId,
+            cancellation: TestContext.Current.CancellationToken);
+
+        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+        var output = result.ReadOutputAs<PropagationTestResult>();
+        Assert.NotNull(output);
+        // No scope set → child should report no propagated history
+        Assert.False(output.ChildReceivedPropagatedHistory);
+        Assert.Equal(0, output.PropagatedEntryCount);
+    }
+
+    /// <summary>
     /// Verifies that scheduling a child workflow with <see cref="HistoryPropagationScope.OwnHistory"/>
     /// does not produce any errors and both workflows complete.
     /// </summary>
@@ -398,6 +453,43 @@ public sealed class HistoryPropagationWorkflowTests
             return new PropagationTestResult(
                 ChildReceivedPropagatedHistory: propagated is not null,
                 PropagatedEntryCount: propagated?.Entries.Count ?? 0);
+        }
+    }
+
+    /// <summary>
+    /// Variant of <see cref="PropagatedHistoryReceiver"/> that yields via an activity round-trip
+    /// instead of a zero-duration timer. Used to verify that the activity-based async yield works
+    /// equivalently for satisfying the "sub-orchestration must perform at least one async operation"
+    /// requirement.
+    /// </summary>
+    private sealed class PropagatedHistoryReceiverWithActivity : Workflow<object?, PropagationTestResult>
+    {
+        public override async Task<PropagationTestResult> RunAsync(WorkflowContext context, object? input)
+        {
+            var propagated = context.GetPropagatedHistory();
+            // Yield via an activity round-trip so this sub-orchestration completes through
+            // a proper async round-trip with the sidecar rather than synchronously on its
+            // first turn.
+            await context.CallActivityAsync<string>(nameof(EchoActivity), "yield");
+            return new PropagationTestResult(
+                ChildReceivedPropagatedHistory: propagated is not null,
+                PropagatedEntryCount: propagated?.Entries.Count ?? 0);
+        }
+    }
+
+    /// <summary>
+    /// Parent workflow paired with <see cref="PropagatedHistoryReceiverWithActivity"/>. Schedules
+    /// the activity-yielding child with no propagation scope (default).
+    /// </summary>
+    private sealed class NoPropagationParentWithActivityChild : Workflow<object?, PropagationTestResult>
+    {
+        public override async Task<PropagationTestResult> RunAsync(WorkflowContext context, object? input)
+        {
+            var childId = $"{context.InstanceId}-child";
+            return await context.CallChildWorkflowAsync<PropagationTestResult>(
+                nameof(PropagatedHistoryReceiverWithActivity),
+                input: null,
+                options: new ChildWorkflowTaskOptions(InstanceId: childId));
         }
     }
 
