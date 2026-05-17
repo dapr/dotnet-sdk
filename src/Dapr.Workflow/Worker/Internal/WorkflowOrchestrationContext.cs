@@ -201,17 +201,18 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <inheritdoc />
     public override Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken)
     {
-        // Clamp fireAt to be at least 1 second ahead of the current wall-clock time.
-        // Dapr 1.18+ validates that CreateTimerAction.fireAt is strictly greater than
-        // the current sidecar time. Without a positive offset, a zero-delay or past-due
-        // timer arrives at the sidecar already expired, causing the sidecar to reject
-        // the CompleteOrchestratorTask call. GrpcProtocolHandler only logs that rejection,
-        // producing a silent infinite replay loop until the test times out. A 1-second
-        // floor absorbs SDK-to-sidecar network latency and any minor clock skew between
-        // hosts, ensuring the fire time is still in the future when the sidecar processes it.
-        var floor = DateTime.UtcNow.AddSeconds(1);
-        if (fireAt < floor)
-            fireAt = floor;
+        // DateTime has 100ns (tick) precision but google.protobuf.Timestamp has nanosecond
+        // precision. When OrchestratorStarted.Timestamp is converted to DateTime via
+        // ToDateTime(), sub-100ns nanoseconds are truncated (e.g. nanos=N becomes nanos=(N/100)*100).
+        // If fireAt <= _currentUtcDateTime (i.e. zero or negative delay), Timestamp.FromDateTime
+        // may produce a Timestamp before OrchestratorStarted.Timestamp.
+        //
+        // Some Dapr runtime versions validate that CreateTimerAction.fireAt >= orchestrationStartTime
+        // and can reject near-zero timers. Shift non-positive timers to +1ms so the timer is
+        // safely in the future across runtime timestamp precision/rounding behavior while keeping
+        // "fire as soon as possible" semantics.
+        if (fireAt <= _currentUtcDateTime)
+            fireAt = _currentUtcDateTime.AddMilliseconds(1);
 
         return CreateTimerInternal(
             Timestamp.FromDateTime(fireAt), new TimerOriginCreateTimer(), cancellationToken);
