@@ -205,14 +205,14 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         // precision. When OrchestratorStarted.Timestamp is converted to DateTime via
         // ToDateTime(), sub-100ns nanoseconds are truncated (e.g. nanos=N becomes nanos=(N/100)*100).
         // If fireAt <= _currentUtcDateTime (i.e. zero or negative delay), Timestamp.FromDateTime
-        // may produce a Timestamp up to 99ns BEFORE OrchestratorStarted.Timestamp.
-        // Some Dapr runtime versions (e.g. 1.17) validate that CreateTimerAction.fireAt >=
-        // orchestrationStartTime and reject the CompleteOrchestratorTask call when this is
-        // violated, causing a silent infinite retry loop. Adding 1 tick (100ns) ensures the
-        // resulting Timestamp is always strictly after OrchestratorStarted.Timestamp, satisfying
-        // the runtime's constraint while still providing "fire as soon as possible" semantics.
+        // may produce a Timestamp before OrchestratorStarted.Timestamp.
+        //
+        // Some Dapr runtime versions validate that CreateTimerAction.fireAt >= orchestrationStartTime
+        // and can reject near-zero timers. Shift non-positive timers to +1ms so the timer is
+        // safely in the future across runtime timestamp precision/rounding behavior while keeping
+        // "fire as soon as possible" semantics.
         if (fireAt <= _currentUtcDateTime)
-            fireAt = _currentUtcDateTime.AddTicks(1);
+            fireAt = _currentUtcDateTime.AddMilliseconds(1);
 
         return CreateTimerInternal(
             Timestamp.FromDateTime(fireAt), new TimerOriginCreateTimer(), cancellationToken);

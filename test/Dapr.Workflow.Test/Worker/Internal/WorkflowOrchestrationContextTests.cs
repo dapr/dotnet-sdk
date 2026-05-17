@@ -894,7 +894,7 @@ public class WorkflowOrchestrationContextTests
     /// or before the start time causes silent rejection, which hangs the workflow.
     /// </summary>
     [Fact]
-    public void CreateTimer_WhenFireAtEqualsCurrentUtcDateTime_AdjustsFireAtByOneTick()
+    public void CreateTimer_WhenFireAtEqualsCurrentUtcDateTime_AdjustsFireAtByOneMillisecond()
     {
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -920,7 +920,7 @@ public class WorkflowOrchestrationContextTests
         var emittedFireAt = action.CreateTimer.FireAt.ToDateTime();
         Assert.True(emittedFireAt > startTime,
             $"Expected fireAt ({emittedFireAt:O}) to be strictly after orchestrationStartTime ({startTime:O})");
-        Assert.Equal(startTime.AddTicks(1), emittedFireAt);
+        Assert.Equal(startTime.AddMilliseconds(1), emittedFireAt);
     }
 
     /// <summary>
@@ -928,7 +928,7 @@ public class WorkflowOrchestrationContextTests
     /// emits a timer strictly after the orchestration-started timestamp.
     /// </summary>
     [Fact]
-    public void CreateTimer_WhenFireAtIsBeforeCurrentUtcDateTime_AdjustsFireAtByOneTick()
+    public void CreateTimer_WhenFireAtIsBeforeCurrentUtcDateTime_AdjustsFireAtByOneMillisecond()
     {
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -955,7 +955,7 @@ public class WorkflowOrchestrationContextTests
         var emittedFireAt = action.CreateTimer.FireAt.ToDateTime();
         Assert.True(emittedFireAt > startTime,
             $"Expected fireAt ({emittedFireAt:O}) to be strictly after orchestrationStartTime ({startTime:O})");
-        Assert.Equal(startTime.AddTicks(1), emittedFireAt);
+        Assert.Equal(startTime.AddMilliseconds(1), emittedFireAt);
     }
 
     /// <summary>
