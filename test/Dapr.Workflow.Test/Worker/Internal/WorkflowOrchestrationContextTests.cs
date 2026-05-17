@@ -887,6 +887,108 @@ public class WorkflowOrchestrationContextTests
         Assert.False(context.IsReplaying);
     }
 
+    /// <summary>
+    /// Verifies that CreateTimer with a zero (or past) fireAt always emits a timer
+    /// strictly AFTER the orchestration-started timestamp. Dapr runtimes validate that
+    /// CreateTimerAction.fireAt &gt;= orchestrationStartTime; passing a timestamp equal to
+    /// or before the start time causes silent rejection, which hangs the workflow.
+    /// </summary>
+    [Fact]
+    public void CreateTimer_WhenFireAtEqualsCurrentUtcDateTime_AdjustsFireAtByOneTick()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var startTime = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: startTime,
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        context.InitializeNewTurn(startTime);
+
+        // Simulate CreateTimer(TimeSpan.Zero): fireAt == _currentUtcDateTime
+        _ = context.CreateTimer(startTime, CancellationToken.None);
+
+        var action = context.PendingActions.Single();
+        Assert.NotNull(action.CreateTimer);
+
+        var emittedFireAt = action.CreateTimer.FireAt.ToDateTime();
+        Assert.True(emittedFireAt > startTime,
+            $"Expected fireAt ({emittedFireAt:O}) to be strictly after orchestrationStartTime ({startTime:O})");
+        Assert.Equal(startTime.AddTicks(1), emittedFireAt);
+    }
+
+    /// <summary>
+    /// Verifies that CreateTimer with a past fireAt (before currentUtcDateTime) also
+    /// emits a timer strictly after the orchestration-started timestamp.
+    /// </summary>
+    [Fact]
+    public void CreateTimer_WhenFireAtIsBeforeCurrentUtcDateTime_AdjustsFireAtByOneTick()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var startTime = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: startTime,
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        context.InitializeNewTurn(startTime);
+
+        // fireAt is in the past relative to startTime
+        var pastTime = startTime.AddSeconds(-10);
+        _ = context.CreateTimer(pastTime, CancellationToken.None);
+
+        var action = context.PendingActions.Single();
+        Assert.NotNull(action.CreateTimer);
+
+        var emittedFireAt = action.CreateTimer.FireAt.ToDateTime();
+        Assert.True(emittedFireAt > startTime,
+            $"Expected fireAt ({emittedFireAt:O}) to be strictly after orchestrationStartTime ({startTime:O})");
+        Assert.Equal(startTime.AddTicks(1), emittedFireAt);
+    }
+
+    /// <summary>
+    /// Verifies that CreateTimer with a future fireAt is not adjusted.
+    /// </summary>
+    [Fact]
+    public void CreateTimer_WhenFireAtIsAfterCurrentUtcDateTime_IsNotAdjusted()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var startTime = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
+        var futureTime = startTime.AddSeconds(60);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: startTime,
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        context.InitializeNewTurn(startTime);
+
+        _ = context.CreateTimer(futureTime, CancellationToken.None);
+
+        var action = context.PendingActions.Single();
+        Assert.NotNull(action.CreateTimer);
+
+        var emittedFireAt = action.CreateTimer.FireAt.ToDateTime();
+        Assert.Equal(futureTime, emittedFireAt);
+    }
+
     [Fact]
     public async Task CreateTimer_ShouldReturnCompletedTask_WhenTimerFiredInHistory()
     {
