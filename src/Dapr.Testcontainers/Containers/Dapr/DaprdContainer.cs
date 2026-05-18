@@ -150,7 +150,7 @@ public sealed class DaprdContainer : IAsyncStartable
             // intermittent "Status(StatusCode=Unavailable, Detail=Error connecting to
             // subchannel., ... Connection refused)" errors on the first client call.
             .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilMessageIsLogged("dapr initialized. Status: Running."));
+                .UntilMessageIsLogged("Dapr sidecar is up and running."));
 
         if (_logAttachment is not null)
         {
@@ -197,7 +197,7 @@ public sealed class DaprdContainer : IAsyncStartable
         await ContainerReadinessProbe.WaitForTcpPortAsync("127.0.0.1", HttpPort, TimeSpan.FromSeconds(30), cancellationToken);
         await ContainerReadinessProbe.WaitForTcpPortAsync("127.0.0.1", GrpcPort, TimeSpan.FromSeconds(30), cancellationToken);
 
-        // The container log wait above ("dapr initialized. Status: Running.") guarantees that
+        // The container log wait above ("Dapr sidecar is up and running.") guarantees that
         // daprd's HTTP server, internal gRPC server, *and* API gRPC server are all running
         // inside the container. As an additional safety net, poll the HTTP port on the host
         // until any HTTP response is observed. This confirms that Docker's port forwarding for
