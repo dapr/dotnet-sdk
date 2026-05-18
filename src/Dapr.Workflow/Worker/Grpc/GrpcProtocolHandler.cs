@@ -247,7 +247,9 @@ internal sealed class GrpcProtocolHandler(
             try
             {
                 var grpcCallOptions = CreateCallOptions(cancellationToken);
-                await _grpcClient.CompleteWorkflowTaskAsync(result, grpcCallOptions);
+#pragma warning disable CS0612 // Deprecated: kept for compatibility with Dapr runtimes < 1.18 where CompleteWorkflowTask is not available.
+                await _grpcClient.CompleteOrchestratorTaskAsync(result, grpcCallOptions);
+#pragma warning restore CS0612
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

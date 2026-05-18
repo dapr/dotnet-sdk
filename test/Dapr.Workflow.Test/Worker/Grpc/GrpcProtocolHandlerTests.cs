@@ -19,6 +19,8 @@ using Grpc.Core;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
+#pragma warning disable CS0612 // Tests reference deprecated CompleteOrchestratorTaskAsync intentionally for compatibility with Dapr runtimes < 1.18.
+
 namespace Dapr.Workflow.Test.Worker.Grpc;
 
 public sealed class GrpcProtocolHandlerTests
@@ -112,7 +114,7 @@ public sealed class GrpcProtocolHandlerTests
         var completedTcs = CreateTcs<WorkflowResponse>();
 
         grpcClientMock
-            .Setup(x => x.CompleteWorkflowTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
             .Callback<WorkflowResponse, CallOptions>((r, _) => completedTcs.TrySetResult(r))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
@@ -202,7 +204,7 @@ public sealed class GrpcProtocolHandlerTests
         var completedTcs = CreateTcs<WorkflowResponse>();
 
         grpcClientMock
-            .Setup(x => x.CompleteWorkflowTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
             .Callback<WorkflowResponse, CallOptions>((r, _) => completedTcs.TrySetResult(r))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
@@ -472,7 +474,7 @@ public sealed class GrpcProtocolHandlerTests
             .Returns(CreateServerStreamingCallIgnoringCancellation(workItems));
 
         grpcClientMock
-            .Setup(x => x.CompleteWorkflowTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
@@ -490,7 +492,7 @@ public sealed class GrpcProtocolHandlerTests
             cancellationToken: cts.Token);
 
         grpcClientMock.Verify(
-            x => x.CompleteWorkflowTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()),
+            x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()),
             Times.Never());
     }
 
@@ -557,7 +559,7 @@ public sealed class GrpcProtocolHandlerTests
         var completeAttempted = false;
 
         grpcClientMock
-            .Setup(x => x.CompleteWorkflowTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
             .Callback(() => completeAttempted = true)
             .Throws(new RpcException(new Status(StatusCode.Unavailable, "nope")));
 
@@ -757,7 +759,7 @@ public sealed class GrpcProtocolHandlerTests
         WorkflowResponse? capturedResponse = null;
 
         grpcClientMock
-            .Setup(x => x.CompleteWorkflowTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
             .Callback<WorkflowResponse, CallOptions>((r, _) =>
             {
                 Interlocked.Increment(ref completeCallCount);
