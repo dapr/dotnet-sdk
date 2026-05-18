@@ -97,7 +97,7 @@ public sealed class DaprdContainer : IAsyncStartable
 				"-app-id", appId,
 				"-app-port", options.AppPort.ToString(),
                 "-app-protocol", options.AppProtocol,
-                "-app-channel-address", "host.docker.internal",
+                "-app-channel-address", options.AppChannelAddress,
 				"-dapr-http-port", InternalHttpPort.ToString(),
 				"-dapr-grpc-port", InternalGrpcPort.ToString(),
 				"-log-level", options.LogLevel.ToString().ToLowerInvariant(),

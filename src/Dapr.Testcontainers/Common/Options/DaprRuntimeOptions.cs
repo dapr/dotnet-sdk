@@ -12,6 +12,7 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using Dapr.Testcontainers.Containers.Dapr;
 
 namespace Dapr.Testcontainers.Common.Options;
 
@@ -96,6 +97,15 @@ public sealed record DaprRuntimeOptions
     public string AppProtocol { get; private set; } = "http";
 
     /// <summary>
+    /// The hostname or IP address of the app that the Dapr sidecar uses as the app channel address
+    /// (passed as <c>--app-channel-address</c> to daprd). Defaults to <c>host.docker.internal</c>,
+    /// which routes back to the host machine from inside the Docker container.
+    /// Set this to a Docker network alias when the app is running in its own container on the same
+    /// Docker network.
+    /// </summary>
+    public string AppChannelAddress { get; private set; } = DaprdContainer.ContainerHostAlias;
+
+    /// <summary>
     /// The image tag for the Dapr runtime.
     /// </summary>
 	public string RuntimeImageTag => $"daprio/daprd:{Version}";
@@ -135,6 +145,30 @@ public sealed record DaprRuntimeOptions
         }
 
         AppProtocol = appProtocol.ToLowerInvariant();
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the app channel address used by the Dapr sidecar to reach the application
+    /// (passed as <c>--app-channel-address</c> to daprd).
+    /// Use this when the app is running in a Docker container on the same network as the sidecar;
+    /// pass the container's network alias so daprd can route calls directly to it rather than via
+    /// the host gateway.
+    /// </summary>
+    /// <param name="appChannelAddress">
+    /// The hostname or IP address of the app container. Must not be null or whitespace.
+    /// </param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="appChannelAddress"/> is null or whitespace.</exception>
+    public DaprRuntimeOptions WithAppChannelAddress(string appChannelAddress)
+    {
+        if (string.IsNullOrWhiteSpace(appChannelAddress))
+        {
+            throw new ArgumentException(
+                "App channel address must not be null or whitespace.",
+                nameof(appChannelAddress));
+        }
+
+        AppChannelAddress = appChannelAddress;
         return this;
     }
 
