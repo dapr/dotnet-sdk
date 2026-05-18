@@ -2158,7 +2158,7 @@ public class WorkflowWorkerTests
         var request = new WorkflowRequest
         {
             InstanceId = "i",
-            PastEvents =
+            NewEvents =
             {
                 new HistoryEvent
                 {

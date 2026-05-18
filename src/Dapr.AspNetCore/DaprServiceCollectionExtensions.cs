@@ -70,7 +70,7 @@ public static class DaprServiceCollectionExtensions
     public static void AddDaprClient(this IServiceCollection services,
         Action<IServiceProvider, DaprClientBuilder> configure, ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
-        ArgumentNullException.ThrowIfNull(services, nameof(services));
+        ArgumentNullException.ThrowIfNull(services);
         
         var registration = new Func<IServiceProvider, DaprClient>((serviceProvider) =>
         {
