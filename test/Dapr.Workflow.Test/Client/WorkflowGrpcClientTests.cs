@@ -139,7 +139,7 @@ public class WorkflowGrpcClientTests
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
             {
                 Exists = true,
-                OrchestrationState = new OrchestrationState { InstanceId = "i", Name = "n", OrchestrationStatus = OrchestrationStatus.Running }
+                WorkflowState = new Dapr.DurableTask.Protobuf.WorkflowState { InstanceId = "i", Name = "n", WorkflowStatus = OrchestrationStatus.Running }
             }));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
@@ -162,11 +162,11 @@ public class WorkflowGrpcClientTests
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
             {
                 Exists = true,
-                OrchestrationState = new OrchestrationState
+                WorkflowState = new Dapr.DurableTask.Protobuf.WorkflowState
                 {
                     InstanceId = "i",
                     Name = "n",
-                    OrchestrationStatus = OrchestrationStatus.Running
+                    WorkflowStatus = OrchestrationStatus.Running
                 }
             }));
 
@@ -204,11 +204,11 @@ public class WorkflowGrpcClientTests
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
             {
                 Exists = true,
-                OrchestrationState = new OrchestrationState
+                WorkflowState = new Dapr.DurableTask.Protobuf.WorkflowState
                 {
                     InstanceId = "i",
                     Name = "n",
-                    OrchestrationStatus = OrchestrationStatus.Completed,
+                    WorkflowStatus = OrchestrationStatus.Completed,
                     Output = "{\"ok\":true}"
                 }
             }));
@@ -557,11 +557,11 @@ public class WorkflowGrpcClientTests
                 return CreateAsyncUnaryCall(new GetInstanceResponse
                 {
                     Exists = true,
-                    OrchestrationState = new OrchestrationState
+                    WorkflowState = new Dapr.DurableTask.Protobuf.WorkflowState
                     {
                         InstanceId = "i",
                         Name = "n",
-                        OrchestrationStatus = status
+                        WorkflowStatus = status
                     }
                 });
             });
@@ -601,11 +601,11 @@ public class WorkflowGrpcClientTests
                 return CreateAsyncUnaryCall(new GetInstanceResponse
                 {
                     Exists = true,
-                    OrchestrationState = new OrchestrationState
+                    WorkflowState = new Dapr.DurableTask.Protobuf.WorkflowState
                     {
                         InstanceId = "i",
                         Name = "n",
-                        OrchestrationStatus = status,
+                        WorkflowStatus = status,
                         Output = status == OrchestrationStatus.Completed ? "\"done\"" : string.Empty
                     }
                 });
@@ -640,11 +640,11 @@ public class WorkflowGrpcClientTests
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
             {
                 Exists = true,
-                OrchestrationState = new OrchestrationState
+                WorkflowState = new Dapr.DurableTask.Protobuf.WorkflowState
                 {
                     InstanceId = "i",
                     Name = "n",
-                    OrchestrationStatus = protoStatus
+                    WorkflowStatus = protoStatus
                 }
             }));
 
@@ -685,11 +685,11 @@ public class WorkflowGrpcClientTests
             .Returns(CreateAsyncUnaryCall(new GetInstanceResponse
             {
                 Exists = true,
-                OrchestrationState = new OrchestrationState
+                WorkflowState = new Dapr.DurableTask.Protobuf.WorkflowState
                 {
                     InstanceId = "i",
                     Name = "n",
-                    OrchestrationStatus = OrchestrationStatus.Running
+                    WorkflowStatus = OrchestrationStatus.Running
                 }
             }));
 

@@ -44,28 +44,28 @@ internal static class TimerOriginHelpers
         switch (origin)
         {
             case TimerOriginCreateTimer createTimer:
-                action.OriginCreateTimer = createTimer;
+                action.CreateTimer = createTimer;
                 break;
             case TimerOriginExternalEvent externalEvent:
-                action.OriginExternalEvent = externalEvent;
+                action.ExternalEvent = externalEvent;
                 break;
             case TimerOriginActivityRetry activityRetry:
-                action.OriginActivityRetry = activityRetry;
+                action.ActivityRetry = activityRetry;
                 break;
             case TimerOriginChildWorkflowRetry childWorkflowRetry:
-                action.OriginChildWorkflowRetry = childWorkflowRetry;
+                action.ChildWorkflowRetry = childWorkflowRetry;
                 break;
         }
     }
 
     /// <summary>
-    /// Determines whether a <see cref="OrchestratorAction"/> is an optional external event timer
+    /// Determines whether a <see cref="WorkflowAction"/> is an optional external event timer
     /// (sentinel fireAt + ExternalEvent origin).
     /// </summary>
-    internal static bool IsOptionalExternalEventTimerAction(OrchestratorAction action)
+    internal static bool IsOptionalExternalEventTimerAction(WorkflowAction action)
     {
         return action.CreateTimer is { } timer
-               && timer.OriginCase == CreateTimerAction.OriginOneofCase.OriginExternalEvent
+               && timer.OriginCase == CreateTimerAction.OriginOneofCase.ExternalEvent
                && timer.FireAt != null
                && timer.FireAt.Equals(ExternalEventIndefiniteFireAt);
     }
@@ -76,7 +76,7 @@ internal static class TimerOriginHelpers
     /// </summary>
     internal static bool IsOptionalExternalEventTimerCreatedEvent(TimerCreatedEvent timerCreated)
     {
-        return timerCreated.OriginCase == TimerCreatedEvent.OriginOneofCase.OriginExternalEvent
+        return timerCreated.OriginCase == TimerCreatedEvent.OriginOneofCase.ExternalEvent
                && timerCreated.FireAt != null
                && timerCreated.FireAt.Equals(ExternalEventIndefiniteFireAt);
     }

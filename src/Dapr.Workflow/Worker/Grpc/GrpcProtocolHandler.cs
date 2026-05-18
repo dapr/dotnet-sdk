@@ -29,21 +29,16 @@ namespace Dapr.Workflow.Worker.Grpc;
 internal sealed class GrpcProtocolHandler(
     TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient,
     ILoggerFactory loggerFactory,
-    int maxConcurrentWorkItems = 100,
-    int maxConcurrentActivities = 100,
-    string? daprApiToken = null) : IAsyncDisposable
-{
+    string? daprApiToken = null) : IAsyncDisposable {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan KeepaliveInterval = TimeSpan.FromSeconds(30);
 
     private readonly CancellationTokenSource _disposalCts = new();
-    private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory?.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
+    private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient =
         grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
-    private readonly int _maxConcurrentWorkItems =  maxConcurrentWorkItems > 0 ? maxConcurrentWorkItems : throw new ArgumentOutOfRangeException(nameof(maxConcurrentWorkItems));
-    private readonly int _maxConcurrentActivities = maxConcurrentActivities > 0 ? maxConcurrentActivities : throw new ArgumentOutOfRangeException(nameof(maxConcurrentActivities));
-    private readonly SemaphoreSlim _orchestrationSemaphore = new(maxConcurrentWorkItems, maxConcurrentWorkItems);
-    private readonly SemaphoreSlim _activitySemaphore = new(maxConcurrentActivities, maxConcurrentActivities);
+    private readonly SemaphoreSlim _orchestrationSemaphore = new(100);
+    private readonly SemaphoreSlim _activitySemaphore = new(100);
 
     private AsyncServerStreamingCall<WorkItem>? _streamingCall;
     private int _activeWorkItemCount;
@@ -56,7 +51,7 @@ internal sealed class GrpcProtocolHandler(
     /// <param name="activityHandler">Handler for activity work items.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task StartAsync(
-        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> workflowHandler,
+        Func<WorkflowRequest, string, Task<WorkflowResponse>> workflowHandler,
         Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
         CancellationToken cancellationToken)
     {
@@ -64,11 +59,7 @@ internal sealed class GrpcProtocolHandler(
         var token = linkedCts.Token;
         
         // Establish the bidirectional stream
-        var request = new GetWorkItemsRequest
-        {
-            MaxConcurrentOrchestrationWorkItems = _maxConcurrentWorkItems,
-            MaxConcurrentActivityWorkItems = _maxConcurrentActivities
-        };
+        var request = new GetWorkItemsRequest();
 
         while (!token.IsCancellationRequested)
         {
@@ -157,7 +148,7 @@ internal sealed class GrpcProtocolHandler(
     /// </summary>
     private async Task ReceiveLoopAsync(
         IAsyncStreamReader<WorkItem> workItemsStream,
-        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> orchestratorHandler,
+        Func<WorkflowRequest, string, Task<WorkflowResponse>> workflowHandler,
         Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
         CancellationToken cancellationToken)
     {
@@ -173,8 +164,8 @@ internal sealed class GrpcProtocolHandler(
                 // Dispatch based on work item type
                 var workItemTask = workItem.RequestCase switch
                 {
-                    WorkItem.RequestOneofCase.OrchestratorRequest => Task.Run(
-                        () => ProcessWorkflowAsync(workItem.OrchestratorRequest, completionToken, orchestratorHandler, cancellationToken),
+                    WorkItem.RequestOneofCase.WorkflowRequest => Task.Run(
+                        () => ProcessWorkflowAsync(workItem.WorkflowRequest, completionToken, workflowHandler, cancellationToken),
                         cancellationToken),
                     WorkItem.RequestOneofCase.ActivityRequest => Task.Run(
                         () => ProcessActivityAsync(workItem.ActivityRequest, completionToken, activityHandler, cancellationToken),
@@ -187,7 +178,7 @@ internal sealed class GrpcProtocolHandler(
                 activeWorkItems.Add(workItemTask);
 
                 // Clean up completed tasks periodically
-                if (activeWorkItems.Count > _maxConcurrentWorkItems * 2)
+                if (activeWorkItems.Count > 200)
                 {
                     activeWorkItems.RemoveAll(t => t.IsCompleted);
                 }
@@ -221,8 +212,8 @@ internal sealed class GrpcProtocolHandler(
     /// <summary>
     /// Processes a workflow request work item.
     /// </summary>
-    private async Task ProcessWorkflowAsync(OrchestratorRequest request, string completionToken,
-        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> handler, CancellationToken cancellationToken)
+    private async Task ProcessWorkflowAsync(WorkflowRequest request, string completionToken,
+        Func<WorkflowRequest, string, Task<WorkflowResponse>> handler, CancellationToken cancellationToken)
     {
         await _orchestrationSemaphore.WaitAsync(cancellationToken);
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
@@ -235,7 +226,7 @@ internal sealed class GrpcProtocolHandler(
             // This try/catch must NOT include the CompleteOrchestratorTaskAsync call below — a transport
             // failure during delivery must not be converted into an orchestrator-level failure, as that
             // would incorrectly mark a healthy workflow turn as failed.
-            OrchestratorResponse result;
+            WorkflowResponse result;
             try
             {
                 result = await handler(request, completionToken);
@@ -256,7 +247,9 @@ internal sealed class GrpcProtocolHandler(
             try
             {
                 var grpcCallOptions = CreateCallOptions(cancellationToken);
+#pragma warning disable CS0612 // Deprecated: kept for compatibility with Dapr runtimes < 1.18 where CompleteWorkflowTask is not available.
                 await _grpcClient.CompleteOrchestratorTaskAsync(result, grpcCallOptions);
+#pragma warning restore CS0612
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -285,7 +278,7 @@ internal sealed class GrpcProtocolHandler(
 
         try
         {
-            _logger.LogGrpcProtocolHandlerActivityProcessorStart(request.OrchestrationInstance.InstanceId, request.Name,
+            _logger.LogGrpcProtocolHandlerActivityProcessorStart(request.WorkflowInstance.InstanceId, request.Name,
                 request.TaskId, activeCount);
 
             // Execute the activity and determine the result (success or application failure).
@@ -305,7 +298,7 @@ internal sealed class GrpcProtocolHandler(
             catch (Exception ex)
             {
                 _logger.LogGrpcProtocolHandlerActivityProcessorError(ex, request.Name,
-                    request.OrchestrationInstance?.InstanceId);
+                    request.WorkflowInstance?.InstanceId);
                 result = CreateActivityFailureResult(request, completionToken, ex);
             }
 
@@ -339,7 +332,7 @@ internal sealed class GrpcProtocolHandler(
     private static ActivityResponse CreateActivityFailureResult(ActivityRequest request, string completionToken, Exception ex) =>
         new()
         {
-            InstanceId = request.OrchestrationInstance.InstanceId,
+            InstanceId = request.WorkflowInstance.InstanceId,
             TaskId = request.TaskId,
             CompletionToken = completionToken,
             FailureDetails = new()
@@ -353,18 +346,18 @@ internal sealed class GrpcProtocolHandler(
     /// <summary>
     /// Creates a failure result for an orchestrator exception.
     /// </summary>
-    private static OrchestratorResponse CreateWorkflowFailureResult(OrchestratorRequest request, string completionToken, Exception ex) =>
+    private static WorkflowResponse CreateWorkflowFailureResult(WorkflowRequest request, string completionToken, Exception ex) =>
         new()
         {
             InstanceId = request.InstanceId,
             CompletionToken = completionToken,
             Actions =
             {
-                new OrchestratorAction
+                new WorkflowAction
                 {
-                    CompleteOrchestration = new CompleteOrchestrationAction
+                    CompleteWorkflow = new CompleteWorkflowAction
                     {
-                        OrchestrationStatus = OrchestrationStatus.Failed,
+                        WorkflowStatus = OrchestrationStatus.Failed,
                         FailureDetails = new()
                         {
                             ErrorType = ex.GetType().FullName ?? "Exception",

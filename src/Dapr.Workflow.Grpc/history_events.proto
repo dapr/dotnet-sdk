@@ -1,0 +1,304 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+syntax = "proto3";
+
+option csharp_namespace = "Dapr.DurableTask.Protobuf";
+option java_package = "io.dapr.durabletask.implementation.protobuf";
+option go_package = "/api/protos";
+
+import "orchestration.proto";
+import "attestation.proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message ExecutionStartedEvent {
+  string name = 1;
+  google.protobuf.StringValue version = 2;
+  google.protobuf.StringValue input = 3;
+  WorkflowInstance workflowInstance = 4;
+  ParentInstanceInfo parentInstance = 5;
+  google.protobuf.Timestamp scheduledStartTimestamp = 6;
+  TraceContext parentTraceContext = 7;
+  google.protobuf.StringValue workflowSpanID = 8;
+  map<string, string> tags = 9;
+}
+
+message ExecutionCompletedEvent {
+  OrchestrationStatus workflowStatus = 1;
+  google.protobuf.StringValue result = 2;
+  TaskFailureDetails failureDetails = 3;
+}
+
+message ExecutionTerminatedEvent {
+  google.protobuf.StringValue input = 1;
+  bool recurse = 2;
+}
+
+message TaskScheduledEvent {
+  string name = 1;
+  google.protobuf.StringValue version = 2;
+  google.protobuf.StringValue input = 3;
+  TraceContext parentTraceContext = 4;
+  string taskExecutionId = 5;
+
+  // If defined, indicates that this task was the starting point of a new
+  // workflow execution as the result of a rerun operation.
+  optional RerunParentInstanceInfo rerunParentInstanceInfo = 6;
+
+  // History propagation scope used when this task was originally scheduled.
+  // Persisted on the event so rerun can re-issue the task with the same
+  // scope after the action has been discarded.
+  optional HistoryPropagationScope historyPropagationScope = 7;
+}
+
+message TaskCompletedEvent {
+  int32 taskScheduledId = 1;
+  google.protobuf.StringValue result = 2;
+  string taskExecutionId = 3;
+
+  // Attestation signed by the activity executor's SPIFFE identity.
+  // Present when the activity was executed under a signing-enabled
+  // configuration. Verified on inbox ingestion against the companion
+  // signerCertificate and preserved in stored history for future audit
+  // and forwarding via provenance bundles.
+  optional ActivityCompletionAttestation attestation = 4;
+
+  // Companion: DER-encoded X.509 certificate chain of the executor's
+  // signing identity (leaf first, intermediates concatenated; same
+  // format as SigningCertificate.certificate in backend_service.proto).
+  // Wire-only; stripped by the receiver before the event is written to
+  // history-NNNNNN. The certificate lives once in ext-sigcert-NNNNNN,
+  // referenced by attestation payload's signerCertDigest.
+  optional bytes signerCertificate = 5;
+}
+
+message TaskFailedEvent {
+  int32 taskScheduledId = 1;
+  TaskFailureDetails failureDetails = 2;
+  string taskExecutionId = 3;
+
+  // See TaskCompletedEvent.attestation.
+  optional ActivityCompletionAttestation attestation = 4;
+
+  // Wire-only companion; see TaskCompletedEvent.signerCertificate.
+  optional bytes signerCertificate = 5;
+}
+
+message ChildWorkflowInstanceCreatedEvent {
+  string instanceId = 1;
+  string name = 2;
+  google.protobuf.StringValue version = 3;
+  google.protobuf.StringValue input = 4;
+  TraceContext parentTraceContext = 5;
+
+  // If defined, indicates that this task was the starting point of a new
+  // workflow execution as the result of a rerun operation.
+  optional RerunParentInstanceInfo rerunParentInstanceInfo = 6;
+
+  // History propagation scope used when this child workflow was originally
+  // scheduled. Persisted on the event so rerun can re-issue the child with
+  // the same scope after the action has been discarded.
+  optional HistoryPropagationScope historyPropagationScope = 7;
+}
+
+message ChildWorkflowInstanceCompletedEvent {
+  int32 taskScheduledId = 1;
+  google.protobuf.StringValue result = 2;
+
+  // Attestation signed by the completing child workflow's SPIFFE
+  // identity. Present when the child was executed under a signing-enabled
+  // configuration. Verified on inbox ingestion against the companion
+  // signerCertificate and preserved in stored history for future audit
+  // and forwarding via provenance bundles.
+  optional ChildCompletionAttestation attestation = 3;
+
+  // Companion: DER-encoded X.509 certificate chain of the child's signing
+  // identity (leaf first, intermediates concatenated; same format as
+  // SigningCertificate.certificate in backend_service.proto). Wire-only;
+  // stripped by the receiver before the event is written to
+  // history-NNNNNN. The certificate lives once in ext-sigcert-NNNNNN,
+  // referenced by attestation payload's signerCertDigest.
+  optional bytes signerCertificate = 4;
+}
+
+message ChildWorkflowInstanceFailedEvent {
+  int32 taskScheduledId = 1;
+  TaskFailureDetails failureDetails = 2;
+
+  // See ChildWorkflowInstanceCompletedEvent.attestation.
+  optional ChildCompletionAttestation attestation = 3;
+
+  // Wire-only companion; see
+  // ChildWorkflowInstanceCompletedEvent.signerCertificate.
+  optional bytes signerCertificate = 4;
+}
+
+// DetachedWorkflowInstanceCreatedEvent records that a running workflow
+// created a new, detached workflow instance via CreateDetachedWorkflowAction.
+// The new workflow has no parent linkage (no completion or failure flows
+// back), so this event only stores a pointer to the spawned instance — the
+// inputs themselves are consumed directly from the action when scheduling.
+// Replay matches on instanceId, so it is the same value the action carried.
+message DetachedWorkflowInstanceCreatedEvent {
+  string instanceId = 1;
+}
+
+// Indicates the timer was created by a createTimer call with no special origin.
+message TimerOriginCreateTimer {}
+
+// Indicates the timer was created as a timeout for a waitForExternalEvent call.
+message TimerOriginExternalEvent {
+  // The name of the external event being waited on, matching EventRaisedEvent.name.
+  string name = 1;
+}
+
+// Indicates the timer was created as a retry delay for an activity execution.
+message TimerOriginActivityRetry {
+  // The task execution ID of the activity being retried.
+  string taskExecutionId = 1;
+}
+
+// Indicates the timer was created as a retry delay for a child workflow execution.
+message TimerOriginChildWorkflowRetry {
+  // The instance ID of the workflow being retried.
+  string instanceId = 1;
+}
+
+message TimerCreatedEvent {
+  google.protobuf.Timestamp fireAt = 1;
+  optional string name = 2;
+
+  // If defined, indicates that this task was the starting point of a new
+  // workflow execution as the result of a rerun operation.
+  optional RerunParentInstanceInfo rerunParentInstanceInfo = 3;
+
+  // If set, provides additional context attached to this timer.
+  oneof origin {
+    TimerOriginCreateTimer createTimer = 4;
+    TimerOriginExternalEvent externalEvent = 5;
+    TimerOriginActivityRetry activityRetry = 6;
+    TimerOriginChildWorkflowRetry childWorkflowRetry = 7;
+  }
+}
+
+message TimerFiredEvent {
+  google.protobuf.Timestamp fireAt = 1;
+  int32 timerId = 2;
+}
+
+message WorkflowStartedEvent {
+  optional WorkflowVersion version = 1;
+}
+
+message WorkflowCompletedEvent {
+  // No payload data
+}
+
+message EventSentEvent {
+  string instanceId = 1;
+  string name = 2;
+  google.protobuf.StringValue input = 3;
+}
+
+message EventRaisedEvent {
+  string name = 1;
+  google.protobuf.StringValue input = 2;
+}
+
+message ContinueAsNewEvent {
+  google.protobuf.StringValue input = 1;
+}
+
+message ExecutionSuspendedEvent {
+  google.protobuf.StringValue input = 1;
+}
+
+message ExecutionResumedEvent {
+  google.protobuf.StringValue input = 1;
+}
+
+message ExecutionStalledEvent {
+  StalledReason reason = 1;
+  optional string description = 2;
+}
+
+message HistoryEvent {
+  int32 eventId = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  oneof eventType {
+    ExecutionStartedEvent executionStarted = 3;
+    ExecutionCompletedEvent executionCompleted = 4;
+    ExecutionTerminatedEvent executionTerminated = 5;
+    TaskScheduledEvent taskScheduled = 6;
+    TaskCompletedEvent taskCompleted = 7;
+    TaskFailedEvent taskFailed = 8;
+    ChildWorkflowInstanceCreatedEvent childWorkflowInstanceCreated = 9;
+    ChildWorkflowInstanceCompletedEvent childWorkflowInstanceCompleted = 10;
+    ChildWorkflowInstanceFailedEvent childWorkflowInstanceFailed = 11;
+    TimerCreatedEvent timerCreated = 12;
+    TimerFiredEvent timerFired = 13;
+    WorkflowStartedEvent workflowStarted = 14;
+    WorkflowCompletedEvent workflowCompleted = 15;
+    EventSentEvent eventSent = 16;
+    EventRaisedEvent eventRaised = 17;
+    ContinueAsNewEvent continueAsNew = 20;
+    ExecutionSuspendedEvent executionSuspended = 21;
+    ExecutionResumedEvent executionResumed = 22;
+    ExecutionStalledEvent executionStalled = 31;
+    DetachedWorkflowInstanceCreatedEvent detachedWorkflowInstanceCreated = 32;
+  }
+  reserved 18, 19, 23, 24, 25, 26, 27, 28, 29;
+  optional TaskRouter router = 30;
+}
+
+// A self-contained range of events produced by a single app, used when
+// history from multiple workflows is propagated to a downstream workflow
+// or activity. Each chunk owns the raw event bytes its producer signed;
+// receivers digest those bytes directly and decode them into typed
+// HistoryEvents on demand.
+message PropagatedHistoryChunk {
+  // Raw deterministic bytes of each HistoryEvent in this chunk, in execution
+  // order. The producer marshals each event once and signs over these exact
+  // bytes; receivers digest them directly and never re-marshal, so chunk
+  // verification is independent of protobuf marshaler-version stability
+  // across producer and receiver. This mirrors the approach attestations use
+  // for ioDigest: signed bytes travel verbatim end-to-end. The chunk's
+  // length is len(rawEvents).
+  repeated bytes rawEvents = 1;
+
+  string appId = 2;
+
+  // The workflow instance ID/name that produced the events in this chunk.
+  string instanceId = 3;
+  string workflowName = 4;
+
+  // Raw deterministic bytes of each HistorySignature message produced by the
+  // chunk's app at dispatch time, covering rawEvents in order. Receivers
+  // unmarshal these on demand to verify the chain. Raw bytes are required
+  // because HistorySignature.previousSignatureDigest commits to the exact
+  // persisted serialization; re-marshaling on the wire would break chain
+  // linkage. See backend_service.proto: HistorySignature.
+  repeated bytes rawSignatures = 5;
+
+  // X.509 certificate chains of the chunk app's signing identities,
+  // DER-concatenated leaf-first then intermediates (same encoding as
+  // backend_service.proto: SigningCertificate.certificate). Each
+  // HistorySignature in rawSignatures has a certificateIndex that indexes
+  // into this list, scoped to the chunk's producer app. Raw bytes here avoid
+  // a circular import on backend_service.proto's SigningCertificate type.
+  repeated bytes signingCertChains = 6;
+}
+
+message PropagatedHistory {
+  // The propagation scope that was used to produce this history.
+  HistoryPropagationScope scope = 1;
+
+  // Per-app history chunks. Each chunk owns the raw event bytes its producer
+  // signed (PropagatedHistoryChunk.rawEvents); receivers digest those bytes
+  // directly and decode them into typed HistoryEvents on demand. Chunks are
+  // ordered, non-overlapping, and together describe the full propagated
+  // event sequence.
+  repeated PropagatedHistoryChunk chunks = 2;
+}

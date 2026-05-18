@@ -46,11 +46,11 @@ public class WorkflowOrchestrationContextTests
             new HistoryEvent
             {
                 EventId = 0,
-                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+                ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent { Name = "ChildWf" }
             },
             new HistoryEvent
             {
-                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent
                 {
                     TaskScheduledId = 0,
                     Result = "42"
@@ -91,7 +91,7 @@ public class WorkflowOrchestrationContextTests
             new HistoryEvent
             {
                 EventId = 100,
-                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent
+                ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent
                 {
                     Name = "ChildWf",
                     InstanceId = childInstanceId
@@ -99,7 +99,7 @@ public class WorkflowOrchestrationContextTests
             },
             new HistoryEvent
             {
-                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent
                 {
                     TaskScheduledId = 100,
                     Result = "21"
@@ -115,7 +115,7 @@ public class WorkflowOrchestrationContextTests
     }
     
     [Fact]
-    public void CallChildWorkflowAsync_ShouldPutRouterOnCreateSubOrchestrationAction_WhenAppIdProvided()
+    public void CallChildWorkflowAsync_ShouldPutRouterOnCreateChildWorkflowAction_WhenAppIdProvided()
     {
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -138,11 +138,11 @@ public class WorkflowOrchestrationContextTests
             options: new ChildWorkflowTaskOptions(InstanceId: "child-1", TargetAppId: targetAppId));
 
         var action = Assert.Single(context.PendingActions);
-        Assert.NotNull(action.CreateSubOrchestration);
+        Assert.NotNull(action.CreateChildWorkflow);
 
-        Assert.NotNull(action.CreateSubOrchestration.Router);
-        Assert.Equal(targetAppId, action.CreateSubOrchestration.Router.TargetAppID);
-        Assert.Equal(sourceAppId, action.CreateSubOrchestration.Router.SourceAppID);
+        Assert.NotNull(action.CreateChildWorkflow.Router);
+        Assert.Equal(targetAppId, action.CreateChildWorkflow.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.CreateChildWorkflow.Router.SourceAppID);
 
         // wrapper router may exist too (compat), but inner is the important one
         Assert.NotNull(action.Router);
@@ -618,18 +618,18 @@ public class WorkflowOrchestrationContextTests
         var task = context.CallChildWorkflowAsync<string>("ChildWf", options: options);
 
         var firstAction = Assert.Single(context.PendingActions);
-        Assert.NotNull(firstAction.CreateSubOrchestration);
+        Assert.NotNull(firstAction.CreateChildWorkflow);
 
         context.ProcessEvents(
             [
                 new HistoryEvent
                 {
                     EventId = firstAction.Id,
-                    SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+                    ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent { Name = "ChildWf" }
                 },
                 new HistoryEvent
                 {
-                    SubOrchestrationInstanceFailed = new SubOrchestrationInstanceFailedEvent
+                    ChildWorkflowInstanceFailed = new ChildWorkflowInstanceFailedEvent
                     {
                         TaskScheduledId = firstAction.Id,
                         FailureDetails = new TaskFailureDetails
@@ -660,18 +660,18 @@ public class WorkflowOrchestrationContextTests
             isReplaying: true);
 
         var retryAction = Assert.Single(context.PendingActions);
-        Assert.NotNull(retryAction.CreateSubOrchestration);
+        Assert.NotNull(retryAction.CreateChildWorkflow);
 
         context.ProcessEvents(
             [
                 new HistoryEvent
                 {
                     EventId = retryAction.Id,
-                    SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+                    ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent { Name = "ChildWf" }
                 },
                 new HistoryEvent
                 {
-                    SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                    ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent
                     {
                         TaskScheduledId = retryAction.Id,
                         Result = "\"ok\""
@@ -1059,7 +1059,7 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
-    public void ContinueAsNew_ShouldAddCompleteOrchestrationAction_WithCarryoverEvents_WhenPreserveUnprocessedEventsIsTrue()
+    public void ContinueAsNew_ShouldAddCompleteWorkflowAction_WithCarryoverEvents_WhenPreserveUnprocessedEventsIsTrue()
     {
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -1088,10 +1088,10 @@ public class WorkflowOrchestrationContextTests
         Assert.Single(context.PendingActions);
         var action = context.PendingActions.First();
 
-        Assert.NotNull(action.CompleteOrchestration);
-        Assert.Equal(OrchestrationStatus.ContinuedAsNew, action.CompleteOrchestration.OrchestrationStatus);
-        Assert.Contains("\"v\":9", action.CompleteOrchestration.Result);
-        Assert.Equal(2, action.CompleteOrchestration.CarryoverEvents.Count);
+        Assert.NotNull(action.CompleteWorkflow);
+        Assert.Equal(OrchestrationStatus.ContinuedAsNew, action.CompleteWorkflow.WorkflowStatus);
+        Assert.Contains("\"v\":9", action.CompleteWorkflow.Result);
+        Assert.Equal(2, action.CompleteWorkflow.CarryoverEvents.Count);
     }
 
     [Fact]
@@ -1120,9 +1120,9 @@ public class WorkflowOrchestrationContextTests
         Assert.Single(context.PendingActions);
         var action = context.PendingActions.First();
 
-        Assert.NotNull(action.CompleteOrchestration);
-        Assert.Equal(OrchestrationStatus.ContinuedAsNew, action.CompleteOrchestration.OrchestrationStatus);
-        Assert.Empty(action.CompleteOrchestration.CarryoverEvents);
+        Assert.NotNull(action.CompleteWorkflow);
+        Assert.Equal(OrchestrationStatus.ContinuedAsNew, action.CompleteWorkflow.WorkflowStatus);
+        Assert.Empty(action.CompleteWorkflow.CarryoverEvents);
     }
 
     [Fact]
@@ -1288,7 +1288,7 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
-    public void CallChildWorkflowAsync_ShouldScheduleSubOrchestration_WhenNotReplaying_AndUseProvidedInstanceId()
+    public void CallChildWorkflowAsync_ShouldScheduleChildWorkflow_WhenNotReplaying_AndUseProvidedInstanceId()
     {
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -1311,14 +1311,14 @@ public class WorkflowOrchestrationContextTests
         Assert.Single(context.PendingActions);
         var action = context.PendingActions.First();
 
-        Assert.NotNull(action.CreateSubOrchestration);
-        Assert.Equal("ChildWf", action.CreateSubOrchestration.Name);
-        Assert.Equal("child-123", action.CreateSubOrchestration.InstanceId);
-        Assert.Contains("\"v\":1", action.CreateSubOrchestration.Input);
+        Assert.NotNull(action.CreateChildWorkflow);
+        Assert.Equal("ChildWf", action.CreateChildWorkflow.Name);
+        Assert.Equal("child-123", action.CreateChildWorkflow.InstanceId);
+        Assert.Contains("\"v\":1", action.CreateChildWorkflow.Input);
     }
 
     [Fact]
-    public async Task CallChildWorkflowAsync_ShouldReturnCompletedResult_FromHistorySubOrchestrationCompleted()
+    public async Task CallChildWorkflowAsync_ShouldReturnCompletedResult_FromHistoryChildWorkflowCompleted()
     {
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -1327,11 +1327,11 @@ public class WorkflowOrchestrationContextTests
         {
             new HistoryEvent
             {
-                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+                ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent { Name = "ChildWf" }
             },
             new HistoryEvent
             {
-                SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent { Result = "42" }
+                ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent { Result = "42" }
             }
         };
 
@@ -1352,7 +1352,7 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
-    public async Task CallChildWorkflowAsync_ShouldThrowWorkflowTaskFailedException_FromHistorySubOrchestrationFailed()
+    public async Task CallChildWorkflowAsync_ShouldThrowWorkflowTaskFailedException_FromHistoryChildWorkflowFailed()
     {
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var tracker = new WorkflowVersionTracker([]);
@@ -1361,11 +1361,11 @@ public class WorkflowOrchestrationContextTests
         {
             new HistoryEvent
             {
-                SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent { Name = "ChildWf" }
+                ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent { Name = "ChildWf" }
             },
             new HistoryEvent
             {
-                SubOrchestrationInstanceFailed = new SubOrchestrationInstanceFailedEvent
+                ChildWorkflowInstanceFailed = new ChildWorkflowInstanceFailedEvent
                 {
                     FailureDetails = new TaskFailureDetails
                     {
