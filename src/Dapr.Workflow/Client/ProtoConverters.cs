@@ -23,10 +23,10 @@ namespace Dapr.Workflow.Client;
 internal static class ProtoConverters
 {
     /// <summary>
-    /// Converts proto <see cref="OrchestrationState"/> to <see cref="WorkflowMetadata"/>.
+    /// Converts proto <see cref="WorkflowState"/> to <see cref="WorkflowMetadata"/>.
     /// </summary>
-    public static WorkflowMetadata ToWorkflowMetadata(OrchestrationState state, IDaprSerializer serializer) =>
-        new(state.InstanceId, state.Name, ToRuntimeStatus(state.OrchestrationStatus),
+    public static WorkflowMetadata ToWorkflowMetadata(Dapr.DurableTask.Protobuf.WorkflowState state, IDaprSerializer serializer) =>
+        new(state.InstanceId, state.Name, ToRuntimeStatus(state.WorkflowStatus),
             state.CreatedTimestamp?.ToDateTime() ?? DateTime.MinValue,
             state.LastUpdatedTimestamp?.ToDateTime() ?? DateTime.MinValue, serializer)
         {
@@ -73,21 +73,22 @@ internal static class ProtoConverters
             HistoryEvent.EventTypeOneofCase.TaskScheduled => WorkflowHistoryEventType.TaskScheduled,
             HistoryEvent.EventTypeOneofCase.TaskCompleted => WorkflowHistoryEventType.TaskCompleted,
             HistoryEvent.EventTypeOneofCase.TaskFailed => WorkflowHistoryEventType.TaskFailed,
-            HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceCreated => WorkflowHistoryEventType.SubOrchestrationInstanceCreated,
-            HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceCompleted => WorkflowHistoryEventType.SubOrchestrationInstanceCompleted,
-            HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceFailed => WorkflowHistoryEventType.SubOrchestrationInstanceFailed,
+            HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCreated => WorkflowHistoryEventType.SubOrchestrationInstanceCreated,
+            HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCompleted => WorkflowHistoryEventType.SubOrchestrationInstanceCompleted,
+            HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceFailed => WorkflowHistoryEventType.SubOrchestrationInstanceFailed,
             HistoryEvent.EventTypeOneofCase.TimerCreated => WorkflowHistoryEventType.TimerCreated,
             HistoryEvent.EventTypeOneofCase.TimerFired => WorkflowHistoryEventType.TimerFired,
-            HistoryEvent.EventTypeOneofCase.OrchestratorStarted => WorkflowHistoryEventType.OrchestratorStarted,
-            HistoryEvent.EventTypeOneofCase.OrchestratorCompleted => WorkflowHistoryEventType.OrchestratorCompleted,
+            HistoryEvent.EventTypeOneofCase.WorkflowStarted => WorkflowHistoryEventType.OrchestratorStarted,
+            HistoryEvent.EventTypeOneofCase.WorkflowCompleted => WorkflowHistoryEventType.OrchestratorCompleted,
             HistoryEvent.EventTypeOneofCase.EventSent => WorkflowHistoryEventType.EventSent,
             HistoryEvent.EventTypeOneofCase.EventRaised => WorkflowHistoryEventType.EventRaised,
-            HistoryEvent.EventTypeOneofCase.GenericEvent => WorkflowHistoryEventType.GenericEvent,
-            HistoryEvent.EventTypeOneofCase.HistoryState => WorkflowHistoryEventType.HistoryState,
+            // HistoryEvent.EventTypeOneofCase.GenericEvent => WorkflowHistoryEventType.GenericEvent,
+            // HistoryEvent.EventTypeOneofCase.HistoryState => WorkflowHistoryEventType.HistoryState,
             HistoryEvent.EventTypeOneofCase.ContinueAsNew => WorkflowHistoryEventType.ContinueAsNew,
             HistoryEvent.EventTypeOneofCase.ExecutionSuspended => WorkflowHistoryEventType.ExecutionSuspended,
             HistoryEvent.EventTypeOneofCase.ExecutionResumed => WorkflowHistoryEventType.ExecutionResumed,
             HistoryEvent.EventTypeOneofCase.ExecutionStalled => WorkflowHistoryEventType.ExecutionStalled,
+            HistoryEvent.EventTypeOneofCase.DetachedWorkflowInstanceCreated => WorkflowHistoryEventType.SubOrchestrationInstanceCreated,
             _ => WorkflowHistoryEventType.Unknown
         };
 }

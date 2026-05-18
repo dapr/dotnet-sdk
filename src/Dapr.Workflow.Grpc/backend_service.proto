@@ -1,0 +1,193 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+syntax = "proto3";
+
+package durabletask.protos.backend.v1;
+
+option csharp_namespace = "Dapr.DurableTask.Protobuf";
+option java_package = "io.dapr.durabletask.implementation.protobuf";
+option go_package = "/api/protos";
+
+import "orchestration.proto";
+import "history_events.proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Request payload for adding new workflow events.
+message AddEventRequest {
+  // The ID of the workflow to send an event to.
+  WorkflowInstance instance = 1;
+  // The event to send to the workflow.
+  HistoryEvent event = 2;
+}
+
+// Response payload for adding new workflow events.
+message AddEventResponse {
+  // No fields
+}
+
+// Request payload for completing an activity work item.
+message CompleteActivityWorkItemRequest {
+  // The completion token that was provided when the work item was fetched.
+  string completionToken = 1;
+
+  // The response event that will be sent to the workflow.
+  // This must be either a TaskCompleted event or a TaskFailed event.
+  HistoryEvent responseEvent = 2;
+}
+
+// Response payload for completing an activity work item.
+message CompleteActivityWorkItemResponse {
+  // No fields
+}
+
+// Request payload for completing a workflow work item.
+message CompleteWorkflowWorkItemRequest {
+  // The completion token that was provided when the work item was fetched.
+  string completionToken = 1;
+  WorkflowInstance instance = 2;
+  OrchestrationStatus runtimeStatus = 3;
+  google.protobuf.StringValue customStatus = 4;
+  repeated HistoryEvent newHistory = 5;
+  repeated HistoryEvent newTasks = 6;
+  repeated HistoryEvent newTimers = 7;
+  repeated WorkflowMessage newMessages = 8;
+
+  // The number of work item events that were processed by the workflow.
+  // This field is optional. If not set, the service should assume that the workflow processed all events.
+  google.protobuf.Int32Value numEventsProcessed = 9;
+}
+
+// Response payload for completing a workflow work item.
+message CompleteWorkflowWorkItemResponse {
+  // No fields
+}
+
+// A message to be delivered to a workflow by the backend.
+message WorkflowMessage {
+  // The ID of the workflow instance to receive the message.
+  WorkflowInstance instance = 1;
+  // The event payload to be received by the target workflow.
+  HistoryEvent event = 2;
+}
+
+message BackendWorkflowState {
+  repeated HistoryEvent inbox = 1;
+  repeated HistoryEvent history = 2;
+  google.protobuf.StringValue customStatus = 3;
+  uint64 generation = 4;
+}
+
+// ActivityInvocation wraps a TaskScheduled HistoryEvent with optional
+// propagated history for delivery to an activity actor.
+message ActivityInvocation {
+  HistoryEvent historyEvent = 1;
+
+  // Propagated history from the calling workflow.
+  optional PropagatedHistory propagatedHistory = 2;
+}
+
+message CreateWorkflowInstanceRequest {
+  HistoryEvent startEvent = 1;
+  reserved 2;
+  reserved "policy";
+
+  // Propagated history from the parent workflow.
+  optional PropagatedHistory propagatedHistory = 3;
+}
+
+message WorkflowMetadata {
+  string instanceId = 1;
+  string name = 2;
+  OrchestrationStatus runtimeStatus = 3;
+  google.protobuf.Timestamp createdAt = 4;
+  google.protobuf.Timestamp lastUpdatedAt = 5;
+  google.protobuf.StringValue input = 6;
+  google.protobuf.StringValue output = 7;
+  google.protobuf.StringValue customStatus = 8;
+  TaskFailureDetails failureDetails = 9;
+  google.protobuf.Timestamp completedAt = 10;
+  string parentInstanceId = 11;
+  optional google.protobuf.StringValue version = 12;
+  optional google.protobuf.StringValue parentAppId = 13;
+  optional google.protobuf.Timestamp startedAt = 14;
+}
+
+message BackendWorkflowStateMetadata {
+  uint64 inboxLength = 1;
+  uint64 historyLength = 2;
+  uint64 generation = 3;
+
+  // Number of HistorySignature entries stored (signature-NNNNNN keys).
+  uint64 signatureLength = 4;
+
+  // Number of SigningCertificate entries stored (sigcert-NNNNNN keys).
+  uint64 signingCertificateLength = 5;
+
+  // Number of ExternalSigningCertificate entries stored
+  // (ext-sigcert-NNNNNN keys). Same lifecycle as signingCertificateLength:
+  // monotonically grows within a run as new foreign signer certificates
+  // are absorbed from incoming attestations, zeroed on ContinueAsNew,
+  // cleared on instance purge. Subject to the same maxStateEntries
+  // tampering bound.
+  uint64 externalSigningCertificateLength = 6;
+}
+
+// A signing identity's X.509 certificate, stored once and referenced by index
+// from HistorySignature entries. This avoids duplicating the certificate
+// across every signature from the same identity. Stored as individual actor
+// state keys: sigcert-000000, sigcert-000001, etc.
+message SigningCertificate {
+  // X.509 certificate chain of the signing identity. Certificates are
+  // DER-encoded and concatenated directly in order: leaf first, followed by
+  // intermediates. Each certificate is a self-delimiting ASN.1 SEQUENCE,
+  // so the chain can be parsed by reading consecutive DER structures.
+  bytes certificate = 1;
+}
+
+// Signing metadata for a contiguous range of history events.
+// This is metadata-only — it does NOT contain the events themselves.
+// Events are stored once in history-NNNNNN keys; this message references them
+// by index range and stores only the signing artifacts.
+// Stored as individual actor state keys: signature-000000, signature-000001,
+// etc.
+message HistorySignature {
+  // Index of the first event covered by this signature (inclusive).
+  uint64 startEventIndex = 1;
+
+  // Number of events covered by this signature.
+  uint64 eventCount = 2;
+
+  // SHA-256 digest of the previous HistorySignature message (the entire
+  // deterministically serialized protobuf message). Absent for the first
+  // signature in the chain (no predecessor). When computing the signature
+  // input for the root case, this value is treated as empty (zero-length).
+  optional bytes previousSignatureDigest = 3;
+
+  // SHA-256 digest over the concatenation of the raw serialized bytes of each
+  // history event in this range, in order. The bytes are the exact values
+  // persisted to the state store (one per history-NNNNNN key).
+  bytes eventsDigest = 4;
+
+  // Index into the SigningCertificate table (sigcert-NNNNNN keys).
+  // Multiple signatures from the same identity share the same index.
+  // A new entry is appended only when the certificate rotates.
+  uint64 certificateIndex = 5;
+
+  // Cryptographic signature over
+  // SHA-256(previousSignatureDigest || eventsDigest)
+  // using the private key corresponding to the referenced certificate.
+  // The algorithm is determined by the certificate's key type:
+  //   Ed25519: raw Ed25519 signature over the input bytes
+  //   ECDSA:   fixed-size r||s over SHA-256(input), each component
+  //            zero-padded to the curve byte length
+  //   RSA:     PKCS#1 v1.5 with SHA-256
+  bytes signature = 6;
+}
+
+message DurableTimer {
+  HistoryEvent timerEvent = 1;
+  uint64 generation = 2;
+}
