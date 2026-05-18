@@ -141,18 +141,16 @@ public sealed class DaprdContainer : IAsyncStartable
             .WithNetwork(network)
             .WithExtraHost(ContainerHostAlias, "host-gateway")
             .WithBindMount(componentsHostFolder, componentsPath, AccessMode.ReadOnly)
+            // Wait for the canonical "fully initialized" log line that daprd emits only after
+            // every server (HTTP, internal gRPC, and *API* gRPC on port 50001) is running.
+            // Previous versions waited on "Internal gRPC server is running", which is the
+            // sidecar-to-sidecar internal gRPC server and is logged *before* the public API
+            // gRPC server is up. That produced a small race in which the harness reported
+            // readiness while the API gRPC port still refused connections, surfacing as
+            // intermittent "Status(StatusCode=Unavailable, Detail=Error connecting to
+            // subchannel., ... Connection refused)" errors on the first client call.
             .WithWaitStrategy(Wait.ForUnixContainer()
-                .UntilMessageIsLogged("Internal gRPC server is running"));
-                // .UntilHttpRequestIsSucceeded(endpoint =>
-                //     endpoint
-                //         .ForPort(InternalHttpPort)
-                //         .ForPath("/healthz")
-                //         .ForStatusCodeMatching(code => (int)code >= 200 && (int)code < 300),
-                //     mod => 
-                //         mod
-                //             .WithTimeout(TimeSpan.FromMinutes(2))
-                //             .WithInterval(TimeSpan.FromSeconds(5))
-                //             .WithMode(WaitStrategyMode.Running)));
+                .UntilMessageIsLogged("dapr initialized. Status: Running."));
 
         if (_logAttachment is not null)
         {
@@ -199,15 +197,15 @@ public sealed class DaprdContainer : IAsyncStartable
         await ContainerReadinessProbe.WaitForTcpPortAsync("127.0.0.1", HttpPort, TimeSpan.FromSeconds(30), cancellationToken);
         await ContainerReadinessProbe.WaitForTcpPortAsync("127.0.0.1", GrpcPort, TimeSpan.FromSeconds(30), cancellationToken);
 
-        // Even after the TCP ports start accepting connections the Dapr runtime may still be
-        // initializing (connecting to Placement/Scheduler, loading components, starting the
-        // workflow engine). Poll the HTTP port until the Dapr HTTP server starts processing
-        // requests. Any HTTP response (including 5xx) confirms that the HTTP server — and by
-        // extension the gRPC server — is actively routing requests, eliminating the brief window
-        // in which the gRPC port accepts TCP connections but the gRPC handlers are not yet
-        // installed. This prevents the transient "Error connecting to subchannel / Connection
-        // refused" errors that occur when the gRPC client first connects while the runtime is
-        // still completing its startup sequence.
+        // The container log wait above ("dapr initialized. Status: Running.") guarantees that
+        // daprd's HTTP server, internal gRPC server, *and* API gRPC server are all running
+        // inside the container. As an additional safety net, poll the HTTP port on the host
+        // until any HTTP response is observed. This confirms that Docker's port forwarding for
+        // the HTTP port has finished wiring up. The matching guarantee for the gRPC API port is
+        // provided by the WaitForTcpPortAsync probe above plus the canonical container wait
+        // message — which together rule out the "Error connecting to subchannel / Connection
+        // refused" race that previously occurred when the harness completed startup before the
+        // API gRPC server was actually listening.
         await ContainerReadinessProbe.WaitForHttpReachableAsync(
             $"http://127.0.0.1:{HttpPort}/v1.0/healthz",
             TimeSpan.FromSeconds(30),
