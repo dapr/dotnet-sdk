@@ -15,7 +15,6 @@ using System.Reflection;
 using System.Text.Json;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Common.Serialization;
-using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker;
 using Dapr.Workflow.Worker.Internal;
@@ -50,7 +49,7 @@ public class TimerOriginTests
 
         var action = Assert.Single(context.PendingActions);
         Assert.NotNull(action.CreateTimer);
-        Assert.Equal(CreateTimerAction.OriginOneofCase.OriginCreateTimer, action.CreateTimer.OriginCase);
+        Assert.Equal(CreateTimerAction.OriginOneofCase.CreateTimer, action.CreateTimer.OriginCase);
     }
 
     /// <summary>
@@ -67,8 +66,8 @@ public class TimerOriginTests
         var timerAction = context.PendingActions
             .FirstOrDefault(a => a.CreateTimer != null);
         Assert.NotNull(timerAction);
-        Assert.Equal(CreateTimerAction.OriginOneofCase.OriginExternalEvent, timerAction!.CreateTimer!.OriginCase);
-        Assert.Equal("myEvent", timerAction.CreateTimer.OriginExternalEvent.Name);
+        Assert.Equal(CreateTimerAction.OriginOneofCase.ExternalEvent, timerAction!.CreateTimer!.OriginCase);
+        Assert.Equal("myEvent", timerAction.CreateTimer.ExternalEvent.Name);
         
         // Verify fireAt = startTime + timeout
         var expectedFireAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(StartTime.AddSeconds(5));
@@ -98,7 +97,7 @@ public class TimerOriginTests
             inputType: typeof(object),
             run: (_, _) => throw new InvalidOperationException("boom")));
 
-        var request = new OrchestratorRequest
+        var request = new WorkflowRequest
         {
             InstanceId = "i",
             PastEvents =
@@ -125,13 +124,13 @@ public class TimerOriginTests
             }
         };
 
-        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+        var response = await InvokeHandleWorkflowResponseAsync(worker, request);
 
         // Should have a retry timer with ActivityRetry origin
         var retryTimer = response.Actions.FirstOrDefault(a => a.CreateTimer != null);
         Assert.NotNull(retryTimer);
-        Assert.Equal(CreateTimerAction.OriginOneofCase.OriginActivityRetry, retryTimer!.CreateTimer!.OriginCase);
-        Assert.NotEmpty(retryTimer.CreateTimer.OriginActivityRetry.TaskExecutionId);
+        Assert.Equal(CreateTimerAction.OriginOneofCase.ActivityRetry, retryTimer!.CreateTimer!.OriginCase);
+        Assert.NotEmpty(retryTimer.CreateTimer.ActivityRetry.TaskExecutionId);
     }
 
     /// <summary>
@@ -158,7 +157,7 @@ public class TimerOriginTests
             run: (_, _) => throw new InvalidOperationException("boom")));
 
         // History: first attempt fails, retry timer fires, second attempt fails
-        var request = new OrchestratorRequest
+        var request = new WorkflowRequest
         {
             InstanceId = "i",
             PastEvents =
@@ -223,15 +222,15 @@ public class TimerOriginTests
             }
         };
 
-        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+        var response = await InvokeHandleWorkflowResponseAsync(worker, request);
 
         // Should have a second retry timer with the same taskExecutionId as the first
         var retryTimers = response.Actions
-            .Where(a => a.CreateTimer?.OriginCase == CreateTimerAction.OriginOneofCase.OriginActivityRetry)
+            .Where(a => a.CreateTimer?.OriginCase == CreateTimerAction.OriginOneofCase.ActivityRetry)
             .ToList();
 
         Assert.Single(retryTimers);
-        Assert.NotEmpty(retryTimers[0].CreateTimer!.OriginActivityRetry.TaskExecutionId);
+        Assert.NotEmpty(retryTimers[0].CreateTimer!.ActivityRetry.TaskExecutionId);
     }
 
     /// <summary>
@@ -255,7 +254,7 @@ public class TimerOriginTests
             }));
 
         // We need the child to fail. The failure is indicated in history.
-        var request = new OrchestratorRequest
+        var request = new WorkflowRequest
         {
             InstanceId = "i",
             PastEvents =
@@ -265,7 +264,7 @@ public class TimerOriginTests
                 new HistoryEvent
                 {
                     EventId = 0,
-                    SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent
+                    ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent
                     {
                         Name = "ChildWf",
                         InstanceId = "child-0"
@@ -274,7 +273,7 @@ public class TimerOriginTests
                 MakeOrchestratorStarted(StartTime.AddSeconds(1)),
                 new HistoryEvent
                 {
-                    SubOrchestrationInstanceFailed = new SubOrchestrationInstanceFailedEvent
+                    ChildWorkflowInstanceFailed = new ChildWorkflowInstanceFailedEvent
                     {
                         TaskScheduledId = 0,
                         FailureDetails = new TaskFailureDetails
@@ -287,13 +286,13 @@ public class TimerOriginTests
             }
         };
 
-        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+        var response = await InvokeHandleWorkflowResponseAsync(worker, request);
 
         // Should have a retry timer with ChildWorkflowRetry origin
         var retryTimer = response.Actions.FirstOrDefault(a => a.CreateTimer != null);
         Assert.NotNull(retryTimer);
-        Assert.Equal(CreateTimerAction.OriginOneofCase.OriginChildWorkflowRetry, retryTimer!.CreateTimer!.OriginCase);
-        Assert.NotEmpty(retryTimer.CreateTimer.OriginChildWorkflowRetry.InstanceId);
+        Assert.Equal(CreateTimerAction.OriginOneofCase.ChildWorkflowRetry, retryTimer!.CreateTimer!.OriginCase);
+        Assert.NotEmpty(retryTimer.CreateTimer.ChildWorkflowRetry.InstanceId);
     }
 
     /// <summary>
@@ -319,7 +318,7 @@ public class TimerOriginTests
 
         // First attempt: child scheduled, created, and fails.
         // Then retry timer fires and second child scheduled, created, and fails.
-        var request = new OrchestratorRequest
+        var request = new WorkflowRequest
         {
             InstanceId = "i",
             PastEvents =
@@ -329,7 +328,7 @@ public class TimerOriginTests
                 new HistoryEvent
                 {
                     EventId = 0,
-                    SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent
+                    ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent
                     {
                         Name = "ChildWf",
                         InstanceId = "child-first"
@@ -338,7 +337,7 @@ public class TimerOriginTests
                 MakeOrchestratorStarted(StartTime.AddSeconds(1)),
                 new HistoryEvent
                 {
-                    SubOrchestrationInstanceFailed = new SubOrchestrationInstanceFailedEvent
+                    ChildWorkflowInstanceFailed = new ChildWorkflowInstanceFailedEvent
                     {
                         TaskScheduledId = 0,
                         FailureDetails = new TaskFailureDetails
@@ -370,7 +369,7 @@ public class TimerOriginTests
                 new HistoryEvent
                 {
                     EventId = 2,
-                    SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent
+                    ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent
                     {
                         Name = "ChildWf",
                         InstanceId = "child-second"
@@ -379,7 +378,7 @@ public class TimerOriginTests
                 MakeOrchestratorStarted(StartTime.AddSeconds(3)),
                 new HistoryEvent
                 {
-                    SubOrchestrationInstanceFailed = new SubOrchestrationInstanceFailedEvent
+                    ChildWorkflowInstanceFailed = new ChildWorkflowInstanceFailedEvent
                     {
                         TaskScheduledId = 2,
                         FailureDetails = new TaskFailureDetails
@@ -392,17 +391,17 @@ public class TimerOriginTests
             }
         };
 
-        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+        var response = await InvokeHandleWorkflowResponseAsync(worker, request);
 
         // Should have a second retry timer with the first child's instance ID
         var retryTimer = response.Actions.FirstOrDefault(a =>
-            a.CreateTimer?.OriginCase == CreateTimerAction.OriginOneofCase.OriginChildWorkflowRetry);
+            a.CreateTimer?.OriginCase == CreateTimerAction.OriginOneofCase.ChildWorkflowRetry);
         Assert.NotNull(retryTimer);
         
         // The instanceId should be stable — it should be the same value that was used
         // for the first retry timer (which we can't directly observe in this test since
         // the first timer was already consumed in history). But we can verify it's not empty.
-        Assert.NotEmpty(retryTimer!.CreateTimer!.OriginChildWorkflowRetry.InstanceId);
+        Assert.NotEmpty(retryTimer!.CreateTimer!.ChildWorkflowRetry.InstanceId);
     }
 
     // =====================================================================
@@ -421,8 +420,8 @@ public class TimerOriginTests
         var timerAction = context.PendingActions
             .FirstOrDefault(a => a.CreateTimer != null);
         Assert.NotNull(timerAction);
-        Assert.Equal(CreateTimerAction.OriginOneofCase.OriginExternalEvent, timerAction!.CreateTimer!.OriginCase);
-        Assert.Equal("myEvent", timerAction.CreateTimer.OriginExternalEvent.Name);
+        Assert.Equal(CreateTimerAction.OriginOneofCase.ExternalEvent, timerAction!.CreateTimer!.OriginCase);
+        Assert.Equal("myEvent", timerAction.CreateTimer.ExternalEvent.Name);
         Assert.Equal(TimerOriginHelpers.ExternalEventIndefiniteFireAt, timerAction.CreateTimer.FireAt);
     }
 
@@ -463,7 +462,7 @@ public class TimerOriginTests
                 return result;
             }));
 
-        var request = new OrchestratorRequest
+        var request = new WorkflowRequest
         {
             InstanceId = "i",
             PastEvents =
@@ -476,7 +475,7 @@ public class TimerOriginTests
                     TimerCreated = new TimerCreatedEvent
                     {
                         FireAt = TimerOriginHelpers.ExternalEventIndefiniteFireAt,
-                        OriginExternalEvent = new TimerOriginExternalEvent { Name = "myEvent" }
+                        ExternalEvent = new TimerOriginExternalEvent { Name = "myEvent" }
                     }
                 },
                 MakeOrchestratorStarted(StartTime.AddSeconds(1)),
@@ -495,11 +494,11 @@ public class TimerOriginTests
             }
         };
 
-        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+        var response = await InvokeHandleWorkflowResponseAsync(worker, request);
 
         Assert.Equal("i", response.InstanceId);
-        var complete = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
-        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+        var complete = response.Actions.Single(a => a.CompleteWorkflow != null).CompleteWorkflow!;
+        Assert.Equal(OrchestrationStatus.Completed, complete.WorkflowStatus);
     }
 
     /// <summary>
@@ -523,7 +522,7 @@ public class TimerOriginTests
             run: (_, _) => Task.FromResult<object?>("result")));
 
         // Pre-patch history: no optional timer, activity at EventId=0
-        var request = new OrchestratorRequest
+        var request = new WorkflowRequest
         {
             InstanceId = "i",
             PastEvents =
@@ -558,11 +557,11 @@ public class TimerOriginTests
             }
         };
 
-        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+        var response = await InvokeHandleWorkflowResponseAsync(worker, request);
 
         Assert.Equal("i", response.InstanceId);
-        var complete = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
-        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+        var complete = response.Actions.Single(a => a.CompleteWorkflow != null).CompleteWorkflow!;
+        Assert.Equal(OrchestrationStatus.Completed, complete.WorkflowStatus);
         
         // Verify no optional timer leaks into the result
         var timerActions = response.Actions.Where(a => a.CreateTimer != null).ToList();
@@ -587,7 +586,7 @@ public class TimerOriginTests
             }));
 
         // Pre-patch history: no optional timer, child at EventId=0
-        var request = new OrchestratorRequest
+        var request = new WorkflowRequest
         {
             InstanceId = "i",
             PastEvents =
@@ -605,7 +604,7 @@ public class TimerOriginTests
                 new HistoryEvent
                 {
                     EventId = 0,
-                    SubOrchestrationInstanceCreated = new SubOrchestrationInstanceCreatedEvent
+                    ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent
                     {
                         Name = "Child",
                         InstanceId = "child-1"
@@ -617,7 +616,7 @@ public class TimerOriginTests
                 MakeOrchestratorStarted(StartTime.AddSeconds(2)),
                 new HistoryEvent
                 {
-                    SubOrchestrationInstanceCompleted = new SubOrchestrationInstanceCompletedEvent
+                    ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent
                     {
                         TaskScheduledId = 0,
                         Result = "\"childResult\""
@@ -626,11 +625,11 @@ public class TimerOriginTests
             }
         };
 
-        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+        var response = await InvokeHandleWorkflowResponseAsync(worker, request);
 
         Assert.Equal("i", response.InstanceId);
-        var complete = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
-        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+        var complete = response.Actions.Single(a => a.CompleteWorkflow != null).CompleteWorkflow!;
+        Assert.Equal(OrchestrationStatus.Completed, complete.WorkflowStatus);
     }
 
     /// <summary>
@@ -652,7 +651,7 @@ public class TimerOriginTests
             }));
 
         // Pre-patch history: no optional timer, user timer at EventId=0
-        var request = new OrchestratorRequest
+        var request = new WorkflowRequest
         {
             InstanceId = "i",
             PastEvents =
@@ -673,7 +672,7 @@ public class TimerOriginTests
                     TimerCreated = new TimerCreatedEvent
                     {
                         FireAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(StartTime.AddSeconds(6)),
-                        OriginCreateTimer = new TimerOriginCreateTimer()
+                        CreateTimer = new TimerOriginCreateTimer()
                     }
                 },
                 MakeOrchestratorStarted(StartTime.AddSeconds(6)),
@@ -688,11 +687,11 @@ public class TimerOriginTests
             }
         };
 
-        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+        var response = await InvokeHandleWorkflowResponseAsync(worker, request);
 
         Assert.Equal("i", response.InstanceId);
-        var complete = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
-        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+        var complete = response.Actions.Single(a => a.CompleteWorkflow != null).CompleteWorkflow!;
+        Assert.Equal(OrchestrationStatus.Completed, complete.WorkflowStatus);
     }
 
     /// <summary>
@@ -723,7 +722,7 @@ public class TimerOriginTests
 
         // Pre-patch history: no optional timers.
         // ActA at EventId=0, ActB at EventId=1.
-        var request = new OrchestratorRequest
+        var request = new WorkflowRequest
         {
             InstanceId = "i",
             PastEvents =
@@ -781,11 +780,11 @@ public class TimerOriginTests
             }
         };
 
-        var response = await InvokeHandleOrchestratorResponseAsync(worker, request);
+        var response = await InvokeHandleWorkflowResponseAsync(worker, request);
 
         Assert.Equal("i", response.InstanceId);
-        var complete = response.Actions.Single(a => a.CompleteOrchestration != null).CompleteOrchestration!;
-        Assert.Equal(OrchestrationStatus.Completed, complete.OrchestrationStatus);
+        var complete = response.Actions.Single(a => a.CompleteWorkflow != null).CompleteWorkflow!;
+        Assert.Equal(OrchestrationStatus.Completed, complete.WorkflowStatus);
         
         // Verify no optional timers leak into the result
         var timerActions = response.Actions.Where(a => a.CreateTimer != null).ToList();
@@ -813,7 +812,6 @@ public class TimerOriginTests
     {
         var sp = new ServiceCollection().BuildServiceProvider();
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-        var options = new WorkflowRuntimeOptions();
         var factory = new StubWorkflowsFactory();
 
         var callInvoker = new Mock<CallInvoker>(MockBehavior.Loose);
@@ -824,8 +822,7 @@ public class TimerOriginTests
             factory,
             NullLoggerFactory.Instance,
             serializer,
-            sp,
-            options);
+            sp);
 
         return (worker, factory);
     }
@@ -848,20 +845,20 @@ public class TimerOriginTests
         return new HistoryEvent
         {
             Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(timestamp),
-            OrchestratorStarted = new OrchestratorStartedEvent()
+            WorkflowStarted = new WorkflowStartedEvent()
         };
     }
 
     private const string CompletionTokenValue = "abc123";
 
-    private static async Task<OrchestratorResponse> InvokeHandleOrchestratorResponseAsync(
-        WorkflowWorker worker, OrchestratorRequest request)
+    private static async Task<WorkflowResponse> InvokeHandleWorkflowResponseAsync(
+        WorkflowWorker worker, WorkflowRequest request)
     {
-        var method = typeof(WorkflowWorker).GetMethod("HandleOrchestratorResponseAsync",
+        var method = typeof(WorkflowWorker).GetMethod("HandleWorkflowResponseAsync",
             BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.NotNull(method);
 
-        var task = (Task<OrchestratorResponse>)method!.Invoke(worker, [request, CompletionTokenValue])!;
+        var task = (Task<WorkflowResponse>)method!.Invoke(worker, [request, CompletionTokenValue])!;
         return await task;
     }
 

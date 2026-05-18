@@ -38,6 +38,7 @@ public sealed class WorkflowRuntimeOptions
     /// usage.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when value is less than 1.</exception>
+    [Obsolete("This property is obsolete and no longer does anything - please use the options on the Dapr runtime instead. This property will be removed in a future SDK release.")]
     public int MaxConcurrentWorkflows
     {
         get => _maxConcurrentWorkflows;
@@ -56,6 +57,7 @@ public sealed class WorkflowRuntimeOptions
     /// memory usage.
     /// </remarks>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when value is less than 1.</exception>
+    [Obsolete("This property is obsolete and no longer does anything - please use the options on the Dapr runtime instead. This property will be removed in a future SDK release.")]
     public int MaxConcurrentActivities
     {
         get => _maxConcurrentActivities;

@@ -22,22 +22,6 @@ namespace Dapr.Workflow.Test;
 public class WorkflowRuntimeOptionsTests
 {
     [Fact]
-    public void MaxConcurrentWorkflows_ShouldThrow_WhenSetLessThan1()
-    {
-        var options = new WorkflowRuntimeOptions();
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxConcurrentWorkflows = 0);
-    }
-
-    [Fact]
-    public void MaxConcurrentActivities_ShouldThrow_WhenSetLessThan1()
-    {
-        var options = new WorkflowRuntimeOptions();
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.MaxConcurrentActivities = 0);
-    }
-
-    [Fact]
     public void UseGrpcChannelOptions_ShouldThrowArgumentNullException_WhenNull()
     {
         var options = new WorkflowRuntimeOptions();
@@ -75,41 +59,13 @@ public class WorkflowRuntimeOptionsTests
         var factory = new WorkflowsFactory(NullLogger<WorkflowsFactory>.Instance);
         options.ApplyRegistrations(factory);
 
-        var sp = new Microsoft.Extensions.DependencyInjection.ServiceCollection().BuildServiceProvider();
+        var sp = new ServiceCollection().BuildServiceProvider();
 
         Assert.True(factory.TryCreateWorkflow(new("wf-fn"), sp, out var workflow, out _));
         Assert.NotNull(workflow);
 
         Assert.True(factory.TryCreateActivity(new("act-fn"), sp, out var activity, out _));
         Assert.NotNull(activity);
-    }
-    
-    [Fact]
-    public void MaxConcurrentWorkflows_ShouldDefaultTo100_AndAllowSettingValidValues()
-    {
-        var options = new WorkflowRuntimeOptions();
-
-        Assert.Equal(100, options.MaxConcurrentWorkflows);
-
-        options.MaxConcurrentWorkflows = 1;
-        Assert.Equal(1, options.MaxConcurrentWorkflows);
-
-        options.MaxConcurrentWorkflows = 250;
-        Assert.Equal(250, options.MaxConcurrentWorkflows);
-    }
-
-    [Fact]
-    public void MaxConcurrentActivities_ShouldDefaultTo100_AndAllowSettingValidValues()
-    {
-        var options = new WorkflowRuntimeOptions();
-
-        Assert.Equal(100, options.MaxConcurrentActivities);
-
-        options.MaxConcurrentActivities = 1;
-        Assert.Equal(1, options.MaxConcurrentActivities);
-
-        options.MaxConcurrentActivities = 250;
-        Assert.Equal(250, options.MaxConcurrentActivities);
     }
 
     [Fact]
