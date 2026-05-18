@@ -318,7 +318,7 @@ internal sealed class WorkflowWorker(
                 ?? currentUtcDateTime;
 
             // Initialize the context with the FULL history
-            var incomingPropagatedHistory = request.PropagatedHistory.Chunks.Count > 0
+            var incomingPropagatedHistory = request.PropagatedHistory?.Chunks.Count > 0
                 ? request.PropagatedHistory.Chunks
                 : null;
             var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime,
