@@ -19,6 +19,8 @@ using Grpc.Core;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
+#pragma warning disable CS0612 // Tests reference deprecated CompleteOrchestratorTaskAsync intentionally for compatibility with Dapr runtimes < 1.18.
+
 namespace Dapr.Workflow.Test.Worker.Grpc;
 
 public sealed class GrpcProtocolHandlerTests
@@ -27,7 +29,7 @@ public sealed class GrpcProtocolHandlerTests
 
     private static async Task RunHandlerUntilAsync(
         GrpcProtocolHandler handler,
-        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> workflowHandler,
+        Func<WorkflowRequest, string, Task<WorkflowResponse>> workflowHandler,
         Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
         Task until,
         TimeSpan timeout)
@@ -48,7 +50,7 @@ public sealed class GrpcProtocolHandlerTests
     
     private static async Task RunHandlerUntilAsync(
         GrpcProtocolHandler handler,
-        Func<OrchestratorRequest, string, Task<OrchestratorResponse>> workflowHandler,
+        Func<WorkflowRequest, string, Task<WorkflowResponse>> workflowHandler,
         Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
         Func<bool> untilCondition,
         TimeSpan timeout,
@@ -92,26 +94,6 @@ public sealed class GrpcProtocolHandlerTests
         Assert.Throws<ArgumentNullException>(() => new GrpcProtocolHandler(grpcClient, null!));
     }
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void Constructor_ShouldThrowArgumentOutOfRangeException_WhenMaxConcurrentWorkItemsIsNotPositive(int value)
-    {
-        var grpcClient = CreateGrpcClientMock().Object;
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => new GrpcProtocolHandler(grpcClient, NullLoggerFactory.Instance, value, 1));
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void Constructor_ShouldThrowArgumentOutOfRangeException_WhenMaxConcurrentActivitiesIsNotPositive(int value)
-    {
-        var grpcClient = CreateGrpcClientMock().Object;
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => new GrpcProtocolHandler(grpcClient, NullLoggerFactory.Instance, 1, value));
-    }
-
     [Fact]
     public async Task StartAsync_ShouldCompleteOrchestratorTask_ForOrchestratorWorkItem()
     {
@@ -121,7 +103,7 @@ public sealed class GrpcProtocolHandlerTests
         {
             new WorkItem
             {
-                OrchestratorRequest = new OrchestratorRequest { InstanceId = "i-1" }
+                WorkflowRequest = new WorkflowRequest { InstanceId = "i-1" }
             }
         };
 
@@ -129,18 +111,18 @@ public sealed class GrpcProtocolHandlerTests
             .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCall(workItems));
 
-        var completedTcs = CreateTcs<OrchestratorResponse>();
+        var completedTcs = CreateTcs<WorkflowResponse>();
 
         grpcClientMock
-            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
-            .Callback<OrchestratorResponse, CallOptions>((r, _) => completedTcs.TrySetResult(r))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
+            .Callback<WorkflowResponse, CallOptions>((r, _) => completedTcs.TrySetResult(r))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: (req, _) => Task.FromResult(new OrchestratorResponse { InstanceId = req.InstanceId }),
+            workflowHandler: (req, _) => Task.FromResult(new WorkflowResponse { InstanceId = req.InstanceId }),
             activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             until: completedTcs.Task,
             timeout: TimeSpan.FromSeconds(2));
@@ -163,7 +145,7 @@ public sealed class GrpcProtocolHandlerTests
                 {
                     Name = "act",
                     TaskId = 42,
-                    OrchestrationInstance = new OrchestrationInstance { InstanceId = "i-2" }
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "i-2" }
                 },
                 CompletionToken = completionToken
             }
@@ -184,10 +166,10 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new WorkflowResponse()),
             activityHandler: (req, tok) => Task.FromResult(new ActivityResponse
             {
-                InstanceId = req.OrchestrationInstance.InstanceId,
+                InstanceId = req.WorkflowInstance.InstanceId,
                 TaskId = req.TaskId,
                 Result = "ok",
                 CompletionToken = tok
@@ -211,7 +193,7 @@ public sealed class GrpcProtocolHandlerTests
         {
             new WorkItem
             {
-                OrchestratorRequest = new OrchestratorRequest { InstanceId = "i-err" }
+                WorkflowRequest = new WorkflowRequest { InstanceId = "i-err" }
             }
         };
 
@@ -219,11 +201,11 @@ public sealed class GrpcProtocolHandlerTests
             .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCall(workItems));
 
-        var completedTcs = CreateTcs<OrchestratorResponse>();
+        var completedTcs = CreateTcs<WorkflowResponse>();
 
         grpcClientMock
-            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
-            .Callback<OrchestratorResponse, CallOptions>((r, _) => completedTcs.TrySetResult(r))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
+            .Callback<WorkflowResponse, CallOptions>((r, _) => completedTcs.TrySetResult(r))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
@@ -239,10 +221,10 @@ public sealed class GrpcProtocolHandlerTests
 
         Assert.Equal("i-err", completed.InstanceId);
         Assert.Single(completed.Actions);
-        Assert.NotNull(completed.Actions[0].CompleteOrchestration);
-        Assert.Equal(OrchestrationStatus.Failed, completed.Actions[0].CompleteOrchestration.OrchestrationStatus);
-        Assert.NotNull(completed.Actions[0].CompleteOrchestration.FailureDetails);
-        Assert.Contains("boom", completed.Actions[0].CompleteOrchestration.FailureDetails.ErrorMessage);
+        Assert.NotNull(completed.Actions[0].CompleteWorkflow);
+        Assert.Equal(OrchestrationStatus.Failed, completed.Actions[0].CompleteWorkflow.WorkflowStatus);
+        Assert.NotNull(completed.Actions[0].CompleteWorkflow.FailureDetails);
+        Assert.Contains("boom", completed.Actions[0].CompleteWorkflow.FailureDetails.ErrorMessage);
     }
 
     [Fact]
@@ -269,39 +251,6 @@ public sealed class GrpcProtocolHandlerTests
     }
     
     [Fact]
-    public async Task StartAsync_ShouldSendGetWorkItemsRequest_WithConfiguredConcurrencyLimits()
-    {
-        var grpcClientMock = CreateGrpcClientMock();
-
-        GetWorkItemsRequest? captured = null;
-
-        grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
-            .Returns((GetWorkItemsRequest r, CallOptions _) =>
-            {
-                captured = r;
-                return CreateServerStreamingCall(Array.Empty<WorkItem>());
-            });
-
-        var handler = new GrpcProtocolHandler(
-            grpcClientMock.Object,
-            NullLoggerFactory.Instance,
-            maxConcurrentWorkItems: 7,
-            maxConcurrentActivities: 9);
-
-        await RunHandlerUntilAsync(
-            handler,
-            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
-            untilCondition: () => captured is not null,
-            timeout: TimeSpan.FromSeconds(2));
-
-        Assert.NotNull(captured);
-        Assert.Equal(7, captured!.MaxConcurrentOrchestrationWorkItems);
-        Assert.Equal(9, captured.MaxConcurrentActivityWorkItems);
-    }
-
-    [Fact]
     public async Task StartAsync_ShouldReturnWithoutThrowing_WhenGrpcStreamIsCancelled()
     {
         var grpcClientMock = CreateGrpcClientMock();
@@ -318,7 +267,7 @@ public sealed class GrpcProtocolHandlerTests
         cts.Cancel();
 
         await handler.StartAsync(
-            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new WorkflowResponse()),
             activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             cancellationToken: cts.Token);
 
@@ -341,7 +290,7 @@ public sealed class GrpcProtocolHandlerTests
                 {
                     Name = "act",
                     TaskId = 123,
-                    OrchestrationInstance = new OrchestrationInstance { InstanceId = "i-1" }
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "i-1" }
                 }
             }
         };
@@ -361,7 +310,7 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new WorkflowResponse()),
             activityHandler: (_,_) => throw new InvalidOperationException("boom"),
             until: sentTcs.Task,
             timeout: TimeSpan.FromSeconds(2));
@@ -388,7 +337,7 @@ public sealed class GrpcProtocolHandlerTests
                 {
                     Name = "act",
                     TaskId = 123,
-                    OrchestrationInstance = new OrchestrationInstance { InstanceId = "i-1" }
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "i-1" }
                 }
             }
         };
@@ -408,7 +357,7 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new WorkflowResponse()),
             activityHandler: (_,_) => throw new Exception("boom"),
             untilCondition: () => completeAttempted,
             timeout: TimeSpan.FromSeconds(2));
@@ -429,7 +378,7 @@ public sealed class GrpcProtocolHandlerTests
                 {
                     Name = "act",
                     TaskId = 123,
-                    OrchestrationInstance = new OrchestrationInstance { InstanceId = "i-1" }
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "i-1" }
                 }
             }
         };
@@ -449,7 +398,7 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new WorkflowResponse()),
             activityHandler: (_,_) => throw new NullStackTraceException("boom"),
             until: sentTcs.Task,
             timeout: TimeSpan.FromSeconds(2));
@@ -474,7 +423,7 @@ public sealed class GrpcProtocolHandlerTests
                 {
                     Name = "act",
                     TaskId = 1,
-                    OrchestrationInstance = new OrchestrationInstance { InstanceId = "i-1" }
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "i-1" }
                 }
             }
         };
@@ -493,7 +442,7 @@ public sealed class GrpcProtocolHandlerTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
         await handler.StartAsync(
-            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new WorkflowResponse()),
             activityHandler: (_,_) =>
             {
                 // Make StartAsync's linked token "IsCancellationRequested == true"
@@ -516,7 +465,7 @@ public sealed class GrpcProtocolHandlerTests
         {
             new WorkItem
             {
-                OrchestratorRequest = new OrchestratorRequest { InstanceId = "i-1" }
+                WorkflowRequest = new WorkflowRequest { InstanceId = "i-1" }
             }
         };
 
@@ -525,7 +474,7 @@ public sealed class GrpcProtocolHandlerTests
             .Returns(CreateServerStreamingCallIgnoringCancellation(workItems));
 
         grpcClientMock
-            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
@@ -543,7 +492,7 @@ public sealed class GrpcProtocolHandlerTests
             cancellationToken: cts.Token);
 
         grpcClientMock.Verify(
-            x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()),
+            x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()),
             Times.Never());
     }
 
@@ -556,9 +505,9 @@ public sealed class GrpcProtocolHandlerTests
         // We send 3 work items that complete quickly so RemoveAll(t => t.IsCompleted) is executed.
         var workItems = new[]
         {
-            new WorkItem { ActivityRequest = new ActivityRequest { Name = "a1", TaskId = 1, OrchestrationInstance = new OrchestrationInstance { InstanceId = "i" } } },
-            new WorkItem { ActivityRequest = new ActivityRequest { Name = "a2", TaskId = 2, OrchestrationInstance = new OrchestrationInstance { InstanceId = "i" } } },
-            new WorkItem { ActivityRequest = new ActivityRequest { Name = "a3", TaskId = 3, OrchestrationInstance = new OrchestrationInstance { InstanceId = "i" } } },
+            new WorkItem { ActivityRequest = new ActivityRequest { Name = "a1", TaskId = 1, WorkflowInstance = new WorkflowInstance { InstanceId = "i" } } },
+            new WorkItem { ActivityRequest = new ActivityRequest { Name = "a2", TaskId = 2, WorkflowInstance = new WorkflowInstance { InstanceId = "i" } } },
+            new WorkItem { ActivityRequest = new ActivityRequest { Name = "a3", TaskId = 3, WorkflowInstance = new WorkflowInstance { InstanceId = "i" } } },
         };
 
         grpcClientMock
@@ -573,16 +522,14 @@ public sealed class GrpcProtocolHandlerTests
 
         var handler = new GrpcProtocolHandler(
             grpcClientMock.Object,
-            NullLoggerFactory.Instance,
-            maxConcurrentWorkItems: 1,
-            maxConcurrentActivities: 1);
+            NullLoggerFactory.Instance);
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new WorkflowResponse()),
             activityHandler: (req, _) => Task.FromResult(new ActivityResponse
             {
-                InstanceId = req.OrchestrationInstance.InstanceId,
+                InstanceId = req.WorkflowInstance.InstanceId,
                 TaskId = req.TaskId,
                 Result = "ok"
             }),
@@ -601,7 +548,7 @@ public sealed class GrpcProtocolHandlerTests
         {
             new WorkItem
             {
-                OrchestratorRequest = new OrchestratorRequest { InstanceId = "i-1" }
+                WorkflowRequest = new WorkflowRequest { InstanceId = "i-1" }
             }
         };
 
@@ -612,7 +559,7 @@ public sealed class GrpcProtocolHandlerTests
         var completeAttempted = false;
 
         grpcClientMock
-            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
             .Callback(() => completeAttempted = true)
             .Throws(new RpcException(new Status(StatusCode.Unavailable, "nope")));
 
@@ -649,7 +596,7 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new WorkflowResponse()),
             activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             untilCondition: () => getWorkItemsCalled,
             timeout: TimeSpan.FromSeconds(2));
@@ -674,7 +621,7 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new WorkflowResponse()),
             activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             untilCondition: () => Volatile.Read(ref getWorkItemsCalls) >= 1,
             timeout: TimeSpan.FromSeconds(2));
@@ -706,157 +653,12 @@ public sealed class GrpcProtocolHandlerTests
         // and can be canceled cleanly by the test harness.
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: (_,_) => Task.FromResult(new OrchestratorResponse()),
+            workflowHandler: (_,_) => Task.FromResult(new WorkflowResponse()),
             activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
             untilCondition: () => Volatile.Read(ref getWorkItemsCalls) >= 1,
             timeout: TimeSpan.FromSeconds(2));
 
         Assert.True(Volatile.Read(ref getWorkItemsCalls) >= 1);
-    }
-
-    [Fact]
-    public async Task StartAsync_ShouldNotExceedMaxConcurrentOrchestrationWorkItems()
-    {
-        const int maxConcurrent = 2;
-        const int totalItems = 3;
-
-        var grpcClientMock = CreateGrpcClientMock();
-
-        grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
-            .Returns(CreateServerStreamingCall(Enumerable.Range(1, totalItems)
-                .Select(i => new WorkItem
-                {
-                    OrchestratorRequest = new OrchestratorRequest { InstanceId = $"i-{i}" }
-                })));
-
-        grpcClientMock
-            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
-            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
-
-        var activeCount = 0;
-        var completedCount = 0;
-        using var releaseGate = new SemaphoreSlim(0);
-        var maxConcurrentReachedTcs = CreateTcs<bool>();
-
-        var handler = new GrpcProtocolHandler(
-            grpcClientMock.Object,
-            NullLoggerFactory.Instance,
-            maxConcurrentWorkItems: maxConcurrent,
-            maxConcurrentActivities: 1);
-
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        cts.CancelAfter(TimeSpan.FromSeconds(5));
-
-        var startTask = handler.StartAsync(
-            workflowHandler: async (req, _) =>
-            {
-                var count = Interlocked.Increment(ref activeCount);
-                if (count == maxConcurrent)
-                    maxConcurrentReachedTcs.TrySetResult(true);
-
-                await releaseGate.WaitAsync(TestContext.Current.CancellationToken);
-
-                Interlocked.Decrement(ref activeCount);
-                Interlocked.Increment(ref completedCount);
-                return new OrchestratorResponse { InstanceId = req.InstanceId };
-            },
-            activityHandler: (_, _) => Task.FromResult(new ActivityResponse()),
-            cancellationToken: cts.Token);
-
-        // Wait for maxConcurrent handlers to be simultaneously active
-        await maxConcurrentReachedTcs.Task.WaitAsync(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
-
-        // The orchestration semaphore prevents a 3rd handler from starting
-        Assert.Equal(maxConcurrent, Volatile.Read(ref activeCount));
-
-        // Release all handlers (including the one queued behind the semaphore)
-        releaseGate.Release(totalItems);
-
-        // Wait for all to finish
-        var deadline = DateTime.UtcNow.AddSeconds(3);
-        while (Volatile.Read(ref completedCount) < totalItems && DateTime.UtcNow < deadline)
-            await Task.Delay(10, TestContext.Current.CancellationToken);
-
-        cts.Cancel();
-        await startTask;
-
-        Assert.Equal(totalItems, Volatile.Read(ref completedCount));
-    }
-
-    [Fact]
-    public async Task StartAsync_ShouldNotExceedMaxConcurrentActivityWorkItems()
-    {
-        const int maxConcurrent = 2;
-        const int totalItems = 3;
-
-        var grpcClientMock = CreateGrpcClientMock();
-
-        grpcClientMock
-            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
-            .Returns(CreateServerStreamingCall(Enumerable.Range(1, totalItems)
-                .Select(i => new WorkItem
-                {
-                    ActivityRequest = new ActivityRequest
-                    {
-                        Name = $"act-{i}",
-                        TaskId = i,
-                        OrchestrationInstance = new OrchestrationInstance { InstanceId = "i-1" }
-                    }
-                })));
-
-        grpcClientMock
-            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
-            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
-
-        var activeCount = 0;
-        var completedCount = 0;
-        using var releaseGate = new SemaphoreSlim(0);
-        var maxConcurrentReachedTcs = CreateTcs<bool>();
-
-        var handler = new GrpcProtocolHandler(
-            grpcClientMock.Object,
-            NullLoggerFactory.Instance,
-            maxConcurrentWorkItems: 1,
-            maxConcurrentActivities: maxConcurrent);
-
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        cts.CancelAfter(TimeSpan.FromSeconds(5));
-
-        var startTask = handler.StartAsync(
-            workflowHandler: (_, _) => Task.FromResult(new OrchestratorResponse()),
-            activityHandler: async (req, _) =>
-            {
-                var count = Interlocked.Increment(ref activeCount);
-                if (count == maxConcurrent)
-                    maxConcurrentReachedTcs.TrySetResult(true);
-
-                await releaseGate.WaitAsync(TestContext.Current.CancellationToken);
-
-                Interlocked.Decrement(ref activeCount);
-                Interlocked.Increment(ref completedCount);
-                return new ActivityResponse { InstanceId = req.OrchestrationInstance.InstanceId, TaskId = req.TaskId };
-            },
-            cancellationToken: cts.Token);
-
-        // Wait for maxConcurrent handlers to be simultaneously active
-        await maxConcurrentReachedTcs.Task.WaitAsync(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
-
-        // The activity semaphore prevents a 3rd handler from starting
-        Assert.Equal(maxConcurrent, Volatile.Read(ref activeCount));
-
-        // Release all handlers (including the one queued behind the semaphore)
-        releaseGate.Release(totalItems);
-
-        // Wait for all to finish
-        var deadline = DateTime.UtcNow.AddSeconds(3);
-        while (Volatile.Read(ref completedCount) < totalItems && DateTime.UtcNow < deadline)
-            await Task.Delay(10, TestContext.Current.CancellationToken);
-
-        cts.Cancel();
-        await startTask;
-
-        Assert.Equal(totalItems, Volatile.Read(ref completedCount));
     }
 
     /// <summary>
@@ -886,7 +688,7 @@ public sealed class GrpcProtocolHandlerTests
                 {
                     Name = "act",
                     TaskId = 42,
-                    OrchestrationInstance = new OrchestrationInstance { InstanceId = "i-1" }
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "i-1" }
                 }
             }
         };
@@ -911,10 +713,10 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: (_, _) => Task.FromResult(new OrchestratorResponse()),
+            workflowHandler: (_, _) => Task.FromResult(new WorkflowResponse()),
             activityHandler: (req, tok) => Task.FromResult(new ActivityResponse
             {
-                InstanceId = req.OrchestrationInstance.InstanceId,
+                InstanceId = req.WorkflowInstance.InstanceId,
                 TaskId = req.TaskId,
                 Result = "success",
                 CompletionToken = tok
@@ -945,7 +747,7 @@ public sealed class GrpcProtocolHandlerTests
         {
             new WorkItem
             {
-                OrchestratorRequest = new OrchestratorRequest { InstanceId = "i-1" }
+                WorkflowRequest = new WorkflowRequest { InstanceId = "i-1" }
             }
         };
 
@@ -954,11 +756,11 @@ public sealed class GrpcProtocolHandlerTests
             .Returns(CreateServerStreamingCall(workItems));
 
         var completeCallCount = 0;
-        OrchestratorResponse? capturedResponse = null;
+        WorkflowResponse? capturedResponse = null;
 
         grpcClientMock
-            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<OrchestratorResponse>(), It.IsAny<CallOptions>()))
-            .Callback<OrchestratorResponse, CallOptions>((r, _) =>
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
+            .Callback<WorkflowResponse, CallOptions>((r, _) =>
             {
                 Interlocked.Increment(ref completeCallCount);
                 capturedResponse = r;
@@ -969,7 +771,7 @@ public sealed class GrpcProtocolHandlerTests
 
         await RunHandlerUntilAsync(
             handler,
-            workflowHandler: (req, _) => Task.FromResult(new OrchestratorResponse { InstanceId = req.InstanceId }),
+            workflowHandler: (req, _) => Task.FromResult(new WorkflowResponse { InstanceId = req.InstanceId }),
             activityHandler: (_, _) => Task.FromResult(new ActivityResponse()),
             untilCondition: () => Volatile.Read(ref completeCallCount) >= 1,
             timeout: TimeSpan.FromSeconds(2));
@@ -979,7 +781,7 @@ public sealed class GrpcProtocolHandlerTests
         Assert.Equal(1, Volatile.Read(ref completeCallCount));
         Assert.NotNull(capturedResponse);
         Assert.DoesNotContain(capturedResponse!.Actions,
-            a => a.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.Failed);
+            a => a.CompleteWorkflow?.WorkflowStatus == OrchestrationStatus.Failed);
     }
 
     [Fact]
@@ -991,7 +793,7 @@ public sealed class GrpcProtocolHandlerTests
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
-        var task = (Task)method.Invoke(null, new object?[] { TimeSpan.FromMilliseconds(1), cts.Token })!;
+        var task = (Task)method.Invoke(null, [TimeSpan.FromMilliseconds(1), cts.Token])!;
         await task;
     }
     
