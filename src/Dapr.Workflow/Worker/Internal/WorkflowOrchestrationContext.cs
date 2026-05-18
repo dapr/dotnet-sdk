@@ -21,7 +21,6 @@ using System.Threading.Tasks;
 using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
-using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
@@ -50,7 +49,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private readonly Dictionary<int, TaskCompletionSource<HistoryEvent>> _openTasks = [];
     private readonly Dictionary<int, string> _taskIdToExecutionId = [];
     private readonly Dictionary<string, int> _executionIdToTaskId = new(StringComparer.Ordinal);
-    private readonly SortedDictionary<int, OrchestratorAction> _pendingActions = [];
+    private readonly SortedDictionary<int, WorkflowAction> _pendingActions = [];
     private readonly IDaprSerializer _workflowSerializer;
     private readonly ILogger<WorkflowOrchestrationContext> _logger;
     private readonly ILoggerFactory _loggerFactory;
@@ -73,7 +72,6 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
     private readonly string? _appId;
     private readonly PropagatedHistory? _propagatedHistory;
-    private readonly IReadOnlyList<HistoryEvent> _ownHistory;
     private int _sequenceNumber;
     private int _guidCounter;
     private object? _customStatus;
@@ -86,7 +84,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         IDaprSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
         string? appId = null, string? executionId = null,
         IReadOnlyList<HistoryEvent>? ownHistory = null,
-        IEnumerable<PropagatedHistorySegment>? incomingPropagatedHistory = null)
+        IEnumerable<PropagatedHistoryChunk>? incomingPropagatedHistory = null)
     {
         _workflowSerializer = workflowSerializer;
         _loggerFactory = loggerFactory;
@@ -101,10 +99,10 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         _currentUtcDateTime = currentUtcDateTime;
         _appId = appId; // Necessary for setting the source app ID value on the task router
         _versionTracker = versionTracker;
-        _ownHistory = ownHistory ?? Array.Empty<HistoryEvent>();
-        var propagatedSegments = incomingPropagatedHistory?.ToList();
-        _propagatedHistory = propagatedSegments is { Count: > 0 }
-            ? new PropagatedHistory(propagatedSegments.Select(ConvertSegment).ToList())
+
+        var propagatedChunks = incomingPropagatedHistory?.ToList();
+        _propagatedHistory = propagatedChunks is { Count: > 0 }
+            ? new PropagatedHistory(propagatedChunks.Select(ConvertChunk).ToList())
             : null;
 
         _logger.LogWorkflowContextConstructorSetup(name, instanceId);
@@ -123,16 +121,12 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     public override bool IsReplaying => _isReplaying;
 
     /// <inheritdoc />
-    public override bool IsPatched(string patchName)
-    {
-        var hasPatchHistory = _versionTracker.AggregatedPatchesOrdered.Count > 0;
-        return _versionTracker.RequestPatch(patchName, isReplaying: this.IsReplaying && hasPatchHistory);
-    }
+    public override bool IsPatched(string patchName) => _versionTracker.RequestPatch(patchName, isReplaying: this.IsReplaying);
 
     /// <summary>
     /// Gets the list of pending orchestrator actions to be sent to the Dapr sidecar.
     /// </summary>
-    internal IReadOnlyCollection<OrchestratorAction> PendingActions => _pendingActions.Values;
+    internal IReadOnlyCollection<WorkflowAction> PendingActions => _pendingActions.Values;
 
     /// <summary>
     /// Gets the custom status set by the workflow, if any.
@@ -176,7 +170,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             return await HandleHistoryMatch<T>(name, earlyCompletion, taskId);
         }
 
-        _pendingActions.Add(taskId, new OrchestratorAction
+        _pendingActions.Add(taskId, new WorkflowAction
         {
             Id = taskId,
             ScheduleTask = new ScheduleTaskAction
@@ -216,7 +210,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var createTimerAction = new CreateTimerAction { FireAt = fireAt };
         SetTimerOrigin(createTimerAction, origin);
 
-        _pendingActions.Add(taskId, new OrchestratorAction
+        _pendingActions.Add(taskId, new WorkflowAction
         {
             Id = taskId,
             CreateTimer = createTimerAction
@@ -375,12 +369,12 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
         var taskId = _sequenceNumber++;
 
-        _pendingActions.Add(taskId, new OrchestratorAction
+        _pendingActions.Add(taskId, new WorkflowAction
         {
             Id = taskId,
             SendEvent = new SendEventAction
             {
-                Instance = new OrchestrationInstance { InstanceId = instanceId },
+                Instance = new WorkflowInstance { InstanceId = instanceId },
                 Name = eventName,
                 Data = _workflowSerializer.Serialize(payload)
             }
@@ -422,7 +416,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
         var router = CreateRouter(options?.TargetAppId);
 
-        var createSubOrchestrationAction = new CreateSubOrchestrationAction
+        var createChildWorkflowAction = new CreateChildWorkflowAction
         {
             Name = workflowName,
             InstanceId = childInstanceId,
@@ -434,21 +428,18 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var propagationScope = options?.PropagationScope ?? HistoryPropagationScope.None;
         if (propagationScope != HistoryPropagationScope.None)
         {
-            createSubOrchestrationAction.HistoryPropagationScope = propagationScope switch
+            createChildWorkflowAction.HistoryPropagationScope = propagationScope switch
             {
                 HistoryPropagationScope.OwnHistory => Dapr.DurableTask.Protobuf.HistoryPropagationScope.OwnHistory,
                 HistoryPropagationScope.Lineage => Dapr.DurableTask.Protobuf.HistoryPropagationScope.Lineage,
                 _ => Dapr.DurableTask.Protobuf.HistoryPropagationScope.None
             };
-
-            var segments = BuildPropagatedSegments(propagationScope);
-            createSubOrchestrationAction.PropagatedHistory.AddRange(segments);
         }
 
-        _pendingActions.Add(taskId, new OrchestratorAction
+        _pendingActions.Add(taskId, new WorkflowAction
         {
             Id = taskId,
-            CreateSubOrchestration = createSubOrchestrationAction,
+            CreateChildWorkflow = createChildWorkflowAction,
             Router = router
         });
         
@@ -472,12 +463,12 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <inheritdoc />
     public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true)
     {
-        var action = new OrchestratorAction
+        var action = new WorkflowAction
         {
             Id = _sequenceNumber++,
-            CompleteOrchestration = new CompleteOrchestrationAction
+            CompleteWorkflow = new CompleteWorkflowAction
             {
-                OrchestrationStatus = OrchestrationStatus.ContinuedAsNew,
+                WorkflowStatus = OrchestrationStatus.ContinuedAsNew,
                 Result = _workflowSerializer.Serialize(newInput),
             }
         };
@@ -503,9 +494,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
         foreach (var action in _pendingActions.Values)
         {
-            if (action.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew)
+            if (action.CompleteWorkflow?.WorkflowStatus == OrchestrationStatus.ContinuedAsNew)
             {
-                action.CompleteOrchestration.CarryoverEvents.AddRange(_externalEventBuffer);
+                action.CompleteWorkflow.CarryoverEvents.AddRange(_externalEventBuffer);
                 return;
             }
         }
@@ -542,8 +533,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         {
             { TaskCompleted: { } completed } => HandleCompletedActivityFromHistory<T>(name, completed),
             { TaskFailed: { } failed } => HandleFailedActivityFromHistory<T>(name, failed),
-            { SubOrchestrationInstanceCompleted: { } completed } => HandleCompletedChildWorkflowFromHistory<T>(name, completed),
-            { SubOrchestrationInstanceFailed: { } failed } => HandleFailedChildWorkflowFromHistory<T>(name, failed),
+            { ChildWorkflowInstanceCompleted: { } completed } => HandleCompletedChildWorkflowFromHistory<T>(name, completed),
+            { ChildWorkflowInstanceFailed: { } failed } => HandleFailedChildWorkflowFromHistory<T>(name, failed),
             _ => throw new InvalidOperationException($"Unexpected history event type for task ID {taskId}")
         };
     }
@@ -556,7 +547,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         {
             switch (historyEvent)
             {
-                case { OrchestratorStarted: { } started }:
+                case { WorkflowStarted: { } started }:
                     HandleOrchestratorStarted(historyEvent, started);
                     break;
 
@@ -572,15 +563,15 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
                     HandleActionCompleted(historyEvent, failed.TaskScheduledId);
                     break;
 
-                case { SubOrchestrationInstanceCreated: {} created }:
+                case { ChildWorkflowInstanceCreated: {} created }:
                     OnSubOrchestrationCreated(historyEvent, created);
                     break;
 
-                case { SubOrchestrationInstanceCompleted: { } completed }:
+                case { ChildWorkflowInstanceCompleted: { } completed }:
                     HandleActionCompleted(historyEvent, completed.TaskScheduledId);
                     break;
 
-                case { SubOrchestrationInstanceFailed: { } failed }:
+                case { ChildWorkflowInstanceFailed: { } failed }:
                     HandleActionCompleted(historyEvent, failed.TaskScheduledId);
                     break;
 
@@ -603,7 +594,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         }
     }
 
-    private void HandleOrchestratorStarted(HistoryEvent historyEvent, OrchestratorStartedEvent _)
+    private void HandleOrchestratorStarted(HistoryEvent historyEvent, WorkflowStartedEvent _)
     {
         InitializeNewTurn(historyEvent.Timestamp.ToDateTime());
     }
@@ -638,15 +629,14 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <returns><c>true</c> if an optional timer was dropped; <c>false</c> otherwise.</returns>
     private bool TryDropOptionalTimerAt(int eventId)
     {
-        if (_pendingActions.TryGetValue(eventId, out var pendingAction)
-            && pendingAction.CreateTimer != null
-            && IsOptionalExternalEventTimerAction(pendingAction))
-        {
-            DropOptionalExternalEventTimerAt(eventId);
-            return true;
-        }
+        if (!_pendingActions.TryGetValue(eventId, out var pendingAction)
+            || pendingAction.CreateTimer == null
+            || !IsOptionalExternalEventTimerAction(pendingAction))
+            return false;
 
-        return false;
+        DropOptionalExternalEventTimerAt(eventId);
+        return true;
+
     }
 
     /// <summary>
@@ -663,19 +653,19 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// Handles a SubOrchestrationInstanceCreated history event, dropping an optional timer if needed.
     /// </summary>
     private void OnSubOrchestrationCreated(HistoryEvent historyEvent,
-        SubOrchestrationInstanceCreatedEvent created)
+        ChildWorkflowInstanceCreatedEvent created)
     {
         TryDropOptionalTimerAt(historyEvent.EventId);
         HandleSubOrchestrationCreated(historyEvent, created);
     }
-
+    
     private void HandleSubOrchestrationCreated(HistoryEvent historyEvent,
-        SubOrchestrationInstanceCreatedEvent created)
+        ChildWorkflowInstanceCreatedEvent created)
     {
         // The runtime may assign an EventId that does not match our local taskId.
         // Try to correlate using the child instance id (which we control).
         var createdEventId = historyEvent.EventId;
-
+    
         // SubOrchestrationInstanceCreatedEvent should carry the child instance id.
         // If it's missing/empty, we can't build a mapping.
         if (!string.IsNullOrWhiteSpace(created.InstanceId) &&
@@ -685,16 +675,16 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             {
                 _subOrchestrationCreatedEventIdToParentTaskId[createdEventId] = parentTaskId;
             }
-
+    
             // The "created" history event means the schedule action is no longer pending.
             // Remove by parentTaskId (our action id), not by createdEventId.
             _pendingActions.Remove(parentTaskId);
-
+    
             // Optional: prevent unbounded growth
             _subOrchestrationInstanceIdToParentTaskId.Remove(created.InstanceId);
             return;
         }
-
+    
         // Fallback to old behavior if we can't correlate
         _pendingActions.Remove(createdEventId);
     }
@@ -735,14 +725,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         }
 
         // Shift all pending actions with id > atId down by one
-        var actionsToShift = new List<KeyValuePair<int, OrchestratorAction>>();
-        foreach (var kvp in _pendingActions)
-        {
-            if (kvp.Key > atId)
-            {
-                actionsToShift.Add(kvp);
-            }
-        }
+        var actionsToShift = _pendingActions.Where(kvp => kvp.Key > atId).ToList();
 
         foreach (var kvp in actionsToShift)
         {
@@ -757,14 +740,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         }
 
         // Shift open tasks with id > atId down by one
-        var tasksToShift = new List<KeyValuePair<int, TaskCompletionSource<HistoryEvent>>>();
-        foreach (var kvp in _openTasks)
-        {
-            if (kvp.Key > atId)
-            {
-                tasksToShift.Add(kvp);
-            }
-        }
+        var tasksToShift = _openTasks.Where(kvp => kvp.Key > atId).ToList();
 
         foreach (var kvp in tasksToShift)
         {
@@ -927,7 +903,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// Handles a child workflow that completed in the workflow history.
     /// </summary>
     private Task<TResult> HandleCompletedChildWorkflowFromHistory<TResult>(string workflowName,
-        SubOrchestrationInstanceCompletedEvent completed)
+        ChildWorkflowInstanceCompletedEvent completed)
     {
         _logger.LogChildWorkflowCompletedFromHistory(workflowName, InstanceId);
         return Task.FromResult(DeserializeResult<TResult>(completed.Result ?? string.Empty));
@@ -937,7 +913,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// Handles a child workflow that failed in the workflow history.
     /// </summary>
     private Task<TResult> HandleFailedChildWorkflowFromHistory<TResult>(string workflowName,
-        SubOrchestrationInstanceFailedEvent failed)
+        ChildWorkflowInstanceFailedEvent failed)
     {
         _logger.LogChildWorkflowFailedFromHistory(workflowName, InstanceId);
         throw new WorkflowTaskFailedException($"Child workflow '{workflowName}' failed",
@@ -1013,55 +989,38 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     }
 
     /// <summary>
-    /// Builds the list of <see cref="PropagatedHistorySegment"/> proto objects to attach to a
-    /// <see cref="CreateSubOrchestrationAction"/> based on the requested propagation scope.
+    /// Converts a <see cref="PropagatedHistoryChunk"/> proto message to a domain <see cref="PropagatedHistoryEntry"/>.
     /// </summary>
-    private IEnumerable<PropagatedHistorySegment> BuildPropagatedSegments(HistoryPropagationScope scope)
+    /// <remarks>
+    /// Each <see cref="PropagatedHistoryChunk.RawEvents"/> entry is the deterministic byte representation
+    /// of a single <see cref="HistoryEvent"/>; we parse the bytes here on demand rather than re-marshalling.
+    /// Malformed event bytes are skipped (mapped to nothing) so a single bad event cannot crash the workflow.
+    /// </remarks>
+    private static PropagatedHistoryEntry ConvertChunk(PropagatedHistoryChunk chunk)
     {
-        // Always include the current workflow's own history as the first segment
-        var ownSegment = new PropagatedHistorySegment
+        var events = new List<PropagatedHistoryEvent>(chunk.RawEvents.Count);
+        foreach (var rawEvent in chunk.RawEvents)
         {
-            AppId = _appId ?? string.Empty,
-            InstanceId = InstanceId,
-            WorkflowName = Name
-        };
-        ownSegment.Events.AddRange(_ownHistory);
-        yield return ownSegment;
-
-        // For Lineage, also include the history this workflow received from its ancestors
-        if (scope == HistoryPropagationScope.Lineage && _propagatedHistory is not null)
-        {
-            foreach (var entry in _propagatedHistory.Entries)
+            HistoryEvent? historyEvent;
+            try
             {
-                var ancestorSegment = new PropagatedHistorySegment
-                {
-                    AppId = entry.AppId,
-                    InstanceId = entry.InstanceId,
-                    WorkflowName = entry.WorkflowName
-                };
-                // Re-encode the domain events back to proto events for forwarding
-                // The forwarded events are already proto-sourced; they were stored as domain events
-                // so we cannot round-trip them here without the original proto.
-                // Instead, forward empty event lists — the metadata (appId/instanceId/workflowName)
-                // is the primary useful content for filtering.
-                yield return ancestorSegment;
+                historyEvent = HistoryEvent.Parser.ParseFrom(rawEvent);
             }
-        }
-    }
+            catch (InvalidProtocolBufferException)
+            {
+                continue;
+            }
 
-    /// <summary>
-    /// Converts a <see cref="PropagatedHistorySegment"/> proto message to a domain <see cref="PropagatedHistoryEntry"/>.
-    /// </summary>
-    private static PropagatedHistoryEntry ConvertSegment(PropagatedHistorySegment segment)
-    {
-        var events = segment.Events
-            .Select(e => new PropagatedHistoryEvent(e.EventId, MapEventKind(e), MapTimestamp(e.Timestamp)))
-            .ToList();
+            events.Add(new PropagatedHistoryEvent(
+                historyEvent.EventId,
+                MapEventKind(historyEvent),
+                MapTimestamp(historyEvent.Timestamp)));
+        }
 
         return new PropagatedHistoryEntry(
-            segment.AppId,
-            segment.InstanceId,
-            segment.WorkflowName,
+            chunk.AppId,
+            chunk.InstanceId,
+            chunk.WorkflowName,
             events);
     }
 
@@ -1076,13 +1035,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         HistoryEvent.EventTypeOneofCase.TaskScheduled => HistoryEventKind.TaskScheduled,
         HistoryEvent.EventTypeOneofCase.TaskCompleted => HistoryEventKind.TaskCompleted,
         HistoryEvent.EventTypeOneofCase.TaskFailed => HistoryEventKind.TaskFailed,
-        HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceCreated => HistoryEventKind.SubOrchestrationInstanceCreated,
-        HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceCompleted => HistoryEventKind.SubOrchestrationInstanceCompleted,
-        HistoryEvent.EventTypeOneofCase.SubOrchestrationInstanceFailed => HistoryEventKind.SubOrchestrationInstanceFailed,
+        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCreated => HistoryEventKind.SubOrchestrationInstanceCreated,
+        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCompleted => HistoryEventKind.SubOrchestrationInstanceCompleted,
+        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceFailed => HistoryEventKind.SubOrchestrationInstanceFailed,
         HistoryEvent.EventTypeOneofCase.TimerCreated => HistoryEventKind.TimerCreated,
         HistoryEvent.EventTypeOneofCase.TimerFired => HistoryEventKind.TimerFired,
-        HistoryEvent.EventTypeOneofCase.OrchestratorStarted => HistoryEventKind.OrchestratorStarted,
-        HistoryEvent.EventTypeOneofCase.OrchestratorCompleted => HistoryEventKind.OrchestratorCompleted,
+        HistoryEvent.EventTypeOneofCase.WorkflowStarted => HistoryEventKind.OrchestratorStarted,
+        HistoryEvent.EventTypeOneofCase.WorkflowCompleted => HistoryEventKind.OrchestratorCompleted,
         HistoryEvent.EventTypeOneofCase.EventSent => HistoryEventKind.EventSent,
         HistoryEvent.EventTypeOneofCase.EventRaised => HistoryEventKind.EventRaised,
         HistoryEvent.EventTypeOneofCase.ContinueAsNew => HistoryEventKind.ContinueAsNew,
@@ -1094,7 +1053,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <summary>
     /// Converts a proto Timestamp to a <see cref="DateTimeOffset"/>.
     /// </summary>
-    private static DateTimeOffset MapTimestamp(Google.Protobuf.WellKnownTypes.Timestamp? timestamp) =>
+    private static DateTimeOffset MapTimestamp(Timestamp? timestamp) =>
         timestamp is not null
             ? new DateTimeOffset(timestamp.ToDateTime(), TimeSpan.Zero)
             : DateTimeOffset.MinValue;

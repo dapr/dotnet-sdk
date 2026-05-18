@@ -79,7 +79,7 @@ internal sealed class WorkflowGrpcClient(
                 return null;
             }
 
-            return ProtoConverters.ToWorkflowMetadata(response.OrchestrationState, serializer);
+            return ProtoConverters.ToWorkflowMetadata(response.WorkflowState, serializer);
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
         {
