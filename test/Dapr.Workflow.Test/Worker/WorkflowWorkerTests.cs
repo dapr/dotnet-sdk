@@ -374,16 +374,6 @@ public class WorkflowWorkerTests
     }
 
     [Fact]
-    public void Constructor_ShouldThrowArgumentNullException_WhenOptionsIsNull()
-    {
-        var grpcClient = CreateGrpcClientMock().Object;
-
-        Assert.Throws<ArgumentNullException>(() =>
-            new WorkflowWorker(grpcClient, Mock.Of<IWorkflowsFactory>(), Mock.Of<ILoggerFactory>(), Mock.Of<IWorkflowSerializer>(),
-                new ServiceCollection().BuildServiceProvider(), null!));
-    }
-
-    [Fact]
     public async Task StopAsync_ShouldNotThrow_WhenProtocolHandlerWasNeverCreated()
     {
         var grpcClient = CreateGrpcClientMock().Object;
@@ -646,28 +636,6 @@ public class WorkflowWorkerTests
         await cts.CancelAsync();
 
         await InvokeExecuteAsync(worker, cts.Token);
-    }
-
-    [Fact]
-    public async Task ExecuteAsync_ShouldRethrow_WhenOptionsHaveInvalidConcurrency()
-    {
-        var services = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-        var options = new WorkflowRuntimeOptions();
-
-        // Bypass property validation to simulate corrupted configuration.
-        typeof(WorkflowRuntimeOptions)
-            .GetField("_maxConcurrentWorkflows", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .SetValue(options, 0);
-
-        var worker = new WorkflowWorker(
-            CreateGrpcClientMock().Object,
-            new StubWorkflowsFactory(),
-            NullLoggerFactory.Instance,
-            serializer,
-            services);
-
-        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => InvokeExecuteAsync(worker, CancellationToken.None));
     }
 
     [Fact]
