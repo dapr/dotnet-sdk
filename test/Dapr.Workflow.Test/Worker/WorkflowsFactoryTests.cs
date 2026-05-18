@@ -415,6 +415,8 @@ public class WorkflowsFactoryTests
         public override Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null, ChildWorkflowTaskOptions? options = null) => throw new NotSupportedException();
         public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true) => throw new NotSupportedException();
         public override Guid NewGuid() => Guid.NewGuid();
+
+        public override PropagatedHistory? GetPropagatedHistory() => null;
         public override ILogger CreateReplaySafeLogger(string categoryName) => throw new NotSupportedException();
         public override ILogger CreateReplaySafeLogger(Type type) => throw new NotSupportedException();
         public override ILogger CreateReplaySafeLogger<T>() => throw new NotSupportedException();

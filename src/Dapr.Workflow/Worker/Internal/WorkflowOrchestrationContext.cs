@@ -71,6 +71,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private static readonly Guid InstanceIdNamespace = new("6f927a2e-9c7e-4a1d-9b8d-7a86f2e7f62f");
 
     private readonly string? _appId;
+    private readonly PropagatedHistory? _propagatedHistory;
     private int _sequenceNumber;
     private int _guidCounter;
     private object? _customStatus;
@@ -98,6 +99,11 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         _currentUtcDateTime = currentUtcDateTime;
         _appId = appId; // Necessary for setting the source app ID value on the task router
         _versionTracker = versionTracker;
+
+        var propagatedChunks = incomingPropagatedHistory?.ToList();
+        _propagatedHistory = propagatedChunks is { Count: > 0 }
+            ? new PropagatedHistory(propagatedChunks.Select(ConvertChunk).ToList())
+            : null;
 
         _logger.LogWorkflowContextConstructorSetup(name, instanceId);
     }
@@ -507,6 +513,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var name = $"{InstanceId}_{guidCounter}"; // Stable per execution and replay
         return CreateGuidFromName(_instanceGuid, Encoding.UTF8.GetBytes(name));
     }
+
+    /// <inheritdoc />
+    public override PropagatedHistory? GetPropagatedHistory() => _propagatedHistory;
 
     /// <inheritdoc />
     public override ILogger CreateReplaySafeLogger(string categoryName) =>
@@ -982,4 +991,74 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
         return new WorkflowTaskFailedException($"Task failed: {failureDetails.ErrorMessage}", failureDetails);
     }
+
+    /// <summary>
+    /// Converts a <see cref="PropagatedHistoryChunk"/> proto message to a domain <see cref="PropagatedHistoryEntry"/>.
+    /// </summary>
+    /// <remarks>
+    /// Each <see cref="PropagatedHistoryChunk.RawEvents"/> entry is the deterministic byte representation
+    /// of a single <see cref="HistoryEvent"/>; we parse the bytes here on demand rather than re-marshalling.
+    /// Malformed event bytes are skipped (mapped to nothing) so a single bad event cannot crash the workflow.
+    /// </remarks>
+    private static PropagatedHistoryEntry ConvertChunk(PropagatedHistoryChunk chunk)
+    {
+        var events = new List<PropagatedHistoryEvent>(chunk.RawEvents.Count);
+        foreach (var rawEvent in chunk.RawEvents)
+        {
+            HistoryEvent? historyEvent;
+            try
+            {
+                historyEvent = HistoryEvent.Parser.ParseFrom(rawEvent);
+            }
+            catch (InvalidProtocolBufferException)
+            {
+                continue;
+            }
+
+            events.Add(new PropagatedHistoryEvent(
+                historyEvent.EventId,
+                MapEventKind(historyEvent),
+                MapTimestamp(historyEvent.Timestamp)));
+        }
+
+        return new PropagatedHistoryEntry(
+            chunk.AppId,
+            chunk.InstanceId,
+            chunk.WorkflowName,
+            events);
+    }
+
+    /// <summary>
+    /// Maps a proto <see cref="HistoryEvent"/> to a <see cref="HistoryEventKind"/>.
+    /// </summary>
+    private static HistoryEventKind MapEventKind(HistoryEvent e) => e.EventTypeCase switch
+    {
+        HistoryEvent.EventTypeOneofCase.ExecutionStarted => HistoryEventKind.ExecutionStarted,
+        HistoryEvent.EventTypeOneofCase.ExecutionCompleted => HistoryEventKind.ExecutionCompleted,
+        HistoryEvent.EventTypeOneofCase.ExecutionTerminated => HistoryEventKind.ExecutionTerminated,
+        HistoryEvent.EventTypeOneofCase.TaskScheduled => HistoryEventKind.TaskScheduled,
+        HistoryEvent.EventTypeOneofCase.TaskCompleted => HistoryEventKind.TaskCompleted,
+        HistoryEvent.EventTypeOneofCase.TaskFailed => HistoryEventKind.TaskFailed,
+        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCreated => HistoryEventKind.SubOrchestrationInstanceCreated,
+        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCompleted => HistoryEventKind.SubOrchestrationInstanceCompleted,
+        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceFailed => HistoryEventKind.SubOrchestrationInstanceFailed,
+        HistoryEvent.EventTypeOneofCase.TimerCreated => HistoryEventKind.TimerCreated,
+        HistoryEvent.EventTypeOneofCase.TimerFired => HistoryEventKind.TimerFired,
+        HistoryEvent.EventTypeOneofCase.WorkflowStarted => HistoryEventKind.OrchestratorStarted,
+        HistoryEvent.EventTypeOneofCase.WorkflowCompleted => HistoryEventKind.OrchestratorCompleted,
+        HistoryEvent.EventTypeOneofCase.EventSent => HistoryEventKind.EventSent,
+        HistoryEvent.EventTypeOneofCase.EventRaised => HistoryEventKind.EventRaised,
+        HistoryEvent.EventTypeOneofCase.ContinueAsNew => HistoryEventKind.ContinueAsNew,
+        HistoryEvent.EventTypeOneofCase.ExecutionSuspended => HistoryEventKind.ExecutionSuspended,
+        HistoryEvent.EventTypeOneofCase.ExecutionResumed => HistoryEventKind.ExecutionResumed,
+        _ => HistoryEventKind.Unknown
+    };
+
+    /// <summary>
+    /// Converts a proto Timestamp to a <see cref="DateTimeOffset"/>.
+    /// </summary>
+    private static DateTimeOffset MapTimestamp(Timestamp? timestamp) =>
+        timestamp is not null
+            ? new DateTimeOffset(timestamp.ToDateTime(), TimeSpan.Zero)
+            : DateTimeOffset.MinValue;
 }
