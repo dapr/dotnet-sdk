@@ -29,7 +29,9 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
         <ProjectReference Include="..\..\src\Dapr.Client\Dapr.Client.csproj" />
+        <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
         <ProjectReference Include="..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
     </ItemGroup>
 
