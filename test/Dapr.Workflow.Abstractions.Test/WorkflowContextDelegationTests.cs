@@ -73,6 +73,8 @@ public class WorkflowContextDelegationTests
         public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true) { }
         public override Guid NewGuid() => Guid.Empty;
 
+        public override PropagatedHistory? GetPropagatedHistory() => null;
+
         private sealed class NullLogger : Microsoft.Extensions.Logging.ILogger
         {
             IDisposable? Microsoft.Extensions.Logging.ILogger.BeginScope<TState>(TState state) => null;
