@@ -271,7 +271,6 @@ public sealed class ParallelExtensionsTest
         public override ILogger CreateReplaySafeLogger(string categoryName) => Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
         public override ILogger CreateReplaySafeLogger(Type type) => Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
         public override ILogger CreateReplaySafeLogger<T>() => Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
-        public override PropagatedHistory? GetPropagatedHistory() => null;
     }
 
     private sealed class SingleEnumerationEnumerable<T>(IEnumerable<T> inner) : IEnumerable<T>

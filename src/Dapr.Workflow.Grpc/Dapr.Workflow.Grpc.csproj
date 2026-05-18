@@ -22,11 +22,11 @@
     <ItemGroup>
         <Protobuf Include="attestation.proto" GrpcServices="None" />
         <Protobuf Include="backend_service.proto" GrpcServices="None" />
-        <Protobuf Include="history_events.proto" GrpcServices="None" />
-        <Protobuf Include="orchestration.proto" GrpcServices="None" />
-        <Protobuf Include="orchestrator_actions.proto" GrpcServices="None" />
+        <Protobuf Include="history_events.proto" GrpcServices="Client" />
+        <Protobuf Include="orchestration.proto" GrpcServices="Client" />
+        <Protobuf Include="orchestrator_actions.proto" GrpcServices="Client" />
         <Protobuf Include="orchestrator_service.proto" GrpcServices="Client" />
-        <Protobuf Include="runtime_state.proto" GrpcServices="None" />
+        <Protobuf Include="runtime_state.proto" GrpcServices="Client" />
     </ItemGroup>
     
     <ItemGroup>
