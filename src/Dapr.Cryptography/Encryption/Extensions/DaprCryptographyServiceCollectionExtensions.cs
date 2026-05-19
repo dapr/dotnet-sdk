@@ -39,10 +39,6 @@ public static class DaprCryptographyServiceCollectionExtensions
         services.AddTransient<IEncryptionStreamProcessor, EncryptionStreamProcessor>();
         return services
             .AddDaprClient<DaprEncryptionClient, DaprEncryptionGrpcClient, DaprCryptographyBuilder,
-                DaprEncryptionClientBuilder>(
-                config => new DaprEncryptionClientBuilder(config),
-                svc => new DaprCryptographyBuilder(svc),
-                configure,
-                lifetime);
+                DaprEncryptionClientBuilder>(configure, lifetime);
     }
 }
