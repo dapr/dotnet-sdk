@@ -32,5 +32,9 @@ public static class DaprJobsServiceCollectionExtensions
         this IServiceCollection services,
         Action<IServiceProvider, DaprJobsClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
-        services.AddDaprClient<DaprJobsClient, DaprJobsGrpcClient, DaprJobsBuilder, DaprJobsClientBuilder>(configure, lifetime);
+        services.AddDaprClient<DaprJobsClient, DaprJobsGrpcClient, DaprJobsBuilder, DaprJobsClientBuilder>(
+            config => new DaprJobsClientBuilder(config),
+            svc => new DaprJobsBuilder(svc),
+            configure,
+            lifetime);
 }
