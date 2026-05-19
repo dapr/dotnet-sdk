@@ -34,5 +34,9 @@ public static class DaprDistributedLockServiceCollectionExtensions
         this IServiceCollection services,
         Action<IServiceProvider, DaprDistributedLockBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Scoped) =>
-        services.AddDaprClient<DaprDistributedLockClient, DaprDistributedLockGrpcClient, DaprLockBuilder, DaprDistributedLockBuilder>(configure, lifetime);
+        services.AddDaprClient<DaprDistributedLockClient, DaprDistributedLockGrpcClient, DaprLockBuilder, DaprDistributedLockBuilder>(
+            config => new DaprDistributedLockBuilder(config),
+            svc => new DaprLockBuilder(svc),
+            configure,
+            lifetime);
 }

@@ -9,6 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="Grpc.Net.Client" />
       <PackageReference Include="Microsoft.Extensions.Logging" />
     </ItemGroup>
 
