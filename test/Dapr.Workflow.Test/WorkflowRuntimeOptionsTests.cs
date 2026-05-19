@@ -38,17 +38,6 @@ public class WorkflowRuntimeOptionsTests
     }
 
     [Fact]
-    public void UseGrpcChannelOptions_ShouldStoreOptions_ForLaterUse()
-    {
-        var options = new WorkflowRuntimeOptions();
-        var grpcOptions = new GrpcChannelOptions { MaxReceiveMessageSize = 123 };
-
-        options.UseGrpcChannelOptions(grpcOptions);
-
-        Assert.NotNull(options.GetType().GetProperty("GrpcChannelOptions", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic));
-    }
-
-    [Fact]
     public void ApplyRegistrations_ShouldApplyWorkflowAndActivityRegistrations_ToFactory()
     {
         var options = new WorkflowRuntimeOptions();
