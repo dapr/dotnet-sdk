@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Copyright 2022 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,33 +11,29 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Workflow.Abstractions;
+using Dapr.Workflow.Worker;
 using Grpc.Net.Client;
 
 namespace Dapr.Workflow;
-
-using Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Worker;
 
 /// <summary>
 /// Defines runtime options for workflows.
 /// </summary>
 public sealed class WorkflowRuntimeOptions
 {
-    private readonly List<Action<WorkflowsFactory>> _registrationActions = [];
+    private readonly List<Action<IWorkflowsFactory>> _registrationActions = [];
     private int _maxConcurrentWorkflows = 100;
     private int _maxConcurrentActivities = 100;
-    
+
+    /// <summary>
+    /// Gets or sets the gRPC channel options used for connecting to the Dapr sidecar.
+    /// </summary>
+    public GrpcChannelOptions? GrpcChannelOptions { get; private set; }
+
     /// <summary>
     /// Gets the maximum number of concurrent workflow instances that can be executed at the same time.
     /// </summary>
-    /// <remarks>
-    /// The default is 100. Setting this to a higher value can improve throughput but will also increase memory
-    /// usage.
-    /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when value is less than 1.</exception>
     [Obsolete("This property is obsolete and no longer does anything - please use the options on the Dapr runtime instead. This property will be removed in a future SDK release.")]
     public int MaxConcurrentWorkflows
     {
@@ -52,11 +48,6 @@ public sealed class WorkflowRuntimeOptions
     /// <summary>
     /// Gets the maximum number of concurrent activities that can be executed at the same time.
     /// </summary>
-    /// <remarks>
-    /// The default value is 100. Setting this to a higher value can improve throughput, but will also increase
-    /// memory usage.
-    /// </remarks>
-    /// <exception cref="ArgumentOutOfRangeException">Thrown when value is less than 1.</exception>
     [Obsolete("This property is obsolete and no longer does anything - please use the options on the Dapr runtime instead. This property will be removed in a future SDK release.")]
     public int MaxConcurrentActivities
     {
@@ -67,68 +58,7 @@ public sealed class WorkflowRuntimeOptions
             _maxConcurrentActivities = value;
         }
     }
-    
-    /// <summary>
-    /// Gets or sets the gRPC channel options used for connecting to the Dapr sidecar.
-    /// </summary>
-    internal GrpcChannelOptions? GrpcChannelOptions { get; private set; }
 
-    /// <summary>
-    /// Registers a workflow as a function that takes a specified input type and returns a specified output type.
-    /// </summary>
-    /// <typeparam name="TInput">The type of the workflow input.</typeparam>
-    /// <typeparam name="TOutput">The type of the workflow output.</typeparam>
-    /// <param name="name">Workflow name.</param>
-    /// <param name="implementation">Function implementing the workflow definition.</param>
-    public void RegisterWorkflow<TInput, TOutput>(string name, Func<WorkflowContext, TInput, Task<TOutput>> implementation)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        ArgumentNullException.ThrowIfNull(implementation);
-        
-        // Store as a registration action to be applied to WorkflowsFactory later
-        _registrationActions.Add(factory => factory.RegisterWorkflow(name, implementation));
-    }
-
-    /// <summary>
-    /// Registers a workflow class that derives from <see cref="Workflow{TInput, TOutput}"/>.
-    /// </summary>
-    /// <typeparam name="TWorkflow">The <see cref="Workflow{TInput, TOutput}"/> type to register.</typeparam>
-    /// <param name="name">
-    /// Workflow name. If not specified, then the name of <typeparamref name="TWorkflow"/> is used.
-    /// </param>
-    public void RegisterWorkflow<TWorkflow>(string? name = null) where TWorkflow : class, IWorkflow
-    {
-        _registrationActions.Add(factory => factory.RegisterWorkflow<TWorkflow>(name));
-    }
-    
-    /// <summary>
-    /// Registers a workflow activity as a function that takes a specified input type and returns a specified output type.
-    /// </summary>
-    /// <typeparam name="TInput">The type of the activity input.</typeparam>
-    /// <typeparam name="TOutput">The type of the activity output.</typeparam>
-    /// <param name="name">Activity name.</param>
-    /// <param name="implementation">Activity implementation.</param>
-    public void RegisterActivity<TInput, TOutput>(string name, Func<WorkflowActivityContext, TInput, Task<TOutput>> implementation)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        ArgumentNullException.ThrowIfNull(implementation);
-        
-        _registrationActions.Add(factory => factory.RegisterActivity(name, implementation));
-    }
-    
-    /// <summary>
-    /// Registers a workflow activity class that derives from <see cref="WorkflowActivity{TInput, TOutput}"/>.
-    /// </summary>
-    /// <typeparam name="TActivity">The <see cref="WorkflowActivity{TInput, TOutput}"/> type to register.</typeparam>
-    /// <param name="name">
-    /// Activity name. If not specified, then the name of <typeparamref name="TActivity"/> is used.
-    /// </param>
-    public void RegisterActivity<TActivity>(string? name = null)
-        where TActivity : class, IWorkflowActivity
-    {
-        _registrationActions.Add(factory => factory.RegisterActivity<TActivity>(name));
-    }
-    
     /// <summary>
     /// Uses the provided <paramref name="grpcChannelOptions" /> for creating the <see cref="GrpcChannel" />.
     /// </summary>
@@ -140,15 +70,49 @@ public sealed class WorkflowRuntimeOptions
         ArgumentNullException.ThrowIfNull(grpcChannelOptions);
         GrpcChannelOptions = grpcChannelOptions;
     }
-    
+
+    /// <summary>
+    /// Registers a workflow as a function that takes a specified input type and returns a specified output type.
+    /// </summary>
+    public void RegisterWorkflow<TInput, TOutput>(string name, Func<WorkflowContext, TInput, Task<TOutput>> implementation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(implementation);
+        _registrationActions.Add(factory => factory.RegisterWorkflow(name, implementation));
+    }
+
+    /// <summary>
+    /// Registers a workflow class that derives from <see cref="Workflow{TInput, TOutput}"/>.
+    /// </summary>
+    public void RegisterWorkflow<TWorkflow>(string? name = null) where TWorkflow : class, IWorkflow
+    {
+        _registrationActions.Add(factory => factory.RegisterWorkflow<TWorkflow>(name));
+    }
+
+    /// <summary>
+    /// Registers a workflow activity as a function that takes a specified input type and returns a specified output type.
+    /// </summary>
+    public void RegisterActivity<TInput, TOutput>(string name, Func<WorkflowActivityContext, TInput, Task<TOutput>> implementation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(implementation);
+        _registrationActions.Add(factory => factory.RegisterActivity(name, implementation));
+    }
+
+    /// <summary>
+    /// Registers a workflow activity class that derives from <see cref="WorkflowActivity{TInput, TOutput}"/>.
+    /// </summary>
+    public void RegisterActivity<TActivity>(string? name = null) where TActivity : class, IWorkflowActivity
+    {
+        _registrationActions.Add(factory => factory.RegisterActivity<TActivity>(name));
+    }
+
     /// <summary>
     /// Applies all registrations to the provided factory.
     /// </summary>
-    /// <param name="factory">The factory to apply registrations to.</param>
-    internal void ApplyRegistrations(WorkflowsFactory factory)
+    public void ApplyRegistrations(IWorkflowsFactory factory)
     {
         ArgumentNullException.ThrowIfNull(factory);
-        
         foreach (var action in _registrationActions)
         {
             action(factory);
