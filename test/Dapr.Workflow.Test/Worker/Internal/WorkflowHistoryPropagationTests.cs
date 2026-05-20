@@ -174,19 +174,20 @@ public class WorkflowHistoryPropagationTests
     [Fact]
     public void GetPropagatedHistory_PreservesChunkOrder()
     {
-        var parent = MakeChunk("p-app", "p-inst", "ParentWf",
-            MakeEvent(1, e => e.ExecutionStarted = new ExecutionStartedEvent { Name = "ParentWf" }));
+        // Chunks arrive oldest-first: grandparent at index 0, immediate parent last.
         var grandparent = MakeChunk("gp-app", "gp-inst", "GrandparentWf",
             MakeEvent(1, e => e.ExecutionStarted = new ExecutionStartedEvent { Name = "GrandparentWf" }));
+        var parent = MakeChunk("p-app", "p-inst", "ParentWf",
+            MakeEvent(1, e => e.ExecutionStarted = new ExecutionStartedEvent { Name = "ParentWf" }));
 
-        var context = CreateContext(incomingPropagatedHistory: [parent, grandparent]);
+        var context = CreateContext(incomingPropagatedHistory: [grandparent, parent]);
         var history = context.GetPropagatedHistory();
 
         Assert.NotNull(history);
         var workflows = history.GetWorkflows();
         Assert.Equal(2, workflows.Count);
-        Assert.Equal("p-inst", workflows[0].InstanceId);
-        Assert.Equal("gp-inst", workflows[1].InstanceId);
+        Assert.Equal("gp-inst", workflows[0].InstanceId);
+        Assert.Equal("p-inst", workflows[1].InstanceId);
     }
 
     [Fact]
