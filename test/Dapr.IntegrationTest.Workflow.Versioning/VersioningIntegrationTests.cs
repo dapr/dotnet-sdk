@@ -132,7 +132,7 @@ public sealed class VersioningIntegrationTests
 
             await WaitForWorkflowExistsAsync(client2, instanceId, TimeSpan.FromMinutes(1));
             await RaiseEventWithRetryAsync(client2, instanceId, ResumeEventName, "resume", TimeSpan.FromMinutes(1));
-            using var completionCts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            using var completionCts = new CancellationTokenSource(TimeSpan.FromMinutes(1));
             var resumedState = await client2.WaitForWorkflowCompletionAsync(instanceId, cancellation: completionCts.Token);
             Assert.Equal(WorkflowRuntimeStatus.Completed, resumedState.RuntimeStatus);
             Assert.Equal("v1:stalled:resume", resumedState.ReadOutputAs<string>());
