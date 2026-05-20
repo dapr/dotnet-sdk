@@ -24,9 +24,13 @@ namespace Dapr.Workflow.Test.Worker.Internal;
 
 /// <summary>
 /// Tests for workflow history propagation: the SDK API surface for declaring
-/// a propagation scope on <see cref="ChildWorkflowTaskOptions"/>, propagating
-/// the scope to the outgoing <see cref="CreateChildWorkflowAction"/>, and
-/// exposing inbound propagated history through <see cref="WorkflowContext.GetPropagatedHistory"/>.
+/// a propagation scope on <see cref="WorkflowTaskOptions"/> /
+/// <see cref="ChildWorkflowTaskOptions"/>, propagating the scope to the
+/// outgoing <see cref="ScheduleTaskAction"/> / <see cref="CreateChildWorkflowAction"/>,
+/// and exposing inbound propagated history through
+/// <see cref="WorkflowContext.GetPropagatedHistory"/> as typed
+/// <see cref="WorkflowResult"/> / <see cref="ActivityResult"/> /
+/// <see cref="ChildWorkflowResult"/> records.
 /// </summary>
 public class WorkflowHistoryPropagationTests
 {
@@ -58,7 +62,7 @@ public class WorkflowHistoryPropagationTests
         var ev = new HistoryEvent
         {
             EventId = eventId,
-            Timestamp = Timestamp.FromDateTime(timestamp ?? StartTime)
+            Timestamp = Timestamp.FromDateTime(timestamp ?? StartTime),
         };
         configure(ev);
         return ev;
@@ -80,8 +84,57 @@ public class WorkflowHistoryPropagationTests
         return chunk;
     }
 
+    private static HistoryEvent TaskScheduled(int eventId, string name, string? input = null) =>
+        MakeEvent(eventId, e => e.TaskScheduled = new TaskScheduledEvent
+        {
+            Name = name,
+            Input = input is null ? null : new StringValue { Value = input },
+        });
+
+    private static HistoryEvent TaskCompleted(int eventId, int scheduledId, string? result = null) =>
+        MakeEvent(eventId, e => e.TaskCompleted = new TaskCompletedEvent
+        {
+            TaskScheduledId = scheduledId,
+            Result = result is null ? null : new StringValue { Value = result },
+        });
+
+    private static HistoryEvent TaskFailed(int eventId, int scheduledId, string errorMessage) =>
+        MakeEvent(eventId, e => e.TaskFailed = new TaskFailedEvent
+        {
+            TaskScheduledId = scheduledId,
+            FailureDetails = new TaskFailureDetails
+            {
+                ErrorType = "TestException",
+                ErrorMessage = errorMessage,
+            },
+        });
+
+    private static HistoryEvent ChildCreated(int eventId, string name) =>
+        MakeEvent(eventId, e => e.ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent
+        {
+            Name = name,
+        });
+
+    private static HistoryEvent ChildCompleted(int eventId, int creationId, string? result = null) =>
+        MakeEvent(eventId, e => e.ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent
+        {
+            TaskScheduledId = creationId,
+            Result = result is null ? null : new StringValue { Value = result },
+        });
+
+    private static HistoryEvent ChildFailed(int eventId, int creationId, string errorMessage) =>
+        MakeEvent(eventId, e => e.ChildWorkflowInstanceFailed = new ChildWorkflowInstanceFailedEvent
+        {
+            TaskScheduledId = creationId,
+            FailureDetails = new TaskFailureDetails
+            {
+                ErrorType = "TestException",
+                ErrorMessage = errorMessage,
+            },
+        });
+
     // ------------------------------------------------------------------
-    //  GetPropagatedHistory
+    //  GetPropagatedHistory — chunk shape and ordering
     // ------------------------------------------------------------------
 
     [Fact]
@@ -99,7 +152,7 @@ public class WorkflowHistoryPropagationTests
     }
 
     [Fact]
-    public void GetPropagatedHistory_ReturnsSingleEntry_WhenOneChunkPropagated()
+    public void GetPropagatedHistory_ReturnsSingleWorkflow_WhenOneChunkPropagated()
     {
         var chunk = MakeChunk("parent-app", "parent-instance", "ParentWorkflow",
             MakeEvent(1, e => e.ExecutionStarted = new ExecutionStartedEvent { Name = "ParentWorkflow" }));
@@ -109,12 +162,13 @@ public class WorkflowHistoryPropagationTests
         var history = context.GetPropagatedHistory();
 
         Assert.NotNull(history);
-        Assert.Single(history.Entries);
-        Assert.Equal("parent-app", history.Entries[0].AppId);
-        Assert.Equal("parent-instance", history.Entries[0].InstanceId);
-        Assert.Equal("ParentWorkflow", history.Entries[0].WorkflowName);
-        Assert.Single(history.Entries[0].Events);
-        Assert.Equal(HistoryEventKind.ExecutionStarted, history.Entries[0].Events[0].Kind);
+        var workflows = history.GetWorkflows();
+        Assert.Single(workflows);
+        Assert.Equal("parent-app", workflows[0].AppId);
+        Assert.Equal("parent-instance", workflows[0].InstanceId);
+        Assert.Equal("ParentWorkflow", workflows[0].Name);
+        Assert.Empty(workflows[0].Activities);
+        Assert.Empty(workflows[0].ChildWorkflows);
     }
 
     [Fact]
@@ -129,61 +183,10 @@ public class WorkflowHistoryPropagationTests
         var history = context.GetPropagatedHistory();
 
         Assert.NotNull(history);
-        Assert.Equal(2, history.Entries.Count);
-        Assert.Equal("p-inst", history.Entries[0].InstanceId);
-        Assert.Equal("gp-inst", history.Entries[1].InstanceId);
-    }
-
-    [Fact]
-    public void GetPropagatedHistory_MapsAllHistoryEventKinds()
-    {
-        var mappings = new Dictionary<HistoryEvent, HistoryEventKind>
-        {
-            { MakeEvent(1, e => e.ExecutionStarted = new ExecutionStartedEvent()), HistoryEventKind.ExecutionStarted },
-            { MakeEvent(2, e => e.ExecutionCompleted = new ExecutionCompletedEvent()), HistoryEventKind.ExecutionCompleted },
-            { MakeEvent(3, e => e.ExecutionTerminated = new ExecutionTerminatedEvent()), HistoryEventKind.ExecutionTerminated },
-            { MakeEvent(4, e => e.TaskScheduled = new TaskScheduledEvent { Name = "a" }), HistoryEventKind.TaskScheduled },
-            { MakeEvent(5, e => e.TaskCompleted = new TaskCompletedEvent()), HistoryEventKind.TaskCompleted },
-            { MakeEvent(6, e => e.TaskFailed = new TaskFailedEvent()), HistoryEventKind.TaskFailed },
-            { MakeEvent(7, e => e.ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent()), HistoryEventKind.SubOrchestrationInstanceCreated },
-            { MakeEvent(8, e => e.ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent()), HistoryEventKind.SubOrchestrationInstanceCompleted },
-            { MakeEvent(9, e => e.ChildWorkflowInstanceFailed = new ChildWorkflowInstanceFailedEvent()), HistoryEventKind.SubOrchestrationInstanceFailed },
-            { MakeEvent(10, e => e.TimerCreated = new TimerCreatedEvent()), HistoryEventKind.TimerCreated },
-            { MakeEvent(11, e => e.TimerFired = new TimerFiredEvent()), HistoryEventKind.TimerFired },
-            { MakeEvent(12, e => e.WorkflowStarted = new WorkflowStartedEvent()), HistoryEventKind.OrchestratorStarted },
-            { MakeEvent(13, e => e.WorkflowCompleted = new WorkflowCompletedEvent()), HistoryEventKind.OrchestratorCompleted },
-            { MakeEvent(14, e => e.EventSent = new EventSentEvent()), HistoryEventKind.EventSent },
-            { MakeEvent(15, e => e.EventRaised = new EventRaisedEvent()), HistoryEventKind.EventRaised },
-            { MakeEvent(16, e => e.ContinueAsNew = new ContinueAsNewEvent()), HistoryEventKind.ContinueAsNew },
-            { MakeEvent(17, e => e.ExecutionSuspended = new ExecutionSuspendedEvent()), HistoryEventKind.ExecutionSuspended },
-            { MakeEvent(18, e => e.ExecutionResumed = new ExecutionResumedEvent()), HistoryEventKind.ExecutionResumed },
-        };
-
-        var chunk = MakeChunk("app", "inst", "Wf", mappings.Keys.ToArray());
-        var context = CreateContext(incomingPropagatedHistory: [chunk]);
-        var entry = context.GetPropagatedHistory()!.Entries.Single();
-
-        Assert.Equal(mappings.Count, entry.Events.Count);
-        var expectedKinds = mappings.Values.ToList();
-        for (var i = 0; i < entry.Events.Count; i++)
-        {
-            Assert.Equal(expectedKinds[i], entry.Events[i].Kind);
-        }
-    }
-
-    [Fact]
-    public void GetPropagatedHistory_MapsUnsetEventTypeToUnknown()
-    {
-        // An event with no oneof case set should be mapped to Unknown rather than crashing.
-        var bareEvent = new HistoryEvent { EventId = 42, Timestamp = Timestamp.FromDateTime(StartTime) };
-        var chunk = MakeChunk("app", "inst", "Wf", bareEvent);
-
-        var context = CreateContext(incomingPropagatedHistory: [chunk]);
-        var entry = context.GetPropagatedHistory()!.Entries.Single();
-
-        Assert.Single(entry.Events);
-        Assert.Equal(HistoryEventKind.Unknown, entry.Events[0].Kind);
-        Assert.Equal(42, entry.Events[0].EventId);
+        var workflows = history.GetWorkflows();
+        Assert.Equal(2, workflows.Count);
+        Assert.Equal("p-inst", workflows[0].InstanceId);
+        Assert.Equal("gp-inst", workflows[1].InstanceId);
     }
 
     [Fact]
@@ -195,111 +198,231 @@ public class WorkflowHistoryPropagationTests
             InstanceId = "inst",
             WorkflowName = "Wf",
         };
-        // Add a malformed event (not a valid serialized HistoryEvent).
-        chunk.RawEvents.Add(ByteString.CopyFrom(new byte[] { 0xff, 0xff, 0xff, 0xff, 0xff }));
-        // Followed by a well-formed event.
-        chunk.RawEvents.Add(MakeEvent(7, e => e.TaskCompleted = new TaskCompletedEvent()).ToByteString());
+        chunk.RawEvents.Add(ByteString.CopyFrom([0xff, 0xff, 0xff, 0xff, 0xff]));
+        chunk.RawEvents.Add(TaskScheduled(eventId: 7, name: "Echo").ToByteString());
 
         var context = CreateContext(incomingPropagatedHistory: [chunk]);
-        var entry = context.GetPropagatedHistory()!.Entries.Single();
+        var workflow = context.GetPropagatedHistory()!.GetWorkflows().Single();
 
-        // Only the well-formed event survives.
-        Assert.Single(entry.Events);
-        Assert.Equal(7, entry.Events[0].EventId);
-        Assert.Equal(HistoryEventKind.TaskCompleted, entry.Events[0].Kind);
+        Assert.Single(workflow.Activities);
+        Assert.Equal("Echo", workflow.Activities[0].Name);
     }
 
+    // ------------------------------------------------------------------
+    //  Activity resolution from raw events
+    // ------------------------------------------------------------------
+
     [Fact]
-    public void GetPropagatedHistory_PreservesEventTimestamp()
+    public void ActivityResult_ResolvedAs_CompletedWithInputAndOutput()
     {
-        var when = new DateTime(2026, 06, 15, 12, 30, 45, DateTimeKind.Utc);
         var chunk = MakeChunk("app", "inst", "Wf",
-            MakeEvent(1, e => e.ExecutionStarted = new ExecutionStartedEvent(), timestamp: when));
+            TaskScheduled(eventId: 1, name: "ValidateMerchant", input: "\"merchant-1\""),
+            TaskCompleted(eventId: 2, scheduledId: 1, result: "true"));
 
         var context = CreateContext(incomingPropagatedHistory: [chunk]);
-        var entry = context.GetPropagatedHistory()!.Entries.Single();
+        var activity = context.GetPropagatedHistory()!
+            .GetLastWorkflowByName("Wf")
+            .GetLastActivityByName("ValidateMerchant");
 
-        Assert.Equal(when, entry.Events[0].Timestamp.UtcDateTime);
+        Assert.Equal("ValidateMerchant", activity.Name);
+        Assert.True(activity.Started);
+        Assert.True(activity.Completed);
+        Assert.False(activity.Failed);
+        Assert.Equal("\"merchant-1\"", activity.Input);
+        Assert.Equal("true", activity.Output);
+        Assert.Null(activity.FailureDetails);
+    }
+
+    [Fact]
+    public void ActivityResult_ResolvedAs_FailedWithFailureDetails()
+    {
+        var chunk = MakeChunk("app", "inst", "Wf",
+            TaskScheduled(eventId: 1, name: "ValidateCard"),
+            TaskFailed(eventId: 2, scheduledId: 1, errorMessage: "card declined"));
+
+        var context = CreateContext(incomingPropagatedHistory: [chunk]);
+        var activity = context.GetPropagatedHistory()!
+            .GetLastWorkflowByName("Wf")
+            .GetLastActivityByName("ValidateCard");
+
+        Assert.False(activity.Completed);
+        Assert.True(activity.Failed);
+        Assert.NotNull(activity.FailureDetails);
+        Assert.Equal("card declined", activity.FailureDetails.ErrorMessage);
+    }
+
+    [Fact]
+    public void ActivityResult_ResolvedAs_StartedOnly_WhenNotYetCompleted()
+    {
+        var chunk = MakeChunk("app", "inst", "Wf",
+            TaskScheduled(eventId: 1, name: "PendingCheck", input: "\"in\""));
+
+        var context = CreateContext(incomingPropagatedHistory: [chunk]);
+        var activity = context.GetPropagatedHistory()!
+            .GetLastWorkflowByName("Wf")
+            .GetLastActivityByName("PendingCheck");
+
+        Assert.True(activity.Started);
+        Assert.False(activity.Completed);
+        Assert.False(activity.Failed);
+        Assert.Equal("\"in\"", activity.Input);
+        Assert.Null(activity.Output);
+    }
+
+    [Fact]
+    public void GetLastActivityByName_ReturnsMostRecentInvocation_WhenRetried()
+    {
+        // Same activity scheduled twice — first completes, second fails. GetLast returns the failed (most recent).
+        var chunk = MakeChunk("app", "inst", "Wf",
+            TaskScheduled(eventId: 1, name: "ValidateCard", input: "\"first\""),
+            TaskCompleted(eventId: 2, scheduledId: 1, result: "true"),
+            TaskScheduled(eventId: 3, name: "ValidateCard", input: "\"second\""),
+            TaskFailed(eventId: 4, scheduledId: 3, errorMessage: "card declined"));
+
+        var context = CreateContext(incomingPropagatedHistory: [chunk]);
+        var workflow = context.GetPropagatedHistory()!.GetLastWorkflowByName("Wf");
+
+        var all = workflow.GetActivitiesByName("ValidateCard");
+        Assert.Equal(2, all.Count);
+        Assert.True(all[0].Completed);
+        Assert.True(all[1].Failed);
+
+        var last = workflow.GetLastActivityByName("ValidateCard");
+        Assert.True(last.Failed);
+        Assert.Equal("card declined", last.FailureDetails!.ErrorMessage);
+    }
+
+    [Fact]
+    public void GetLastActivityByName_Throws_WhenMissing()
+    {
+        var chunk = MakeChunk("app", "inst", "Wf",
+            TaskScheduled(eventId: 1, name: "Real"));
+
+        var context = CreateContext(incomingPropagatedHistory: [chunk]);
+        var workflow = context.GetPropagatedHistory()!.GetLastWorkflowByName("Wf");
+
+        Assert.Throws<PropagationNotFoundException>(() => workflow.GetLastActivityByName("Missing"));
     }
 
     // ------------------------------------------------------------------
-    //  PropagatedHistory filters
+    //  Child workflow resolution
     // ------------------------------------------------------------------
 
     [Fact]
-    public void FilterByAppId_ReturnsOnlyMatchingEntries_CaseInsensitive()
+    public void ChildWorkflowResult_ResolvedAs_Completed()
     {
-        var history = new PropagatedHistory(new[]
-        {
-            new PropagatedHistoryEntry("app-a", "i1", "WfA", []),
-            new PropagatedHistoryEntry("app-b", "i2", "WfB", []),
-            new PropagatedHistoryEntry("APP-A", "i3", "WfA2", []),
-        });
+        var chunk = MakeChunk("app", "inst", "Wf",
+            ChildCreated(eventId: 1, name: "ProcessPayment"),
+            ChildCompleted(eventId: 2, creationId: 1, result: "\"paid\""));
 
-        var filtered = history.FilterByAppId("app-a");
+        var context = CreateContext(incomingPropagatedHistory: [chunk]);
+        var child = context.GetPropagatedHistory()!
+            .GetLastWorkflowByName("Wf")
+            .GetLastChildWorkflowByName("ProcessPayment");
 
-        Assert.Equal(2, filtered.Entries.Count);
-        Assert.All(filtered.Entries, e => Assert.Equal("app-a", e.AppId, StringComparer.OrdinalIgnoreCase));
+        Assert.True(child.Started);
+        Assert.True(child.Completed);
+        Assert.False(child.Failed);
+        Assert.Equal("\"paid\"", child.Output);
     }
 
     [Fact]
-    public void FilterByInstanceId_ReturnsOnlyMatchingEntry_CaseSensitive()
+    public void ChildWorkflowResult_ResolvedAs_Failed()
     {
-        var history = new PropagatedHistory(new[]
-        {
-            new PropagatedHistoryEntry("app", "Instance-1", "Wf", []),
-            new PropagatedHistoryEntry("app", "instance-2", "Wf", []),
-        });
+        var chunk = MakeChunk("app", "inst", "Wf",
+            ChildCreated(eventId: 1, name: "ProcessPayment"),
+            ChildFailed(eventId: 2, creationId: 1, errorMessage: "boom"));
 
-        Assert.Single(history.FilterByInstanceId("Instance-1").Entries);
-        Assert.Empty(history.FilterByInstanceId("instance-1").Entries);
+        var context = CreateContext(incomingPropagatedHistory: [chunk]);
+        var child = context.GetPropagatedHistory()!
+            .GetLastWorkflowByName("Wf")
+            .GetLastChildWorkflowByName("ProcessPayment");
+
+        Assert.True(child.Failed);
+        Assert.Equal("boom", child.FailureDetails!.ErrorMessage);
     }
 
     [Fact]
-    public void FilterByWorkflowName_ReturnsOnlyMatchingEntries_CaseSensitive()
+    public void GetLastChildWorkflowByName_Throws_WhenMissing()
     {
-        var history = new PropagatedHistory(new[]
-        {
-            new PropagatedHistoryEntry("app", "i1", "PaymentWorkflow", []),
-            new PropagatedHistoryEntry("app", "i2", "OrderWorkflow", []),
-            new PropagatedHistoryEntry("app", "i3", "PaymentWorkflow", []),
-            new PropagatedHistoryEntry("app", "i4", "paymentworkflow", []),
-        });
+        var chunk = MakeChunk("app", "inst", "Wf");
+        var context = CreateContext(incomingPropagatedHistory: [chunk]);
+        var workflow = context.GetPropagatedHistory()!.GetLastWorkflowByName("Wf");
 
-        var filtered = history.FilterByWorkflowName("PaymentWorkflow");
+        Assert.Throws<PropagationNotFoundException>(() => workflow.GetLastChildWorkflowByName("Missing"));
+    }
 
-        Assert.Equal(2, filtered.Entries.Count);
-        Assert.All(filtered.Entries, e => Assert.Equal("PaymentWorkflow", e.WorkflowName));
+    // ------------------------------------------------------------------
+    //  Chain-level helpers
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void GetAppIds_ReturnsOrderedDeduplicatedList()
+    {
+        var history = new PropagatedHistory([
+            new WorkflowResult("i1", "appA", "WfA", [], []),
+            new WorkflowResult("i2", "appB", "WfB", [], []),
+            new WorkflowResult("i3", "appA", "WfA2", [], []),
+        ]);
+
+        Assert.Equal(["appA", "appB"], history.GetAppIds());
     }
 
     [Fact]
-    public void Filters_ThrowOnEmptyOrWhitespace()
+    public void GetLastWorkflowByName_ReturnsMostRecent_WhenNameRepeated()
+    {
+        var history = new PropagatedHistory([
+            new WorkflowResult("wf-1", "app", "Loop", [], []),
+            new WorkflowResult("wf-2", "app", "Loop", [], []),
+        ]);
+
+        Assert.Equal("wf-2", history.GetLastWorkflowByName("Loop").InstanceId);
+        Assert.Equal(2, history.GetWorkflowsByName("Loop").Count);
+    }
+
+    [Fact]
+    public void GetLastWorkflowByName_Throws_WhenMissing()
     {
         var history = new PropagatedHistory([]);
-        Assert.Throws<ArgumentException>(() => history.FilterByAppId(string.Empty));
-        Assert.Throws<ArgumentException>(() => history.FilterByInstanceId("   "));
-        Assert.Throws<ArgumentException>(() => history.FilterByWorkflowName(string.Empty));
+        Assert.Throws<PropagationNotFoundException>(() => history.GetLastWorkflowByName("Missing"));
     }
 
     [Fact]
-    public void PropagatedHistory_Ctor_ThrowsOnNullEntries()
+    public void PropagatedHistory_Ctor_ThrowsOnNullWorkflows()
     {
         Assert.Throws<ArgumentNullException>(() => new PropagatedHistory(null!));
     }
 
     // ------------------------------------------------------------------
-    //  ChildWorkflowTaskOptions.WithHistoryPropagation
+    //  Scheduling helpers — WithHistoryPropagation
     // ------------------------------------------------------------------
 
     [Fact]
-    public void WithHistoryPropagation_SetsScope()
+    public void WorkflowTaskOptions_WithHistoryPropagation_SetsScope()
+    {
+        var options = new WorkflowTaskOptions().WithHistoryPropagation(HistoryPropagationScope.Lineage);
+        Assert.Equal(HistoryPropagationScope.Lineage, options.PropagationScope);
+    }
+
+    [Fact]
+    public void WorkflowTaskOptions_WithHistoryPropagation_DoesNotMutateOriginal()
+    {
+        var original = new WorkflowTaskOptions();
+        var updated = original.WithHistoryPropagation(HistoryPropagationScope.OwnHistory);
+
+        Assert.Equal(HistoryPropagationScope.None, original.PropagationScope);
+        Assert.Equal(HistoryPropagationScope.OwnHistory, updated.PropagationScope);
+    }
+
+    [Fact]
+    public void ChildWorkflowTaskOptions_WithHistoryPropagation_SetsScope()
     {
         var options = new ChildWorkflowTaskOptions().WithHistoryPropagation(HistoryPropagationScope.Lineage);
         Assert.Equal(HistoryPropagationScope.Lineage, options.PropagationScope);
     }
 
     [Fact]
-    public void WithHistoryPropagation_DoesNotMutateOriginal()
+    public void ChildWorkflowTaskOptions_WithHistoryPropagation_PreservesOtherFields()
     {
         var original = new ChildWorkflowTaskOptions(InstanceId: "id-1");
         var updated = original.WithHistoryPropagation(HistoryPropagationScope.OwnHistory);
@@ -309,8 +432,65 @@ public class WorkflowHistoryPropagationTests
         Assert.Equal("id-1", updated.InstanceId);
     }
 
+    [Fact]
+    public void WorkflowHistory_PropagateLineage_ReturnsLineageScope()
+    {
+        Assert.Equal(HistoryPropagationScope.Lineage, WorkflowHistory.PropagateLineage());
+    }
+
+    [Fact]
+    public void WorkflowHistory_PropagateOwnHistory_ReturnsOwnHistoryScope()
+    {
+        Assert.Equal(HistoryPropagationScope.OwnHistory, WorkflowHistory.PropagateOwnHistory());
+    }
+
     // ------------------------------------------------------------------
-    //  CallChildWorkflowAsync — outbound HistoryPropagationScope on action
+    //  Outbound action scope — activity path
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void CallActivityAsync_DefaultScope_LeavesActionScopeUnset()
+    {
+        var context = CreateContext(instanceId: "parent", appId: "my-app");
+        _ = context.CallActivityAsync<string>("Echo");
+
+        var action = context.PendingActions
+            .Select(a => a.ScheduleTask)
+            .First(a => a is not null);
+
+        Assert.Equal(Dapr.DurableTask.Protobuf.HistoryPropagationScope.None, action.HistoryPropagationScope);
+    }
+
+    [Fact]
+    public void CallActivityAsync_WithOwnHistory_SetsScopeOnAction()
+    {
+        var context = CreateContext(instanceId: "parent", appId: "my-app");
+        _ = context.CallActivityAsync<string>("Echo",
+            options: new WorkflowTaskOptions(PropagationScope: HistoryPropagationScope.OwnHistory));
+
+        var action = context.PendingActions
+            .Select(a => a.ScheduleTask)
+            .First(a => a is not null);
+
+        Assert.Equal(Dapr.DurableTask.Protobuf.HistoryPropagationScope.OwnHistory, action.HistoryPropagationScope);
+    }
+
+    [Fact]
+    public void CallActivityAsync_WithLineage_SetsScopeOnAction()
+    {
+        var context = CreateContext(instanceId: "parent", appId: "my-app");
+        _ = context.CallActivityAsync<string>("Echo",
+            options: new WorkflowTaskOptions().WithHistoryPropagation(WorkflowHistory.PropagateLineage()));
+
+        var action = context.PendingActions
+            .Select(a => a.ScheduleTask)
+            .First(a => a is not null);
+
+        Assert.Equal(Dapr.DurableTask.Protobuf.HistoryPropagationScope.Lineage, action.HistoryPropagationScope);
+    }
+
+    // ------------------------------------------------------------------
+    //  Outbound action scope — child workflow path
     // ------------------------------------------------------------------
 
     [Fact]
@@ -323,7 +503,6 @@ public class WorkflowHistoryPropagationTests
             .Select(a => a.CreateChildWorkflow)
             .First(a => a is not null);
 
-        // Default = None => HistoryPropagationScope field is left at its proto default (None / unset).
         Assert.Equal(Dapr.DurableTask.Protobuf.HistoryPropagationScope.None, action.HistoryPropagationScope);
     }
 
@@ -346,7 +525,7 @@ public class WorkflowHistoryPropagationTests
     {
         var context = CreateContext(instanceId: "parent", appId: "my-app");
         _ = context.CallChildWorkflowAsync<string>("ChildWf",
-            options: new ChildWorkflowTaskOptions(PropagationScope: HistoryPropagationScope.Lineage));
+            options: new ChildWorkflowTaskOptions().WithHistoryPropagation(WorkflowHistory.PropagateLineage()));
 
         var action = context.PendingActions
             .Select(a => a.CreateChildWorkflow)

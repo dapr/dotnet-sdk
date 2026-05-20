@@ -170,16 +170,29 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             return await HandleHistoryMatch<T>(name, earlyCompletion, taskId);
         }
 
+        var scheduleTaskAction = new ScheduleTaskAction
+        {
+            Name = name,
+            Input = _workflowSerializer.Serialize(input),
+            Router = router,
+            TaskExecutionId = taskExecutionId
+        };
+
+        var activityPropagationScope = options?.PropagationScope ?? HistoryPropagationScope.None;
+        if (activityPropagationScope != HistoryPropagationScope.None)
+        {
+            scheduleTaskAction.HistoryPropagationScope = activityPropagationScope switch
+            {
+                HistoryPropagationScope.OwnHistory => Dapr.DurableTask.Protobuf.HistoryPropagationScope.OwnHistory,
+                HistoryPropagationScope.Lineage => Dapr.DurableTask.Protobuf.HistoryPropagationScope.Lineage,
+                _ => Dapr.DurableTask.Protobuf.HistoryPropagationScope.None
+            };
+        }
+
         _pendingActions.Add(taskId, new WorkflowAction
         {
             Id = taskId,
-            ScheduleTask = new ScheduleTaskAction
-            {
-                Name = name, 
-                Input = _workflowSerializer.Serialize(input),
-                Router = router,
-                TaskExecutionId = taskExecutionId
-            },
+            ScheduleTask = scheduleTaskAction,
             Router = router
         });
 
@@ -989,72 +1002,144 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     }
 
     /// <summary>
-    /// Converts a <see cref="PropagatedHistoryChunk"/> proto message to a domain <see cref="PropagatedHistoryEntry"/>.
+    /// Converts a <see cref="PropagatedHistoryChunk"/> proto message into a public-facing
+    /// <see cref="WorkflowResult"/> by resolving each scheduled activity and child workflow
+    /// against its matching completion/failure event.
     /// </summary>
     /// <remarks>
-    /// Each <see cref="PropagatedHistoryChunk.RawEvents"/> entry is the deterministic byte representation
-    /// of a single <see cref="HistoryEvent"/>; we parse the bytes here on demand rather than re-marshalling.
-    /// Malformed event bytes are skipped (mapped to nothing) so a single bad event cannot crash the workflow.
+    /// Each <see cref="PropagatedHistoryChunk.RawEvents"/> entry is the deterministic byte
+    /// representation of a single <see cref="HistoryEvent"/>; we parse the bytes here.
+    /// SDK retries reuse <c>TaskExecutionId</c>, so we match completions on
+    /// <c>TaskScheduledId</c> (the scheduling event ID) rather than execution ID.
+    /// Malformed event bytes are skipped — they cannot crash the workflow.
     /// </remarks>
-    private static PropagatedHistoryEntry ConvertChunk(PropagatedHistoryChunk chunk)
+    private static WorkflowResult ConvertChunk(PropagatedHistoryChunk chunk)
     {
-        var events = new List<PropagatedHistoryEvent>(chunk.RawEvents.Count);
+        var events = new List<HistoryEvent>(chunk.RawEvents.Count);
         foreach (var rawEvent in chunk.RawEvents)
         {
-            HistoryEvent? historyEvent;
             try
             {
-                historyEvent = HistoryEvent.Parser.ParseFrom(rawEvent);
+                events.Add(HistoryEvent.Parser.ParseFrom(rawEvent));
             }
             catch (InvalidProtocolBufferException)
             {
-                continue;
+                // Skip malformed events; a single bad event cannot poison the chunk.
             }
-
-            events.Add(new PropagatedHistoryEvent(
-                historyEvent.EventId,
-                MapEventKind(historyEvent),
-                MapTimestamp(historyEvent.Timestamp)));
         }
 
-        return new PropagatedHistoryEntry(
-            chunk.AppId,
+        var activities = new List<ActivityResult>();
+        var childWorkflows = new List<ChildWorkflowResult>();
+        foreach (var historyEvent in events)
+        {
+            switch (historyEvent.EventTypeCase)
+            {
+                case HistoryEvent.EventTypeOneofCase.TaskScheduled:
+                    activities.Add(ResolveActivity(events, historyEvent));
+                    break;
+                case HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCreated:
+                    childWorkflows.Add(ResolveChildWorkflow(events, historyEvent));
+                    break;
+            }
+        }
+
+        return new WorkflowResult(
             chunk.InstanceId,
+            chunk.AppId,
             chunk.WorkflowName,
-            events);
+            activities,
+            childWorkflows);
     }
 
     /// <summary>
-    /// Maps a proto <see cref="HistoryEvent"/> to a <see cref="HistoryEventKind"/>.
+    /// Builds an <see cref="ActivityResult"/> by matching <c>TaskCompleted</c> / <c>TaskFailed</c>
+    /// against the scheduling event's <c>EventId</c>.
     /// </summary>
-    private static HistoryEventKind MapEventKind(HistoryEvent e) => e.EventTypeCase switch
+    private static ActivityResult ResolveActivity(
+        IReadOnlyList<HistoryEvent> events,
+        HistoryEvent scheduleEvent)
     {
-        HistoryEvent.EventTypeOneofCase.ExecutionStarted => HistoryEventKind.ExecutionStarted,
-        HistoryEvent.EventTypeOneofCase.ExecutionCompleted => HistoryEventKind.ExecutionCompleted,
-        HistoryEvent.EventTypeOneofCase.ExecutionTerminated => HistoryEventKind.ExecutionTerminated,
-        HistoryEvent.EventTypeOneofCase.TaskScheduled => HistoryEventKind.TaskScheduled,
-        HistoryEvent.EventTypeOneofCase.TaskCompleted => HistoryEventKind.TaskCompleted,
-        HistoryEvent.EventTypeOneofCase.TaskFailed => HistoryEventKind.TaskFailed,
-        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCreated => HistoryEventKind.SubOrchestrationInstanceCreated,
-        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCompleted => HistoryEventKind.SubOrchestrationInstanceCompleted,
-        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceFailed => HistoryEventKind.SubOrchestrationInstanceFailed,
-        HistoryEvent.EventTypeOneofCase.TimerCreated => HistoryEventKind.TimerCreated,
-        HistoryEvent.EventTypeOneofCase.TimerFired => HistoryEventKind.TimerFired,
-        HistoryEvent.EventTypeOneofCase.WorkflowStarted => HistoryEventKind.OrchestratorStarted,
-        HistoryEvent.EventTypeOneofCase.WorkflowCompleted => HistoryEventKind.OrchestratorCompleted,
-        HistoryEvent.EventTypeOneofCase.EventSent => HistoryEventKind.EventSent,
-        HistoryEvent.EventTypeOneofCase.EventRaised => HistoryEventKind.EventRaised,
-        HistoryEvent.EventTypeOneofCase.ContinueAsNew => HistoryEventKind.ContinueAsNew,
-        HistoryEvent.EventTypeOneofCase.ExecutionSuspended => HistoryEventKind.ExecutionSuspended,
-        HistoryEvent.EventTypeOneofCase.ExecutionResumed => HistoryEventKind.ExecutionResumed,
-        _ => HistoryEventKind.Unknown
-    };
+        var scheduled = scheduleEvent.TaskScheduled;
+        var scheduleId = scheduleEvent.EventId;
+        var completed = false;
+        var failed = false;
+        string? output = null;
+        WorkflowTaskFailureDetails? failureDetails = null;
+
+        foreach (var e in events)
+        {
+            if (e.EventTypeCase == HistoryEvent.EventTypeOneofCase.TaskCompleted &&
+                e.TaskCompleted.TaskScheduledId == scheduleId)
+            {
+                completed = true;
+                output = StringValueOrNull(e.TaskCompleted.Result);
+            }
+            else if (e.EventTypeCase == HistoryEvent.EventTypeOneofCase.TaskFailed &&
+                     e.TaskFailed.TaskScheduledId == scheduleId)
+            {
+                failed = true;
+                failureDetails = MapFailureDetails(e.TaskFailed.FailureDetails);
+            }
+        }
+
+        return new ActivityResult(
+            Name: scheduled.Name,
+            Started: true,
+            Completed: completed,
+            Failed: failed,
+            Input: StringValueOrNull(scheduled.Input),
+            Output: output,
+            FailureDetails: failureDetails);
+    }
 
     /// <summary>
-    /// Converts a proto Timestamp to a <see cref="DateTimeOffset"/>.
+    /// Builds a <see cref="ChildWorkflowResult"/> by matching the create event's <c>EventId</c>
+    /// against subsequent <c>ChildWorkflowInstanceCompleted</c> / <c>ChildWorkflowInstanceFailed</c> events.
     /// </summary>
-    private static DateTimeOffset MapTimestamp(Timestamp? timestamp) =>
-        timestamp is not null
-            ? new DateTimeOffset(timestamp.ToDateTime(), TimeSpan.Zero)
-            : DateTimeOffset.MinValue;
+    private static ChildWorkflowResult ResolveChildWorkflow(
+        IReadOnlyList<HistoryEvent> events,
+        HistoryEvent createEvent)
+    {
+        var created = createEvent.ChildWorkflowInstanceCreated;
+        var creationId = createEvent.EventId;
+        var completed = false;
+        var failed = false;
+        string? output = null;
+        WorkflowTaskFailureDetails? failureDetails = null;
+
+        foreach (var e in events)
+        {
+            if (e.EventTypeCase == HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCompleted &&
+                e.ChildWorkflowInstanceCompleted.TaskScheduledId == creationId)
+            {
+                completed = true;
+                output = StringValueOrNull(e.ChildWorkflowInstanceCompleted.Result);
+            }
+            else if (e.EventTypeCase == HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceFailed &&
+                     e.ChildWorkflowInstanceFailed.TaskScheduledId == creationId)
+            {
+                failed = true;
+                failureDetails = MapFailureDetails(e.ChildWorkflowInstanceFailed.FailureDetails);
+            }
+        }
+
+        return new ChildWorkflowResult(
+            Name: created.Name,
+            Started: true,
+            Completed: completed,
+            Failed: failed,
+            Output: output,
+            FailureDetails: failureDetails);
+    }
+
+    private static string? StringValueOrNull(Google.Protobuf.WellKnownTypes.StringValue? value) =>
+        value is null ? null : value.Value;
+
+    private static WorkflowTaskFailureDetails? MapFailureDetails(TaskFailureDetails? failure) =>
+        failure is null
+            ? null
+            : new WorkflowTaskFailureDetails(
+                errorType: failure.ErrorType ?? "Exception",
+                errorMessage: failure.ErrorMessage ?? string.Empty,
+                stackTrace: failure.StackTrace);
 }

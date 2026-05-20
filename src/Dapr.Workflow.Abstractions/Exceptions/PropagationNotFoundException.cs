@@ -16,9 +16,22 @@ namespace Dapr.Workflow;
 using System;
 
 /// <summary>
-/// Represents a single event in a propagated workflow history segment.
+/// Thrown when a query against propagated workflow history finds no match.
 /// </summary>
-/// <param name="EventId">The unique event ID within the workflow instance history.</param>
-/// <param name="Kind">The kind of history event.</param>
-/// <param name="Timestamp">The UTC timestamp when the event occurred.</param>
-public sealed record PropagatedHistoryEvent(int EventId, HistoryEventKind Kind, DateTimeOffset Timestamp);
+/// <remarks>
+/// Raised by <see cref="PropagatedHistory.GetLastWorkflowByName"/>,
+/// <see cref="WorkflowResult.GetLastActivityByName"/>, and
+/// <see cref="WorkflowResult.GetLastChildWorkflowByName"/> when the requested
+/// name is not present in the propagated history chain. Use the plural
+/// <c>Get*sByName</c> variants if you want an empty-list result instead.
+/// </remarks>
+public sealed class PropagationNotFoundException : Exception
+{
+    /// <summary>
+    /// Initializes a new instance of <see cref="PropagationNotFoundException"/>.
+    /// </summary>
+    /// <param name="message">The exception message.</param>
+    public PropagationNotFoundException(string message) : base(message)
+    {
+    }
+}

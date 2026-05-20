@@ -341,15 +341,16 @@ public abstract class WorkflowContext : IWorkflowContext
     /// specified a <see cref="HistoryPropagationScope"/> other than <see cref="HistoryPropagationScope.None"/>.
     /// </para>
     /// <para>
-    /// Use <see cref="PropagatedHistory.FilterByAppId"/>, <see cref="PropagatedHistory.FilterByInstanceId"/>,
-    /// or <see cref="PropagatedHistory.FilterByWorkflowName"/> to narrow down the returned entries.
+    /// Use <see cref="PropagatedHistory.GetLastWorkflowByName"/> and
+    /// <see cref="WorkflowResult.GetLastActivityByName"/> / <see cref="WorkflowResult.GetLastChildWorkflowByName"/>
+    /// to query specific items from the chain. The plural <c>Get*sByName</c> variants return every match.
     /// </para>
     /// <para>
     /// This method always returns the same value regardless of whether the workflow is replaying.
     /// </para>
     /// </remarks>
     /// <returns>
-    /// A <see cref="PropagatedHistory"/> containing entries from ancestor workflows,
+    /// A <see cref="PropagatedHistory"/> containing the chain of ancestor workflows,
     /// or <c>null</c> if no history was propagated to this workflow instance.
     /// </returns>
     public abstract PropagatedHistory? GetPropagatedHistory();
