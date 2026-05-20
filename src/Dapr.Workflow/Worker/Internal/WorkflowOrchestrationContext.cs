@@ -25,6 +25,7 @@ using Dapr.Workflow.Versioning;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using static Dapr.Workflow.Worker.Internal.TimerOriginHelpers;
+using StringValue = Google.Protobuf.WellKnownTypes.StringValue;
 using Timestamp = Google.Protobuf.WellKnownTypes.Timestamp;
 
 namespace Dapr.Workflow.Worker.Internal;
@@ -1132,7 +1133,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             FailureDetails: failureDetails);
     }
 
-    private static string? StringValueOrNull(Google.Protobuf.WellKnownTypes.StringValue? value) =>
+    private static string? StringValueOrNull(StringValue? value) =>
         value is null ? null : value.Value;
 
     private static WorkflowTaskFailureDetails? MapFailureDetails(TaskFailureDetails? failure) =>

@@ -433,6 +433,19 @@ public class WorkflowHistoryPropagationTests
     }
 
     [Fact]
+    public void ChildWorkflowTaskOptions_WithHistoryPropagation_ReturnsDerivedType()
+    {
+        // Locks in the `new`-hiding behavior on the derived record: invoked on a
+        // ChildWorkflowTaskOptions reference, WithHistoryPropagation must return
+        // ChildWorkflowTaskOptions (not the base WorkflowTaskOptions) so InstanceId
+        // and other derived fields survive the with-expression.
+        var original = new ChildWorkflowTaskOptions(InstanceId: "id-1");
+        var updated = original.WithHistoryPropagation(HistoryPropagationScope.Lineage);
+
+        Assert.IsType<ChildWorkflowTaskOptions>(updated);
+    }
+
+    [Fact]
     public void WorkflowHistory_PropagateLineage_ReturnsLineageScope()
     {
         Assert.Equal(HistoryPropagationScope.Lineage, WorkflowHistory.PropagateLineage());

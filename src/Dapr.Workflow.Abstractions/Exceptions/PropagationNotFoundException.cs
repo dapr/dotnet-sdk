@@ -30,8 +30,25 @@ public sealed class PropagationNotFoundException : Exception
     /// <summary>
     /// Initializes a new instance of <see cref="PropagationNotFoundException"/>.
     /// </summary>
+    public PropagationNotFoundException()
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="PropagationNotFoundException"/> with a message.
+    /// </summary>
     /// <param name="message">The exception message.</param>
     public PropagationNotFoundException(string message) : base(message)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="PropagationNotFoundException"/> with a message
+    /// and inner exception.
+    /// </summary>
+    /// <param name="message">The exception message.</param>
+    /// <param name="innerException">The underlying cause.</param>
+    public PropagationNotFoundException(string message, Exception innerException) : base(message, innerException)
     {
     }
 }
