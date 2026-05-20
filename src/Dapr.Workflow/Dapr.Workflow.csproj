@@ -28,12 +28,14 @@
   <!-- Normal (compile-time + transitive) project references -->
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
-    <ProjectReference Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
-    <ProjectReference Include="..\Dapr.Workflow.Grpc\Dapr.Workflow.Grpc.csproj" />
   </ItemGroup>
 
-  <!-- Child projects whose outputs are bundled into this package but are NOT NuGet dependencies -->
+  <!-- Child projects whose outputs are bundled into this package but are NOT NuGet dependencies.
+       Dapr.Workflow ships as a single meta-package on NuGet; every Dapr.Workflow.* sibling
+       assembly is embedded here rather than published as its own package. -->
   <ItemGroup>
+    <_WorkflowChildLib Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
+    <_WorkflowChildLib Include="..\Dapr.Workflow.Grpc\Dapr.Workflow.Grpc.csproj" />
     <_WorkflowChildLib Include="..\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj" />
     <_WorkflowChildLib Include="..\Dapr.Workflow.Versioning.Runtime\Dapr.Workflow.Versioning.Runtime.csproj" />
 
@@ -42,8 +44,16 @@
                       ReferenceOutputAssembly="true" />
   </ItemGroup>
 
+  <!-- Package references. These include the transitive runtime dependencies that used to flow
+       from Dapr.Workflow.Abstractions and Dapr.Workflow.Grpc when they were public ProjectReferences;
+       they must remain visible to consumers of the Dapr.Workflow NuGet package now that those
+       siblings are bundled privately. -->
   <ItemGroup>
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Net.ClientFactory" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
   </ItemGroup>
 
   <!-- ── Build child lib projects for the current TFM ── -->
