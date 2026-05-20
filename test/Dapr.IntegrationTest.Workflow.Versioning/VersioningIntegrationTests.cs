@@ -132,8 +132,10 @@ public sealed class VersioningIntegrationTests
 
             await WaitForWorkflowExistsAsync(client2, instanceId, TimeSpan.FromMinutes(1));
             await RaiseEventWithRetryAsync(client2, instanceId, ResumeEventName, "resume", TimeSpan.FromMinutes(1));
-            var stalledState = await WaitForStatusAsync(client2, instanceId, TimeSpan.FromMinutes(1), WorkflowRuntimeStatus.Failed);
-            Assert.Equal(WorkflowRuntimeStatus.Failed, stalledState.RuntimeStatus);
+            using var completionCts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            var resumedState = await client2.WaitForWorkflowCompletionAsync(instanceId, cancellation: completionCts.Token);
+            Assert.Equal(WorkflowRuntimeStatus.Completed, resumedState.RuntimeStatus);
+            Assert.Equal("v1:stalled:resume", resumedState.ReadOutputAs<string>());
         }
     }
 
@@ -423,7 +425,7 @@ public sealed class VersioningIntegrationTests
         }
     }
 
-    private sealed class NoopActivity : WorkflowActivity<string, string>
+    internal sealed class NoopActivity : WorkflowActivity<string, string>
     {
         public override Task<string> RunAsync(WorkflowActivityContext context, string input)
         {
