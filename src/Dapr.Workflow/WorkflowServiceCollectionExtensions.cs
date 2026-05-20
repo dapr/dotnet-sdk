@@ -174,6 +174,12 @@ public static class WorkflowServiceCollectionExtensions
         var options = new WorkflowRuntimeOptions();
         configure(options);
 
+        // Apply source-generated auto-registrations (workflows and activities discovered by the
+        // Dapr Workflow source generator). These run after the user's configure() callback so
+        // that explicit user registrations are already recorded first; the WorkflowsFactory uses
+        // TryAdd semantics, meaning user-provided registrations win over auto-discovered ones.
+        WorkflowAutoRegistry.Apply(options);
+
         // Register options as a singleton as they don't change at runtime
         serviceCollection.AddSingleton(options);
 
