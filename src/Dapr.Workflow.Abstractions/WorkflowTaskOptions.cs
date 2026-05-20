@@ -58,6 +58,12 @@ public record ChildWorkflowTaskOptions(
     /// </summary>
     /// <param name="scope">The propagation scope to apply.</param>
     /// <returns>A new options instance with the propagation scope set.</returns>
+    /// <remarks>
+    /// Hides the base method (records cannot override) so the derived type is returned —
+    /// callers must hold a <see cref="ChildWorkflowTaskOptions"/> reference to preserve
+    /// <see cref="InstanceId"/>. Calling through a <see cref="WorkflowTaskOptions"/> reference
+    /// invokes the base method and returns a plain <see cref="WorkflowTaskOptions"/>.
+    /// </remarks>
     public new ChildWorkflowTaskOptions WithHistoryPropagation(HistoryPropagationScope scope) =>
         this with { PropagationScope = scope };
 }
