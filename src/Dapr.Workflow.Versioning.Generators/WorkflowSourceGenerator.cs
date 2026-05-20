@@ -207,6 +207,9 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
                 if (symbol is null || symbol.IsAbstract || symbol.TypeParameters.Length > 0)
                     return (DiscoveredActivity?)null;
 
+                if (!IsAccessibleFromAssembly(symbol, symbol.ContainingAssembly))
+                    return null;
+
                 if (!InheritsFromActivity(symbol, ks.ActivityBase))
                     return null;
 
