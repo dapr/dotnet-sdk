@@ -3,6 +3,11 @@
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <PackageId>Dapr.StateManagement.Runtime</PackageId>
+        <Title>Dapr State Management Runtime</Title>
+        <Description>Provides the runtime implementation for the Dapr State Management SDK.</Description>
+        <!-- This assembly ships bundled inside the Dapr.StateManagement NuGet package; it is not published as a standalone package. -->
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
