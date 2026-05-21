@@ -1375,6 +1375,193 @@ public class WorkflowWorkerTests
         Assert.NotNull(response.FailureDetails);
         Assert.Contains("boom", response.FailureDetails.ErrorMessage);
     }
+
+    [Fact]
+    public async Task HandleActivityResponseAsync_ShouldKeepTraceContext_WhenLoggingActivityFailure()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        const string expectedTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+        const string parentSpanId = "00f067aa0ba902b7";
+        const string traceParent = $"00-{expectedTraceId}-{parentSpanId}-01";
+
+        var logProvider = new ActivityCapturingLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Trace);
+            builder.AddProvider(logProvider);
+        });
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddActivity("act", new InlineActivity(
+            inputType: typeof(int),
+            run: (_, _) => throw new InvalidOperationException("boom")));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            loggerFactory,
+            serializer,
+            sp);
+
+        var request = new ActivityRequest
+        {
+            Name = "act",
+            TaskId = 7,
+            WorkflowInstance = new WorkflowInstance { InstanceId = "i" },
+            Input = "1",
+            ParentTraceContext = new TraceContext { TraceParent = traceParent }
+        };
+
+        var response = await InvokeHandleActivityResponseAsync(worker, request);
+
+        Assert.NotNull(response.FailureDetails);
+        Assert.Contains("boom", response.FailureDetails.ErrorMessage);
+        Assert.Equal(expectedTraceId, logProvider.ErrorLogTraceId);
+        Assert.Equal(ActivityStatusCode.Error, logProvider.ErrorLogStatus);
+    }
+
+    [Fact]
+    public async Task HandleActivityResponseAsync_ShouldKeepTraceContext_WhenLoggingActivityActivationFailure()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        const string expectedTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+        const string parentSpanId = "00f067aa0ba902b7";
+        const string traceParent = $"00-{expectedTraceId}-{parentSpanId}-01";
+
+        var logProvider = new ActivityCapturingLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Trace);
+            builder.AddProvider(logProvider);
+        });
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddActivityActivationError("act", new InvalidOperationException("activate-boom"));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            loggerFactory,
+            serializer,
+            sp);
+
+        var request = new ActivityRequest
+        {
+            Name = "act",
+            TaskId = 7,
+            WorkflowInstance = new WorkflowInstance { InstanceId = "i" },
+            Input = "1",
+            ParentTraceContext = new TraceContext { TraceParent = traceParent }
+        };
+
+        var response = await InvokeHandleActivityResponseAsync(worker, request);
+
+        Assert.NotNull(response.FailureDetails);
+        Assert.Contains("activate-boom", response.FailureDetails.ErrorMessage);
+        Assert.Equal(expectedTraceId, logProvider.GetTraceIdForMessage("Activity 'act' failed to activate"));
+    }
+
+    [Fact]
+    public async Task HandleActivityResponseAsync_ShouldKeepTraceContext_WhenLoggingActivityNotFound()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        const string expectedTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+        const string parentSpanId = "00f067aa0ba902b7";
+        const string traceParent = $"00-{expectedTraceId}-{parentSpanId}-01";
+
+        var logProvider = new ActivityCapturingLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Trace);
+            builder.AddProvider(logProvider);
+        });
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            new StubWorkflowsFactory(),
+            loggerFactory,
+            serializer,
+            sp);
+
+        var request = new ActivityRequest
+        {
+            Name = "missing",
+            TaskId = 7,
+            WorkflowInstance = new WorkflowInstance { InstanceId = "i" },
+            ParentTraceContext = new TraceContext { TraceParent = traceParent }
+        };
+
+        var response = await InvokeHandleActivityResponseAsync(worker, request);
+
+        Assert.NotNull(response.FailureDetails);
+        Assert.Equal("ActivityNotFoundException", response.FailureDetails.ErrorType);
+        Assert.Equal(expectedTraceId, logProvider.GetTraceIdForMessage("Activity 'missing' not found in registry"));
+    }
+
+    [Fact]
+    public async Task HandleOrchestratorResponseAsync_ShouldKeepTraceContext_ForWorkflowAndCompletionLogs()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        const string expectedTraceId = "0af7651916cd43dd8448eb211c80319c";
+        const string parentSpanId = "b7ad6b7169203331";
+        const string traceParent = $"00-{expectedTraceId}-{parentSpanId}-01";
+
+        var logProvider = new ActivityCapturingLoggerProvider();
+        using var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Trace);
+            builder.AddProvider(logProvider);
+        });
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(object),
+            run: (context, _) =>
+            {
+                context.CreateReplaySafeLogger("test").LogInformation("workflow-user-log");
+                return Task.FromResult<object?>("done");
+            }));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            loggerFactory,
+            serializer,
+            sp);
+
+        var request = new WorkflowRequest
+        {
+            InstanceId = "i",
+            // Use NewEvents so the workflow executes in a live turn. ReplaySafeLogger suppresses
+            // user logs during replay, so PastEvents would hide "workflow-user-log" by design.
+            NewEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent
+                    {
+                        Name = "wf",
+                        Input = "",
+                        ParentTraceContext = new TraceContext { TraceParent = traceParent }
+                    }
+                }
+            }
+        };
+
+        var response = await InvokeHandleWorkflowResponseAsync(worker, request);
+
+        Assert.Equal("i", response.InstanceId);
+        Assert.Equal(expectedTraceId, logProvider.GetTraceIdForMessage("workflow-user-log"));
+        Assert.Equal(expectedTraceId, logProvider.GetTraceIdForMessage("Workflow execution completed"));
+    }
     
     [Fact]
     public async Task ExecuteAsync_ShouldRetry_WhenGrpcProtocolHandlerStartFailsWithException()
@@ -2603,6 +2790,57 @@ public class WorkflowWorkerTests
         public Type OutputType => typeof(object);
 
         public Task<object?> RunAsync(WorkflowActivityContext context, object? input) => run(context, input);
+    }
+
+    private sealed class ActivityCapturingLoggerProvider : ILoggerProvider
+    {
+        private readonly List<(string Message, string? TraceId)> _logs = [];
+
+        public string? ErrorLogTraceId { get; private set; }
+        public ActivityStatusCode ErrorLogStatus { get; private set; }
+
+        public ILogger CreateLogger(string categoryName) => new ActivityCapturingLogger(this);
+
+        public string? GetTraceIdForMessage(string messagePrefix)
+            => _logs.LastOrDefault(log => log.Message.StartsWith(messagePrefix, StringComparison.Ordinal)).TraceId;
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class ActivityCapturingLogger(ActivityCapturingLoggerProvider provider) : ILogger
+        {
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull => NoopDisposable.Instance;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                provider._logs.Add((formatter(state, exception), Activity.Current?.TraceId.ToHexString()));
+
+                if (logLevel != LogLevel.Error || exception?.Message != "boom")
+                {
+                    return;
+                }
+
+                provider.ErrorLogTraceId = Activity.Current?.TraceId.ToHexString();
+                provider.ErrorLogStatus = Activity.Current?.Status ?? ActivityStatusCode.Unset;
+            }
+        }
+
+        private sealed class NoopDisposable : IDisposable
+        {
+            public static readonly NoopDisposable Instance = new();
+
+            public void Dispose()
+            {
+            }
+        }
     }
 
     private static async IAsyncEnumerable<WorkItem> EmptyWorkItems()
