@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <PackageId>Dapr.Workflow</PackageId>
     <Title>Dapr Workflow Authoring SDK</Title>
-    <Description>Dapr Workflow SDK for building workflows as code with Dapr</Description>
+    <Description>Dapr Workflow SDK for building workflows as code with Dapr. This single package bundles all Dapr.Workflow.* assemblies (Abstractions, Grpc, Analyzers, Versioning.Abstractions, Versioning.Runtime, Versioning.Generators).</Description>
     <VersionSuffix>alpha</VersionSuffix>
 
     <!-- Suppress NU5128: no separate lib entries needed for bundled children -->
@@ -20,9 +20,6 @@
       _CollectWorkflowChildOutputsForCurrentTFM;
       _AddWorkflowAnalyzerOnce
     </TargetsForTfmSpecificContentInPackage>
-
-    <!-- One-shot outer-build hook to build the source generators -->
-    <TargetsForPack>$(TargetsForPack);_BuildWorkflowGeneratorsOnce</TargetsForPack>
   </PropertyGroup>
 
   <!-- Normal (compile-time + transitive) project references -->
@@ -42,6 +39,18 @@
     <ProjectReference Include="@(_WorkflowChildLib)"
                       PrivateAssets="all"
                       ReferenceOutputAssembly="true" />
+
+    <!-- Source-generator child projects: referenced privately solely so the build system
+         restores and builds them as part of this project. Their assemblies are embedded
+         into the package under analyzers/dotnet/cs/ via the _AddWorkflowAnalyzerOnce target. -->
+    <ProjectReference Include="..\Dapr.Workflow.Analyzers\Dapr.Workflow.Analyzers.csproj"
+                      PrivateAssets="all"
+                      ReferenceOutputAssembly="false"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+    <ProjectReference Include="..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
+                      PrivateAssets="all"
+                      ReferenceOutputAssembly="false"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
   </ItemGroup>
 
   <!-- Package references. These include the transitive runtime dependencies that used to flow
@@ -101,21 +110,24 @@
     </ItemGroup>
   </Target>
 
-  <!-- ── Build both source-generator projects once (outer build, before Pack) ── -->
-  <Target Name="_BuildWorkflowGeneratorsOnce">
-    <MSBuild Projects="..\Dapr.Workflow.Analyzers\Dapr.Workflow.Analyzers.csproj;..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
-             Targets="Build"
-             Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0" />
-  </Target>
+  <!-- ── Build and embed both source generators under analyzers/dotnet/cs/ (once, on first TFM) ── -->
+  <ItemGroup>
+    <_WorkflowGeneratorProj Include="..\Dapr.Workflow.Analyzers\Dapr.Workflow.Analyzers.csproj" />
+    <_WorkflowGeneratorProj Include="..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj" />
+  </ItemGroup>
 
-  <!-- ── Resolve and embed both source generators under analyzers/dotnet/cs/ (once, on first TFM) ── -->
   <Target Name="_AddWorkflowAnalyzerOnce">
     <PropertyGroup>
       <_WorkflowIsFirstTfm Condition="'$(TargetFramework)' == 'net8.0'">true</_WorkflowIsFirstTfm>
     </PropertyGroup>
 
     <MSBuild Condition="'$(_WorkflowIsFirstTfm)' == 'true'"
-             Projects="..\Dapr.Workflow.Analyzers\Dapr.Workflow.Analyzers.csproj;..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
+             Projects="@(_WorkflowGeneratorProj)"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0" />
+
+    <MSBuild Condition="'$(_WorkflowIsFirstTfm)' == 'true'"
+             Projects="@(_WorkflowGeneratorProj)"
              Targets="GetTargetPath"
              Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0">
       <Output TaskParameter="TargetOutputs" ItemName="_WorkflowAnalyzerOut" />
