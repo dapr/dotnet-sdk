@@ -88,14 +88,14 @@ public class WorkflowHistoryPropagationTests
         MakeEvent(eventId, e => e.TaskScheduled = new TaskScheduledEvent
         {
             Name = name,
-            Input = input is null ? null : new StringValue { Value = input },
+            Input = input,
         });
 
     private static HistoryEvent TaskCompleted(int eventId, int scheduledId, string? result = null) =>
         MakeEvent(eventId, e => e.TaskCompleted = new TaskCompletedEvent
         {
             TaskScheduledId = scheduledId,
-            Result = result is null ? null : new StringValue { Value = result },
+            Result = result,
         });
 
     private static HistoryEvent TaskFailed(int eventId, int scheduledId, string errorMessage) =>
@@ -119,7 +119,7 @@ public class WorkflowHistoryPropagationTests
         MakeEvent(eventId, e => e.ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent
         {
             TaskScheduledId = creationId,
-            Result = result is null ? null : new StringValue { Value = result },
+            Result = result,
         });
 
     private static HistoryEvent ChildFailed(int eventId, int creationId, string errorMessage) =>
