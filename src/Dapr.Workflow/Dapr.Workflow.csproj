@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <PackageId>Dapr.Workflow</PackageId>
     <Title>Dapr Workflow Authoring SDK</Title>
-    <Description>Dapr Workflow SDK for building workflows as code with Dapr. This single package bundles all Dapr.Workflow.* assemblies (Abstractions, Grpc, Analyzers, Versioning.Abstractions, Versioning.Runtime, Versioning.Generators).</Description>
+    <Description>Dapr Workflow SDK for building workflows as code with Dapr</Description>
     <VersionSuffix>alpha</VersionSuffix>
 
     <!-- Suppress NU5128: no separate lib entries needed for bundled children -->
