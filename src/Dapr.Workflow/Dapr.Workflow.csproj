@@ -4,129 +4,28 @@
     <Nullable>enable</Nullable>
     <PackageId>Dapr.Workflow</PackageId>
     <Title>Dapr Workflow Authoring SDK</Title>
-    <Description>Dapr Workflow SDK for building workflows as code with Dapr</Description>
+    <Description>Dapr Workflow SDK for building workflows as code with Dapr. This package is a meta-package that pulls in the Dapr.Workflow.* family of packages.</Description>
     <VersionSuffix>alpha</VersionSuffix>
-
-    <!-- Suppress NU5128: no separate lib entries needed for bundled children -->
-    <NoWarn>$(NoWarn);NU5128</NoWarn>
-
-    <!-- Avoid creating an empty .snupkg for the analyzer child -->
-    <IncludeSymbols>false</IncludeSymbols>
-
-    <!-- Per-TFM content hook: collect child lib outputs and embed the analyzer -->
-    <TargetsForTfmSpecificContentInPackage>
-      $(TargetsForTfmSpecificContentInPackage);
-      _BuildWorkflowChildrenForCurrentTFM;
-      _CollectWorkflowChildOutputsForCurrentTFM;
-      _AddWorkflowAnalyzerOnce
-    </TargetsForTfmSpecificContentInPackage>
-
-    <!-- One-shot outer-build hook to build the source generators -->
-    <TargetsForPack>$(TargetsForPack);_BuildWorkflowGeneratorsOnce</TargetsForPack>
   </PropertyGroup>
 
-  <!-- Normal (compile-time + transitive) project references -->
+  <!--
+    Dapr.Workflow is a meta-package: every Dapr.Workflow.* sibling project is
+    published as its own NuGet package and listed here as a NuGet dependency so
+    that installing Dapr.Workflow brings in the complete authoring SDK. The
+    sibling packages themselves intentionally do not depend on one another in
+    their published nuspecs — the meta-package is the only place that knows
+    about the full family.
+  -->
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+    <ProjectReference Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
+    <ProjectReference Include="..\Dapr.Workflow.Grpc\Dapr.Workflow.Grpc.csproj" />
+    <ProjectReference Include="..\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj" />
+    <ProjectReference Include="..\Dapr.Workflow.Versioning.Runtime\Dapr.Workflow.Versioning.Runtime.csproj" />
   </ItemGroup>
 
-  <!-- Child projects whose outputs are bundled into this package but are NOT NuGet dependencies.
-       Dapr.Workflow ships as a single meta-package on NuGet; every Dapr.Workflow.* sibling
-       assembly is embedded here rather than published as its own package. -->
   <ItemGroup>
-    <_WorkflowChildLib Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
-    <_WorkflowChildLib Include="..\Dapr.Workflow.Grpc\Dapr.Workflow.Grpc.csproj" />
-    <_WorkflowChildLib Include="..\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj" />
-    <_WorkflowChildLib Include="..\Dapr.Workflow.Versioning.Runtime\Dapr.Workflow.Versioning.Runtime.csproj" />
-
-    <ProjectReference Include="@(_WorkflowChildLib)"
-                      PrivateAssets="all"
-                      ReferenceOutputAssembly="true" />
-  </ItemGroup>
-
-  <!-- Package references. These include the transitive runtime dependencies that used to flow
-       from Dapr.Workflow.Abstractions and Dapr.Workflow.Grpc when they were public ProjectReferences;
-       they must remain visible to consumers of the Dapr.Workflow NuGet package now that those
-       siblings are bundled privately. -->
-  <ItemGroup>
-    <PackageReference Include="Google.Protobuf" />
-    <PackageReference Include="Grpc.Net.Client" />
-    <PackageReference Include="Grpc.Net.ClientFactory" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
-    <PackageReference Include="Microsoft.Extensions.Http" />
   </ItemGroup>
-
-  <!-- ── Build child lib projects for the current TFM ── -->
-  <Target Name="_BuildWorkflowChildrenForCurrentTFM">
-    <MSBuild Projects="@(_WorkflowChildLib)"
-             Targets="Build"
-             Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)"
-             BuildInParallel="true" />
-  </Target>
-
-  <!-- ── Collect child lib DLL/XML/PDB outputs and map them to lib/<tfm>/ ── -->
-  <Target Name="_CollectWorkflowChildOutputsForCurrentTFM"
-          DependsOnTargets="_BuildWorkflowChildrenForCurrentTFM">
-    <MSBuild Projects="@(_WorkflowChildLib)"
-             Targets="GetTargetPath"
-             Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)">
-      <Output TaskParameter="TargetOutputs" ItemName="_WorkflowBuiltChildOutputs" />
-    </MSBuild>
-
-    <PropertyGroup>
-      <_WorkflowEffectiveTfmFolder>$(NuGetTargetFrameworkFolderName)</_WorkflowEffectiveTfmFolder>
-      <_WorkflowEffectiveTfmFolder Condition="'$(_WorkflowEffectiveTfmFolder)'==''">$(TargetFramework)</_WorkflowEffectiveTfmFolder>
-    </PropertyGroup>
-
-    <ItemGroup>
-      <_WorkflowChildDll Include="@(_WorkflowBuiltChildOutputs)"
-                         Condition="'%(_WorkflowBuiltChildOutputs.Extension)'=='.dll'" />
-      <_WorkflowChildXml Include="%(_WorkflowChildDll.RootDir)%(_WorkflowChildDll.Directory)%(_WorkflowChildDll.Filename).xml"
-                         Condition="Exists('%(_WorkflowChildDll.RootDir)%(_WorkflowChildDll.Directory)%(_WorkflowChildDll.Filename).xml')" />
-      <_WorkflowChildPdb Include="%(_WorkflowChildDll.RootDir)%(_WorkflowChildDll.Directory)%(_WorkflowChildDll.Filename).pdb"
-                         Condition="Exists('%(_WorkflowChildDll.RootDir)%(_WorkflowChildDll.Directory)%(_WorkflowChildDll.Filename).pdb')" />
-
-      <TfmSpecificPackageFile Include="@(_WorkflowChildDll)">
-        <TargetFramework>$(TargetFramework)</TargetFramework>
-        <PackagePath>lib/$(_WorkflowEffectiveTfmFolder)/%(_WorkflowChildDll.Filename)%(_WorkflowChildDll.Extension)</PackagePath>
-      </TfmSpecificPackageFile>
-      <TfmSpecificPackageFile Include="@(_WorkflowChildXml)">
-        <TargetFramework>$(TargetFramework)</TargetFramework>
-        <PackagePath>lib/$(_WorkflowEffectiveTfmFolder)/%(_WorkflowChildXml.Filename).xml</PackagePath>
-      </TfmSpecificPackageFile>
-      <TfmSpecificPackageFile Include="@(_WorkflowChildPdb)">
-        <TargetFramework>$(TargetFramework)</TargetFramework>
-        <PackagePath>lib/$(_WorkflowEffectiveTfmFolder)/%(_WorkflowChildPdb.Filename).pdb</PackagePath>
-      </TfmSpecificPackageFile>
-    </ItemGroup>
-  </Target>
-
-  <!-- ── Build both source-generator projects once (outer build, before Pack) ── -->
-  <Target Name="_BuildWorkflowGeneratorsOnce">
-    <MSBuild Projects="..\Dapr.Workflow.Analyzers\Dapr.Workflow.Analyzers.csproj;..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
-             Targets="Build"
-             Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0" />
-  </Target>
-
-  <!-- ── Resolve and embed both source generators under analyzers/dotnet/cs/ (once, on first TFM) ── -->
-  <Target Name="_AddWorkflowAnalyzerOnce">
-    <PropertyGroup>
-      <_WorkflowIsFirstTfm Condition="'$(TargetFramework)' == 'net8.0'">true</_WorkflowIsFirstTfm>
-    </PropertyGroup>
-
-    <MSBuild Condition="'$(_WorkflowIsFirstTfm)' == 'true'"
-             Projects="..\Dapr.Workflow.Analyzers\Dapr.Workflow.Analyzers.csproj;..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj"
-             Targets="GetTargetPath"
-             Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0">
-      <Output TaskParameter="TargetOutputs" ItemName="_WorkflowAnalyzerOut" />
-    </MSBuild>
-
-    <ItemGroup Condition="'$(_WorkflowIsFirstTfm)' == 'true'">
-      <TfmSpecificPackageFile Include="@(_WorkflowAnalyzerOut)">
-        <TargetFramework>$(TargetFramework)</TargetFramework>
-        <PackagePath>analyzers/dotnet/cs/%(_WorkflowAnalyzerOut.Filename)%(_WorkflowAnalyzerOut.Extension)</PackagePath>
-      </TfmSpecificPackageFile>
-    </ItemGroup>
-  </Target>
 
 </Project>

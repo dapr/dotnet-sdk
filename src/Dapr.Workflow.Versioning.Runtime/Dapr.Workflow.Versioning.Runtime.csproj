@@ -3,8 +3,9 @@
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <!-- This assembly ships bundled inside the Dapr.Workflow NuGet package; it is not published as a standalone package. -->
-        <IsPackable>false</IsPackable>
+        <PackageId>Dapr.Workflow.Versioning.Runtime</PackageId>
+        <Title>Dapr Workflow Versioning Runtime</Title>
+        <Description>Provides the runtime hosting components used to opt into the Dapr Workflow Versioning SDK.</Description>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,10 +14,20 @@
         <PackageReference Include="Microsoft.Extensions.Options" />
     </ItemGroup>
 
+    <!--
+        These ProjectReferences are required to compile this assembly but are
+        intentionally private: each Dapr.Workflow.* sibling is published as its
+        own standalone NuGet package and the meta-package (Dapr.Workflow) is the
+        only place that declares the full set of cross-sibling NuGet
+        dependencies.
+    -->
     <ItemGroup>
-        <ProjectReference Include="..\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj" />
-        <ProjectReference Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
-        <ProjectReference Include="..\Dapr.Workflow.Grpc\Dapr.Workflow.Grpc.csproj" />
+        <ProjectReference Include="..\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj"
+                          PrivateAssets="all" />
+        <ProjectReference Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj"
+                          PrivateAssets="all" />
+        <ProjectReference Include="..\Dapr.Workflow.Grpc\Dapr.Workflow.Grpc.csproj"
+                          PrivateAssets="all" />
     </ItemGroup>
 
 </Project>

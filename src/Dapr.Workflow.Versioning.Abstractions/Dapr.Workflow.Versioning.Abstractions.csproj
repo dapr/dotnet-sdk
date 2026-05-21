@@ -3,8 +3,9 @@
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <!-- This assembly ships bundled inside the Dapr.Workflow NuGet package; it is not published as a standalone package. -->
-        <IsPackable>false</IsPackable>
+        <PackageId>Dapr.Workflow.Versioning.Abstractions</PackageId>
+        <Title>Dapr Workflow Versioning Abstractions</Title>
+        <Description>Provides abstractions for the Dapr Workflow Versioning SDK implementation.</Description>
     </PropertyGroup>
 
     <ItemGroup>
