@@ -25,7 +25,6 @@ using Dapr.Workflow.Versioning;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
 using static Dapr.Workflow.Worker.Internal.TimerOriginHelpers;
-using StringValue = Google.Protobuf.WellKnownTypes.StringValue;
 using Timestamp = Google.Protobuf.WellKnownTypes.Timestamp;
 
 namespace Dapr.Workflow.Worker.Internal;
@@ -1073,7 +1072,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
                 e.TaskCompleted.TaskScheduledId == scheduleId)
             {
                 completed = true;
-                output = StringValueOrNull(e.TaskCompleted.Result);
+                output = e.TaskCompleted.Result;
             }
             else if (e.EventTypeCase == HistoryEvent.EventTypeOneofCase.TaskFailed &&
                      e.TaskFailed.TaskScheduledId == scheduleId)
@@ -1088,7 +1087,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             Started: true,
             Completed: completed,
             Failed: failed,
-            Input: StringValueOrNull(scheduled.Input),
+            Input: scheduled.Input,
             Output: output,
             FailureDetails: failureDetails);
     }
@@ -1114,7 +1113,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
                 e.ChildWorkflowInstanceCompleted.TaskScheduledId == creationId)
             {
                 completed = true;
-                output = StringValueOrNull(e.ChildWorkflowInstanceCompleted.Result);
+                output = e.ChildWorkflowInstanceCompleted.Result;
             }
             else if (e.EventTypeCase == HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceFailed &&
                      e.ChildWorkflowInstanceFailed.TaskScheduledId == creationId)
@@ -1132,9 +1131,6 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             Output: output,
             FailureDetails: failureDetails);
     }
-
-    private static string? StringValueOrNull(StringValue? value) =>
-        value is null ? null : value.Value;
 
     private static WorkflowTaskFailureDetails? MapFailureDetails(TaskFailureDetails? failure) =>
         failure is null
