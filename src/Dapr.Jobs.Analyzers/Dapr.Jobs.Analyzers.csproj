@@ -8,6 +8,8 @@
         <Description>This package contains Roslyn analyers for Dapr.Jobs</Description>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <NoWarn>$(NoWarn);RS1038</NoWarn>
+        <!-- This analyzer assembly ships bundled inside the Dapr.Jobs NuGet package; it is not published as a standalone package. -->
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
     
     <ItemGroup>
