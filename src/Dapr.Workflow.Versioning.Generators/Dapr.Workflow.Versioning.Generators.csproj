@@ -3,26 +3,13 @@
     <PropertyGroup>
         <TargetFrameworks></TargetFrameworks>
         <TargetFramework>netstandard2.0</TargetFramework>
+        <IsPackable>false</IsPackable>
         <Nullable>enable</Nullable>
 
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <IsRoslynComponent>true</IsRoslynComponent>
 
         <RootNamespace>Dapr.Workflow.Versioning</RootNamespace>
-
-        <!-- NuGet packaging for the source generator (modelled after Dapr.Workflow.Analyzers). -->
-        <PackageId>Dapr.Workflow.Versioning.Generators</PackageId>
-        <Title>Dapr Workflow Versioning Source Generators</Title>
-        <Description>This package contains the Roslyn source generators that power the Dapr Workflow Versioning SDK.</Description>
-
-        <!-- Suppress false-positive error NU5128 when packing source generators with no lib/ref files. -->
-        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-
-        <!-- Suppress generation of symbol package (.snupkg). -->
-        <IncludeSymbols>false</IncludeSymbols>
-
-        <!-- Do not include the generator as a lib dependency. -->
-        <IncludeBuildOutput>false</IncludeBuildOutput>
     </PropertyGroup>
 
     <ItemGroup>
@@ -31,10 +18,6 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     </ItemGroup>
 
 
