@@ -15,43 +15,44 @@ namespace Dapr.Workflow;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 /// <summary>
-/// Workflow history propagated from a parent workflow to a child workflow or activity.
+/// Workflow history propagated from one or more ancestor workflows to a child workflow or activity.
 /// </summary>
 /// <remarks>
-/// A propagated history is composed of one or more chunks, each owned by a distinct
-/// workflow instance. Chunks preserve execution order: index 0 is the oldest ancestor,
-/// the last chunk is the immediate parent.
+/// A propagated history is an ordered list of <see cref="PropagatedHistoryEntry"/> values,
+/// one per ancestor workflow. Order is execution order: index 0 is the oldest ancestor,
+/// the last entry is the immediate parent.
 /// <para>
-/// Use the <c>Get*</c> methods to walk the chain by app, instance, or workflow name.
+/// Use the <c>Get*</c> / <c>TryGet*</c> methods to walk the list by app, instance, or workflow name.
 /// Mirrors the <c>PropagatedHistory</c> type in the Go and Python SDKs.
 /// </para>
 /// </remarks>
 public sealed class PropagatedHistory
 {
-    private readonly IReadOnlyList<WorkflowResult> _workflows;
+    private readonly IReadOnlyList<PropagatedHistoryEntry> _workflows;
 
     /// <summary>
-    /// Initializes a new <see cref="PropagatedHistory"/> from the given workflow chunks.
+    /// Initializes a new <see cref="PropagatedHistory"/> from the given workflow entries.
     /// </summary>
     /// <param name="workflows">
-    /// Workflow chunks in execution order (ancestor first, immediate parent last).
+    /// Workflow entries in execution order (ancestor first, immediate parent last).
     /// </param>
-    public PropagatedHistory(IReadOnlyList<WorkflowResult> workflows)
+    public PropagatedHistory(IReadOnlyList<PropagatedHistoryEntry> workflows)
     {
         _workflows = workflows ?? throw new ArgumentNullException(nameof(workflows));
     }
 
     /// <summary>
-    /// Returns every workflow chunk in the chain, in execution order
+    /// Returns every workflow entry in the propagated history, in execution order
     /// (ancestor first, immediate parent last).
     /// </summary>
-    public IReadOnlyList<WorkflowResult> GetWorkflows() => _workflows;
+    public IReadOnlyList<PropagatedHistoryEntry> GetWorkflows() => _workflows;
 
     /// <summary>
-    /// Returns an ordered, deduplicated list of app IDs in the propagated chain.
+    /// Returns an ordered, deduplicated list of app IDs in this propagated history.
     /// </summary>
     public IReadOnlyList<string> GetAppIds()
     {
@@ -69,12 +70,12 @@ public sealed class PropagatedHistory
     }
 
     /// <summary>
-    /// Returns every workflow whose name matches, in execution order. Useful when the
-    /// chain contains the same name more than once (e.g. recursion or ContinueAsNew).
+    /// Returns every workflow entry whose name matches, in execution order. Useful when the
+    /// list contains the same name more than once (e.g. recursion or ContinueAsNew).
     /// </summary>
     /// <param name="name">The workflow name to filter by.</param>
     /// <returns>An empty list when no match is found.</returns>
-    public IReadOnlyList<WorkflowResult> GetWorkflowsByName(string name)
+    public IReadOnlyList<PropagatedHistoryEntry> GetWorkflowsByName(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         return _workflows
@@ -83,29 +84,33 @@ public sealed class PropagatedHistory
     }
 
     /// <summary>
-    /// Returns the most recent workflow in the chain whose name matches.
+    /// Tries to return the most recent workflow entry whose name matches.
     /// </summary>
     /// <param name="name">The workflow name to look up.</param>
-    /// <returns>The last matching workflow chunk.</returns>
-    /// <exception cref="PropagationNotFoundException">No workflow with the given name is present in the chain.</exception>
-    public WorkflowResult GetLastWorkflowByName(string name)
+    /// <param name="result">When this method returns <see langword="true"/>, the last matching workflow entry; otherwise <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if a matching entry was found; otherwise <see langword="false"/>.</returns>
+    public bool TryGetLastWorkflowByName(string name, [NotNullWhen(true)] out PropagatedHistoryEntry? result)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        var matches = GetWorkflowsByName(name);
-        if (matches.Count == 0)
+        for (var i = _workflows.Count - 1; i >= 0; i--)
         {
-            throw new PropagationNotFoundException($"no workflow named '{name}' in propagated history");
+            if (string.Equals(_workflows[i].Name, name, StringComparison.Ordinal))
+            {
+                result = _workflows[i];
+                return true;
+            }
         }
 
-        return matches[^1];
+        result = null;
+        return false;
     }
 
     /// <summary>
-    /// Returns every workflow chunk produced by the given app, in execution order.
+    /// Returns every workflow entry produced by the given app, in execution order.
     /// </summary>
     /// <param name="appId">The Dapr App ID to filter by.</param>
     /// <returns>An empty list when no match is found.</returns>
-    public IReadOnlyList<WorkflowResult> GetWorkflowsByAppId(string appId)
+    public IReadOnlyList<PropagatedHistoryEntry> GetWorkflowsByAppId(string appId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
         return _workflows
@@ -114,12 +119,12 @@ public sealed class PropagatedHistory
     }
 
     /// <summary>
-    /// Returns every workflow chunk produced by the given instance, in execution order.
+    /// Returns every workflow entry produced by the given instance, in execution order.
     /// Usually a single entry, except when the same instance reappears via ContinueAsNew.
     /// </summary>
     /// <param name="instanceId">The workflow instance ID to filter by.</param>
     /// <returns>An empty list when no match is found.</returns>
-    public IReadOnlyList<WorkflowResult> GetWorkflowsByInstanceId(string instanceId)
+    public IReadOnlyList<PropagatedHistoryEntry> GetWorkflowsByInstanceId(string instanceId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
         return _workflows

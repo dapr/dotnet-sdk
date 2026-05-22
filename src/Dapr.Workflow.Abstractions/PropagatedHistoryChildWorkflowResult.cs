@@ -14,25 +14,21 @@
 namespace Dapr.Workflow;
 
 /// <summary>
-/// A reconstructed view of a single activity invocation from propagated history.
+/// A reconstructed view of a single child workflow invocation surfaced through propagated workflow history.
 /// </summary>
-/// <param name="Name">The scheduled name of the activity.</param>
-/// <param name="Started">Whether the activity was scheduled in the propagated chunk.</param>
-/// <param name="Completed">Whether the activity completed successfully.</param>
-/// <param name="Failed">Whether the activity failed.</param>
-/// <param name="Input">The JSON-encoded input payload, or <c>null</c> when unset.</param>
-/// <param name="Output">The JSON-encoded output payload, or <c>null</c> when the activity has not completed.</param>
+/// <param name="Name">The scheduled name of the child workflow.</param>
+/// <param name="Started">Whether the child workflow was scheduled in the propagated history.</param>
+/// <param name="Completed">Whether the child workflow completed successfully.</param>
+/// <param name="Failed">Whether the child workflow failed.</param>
+/// <param name="Output">The JSON-encoded output payload, or <c>null</c> when the child workflow has not completed.</param>
 /// <param name="FailureDetails">The failure details when <paramref name="Failed"/> is true, otherwise <c>null</c>.</param>
 /// <remarks>
-/// Mirrors the <c>ActivityResult</c> struct in the Go SDK and the
-/// <c>ActivityResult</c> dataclass in the Python SDK so cross-language
-/// quickstarts and chain-of-custody patterns line up.
+/// Mirrors the <c>ChildWorkflowResult</c> type in the Go and Python SDKs.
 /// </remarks>
-public sealed record ActivityResult(
+public sealed record PropagatedHistoryChildWorkflowResult(
     string Name,
     bool Started,
     bool Completed,
     bool Failed,
-    string? Input,
     string? Output,
     WorkflowTaskFailureDetails? FailureDetails);

@@ -1003,7 +1003,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
     /// <summary>
     /// Converts a <see cref="PropagatedHistoryChunk"/> proto message into a public-facing
-    /// <see cref="WorkflowResult"/> by resolving each scheduled activity and child workflow
+    /// <see cref="PropagatedHistoryEntry"/> by resolving each scheduled activity and child workflow
     /// against its matching completion/failure event.
     /// </summary>
     /// <remarks>
@@ -1011,25 +1011,19 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// representation of a single <see cref="HistoryEvent"/>; we parse the bytes here.
     /// SDK retries reuse <c>TaskExecutionId</c>, so we match completions on
     /// <c>TaskScheduledId</c> (the scheduling event ID) rather than execution ID.
-    /// Malformed event bytes are skipped — they cannot crash the workflow.
+    /// Malformed event bytes are surfaced as exceptions — a runtime sending unparseable
+    /// proto bytes is a contract violation we should not hide.
     /// </remarks>
-    private static WorkflowResult ConvertChunk(PropagatedHistoryChunk chunk)
+    private static PropagatedHistoryEntry ConvertChunk(PropagatedHistoryChunk chunk)
     {
         var events = new List<HistoryEvent>(chunk.RawEvents.Count);
         foreach (var rawEvent in chunk.RawEvents)
         {
-            try
-            {
-                events.Add(HistoryEvent.Parser.ParseFrom(rawEvent));
-            }
-            catch (InvalidProtocolBufferException)
-            {
-                // Skip malformed events; a single bad event cannot poison the chunk.
-            }
+            events.Add(HistoryEvent.Parser.ParseFrom(rawEvent));
         }
 
-        var activities = new List<ActivityResult>();
-        var childWorkflows = new List<ChildWorkflowResult>();
+        var activities = new List<PropagatedHistoryActivityResult>();
+        var childWorkflows = new List<PropagatedHistoryChildWorkflowResult>();
         foreach (var historyEvent in events)
         {
             switch (historyEvent.EventTypeCase)
@@ -1043,7 +1037,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             }
         }
 
-        return new WorkflowResult(
+        return new PropagatedHistoryEntry(
             chunk.InstanceId,
             chunk.AppId,
             chunk.WorkflowName,
@@ -1052,10 +1046,10 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     }
 
     /// <summary>
-    /// Builds an <see cref="ActivityResult"/> by matching <c>TaskCompleted</c> / <c>TaskFailed</c>
-    /// against the scheduling event's <c>EventId</c>.
+    /// Builds a <see cref="PropagatedHistoryActivityResult"/> by matching <c>TaskCompleted</c> /
+    /// <c>TaskFailed</c> against the scheduling event's <c>EventId</c>.
     /// </summary>
-    private static ActivityResult ResolveActivity(
+    private static PropagatedHistoryActivityResult ResolveActivity(
         IReadOnlyList<HistoryEvent> events,
         HistoryEvent scheduleEvent)
     {
@@ -1082,7 +1076,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             }
         }
 
-        return new ActivityResult(
+        return new PropagatedHistoryActivityResult(
             Name: scheduled.Name,
             Started: true,
             Completed: completed,
@@ -1093,10 +1087,11 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     }
 
     /// <summary>
-    /// Builds a <see cref="ChildWorkflowResult"/> by matching the create event's <c>EventId</c>
-    /// against subsequent <c>ChildWorkflowInstanceCompleted</c> / <c>ChildWorkflowInstanceFailed</c> events.
+    /// Builds a <see cref="PropagatedHistoryChildWorkflowResult"/> by matching the create event's
+    /// <c>EventId</c> against subsequent <c>ChildWorkflowInstanceCompleted</c> /
+    /// <c>ChildWorkflowInstanceFailed</c> events.
     /// </summary>
-    private static ChildWorkflowResult ResolveChildWorkflow(
+    private static PropagatedHistoryChildWorkflowResult ResolveChildWorkflow(
         IReadOnlyList<HistoryEvent> events,
         HistoryEvent createEvent)
     {
@@ -1123,7 +1118,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             }
         }
 
-        return new ChildWorkflowResult(
+        return new PropagatedHistoryChildWorkflowResult(
             Name: created.Name,
             Started: true,
             Completed: completed,
