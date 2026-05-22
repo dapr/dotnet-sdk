@@ -30,7 +30,7 @@ namespace Dapr.Workflow.Test.Worker.Internal;
 /// and exposing inbound propagated history through
 /// <see cref="WorkflowContext.GetPropagatedHistory"/> as typed
 /// <see cref="PropagatedHistoryEntry"/> / <see cref="PropagatedHistoryActivityResult"/> /
-/// <see cref="PropagatedHistoryChildWorkflowResult"/> records.
+/// <see cref="PropagatedHistoryChildWorkflowResult"/> types.
 /// </summary>
 public class WorkflowHistoryPropagationTests
 {
@@ -277,12 +277,12 @@ public class WorkflowHistoryPropagationTests
         var context = CreateContext(incomingPropagatedHistory: [chunk]);
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowByName("Wf", out var workflow));
 
-        var all = workflow.GetActivitiesByName("ValidateCard");
+        var all = workflow.GetActivitiesByName("validatecard");
         Assert.Equal(2, all.Count);
         Assert.True(all[0].Completed);
         Assert.True(all[1].Failed);
 
-        Assert.True(workflow.TryGetLastActivityByName("ValidateCard", out var last));
+        Assert.True(workflow.TryGetLastActivityByName("validatecard", out var last));
         Assert.True(last.Failed);
         Assert.Equal("card declined", last.FailureDetails!.ErrorMessage);
     }
@@ -313,7 +313,7 @@ public class WorkflowHistoryPropagationTests
 
         var context = CreateContext(incomingPropagatedHistory: [chunk]);
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowByName("Wf", out var workflow));
-        Assert.True(workflow.TryGetLastChildWorkflowByName("ProcessPayment", out var child));
+        Assert.True(workflow.TryGetLastChildWorkflowByName("processpayment", out var child));
 
         Assert.True(child.Started);
         Assert.True(child.Completed);
@@ -330,6 +330,7 @@ public class WorkflowHistoryPropagationTests
 
         var context = CreateContext(incomingPropagatedHistory: [chunk]);
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowByName("Wf", out var workflow));
+        Assert.Single(workflow.GetChildWorkflowsByName("processpayment"));
         Assert.True(workflow.TryGetLastChildWorkflowByName("ProcessPayment", out var child));
 
         Assert.True(child.Failed);
@@ -357,7 +358,7 @@ public class WorkflowHistoryPropagationTests
         var history = new PropagatedHistory([
             new PropagatedHistoryEntry("i1", "appA", "WfA", [], []),
             new PropagatedHistoryEntry("i2", "appB", "WfB", [], []),
-            new PropagatedHistoryEntry("i3", "appA", "WfA2", [], []),
+            new PropagatedHistoryEntry("i3", "AppA", "WfA2", [], []),
         ]);
 
         Assert.Equal(["appA", "appB"], history.GetAppIds());
@@ -371,9 +372,20 @@ public class WorkflowHistoryPropagationTests
             new PropagatedHistoryEntry("wf-2", "app", "Loop", [], []),
         ]);
 
-        Assert.True(history.TryGetLastWorkflowByName("Loop", out var last));
+        Assert.True(history.TryGetLastWorkflowByName("loop", out var last));
         Assert.Equal("wf-2", last.InstanceId);
-        Assert.Equal(2, history.GetWorkflowsByName("Loop").Count);
+        Assert.Equal(2, history.GetWorkflowsByName("loop").Count);
+    }
+
+    [Fact]
+    public void GetWorkflowsByAppId_MatchesCaseInsensitively()
+    {
+        var history = new PropagatedHistory([
+            new PropagatedHistoryEntry("wf-1", "checkout", "Loop", [], []),
+            new PropagatedHistoryEntry("wf-2", "Checkout", "Review", [], []),
+        ]);
+
+        Assert.Equal(2, history.GetWorkflowsByAppId("CHECKOUT").Count);
     }
 
     [Fact]

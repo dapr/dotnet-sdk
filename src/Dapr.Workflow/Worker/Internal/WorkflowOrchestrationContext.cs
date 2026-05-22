@@ -1022,6 +1022,29 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             events.Add(HistoryEvent.Parser.ParseFrom(rawEvent));
         }
 
+        var taskCompletedByScheduledId = new Dictionary<int, TaskCompletedEvent>();
+        var taskFailedByScheduledId = new Dictionary<int, TaskFailedEvent>();
+        var childCompletedByScheduledId = new Dictionary<int, ChildWorkflowInstanceCompletedEvent>();
+        var childFailedByScheduledId = new Dictionary<int, ChildWorkflowInstanceFailedEvent>();
+        foreach (var historyEvent in events)
+        {
+            switch (historyEvent.EventTypeCase)
+            {
+                case HistoryEvent.EventTypeOneofCase.TaskCompleted:
+                    taskCompletedByScheduledId[historyEvent.TaskCompleted.TaskScheduledId] = historyEvent.TaskCompleted;
+                    break;
+                case HistoryEvent.EventTypeOneofCase.TaskFailed:
+                    taskFailedByScheduledId[historyEvent.TaskFailed.TaskScheduledId] = historyEvent.TaskFailed;
+                    break;
+                case HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCompleted:
+                    childCompletedByScheduledId[historyEvent.ChildWorkflowInstanceCompleted.TaskScheduledId] = historyEvent.ChildWorkflowInstanceCompleted;
+                    break;
+                case HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceFailed:
+                    childFailedByScheduledId[historyEvent.ChildWorkflowInstanceFailed.TaskScheduledId] = historyEvent.ChildWorkflowInstanceFailed;
+                    break;
+            }
+        }
+
         var activities = new List<PropagatedHistoryActivityResult>();
         var childWorkflows = new List<PropagatedHistoryChildWorkflowResult>();
         foreach (var historyEvent in events)
@@ -1029,10 +1052,18 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             switch (historyEvent.EventTypeCase)
             {
                 case HistoryEvent.EventTypeOneofCase.TaskScheduled:
-                    activities.Add(ResolveActivity(events, historyEvent));
+                    activities.Add(
+                        ResolveActivity(
+                            historyEvent,
+                            taskCompletedByScheduledId,
+                            taskFailedByScheduledId));
                     break;
                 case HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCreated:
-                    childWorkflows.Add(ResolveChildWorkflow(events, historyEvent));
+                    childWorkflows.Add(
+                        ResolveChildWorkflow(
+                            historyEvent,
+                            childCompletedByScheduledId,
+                            childFailedByScheduledId));
                     break;
             }
         }
@@ -1050,8 +1081,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <c>TaskFailed</c> against the scheduling event's <c>EventId</c>.
     /// </summary>
     private static PropagatedHistoryActivityResult ResolveActivity(
-        IReadOnlyList<HistoryEvent> events,
-        HistoryEvent scheduleEvent)
+        HistoryEvent scheduleEvent,
+        IReadOnlyDictionary<int, TaskCompletedEvent> taskCompletedByScheduledId,
+        IReadOnlyDictionary<int, TaskFailedEvent> taskFailedByScheduledId)
     {
         var scheduled = scheduleEvent.TaskScheduled;
         var scheduleId = scheduleEvent.EventId;
@@ -1060,20 +1092,16 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         string? output = null;
         WorkflowTaskFailureDetails? failureDetails = null;
 
-        foreach (var e in events)
+        if (taskCompletedByScheduledId.TryGetValue(scheduleId, out var completedEvent))
         {
-            if (e.EventTypeCase == HistoryEvent.EventTypeOneofCase.TaskCompleted &&
-                e.TaskCompleted.TaskScheduledId == scheduleId)
-            {
-                completed = true;
-                output = e.TaskCompleted.Result;
-            }
-            else if (e.EventTypeCase == HistoryEvent.EventTypeOneofCase.TaskFailed &&
-                     e.TaskFailed.TaskScheduledId == scheduleId)
-            {
-                failed = true;
-                failureDetails = MapFailureDetails(e.TaskFailed.FailureDetails);
-            }
+            completed = true;
+            output = completedEvent.Result;
+        }
+
+        if (taskFailedByScheduledId.TryGetValue(scheduleId, out var failedEvent))
+        {
+            failed = true;
+            failureDetails = MapFailureDetails(failedEvent.FailureDetails);
         }
 
         return new PropagatedHistoryActivityResult(
@@ -1092,8 +1120,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <c>ChildWorkflowInstanceFailed</c> events.
     /// </summary>
     private static PropagatedHistoryChildWorkflowResult ResolveChildWorkflow(
-        IReadOnlyList<HistoryEvent> events,
-        HistoryEvent createEvent)
+        HistoryEvent createEvent,
+        IReadOnlyDictionary<int, ChildWorkflowInstanceCompletedEvent> childCompletedByScheduledId,
+        IReadOnlyDictionary<int, ChildWorkflowInstanceFailedEvent> childFailedByScheduledId)
     {
         var created = createEvent.ChildWorkflowInstanceCreated;
         var creationId = createEvent.EventId;
@@ -1102,20 +1131,16 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         string? output = null;
         WorkflowTaskFailureDetails? failureDetails = null;
 
-        foreach (var e in events)
+        if (childCompletedByScheduledId.TryGetValue(creationId, out var childCompletedEvent))
         {
-            if (e.EventTypeCase == HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCompleted &&
-                e.ChildWorkflowInstanceCompleted.TaskScheduledId == creationId)
-            {
-                completed = true;
-                output = e.ChildWorkflowInstanceCompleted.Result;
-            }
-            else if (e.EventTypeCase == HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceFailed &&
-                     e.ChildWorkflowInstanceFailed.TaskScheduledId == creationId)
-            {
-                failed = true;
-                failureDetails = MapFailureDetails(e.ChildWorkflowInstanceFailed.FailureDetails);
-            }
+            completed = true;
+            output = childCompletedEvent.Result;
+        }
+
+        if (childFailedByScheduledId.TryGetValue(creationId, out var childFailedEvent))
+        {
+            failed = true;
+            failureDetails = MapFailureDetails(childFailedEvent.FailureDetails);
         }
 
         return new PropagatedHistoryChildWorkflowResult(
