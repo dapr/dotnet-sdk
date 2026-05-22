@@ -56,7 +56,7 @@ public sealed class PropagatedHistory
     /// </summary>
     public IReadOnlyList<string> GetAppIds()
     {
-        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var result = new List<string>(_workflows.Count);
         foreach (var workflow in _workflows)
         {
@@ -79,7 +79,7 @@ public sealed class PropagatedHistory
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         return _workflows
-            .Where(w => string.Equals(w.Name, name, StringComparison.Ordinal))
+            .Where(w => string.Equals(w.Name, name, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
 
@@ -94,7 +94,7 @@ public sealed class PropagatedHistory
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         for (var i = _workflows.Count - 1; i >= 0; i--)
         {
-            if (string.Equals(_workflows[i].Name, name, StringComparison.Ordinal))
+            if (string.Equals(_workflows[i].Name, name, StringComparison.OrdinalIgnoreCase))
             {
                 result = _workflows[i];
                 return true;
@@ -114,7 +114,7 @@ public sealed class PropagatedHistory
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
         return _workflows
-            .Where(w => string.Equals(w.AppId, appId, StringComparison.Ordinal))
+            .Where(w => string.Equals(w.AppId, appId, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
 

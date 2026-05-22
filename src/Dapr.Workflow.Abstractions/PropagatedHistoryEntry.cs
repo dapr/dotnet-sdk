@@ -69,7 +69,7 @@ public sealed class PropagatedHistoryEntry(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         return _activities
-            .Where(a => string.Equals(a.Name, name, StringComparison.Ordinal))
+            .Where(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
 
@@ -84,7 +84,7 @@ public sealed class PropagatedHistoryEntry(
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         for (var i = _activities.Count - 1; i >= 0; i--)
         {
-            if (string.Equals(_activities[i].Name, name, StringComparison.Ordinal))
+            if (string.Equals(_activities[i].Name, name, StringComparison.OrdinalIgnoreCase))
             {
                 result = _activities[i];
                 return true;
@@ -104,7 +104,7 @@ public sealed class PropagatedHistoryEntry(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         return _childWorkflows
-            .Where(c => string.Equals(c.Name, name, StringComparison.Ordinal))
+            .Where(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
 
@@ -119,7 +119,7 @@ public sealed class PropagatedHistoryEntry(
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         for (var i = _childWorkflows.Count - 1; i >= 0; i--)
         {
-            if (string.Equals(_childWorkflows[i].Name, name, StringComparison.Ordinal))
+            if (string.Equals(_childWorkflows[i].Name, name, StringComparison.OrdinalIgnoreCase))
             {
                 result = _childWorkflows[i];
                 return true;

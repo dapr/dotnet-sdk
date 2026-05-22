@@ -28,8 +28,8 @@ namespace Dapr.Workflow.Test.Worker.Internal;
 /// <see cref="ChildWorkflowTaskOptions"/>, propagating the scope to the
 /// outgoing <see cref="ScheduleTaskAction"/> / <see cref="CreateChildWorkflowAction"/>,
 /// and exposing inbound propagated history through
-/// <see cref="WorkflowContext.GetPropagatedHistory"/> as typed
-/// <see cref="PropagatedHistoryEntry"/> / <see cref="PropagatedHistoryActivityResult"/> /
+/// <see cref="WorkflowContext.GetPropagatedHistory"/> as <see cref="PropagatedHistoryEntry"/>
+/// values, each carrying typed <see cref="PropagatedHistoryActivityResult"/> /
 /// <see cref="PropagatedHistoryChildWorkflowResult"/> records.
 /// </summary>
 public class WorkflowHistoryPropagationTests
@@ -388,6 +388,34 @@ public class WorkflowHistoryPropagationTests
     public void PropagatedHistory_Ctor_ThrowsOnNullWorkflows()
     {
         Assert.Throws<ArgumentNullException>(() => new PropagatedHistory(null!));
+    }
+
+    [Fact]
+    public void PropagatedHistory_NameAndAppIdLookups_AreCaseInsensitive()
+    {
+        // Workflow / activity names register case-insensitively in WorkflowsFactory,
+        // and AppIds are matched case-insensitively elsewhere in the SDK. The propagated
+        // history lookups must follow the same contract.
+        var activity = new PropagatedHistoryActivityResult(
+            Name: "ValidateMerchant", Started: true, Completed: true, Failed: false,
+            Input: null, Output: null, FailureDetails: null);
+        var child = new PropagatedHistoryChildWorkflowResult(
+            Name: "FraudDetection", Started: true, Completed: true, Failed: false,
+            Output: null, FailureDetails: null);
+        var entry = new PropagatedHistoryEntry("inst-1", "AppA", "MerchantCheckout", [activity], [child]);
+        var history = new PropagatedHistory([
+            entry,
+            new PropagatedHistoryEntry("inst-2", "appa", "OtherWf", [], []),
+        ]);
+
+        Assert.Single(history.GetAppIds());
+        Assert.Single(history.GetWorkflowsByAppId("APPA"));
+        Assert.Single(history.GetWorkflowsByName("merchantcheckout"));
+        Assert.True(history.TryGetLastWorkflowByName("MERCHANTCHECKOUT", out _));
+        Assert.Single(entry.GetActivitiesByName("validatemerchant"));
+        Assert.True(entry.TryGetLastActivityByName("VALIDATEMERCHANT", out _));
+        Assert.Single(entry.GetChildWorkflowsByName("frauddetection"));
+        Assert.True(entry.TryGetLastChildWorkflowByName("FRAUDDETECTION", out _));
     }
 
     // ------------------------------------------------------------------
