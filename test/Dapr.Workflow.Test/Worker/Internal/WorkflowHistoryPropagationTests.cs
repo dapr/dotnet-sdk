@@ -211,7 +211,7 @@ public class WorkflowHistoryPropagationTests
     // ------------------------------------------------------------------
 
     [Fact]
-    public void ActivityResult_ResolvedAs_CompletedWithInputAndOutput()
+    public void Activity_ResolvedAs_CompletedWithInputAndOutput()
     {
         var chunk = MakeChunk("app", "inst", "Wf",
             TaskScheduled(eventId: 1, name: "ValidateMerchant", input: "\"merchant-1\""),
@@ -231,7 +231,7 @@ public class WorkflowHistoryPropagationTests
     }
 
     [Fact]
-    public void ActivityResult_ResolvedAs_FailedWithFailureDetails()
+    public void Activity_ResolvedAs_FailedWithFailureDetails()
     {
         var chunk = MakeChunk("app", "inst", "Wf",
             TaskScheduled(eventId: 1, name: "ValidateCard"),
@@ -248,7 +248,7 @@ public class WorkflowHistoryPropagationTests
     }
 
     [Fact]
-    public void ActivityResult_ResolvedAs_StartedOnly_WhenNotYetCompleted()
+    public void Activity_ResolvedAs_StartedOnly_WhenNotYetCompleted()
     {
         var chunk = MakeChunk("app", "inst", "Wf",
             TaskScheduled(eventId: 1, name: "PendingCheck", input: "\"in\""));
@@ -305,7 +305,7 @@ public class WorkflowHistoryPropagationTests
     // ------------------------------------------------------------------
 
     [Fact]
-    public void ChildWorkflowResult_ResolvedAs_Completed()
+    public void ChildWorkflow_ResolvedAs_Completed()
     {
         var chunk = MakeChunk("app", "inst", "Wf",
             ChildCreated(eventId: 1, name: "ProcessPayment"),
@@ -322,7 +322,7 @@ public class WorkflowHistoryPropagationTests
     }
 
     [Fact]
-    public void ChildWorkflowResult_ResolvedAs_Failed()
+    public void ChildWorkflow_ResolvedAs_Failed()
     {
         var chunk = MakeChunk("app", "inst", "Wf",
             ChildCreated(eventId: 1, name: "ProcessPayment"),
