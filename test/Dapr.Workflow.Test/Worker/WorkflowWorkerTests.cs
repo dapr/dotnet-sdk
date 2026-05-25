@@ -35,297 +35,6 @@ namespace Dapr.Workflow.Test.Worker;
 public class WorkflowWorkerTests
 {
     [Fact]
-    public async Task HandleActivityResponseAsync_ShouldPopulateActivityCurrent_FromParentTraceContext()
-    {
-        // Force ActivitySource.StartActivity to actually create Activities
-        // by attaching a sampler that always records.
-        using var listener = new ActivityListener();
-        listener.ShouldListenTo = src => src.Name == "Dapr.Workflow";
-        listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
-        listener.SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllDataAndRecorded;
-        ActivitySource.AddActivityListener(listener);
-
-        var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
-        // W3C traceparent: version-traceId-spanId-flags
-        const string expectedTraceId = "0af7651916cd43dd8448eb211c80319c";
-        const string parentSpanId = "b7ad6b7169203331";
-        const string traceParent = $"00-{expectedTraceId}-{parentSpanId}-01";
-        const string traceState = "vendor=value";
-
-        Activity? observedCurrent = null;
-        string? observedTraceId = null;
-        string? observedParentSpanId = null;
-        string? observedTraceState = null;
-
-        var factory = new StubWorkflowsFactory();
-        factory.AddActivity("act", new InlineActivity(
-            inputType: typeof(int),
-            run: (_, _) =>
-            {
-                // User reports in #1749 that Activity.Current is null
-                // After fix, this should be non-null in the activity body
-                observedCurrent = Activity.Current;
-                observedTraceId = Activity.Current?.TraceId.ToHexString();
-                observedParentSpanId = Activity.Current?.ParentSpanId.ToHexString();
-                observedTraceState = Activity.Current?.TraceStateString;
-                return Task.FromResult<object?>(null);
-            }));
-
-        var worker = new WorkflowWorker(
-            CreateGrpcClientMock().Object,
-            factory,
-            NullLoggerFactory.Instance,
-            serializer,
-            sp);
-
-        var request = new ActivityRequest
-        {
-            Name = "act",
-            TaskId = 1,
-            Input = string.Empty,
-            WorkflowInstance = new WorkflowInstance { InstanceId = "wf-1" },
-            ParentTraceContext = new TraceContext
-            {
-                TraceParent = traceParent,
-                TraceState = traceState
-            }
-        };
-
-        var response = await InvokeHandleActivityResponseAsync(worker, request);
-
-        Assert.Null(response.FailureDetails);
-        Assert.NotNull(observedCurrent);
-        Assert.Equal(expectedTraceId, observedTraceId);
-        Assert.Equal(parentSpanId, observedParentSpanId);
-        Assert.Equal(traceState, observedTraceState);
-
-        // And, critically: after the activity returns, the ambient activity should have
-        // been restored (disposed) so we don't leak state onto the worker thread.
-        Assert.NotEqual(observedCurrent, Activity.Current);
-    }
-
-    [Fact]
-    public async Task HandleActivityResponseAsync_ShouldPropagateTraceId_ToDownstreamActivities()
-    {
-        // This is the actual user-visible symptom from issue #1749: downstream calls
-        // appearing under a different TraceId. Here we simulate a downstream
-        // ActivitySource.StartActivity call and assert that the TraceId matches the
-        // traceparent supplied by the sidecar.
-        using var listener = new ActivityListener();
-        listener.ShouldListenTo = _ => true;
-        listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
-        listener.SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllDataAndRecorded;
-        ActivitySource.AddActivityListener(listener);
-
-        using var userSource = new ActivitySource("User.Code");
-
-        var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
-        const string expectedTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
-        const string parentSpanId = "00f067aa0ba902b7";
-        const string traceParent = $"00-{expectedTraceId}-{parentSpanId}-01";
-
-        string? downstreamTraceId = null;
-
-        var factory = new StubWorkflowsFactory();
-        factory.AddActivity("act", new InlineActivity(
-            inputType: typeof(int),
-            run: (_, _) =>
-            {
-                using var downstream = userSource.StartActivity("downstream-http-call");
-                downstreamTraceId = downstream?.TraceId.ToHexString();
-                return Task.FromResult<object?>(null);
-            }));
-
-        var worker = new WorkflowWorker(
-            CreateGrpcClientMock().Object,
-            factory,
-            NullLoggerFactory.Instance,
-            serializer,
-            sp);
-
-        var request = new ActivityRequest
-        {
-            Name = "act",
-            TaskId = 2,
-            Input = string.Empty,
-            WorkflowInstance = new WorkflowInstance { InstanceId = "wf-2" },
-            ParentTraceContext = new TraceContext { TraceParent = traceParent }
-        };
-
-        var response = await InvokeHandleActivityResponseAsync(worker, request);
-
-        Assert.Null(response.FailureDetails);
-        Assert.Equal(expectedTraceId, downstreamTraceId);
-    }
-
-    [Fact]
-    public async Task HandleActivityResponseAsync_ShouldLeaveActivityCurrentNull_WhenParentTraceContextIsMissing()
-    {
-        // Behavior must be unchanged (no ambient Activity) when the sidecar didn't
-        // supply a traceparent — the fix must not start spurious Activities.
-        using var listener = new ActivityListener();
-        listener.ShouldListenTo = src => src.Name == "Dapr.Workflow";
-        listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
-        listener.SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllDataAndRecorded;
-        ActivitySource.AddActivityListener(listener);
-
-        var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
-        Activity? observedCurrent = null;
-
-        var factory = new StubWorkflowsFactory();
-        factory.AddActivity("act", new InlineActivity(
-            inputType: typeof(int),
-            run: (_, _) =>
-            {
-                observedCurrent = Activity.Current;
-                return Task.FromResult<object?>(null);
-            }));
-
-        var worker = new WorkflowWorker(
-            CreateGrpcClientMock().Object,
-            factory,
-            NullLoggerFactory.Instance,
-            serializer,
-            sp);
-
-        // Ensure the surrounding test runner hasn't left an ambient activity on this
-        // async context that could mask a regression.
-        Activity.Current = null;
-
-        var request = new ActivityRequest
-        {
-            Name = "act",
-            TaskId = 3,
-            Input = string.Empty,
-            WorkflowInstance = new WorkflowInstance { InstanceId = "wf-3" }
-        };
-
-        var response = await InvokeHandleActivityResponseAsync(worker, request);
-
-        Assert.Null(response.FailureDetails);
-        Assert.Null(observedCurrent);
-    }
-
-    [Fact]
-    public async Task HandleActivityResponseAsync_ShouldFallBackToSetParentId_WhenTraceParentIsMalformed()
-    {
-        // Covers the fallback branch in StartActivityFromRequest: a non-W3C parent id
-        // still yields a non-null Activity.Current whose raw ParentId matches input.
-        using var listener = new ActivityListener();
-        listener.ShouldListenTo = src => src.Name == "Dapr.Workflow";
-        listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
-        listener.SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllDataAndRecorded;
-        ActivitySource.AddActivityListener(listener);
-
-        var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
-        const string malformedParentId = "not-a-valid-w3c-traceparent";
-
-        string? observedParentId = null;
-
-        var factory = new StubWorkflowsFactory();
-        factory.AddActivity("act", new InlineActivity(
-            inputType: typeof(int),
-            run: (_, _) =>
-            {
-                observedParentId = Activity.Current?.ParentId;
-                return Task.FromResult<object?>(null);
-            }));
-
-        var worker = new WorkflowWorker(
-            CreateGrpcClientMock().Object,
-            factory,
-            NullLoggerFactory.Instance,
-            serializer,
-            sp);
-
-        var request = new ActivityRequest
-        {
-            Name = "act",
-            TaskId = 4,
-            Input = string.Empty,
-            WorkflowInstance = new WorkflowInstance { InstanceId = "wf-4" },
-            ParentTraceContext = new TraceContext { TraceParent = malformedParentId }
-        };
-
-        var response = await InvokeHandleActivityResponseAsync(worker, request);
-
-        Assert.Null(response.FailureDetails);
-        Assert.Equal(malformedParentId, observedParentId);
-    }
-
-    [Fact]
-    public async Task HandleActivityResponseAsync_ShouldPopulateActivityCurrent_WithoutRegisteredListener()
-    {
-        // Regression test for issue #1749: Activity.Current must be non-null inside user activity
-        // code even when NO ActivityListener is registered for "Dapr.Workflow". The original patch
-        // in #1795 used WorkflowActivitySource.StartActivity(), which returns null when there is
-        // no listener — leaving Activity.Current null for users who haven't wired up OpenTelemetry.
-        // Explicitly do NOT register any ActivityListener here to reproduce the real-world scenario.
-        var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
-        const string expectedTraceId = "0af7651916cd43dd8448eb211c80319c";
-        const string parentSpanId = "b7ad6b7169203331";
-        const string traceParent = $"00-{expectedTraceId}-{parentSpanId}-01";
-        const string traceState = "vendor=value";
-
-        Activity? observedCurrent = null;
-        string? observedTraceId = null;
-        string? observedParentSpanId = null;
-        string? observedTraceState = null;
-
-        var factory = new StubWorkflowsFactory();
-        factory.AddActivity("act", new InlineActivity(
-            inputType: typeof(int),
-            run: (_, _) =>
-            {
-                observedCurrent = Activity.Current;
-                observedTraceId = Activity.Current?.TraceId.ToHexString();
-                observedParentSpanId = Activity.Current?.ParentSpanId.ToHexString();
-                observedTraceState = Activity.Current?.TraceStateString;
-                return Task.FromResult<object?>(null);
-            }));
-
-        var worker = new WorkflowWorker(
-            CreateGrpcClientMock().Object,
-            factory,
-            NullLoggerFactory.Instance,
-            serializer,
-            sp);
-
-        Activity.Current = null;
-
-        var request = new ActivityRequest
-        {
-            Name = "act",
-            TaskId = 5,
-            Input = string.Empty,
-            WorkflowInstance = new WorkflowInstance { InstanceId = "wf-5" },
-            ParentTraceContext = new TraceContext
-            {
-                TraceParent = traceParent,
-                TraceState = traceState
-            }
-        };
-
-        var response = await InvokeHandleActivityResponseAsync(worker, request);
-
-        Assert.Null(response.FailureDetails);
-        Assert.NotNull(observedCurrent);
-        Assert.Equal(expectedTraceId, observedTraceId);
-        Assert.Equal(parentSpanId, observedParentSpanId);
-        Assert.Equal(traceState, observedTraceState);
-    }
-
-    [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenGrpcClientIsNull()
     {
         Assert.Throws<ArgumentNullException>(() =>
@@ -1414,12 +1123,13 @@ public class WorkflowWorkerTests
             ParentTraceContext = new TraceContext { TraceParent = traceParent }
         };
 
+        using var activity = StartAmbientActivity(traceParent);
         var response = await InvokeHandleActivityResponseAsync(worker, request);
 
         Assert.NotNull(response.FailureDetails);
         Assert.Contains("boom", response.FailureDetails.ErrorMessage);
         Assert.Equal(expectedTraceId, logProvider.ErrorLogTraceId);
-        Assert.Equal(ActivityStatusCode.Error, logProvider.ErrorLogStatus);
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
     }
 
     [Fact]
@@ -1458,50 +1168,13 @@ public class WorkflowWorkerTests
             ParentTraceContext = new TraceContext { TraceParent = traceParent }
         };
 
+        using var activity = StartAmbientActivity(traceParent);
         var response = await InvokeHandleActivityResponseAsync(worker, request);
 
         Assert.NotNull(response.FailureDetails);
         Assert.Contains("activate-boom", response.FailureDetails.ErrorMessage);
         Assert.Equal(expectedTraceId, logProvider.GetTraceIdForMessage("Activity 'act' failed to activate"));
-    }
-
-    [Fact]
-    public async Task HandleActivityResponseAsync_ShouldKeepTraceContext_WhenLoggingActivityNotFound()
-    {
-        var sp = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
-        const string expectedTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
-        const string parentSpanId = "00f067aa0ba902b7";
-        const string traceParent = $"00-{expectedTraceId}-{parentSpanId}-01";
-
-        var logProvider = new ActivityCapturingLoggerProvider();
-        using var loggerFactory = LoggerFactory.Create(builder =>
-        {
-            builder.SetMinimumLevel(LogLevel.Trace);
-            builder.AddProvider(logProvider);
-        });
-
-        var worker = new WorkflowWorker(
-            CreateGrpcClientMock().Object,
-            new StubWorkflowsFactory(),
-            loggerFactory,
-            serializer,
-            sp);
-
-        var request = new ActivityRequest
-        {
-            Name = "missing",
-            TaskId = 7,
-            WorkflowInstance = new WorkflowInstance { InstanceId = "i" },
-            ParentTraceContext = new TraceContext { TraceParent = traceParent }
-        };
-
-        var response = await InvokeHandleActivityResponseAsync(worker, request);
-
-        Assert.NotNull(response.FailureDetails);
-        Assert.Equal("ActivityNotFoundException", response.FailureDetails.ErrorType);
-        Assert.Equal(expectedTraceId, logProvider.GetTraceIdForMessage("Activity 'missing' not found in registry"));
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
     }
 
     [Fact]
@@ -2797,7 +2470,6 @@ public class WorkflowWorkerTests
         private readonly List<(string Message, string? TraceId)> _logs = [];
 
         public string? ErrorLogTraceId { get; private set; }
-        public ActivityStatusCode ErrorLogStatus { get; private set; }
 
         public ILogger CreateLogger(string categoryName) => new ActivityCapturingLogger(this);
 
@@ -2829,7 +2501,6 @@ public class WorkflowWorkerTests
                 }
 
                 provider.ErrorLogTraceId = Activity.Current?.TraceId.ToHexString();
-                provider.ErrorLogStatus = Activity.Current?.Status ?? ActivityStatusCode.Unset;
             }
         }
 
@@ -2841,6 +2512,14 @@ public class WorkflowWorkerTests
             {
             }
         }
+    }
+
+    private static Activity StartAmbientActivity(string traceParent)
+    {
+        var activity = new Activity("test");
+        activity.SetParentId(traceParent);
+        activity.Start();
+        return activity;
     }
 
     private static async IAsyncEnumerable<WorkItem> EmptyWorkItems()

@@ -17,6 +17,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
 using Dapr.DurableTask.Protobuf;
+using Dapr.Workflow.Worker;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
@@ -281,6 +282,9 @@ internal sealed class GrpcProtocolHandler(
             _logger.LogGrpcProtocolHandlerActivityProcessorStart(request.WorkflowInstance.InstanceId, request.Name,
                 request.TaskId, activeCount);
 
+            // Restore the trace context provided by the sidecar so Activity.Current is non-null
+            using var traceScope = WorkflowTrace.StartActivityTrace(request);
+
             // Execute the activity and determine the result (success or application failure).
             // This try/catch must NOT include the CompleteActivityTaskAsync call below — a transport
             // failure during delivery must not be converted into an application-level activity failure,
@@ -297,6 +301,7 @@ internal sealed class GrpcProtocolHandler(
             }
             catch (Exception ex)
             {
+                WorkflowTrace.SetCurrentError(ex);
                 _logger.LogGrpcProtocolHandlerActivityProcessorError(ex, request.Name,
                     request.WorkflowInstance?.InstanceId);
                 result = CreateActivityFailureResult(request, completionToken, ex);
