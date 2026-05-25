@@ -32,24 +32,24 @@ using System.Linq;
 /// </remarks>
 public sealed class PropagatedHistory
 {
-    private readonly IReadOnlyList<PropagatedHistoryEntry> _workflows;
+    private readonly IReadOnlyList<PropagatedHistoryEntry> _entries;
 
     /// <summary>
     /// Initializes a new <see cref="PropagatedHistory"/> from the given workflow entries.
     /// </summary>
-    /// <param name="workflows">
+    /// <param name="entries">
     /// Workflow entries in execution order (ancestor first, immediate parent last).
     /// </param>
-    public PropagatedHistory(IReadOnlyList<PropagatedHistoryEntry> workflows)
+    public PropagatedHistory(IReadOnlyList<PropagatedHistoryEntry> entries)
     {
-        _workflows = workflows ?? throw new ArgumentNullException(nameof(workflows));
+        _entries = entries ?? throw new ArgumentNullException(nameof(entries));
     }
 
     /// <summary>
     /// Returns every workflow entry in the propagated history, in execution order
     /// (ancestor first, immediate parent last).
     /// </summary>
-    public IReadOnlyList<PropagatedHistoryEntry> GetWorkflows() => _workflows;
+    public IReadOnlyList<PropagatedHistoryEntry> GetWorkflows() => _entries;
 
     /// <summary>
     /// Returns an ordered, deduplicated list of app IDs in this propagated history.
@@ -57,12 +57,12 @@ public sealed class PropagatedHistory
     public IReadOnlyList<string> GetAppIds()
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var result = new List<string>(_workflows.Count);
-        foreach (var workflow in _workflows)
+        var result = new List<string>(_entries.Count);
+        foreach (var entry in _entries)
         {
-            if (seen.Add(workflow.AppId))
+            if (seen.Add(entry.AppId))
             {
-                result.Add(workflow.AppId);
+                result.Add(entry.AppId);
             }
         }
 
@@ -78,8 +78,8 @@ public sealed class PropagatedHistory
     public IReadOnlyList<PropagatedHistoryEntry> GetWorkflowsByName(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        return _workflows
-            .Where(w => string.Equals(w.Name, name, StringComparison.OrdinalIgnoreCase))
+        return _entries
+            .Where(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
 
@@ -92,11 +92,11 @@ public sealed class PropagatedHistory
     public bool TryGetLastWorkflowByName(string name, [NotNullWhen(true)] out PropagatedHistoryEntry? result)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        for (var i = _workflows.Count - 1; i >= 0; i--)
+        for (var i = _entries.Count - 1; i >= 0; i--)
         {
-            if (string.Equals(_workflows[i].Name, name, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(_entries[i].Name, name, StringComparison.OrdinalIgnoreCase))
             {
-                result = _workflows[i];
+                result = _entries[i];
                 return true;
             }
         }
@@ -113,8 +113,8 @@ public sealed class PropagatedHistory
     public IReadOnlyList<PropagatedHistoryEntry> GetWorkflowsByAppId(string appId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
-        return _workflows
-            .Where(w => string.Equals(w.AppId, appId, StringComparison.OrdinalIgnoreCase))
+        return _entries
+            .Where(e => string.Equals(e.AppId, appId, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
 
@@ -127,8 +127,8 @@ public sealed class PropagatedHistory
     public IReadOnlyList<PropagatedHistoryEntry> GetWorkflowsByInstanceId(string instanceId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
-        return _workflows
-            .Where(w => string.Equals(w.InstanceId, instanceId, StringComparison.Ordinal))
+        return _entries
+            .Where(e => string.Equals(e.InstanceId, instanceId, StringComparison.Ordinal))
             .ToList();
     }
 }
