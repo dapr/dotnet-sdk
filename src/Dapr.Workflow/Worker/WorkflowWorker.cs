@@ -12,7 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
-using System.Diagnostics;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -81,6 +81,7 @@ internal sealed class WorkflowWorker(
     {
         _logger.LogWorkerWorkflowHandleOrchestratorRequestStart(request.InstanceId);
 
+        WorkflowTrace.TraceActivityScope traceScope = default;
         try
         {
             // Create a scope for DI
@@ -107,6 +108,9 @@ internal sealed class WorkflowWorker(
             // If the most recent event is `ExecutionTerminated`, acknowledge termination immediately.
             var timelineEvents = allPastEvents.Concat(request.NewEvents).ToList();
             var latestEvent = timelineEvents.Count > 0 ? timelineEvents[^1] : null;
+            
+            // Restore the trace context provided by the sidecar so Activity.Current is non-null
+            traceScope = WorkflowTrace.StartOrchestrationTrace(timelineEvents);
             
             if (latestEvent?.ExecutionTerminated != null)
             {
@@ -444,6 +448,8 @@ internal sealed class WorkflowWorker(
             }
             catch (Exception ex)
             {
+                WorkflowTrace.SetCurrentError(ex);
+                
                 // Report the failure as an action so Dapr records the workflow as FAILED
                 response.Actions.Add(new WorkflowAction
                 {
@@ -466,6 +472,7 @@ internal sealed class WorkflowWorker(
         }
         catch (Exception ex)
         {
+            WorkflowTrace.SetCurrentError(ex);
             _logger.LogWorkerWorkflowHandleOrchestratorRequestFailed(ex, request.InstanceId);
 
             return new WorkflowResponse
@@ -490,6 +497,10 @@ internal sealed class WorkflowWorker(
                 }
             };
         }
+        finally
+        {
+            traceScope.Dispose();
+        }
     }
 
     private async Task<ActivityResponse> HandleActivityResponseAsync(ActivityRequest request, string completionToken)
@@ -507,6 +518,7 @@ internal sealed class WorkflowWorker(
             {
                 if (activityActivationException != null)
                 {
+                    WorkflowTrace.SetCurrentError(activityActivationException);
                     _logger.LogWorkerWorkflowHandleActivityRequestActivationFailed(activityActivationException, request.Name);
 
                     return new ActivityResponse
@@ -547,9 +559,6 @@ internal sealed class WorkflowWorker(
             var context = new WorkflowActivityContextImpl(activityIdentifier,
                 request.WorkflowInstance?.InstanceId ?? string.Empty, taskExecutionKey);
 
-            // Restore the trace context provided by the sidecar so Activity.Current is non-null
-            using var traceActivity = StartActivityFromRequest(request);
-
             // Deserialize the input
             object? input = null;
             if (!string.IsNullOrEmpty(request.Input))
@@ -577,6 +586,7 @@ internal sealed class WorkflowWorker(
         }
         catch (Exception ex)
         {
+            WorkflowTrace.SetCurrentError(ex);
             _logger.LogWorkerWorkflowHandleActivityRequestFailed(ex, request.Name, request.WorkflowInstance?.InstanceId);
 
             return new ActivityResponse
@@ -606,42 +616,6 @@ internal sealed class WorkflowWorker(
 
         await base.StopAsync(cancellationToken);
     }
-    
-    private static readonly ActivitySource WorkflowActivitySource = new ("Dapr.Workflow");
-
-    private static Activity? StartActivityFromRequest(ActivityRequest request)
-    {
-        var traceParent = request.ParentTraceContext?.TraceParent;
-        if (string.IsNullOrEmpty(traceParent))
-            return null;
-
-        var traceState = request.ParentTraceContext?.TraceState;
-        if (ActivityContext.TryParse(traceParent, traceState, isRemote: true, out var parentCtx))
-        {
-            // Prefer ActivitySource so registered telemetry listeners (e.g. OpenTelemetry) receive the span.
-            var started = WorkflowActivitySource.StartActivity(
-                name: $"WorkflowActivity {request.Name}",
-                kind: ActivityKind.Internal,
-                parentContext: parentCtx,
-                []);
-            if (started != null)
-                return started;
-
-            // ActivitySource.StartActivity returns null when no listener is registered for "Dapr.Workflow".
-            // Fall through to ensure Activity.Current is always non-null inside user activity code,
-            // regardless of whether OpenTelemetry or another telemetry listener is configured.
-        }
-
-        // Always create an Activity directly (not via ActivitySource) so that Activity.Current is
-        // non-null in user activity code even when no telemetry listener is registered.
-        var act = new Activity($"WorkflowActivity {request.Name}");
-        act.SetParentId(traceParent);
-        if (!string.IsNullOrEmpty(traceState))
-            act.TraceStateString = traceState;
-        act.Start();
-        return act;
-    }
-
     private CallOptions CreateCallOptions(CancellationToken cancellationToken = default) =>
         DaprClientUtilities.ConfigureGrpcCallOptions(typeof(WorkflowWorker).Assembly, _daprApiToken, cancellationToken);
 }
