@@ -413,8 +413,10 @@ public class WorkflowHistoryPropagationTests
             new PropagatedHistoryEntry("inst-2", "appa", "OtherWf", [], []),
         ]);
 
+        // Both entries belong to the same app (differing only in casing), so the de-duped
+        // app-id list collapses to one, while a case-insensitive filter matches both entries.
         Assert.Single(history.GetAppIds());
-        Assert.Single(history.FilterByAppId("APPA"));
+        Assert.Equal(2, history.FilterByAppId("APPA").Count);
         Assert.Single(history.FilterByWorkflowName("merchantcheckout"));
         Assert.True(history.TryGetLastWorkflowByName("MERCHANTCHECKOUT", out _));
         Assert.Single(entry.GetActivitiesByName("validatemerchant"));
