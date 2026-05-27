@@ -40,11 +40,6 @@ public sealed class PropagatedHistoryEntry(
     IReadOnlyList<PropagatedHistoryActivityResult> activities,
     IReadOnlyList<PropagatedHistoryChildWorkflowResult> childWorkflows)
 {
-    private readonly IReadOnlyList<PropagatedHistoryActivityResult> _activities =
-        activities ?? throw new ArgumentNullException(nameof(activities));
-    private readonly IReadOnlyList<PropagatedHistoryChildWorkflowResult> _childWorkflows =
-        childWorkflows ?? throw new ArgumentNullException(nameof(childWorkflows));
-
     /// <summary>The instance ID of the ancestor workflow this entry describes.</summary>
     public string InstanceId { get; } = instanceId ?? throw new ArgumentNullException(nameof(instanceId));
 
@@ -55,10 +50,12 @@ public sealed class PropagatedHistoryEntry(
     public string Name { get; } = name ?? throw new ArgumentNullException(nameof(name));
 
     /// <summary>All activities executed in this entry, in execution order.</summary>
-    public IReadOnlyList<PropagatedHistoryActivityResult> Activities => _activities;
+    public IReadOnlyList<PropagatedHistoryActivityResult> Activities { get; } =
+        activities ?? throw new ArgumentNullException(nameof(activities));
 
     /// <summary>All child workflows started in this entry, in execution order.</summary>
-    public IReadOnlyList<PropagatedHistoryChildWorkflowResult> ChildWorkflows => _childWorkflows;
+    public IReadOnlyList<PropagatedHistoryChildWorkflowResult> ChildWorkflows { get; } =
+        childWorkflows ?? throw new ArgumentNullException(nameof(childWorkflows));
 
     /// <summary>
     /// Returns every activity in this entry whose scheduled name matches, in execution order.
@@ -68,7 +65,7 @@ public sealed class PropagatedHistoryEntry(
     public IReadOnlyList<PropagatedHistoryActivityResult> GetActivitiesByName(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        return _activities
+        return Activities
             .Where(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
@@ -82,11 +79,11 @@ public sealed class PropagatedHistoryEntry(
     public bool TryGetLastActivityByName(string name, [NotNullWhen(true)] out PropagatedHistoryActivityResult? result)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        for (var i = _activities.Count - 1; i >= 0; i--)
+        for (var i = Activities.Count - 1; i >= 0; i--)
         {
-            if (string.Equals(_activities[i].Name, name, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Activities[i].Name, name, StringComparison.OrdinalIgnoreCase))
             {
-                result = _activities[i];
+                result = Activities[i];
                 return true;
             }
         }
@@ -103,7 +100,7 @@ public sealed class PropagatedHistoryEntry(
     public IReadOnlyList<PropagatedHistoryChildWorkflowResult> GetChildWorkflowsByName(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        return _childWorkflows
+        return ChildWorkflows
             .Where(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
@@ -117,11 +114,11 @@ public sealed class PropagatedHistoryEntry(
     public bool TryGetLastChildWorkflowByName(string name, [NotNullWhen(true)] out PropagatedHistoryChildWorkflowResult? result)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        for (var i = _childWorkflows.Count - 1; i >= 0; i--)
+        for (var i = ChildWorkflows.Count - 1; i >= 0; i--)
         {
-            if (string.Equals(_childWorkflows[i].Name, name, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(ChildWorkflows[i].Name, name, StringComparison.OrdinalIgnoreCase))
             {
-                result = _childWorkflows[i];
+                result = ChildWorkflows[i];
                 return true;
             }
         }
