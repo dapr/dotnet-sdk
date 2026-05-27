@@ -1003,7 +1003,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
     /// <summary>
     /// Converts a <see cref="PropagatedHistoryChunk"/> proto message into a public-facing
-    /// <see cref="PropagatedHistoryEntry"/> by resolving each scheduled activity and child workflow
+    /// <see cref="PropagatedHistoryEvent"/> by resolving each scheduled activity and child workflow
     /// against its matching completion/failure event.
     /// </summary>
     /// <remarks>
@@ -1014,7 +1014,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// Malformed event bytes are surfaced as exceptions — a runtime sending unparseable
     /// proto bytes is a contract violation we should not hide.
     /// </remarks>
-    private static PropagatedHistoryEntry ConvertChunk(PropagatedHistoryChunk chunk)
+    private static PropagatedHistoryEvent ConvertChunk(PropagatedHistoryChunk chunk)
     {
         var events = new List<HistoryEvent>(chunk.RawEvents.Count);
         foreach (var rawEvent in chunk.RawEvents)
@@ -1062,7 +1062,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             }
         }
 
-        return new PropagatedHistoryEntry(
+        return new PropagatedHistoryEvent(
             chunk.InstanceId,
             chunk.AppId,
             chunk.WorkflowName,

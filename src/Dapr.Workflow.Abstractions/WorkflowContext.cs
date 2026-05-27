@@ -341,8 +341,8 @@ public abstract class WorkflowContext : IWorkflowContext
     /// specified a <see cref="HistoryPropagationScope"/> other than <see cref="HistoryPropagationScope.None"/>.
     /// </para>
     /// <para>
-    /// Use <see cref="PropagatedHistory.TryGetLastWorkflowByName"/> and
-    /// <see cref="PropagatedHistoryEntry.TryGetLastActivityByName"/> / <see cref="PropagatedHistoryEntry.TryGetLastWorkflowByName"/>
+    /// Use <see cref="PropagatedHistory.TryGetLastWorkflowEventByName"/> and
+    /// <see cref="PropagatedHistoryEvent.TryGetLastActivityByName"/> / <see cref="PropagatedHistoryEvent.TryGetLastWorkflowByName"/>
     /// to look up the most recent matching item; the plural <c>FilterBy*</c> /
     /// <c>Get*ByName</c> variants return every match.
     /// </para>
