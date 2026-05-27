@@ -30,7 +30,7 @@ namespace Dapr.Workflow.Test.Worker.Internal;
 /// and exposing inbound propagated history through
 /// <see cref="WorkflowContext.GetPropagatedHistory"/> as <see cref="PropagatedHistoryEntry"/>
 /// values, each carrying typed <see cref="PropagatedHistoryActivityResult"/> /
-/// <see cref="PropagatedHistoryChildWorkflowResult"/> records.
+/// <see cref="PropagatedHistoryWorkflowResult"/> records.
 /// </summary>
 public class WorkflowHistoryPropagationTests
 {
@@ -168,7 +168,7 @@ public class WorkflowHistoryPropagationTests
         Assert.Equal("parent-instance", entries[0].InstanceId);
         Assert.Equal("ParentWorkflow", entries[0].Name);
         Assert.Empty(entries[0].Activities);
-        Assert.Empty(entries[0].ChildWorkflows);
+        Assert.Empty(entries[0].Workflows);
     }
 
     [Fact]
@@ -308,7 +308,7 @@ public class WorkflowHistoryPropagationTests
 
         var context = CreateContext(incomingPropagatedHistory: [chunk]);
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowByName("Wf", out var workflow));
-        Assert.True(workflow.TryGetLastChildWorkflowByName("ProcessPayment", out var child));
+        Assert.True(workflow.TryGetLastWorkflowByName("ProcessPayment", out var child));
 
         Assert.Equal(PropagatedHistoryTaskStatus.Completed, child.Status);
         Assert.Equal("\"paid\"", child.Output);
@@ -323,7 +323,7 @@ public class WorkflowHistoryPropagationTests
 
         var context = CreateContext(incomingPropagatedHistory: [chunk]);
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowByName("Wf", out var workflow));
-        Assert.True(workflow.TryGetLastChildWorkflowByName("ProcessPayment", out var child));
+        Assert.True(workflow.TryGetLastWorkflowByName("ProcessPayment", out var child));
 
         Assert.Equal(PropagatedHistoryTaskStatus.Failed, child.Status);
         Assert.Equal("boom", child.FailureDetails!.ErrorMessage);
@@ -336,7 +336,7 @@ public class WorkflowHistoryPropagationTests
         var context = CreateContext(incomingPropagatedHistory: [chunk]);
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowByName("Wf", out var workflow));
 
-        Assert.False(workflow.TryGetLastChildWorkflowByName("Missing", out var missing));
+        Assert.False(workflow.TryGetLastWorkflowByName("Missing", out var missing));
         Assert.Null(missing);
     }
 
@@ -392,7 +392,7 @@ public class WorkflowHistoryPropagationTests
         var activity = new PropagatedHistoryActivityResult(
             Name: "ValidateMerchant", Status: PropagatedHistoryTaskStatus.Completed,
             Input: null, Output: null, FailureDetails: null);
-        var child = new PropagatedHistoryChildWorkflowResult(
+        var child = new PropagatedHistoryWorkflowResult(
             Name: "FraudDetection", Status: PropagatedHistoryTaskStatus.Completed,
             Output: null, FailureDetails: null);
         var entry = new PropagatedHistoryEntry("inst-1", "AppA", "MerchantCheckout", [activity], [child]);
@@ -409,8 +409,8 @@ public class WorkflowHistoryPropagationTests
         Assert.True(history.TryGetLastWorkflowByName("MERCHANTCHECKOUT", out _));
         Assert.Single(entry.GetActivitiesByName("validatemerchant"));
         Assert.True(entry.TryGetLastActivityByName("VALIDATEMERCHANT", out _));
-        Assert.Single(entry.GetChildWorkflowsByName("frauddetection"));
-        Assert.True(entry.TryGetLastChildWorkflowByName("FRAUDDETECTION", out _));
+        Assert.Single(entry.GetWorkflowsByName("frauddetection"));
+        Assert.True(entry.TryGetLastWorkflowByName("FRAUDDETECTION", out _));
     }
 
     [Fact]
@@ -426,7 +426,7 @@ public class WorkflowHistoryPropagationTests
         Assert.Equal(PropagatedHistoryTaskStatus.Completed, completed.Status);
         Assert.Equal(PropagatedHistoryTaskStatus.Failed, failed.Status);
 
-        var child = new PropagatedHistoryChildWorkflowResult(
+        var child = new PropagatedHistoryWorkflowResult(
             Name: "C", Status: PropagatedHistoryTaskStatus.Completed,
             Output: null, FailureDetails: null);
         Assert.Equal(PropagatedHistoryTaskStatus.Completed, child.Status);

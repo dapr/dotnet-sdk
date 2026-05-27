@@ -1048,7 +1048,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         }
 
         var activities = new List<PropagatedHistoryActivityResult>();
-        var childWorkflows = new List<PropagatedHistoryChildWorkflowResult>();
+        var childWorkflows = new List<PropagatedHistoryWorkflowResult>();
         foreach (var historyEvent in events)
         {
             switch (historyEvent.EventTypeCase)
@@ -1106,11 +1106,11 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     }
 
     /// <summary>
-    /// Builds a <see cref="PropagatedHistoryChildWorkflowResult"/> by matching the create event's
+    /// Builds a <see cref="PropagatedHistoryWorkflowResult"/> by matching the create event's
     /// <c>EventId</c> against subsequent <c>ChildWorkflowInstanceCompleted</c> /
     /// <c>ChildWorkflowInstanceFailed</c> events.
     /// </summary>
-    private static PropagatedHistoryChildWorkflowResult ResolveChildWorkflow(
+    private static PropagatedHistoryWorkflowResult ResolveChildWorkflow(
         HistoryEvent createEvent,
         IReadOnlyDictionary<int, HistoryEvent> completions,
         IReadOnlyDictionary<int, HistoryEvent> failures)
@@ -1133,7 +1133,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             failureDetails = MapFailureDetails(failure.ChildWorkflowInstanceFailed.FailureDetails);
         }
 
-        return new PropagatedHistoryChildWorkflowResult(
+        return new PropagatedHistoryWorkflowResult(
             Name: created.Name,
             Status: status,
             Output: output,

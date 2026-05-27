@@ -26,7 +26,7 @@ namespace Dapr.Workflow;
 /// means it was scheduled but has not yet completed or failed, <see cref="PropagatedHistoryTaskStatus.Completed"/>
 /// means it succeeded, and <see cref="PropagatedHistoryTaskStatus.Failed"/> means it failed.
 /// </remarks>
-public sealed record PropagatedHistoryChildWorkflowResult(
+public sealed record PropagatedHistoryWorkflowResult(
     string Name,
     PropagatedHistoryTaskStatus Status,
     string? Output,

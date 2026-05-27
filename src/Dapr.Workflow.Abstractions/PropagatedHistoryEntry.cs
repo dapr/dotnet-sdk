@@ -30,7 +30,7 @@ using System.Linq;
 /// <remarks>
 /// One <see cref="PropagatedHistoryEntry"/> exists per ancestor workflow in a
 /// <see cref="PropagatedHistory"/>. Use <see cref="TryGetLastActivityByName"/> and
-/// <see cref="TryGetLastChildWorkflowByName"/> to look up specific items in this entry;
+/// <see cref="TryGetLastWorkflowByName"/> to look up specific items in this entry;
 /// the plural <c>Get*ByName</c> variants return every occurrence in execution order.
 /// </remarks>
 public sealed class PropagatedHistoryEntry(
@@ -38,7 +38,7 @@ public sealed class PropagatedHistoryEntry(
     string appId,
     string name,
     IReadOnlyList<PropagatedHistoryActivityResult> activities,
-    IReadOnlyList<PropagatedHistoryChildWorkflowResult> childWorkflows)
+    IReadOnlyList<PropagatedHistoryWorkflowResult> childWorkflows)
 {
     /// <summary>The instance ID of the ancestor workflow this entry describes.</summary>
     public string InstanceId { get; } = instanceId ?? throw new ArgumentNullException(nameof(instanceId));
@@ -53,8 +53,8 @@ public sealed class PropagatedHistoryEntry(
     public IReadOnlyList<PropagatedHistoryActivityResult> Activities { get; } =
         activities ?? throw new ArgumentNullException(nameof(activities));
 
-    /// <summary>All child workflows started in this entry, in execution order.</summary>
-    public IReadOnlyList<PropagatedHistoryChildWorkflowResult> ChildWorkflows { get; } =
+    /// <summary>All workflows started in this entry, in execution order.</summary>
+    public IReadOnlyList<PropagatedHistoryWorkflowResult> Workflows { get; } =
         childWorkflows ?? throw new ArgumentNullException(nameof(childWorkflows));
 
     /// <summary>
@@ -97,10 +97,10 @@ public sealed class PropagatedHistoryEntry(
     /// </summary>
     /// <param name="name">The child workflow name to filter by.</param>
     /// <returns>An empty list when no match is found.</returns>
-    public IReadOnlyList<PropagatedHistoryChildWorkflowResult> GetChildWorkflowsByName(string name)
+    public IReadOnlyList<PropagatedHistoryWorkflowResult> GetWorkflowsByName(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        return ChildWorkflows
+        return Workflows
             .Where(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
@@ -111,14 +111,14 @@ public sealed class PropagatedHistoryEntry(
     /// <param name="name">The child workflow name to look up.</param>
     /// <param name="result">When this method returns <see langword="true"/>, the last matching child workflow; otherwise <see langword="null"/>.</param>
     /// <returns><see langword="true"/> if a matching child workflow was found; otherwise <see langword="false"/>.</returns>
-    public bool TryGetLastChildWorkflowByName(string name, [NotNullWhen(true)] out PropagatedHistoryChildWorkflowResult? result)
+    public bool TryGetLastWorkflowByName(string name, [NotNullWhen(true)] out PropagatedHistoryWorkflowResult? result)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        for (var i = ChildWorkflows.Count - 1; i >= 0; i--)
+        for (var i = Workflows.Count - 1; i >= 0; i--)
         {
-            if (string.Equals(ChildWorkflows[i].Name, name, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(Workflows[i].Name, name, StringComparison.OrdinalIgnoreCase))
             {
-                result = ChildWorkflows[i];
+                result = Workflows[i];
                 return true;
             }
         }

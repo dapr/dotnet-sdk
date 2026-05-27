@@ -342,7 +342,7 @@ public abstract class WorkflowContext : IWorkflowContext
     /// </para>
     /// <para>
     /// Use <see cref="PropagatedHistory.TryGetLastWorkflowByName"/> and
-    /// <see cref="PropagatedHistoryEntry.TryGetLastActivityByName"/> / <see cref="PropagatedHistoryEntry.TryGetLastChildWorkflowByName"/>
+    /// <see cref="PropagatedHistoryEntry.TryGetLastActivityByName"/> / <see cref="PropagatedHistoryEntry.TryGetLastWorkflowByName"/>
     /// to look up the most recent matching item; the plural <c>FilterBy*</c> /
     /// <c>Get*ByName</c> variants return every match.
     /// </para>
