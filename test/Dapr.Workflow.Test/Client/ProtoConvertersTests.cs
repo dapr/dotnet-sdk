@@ -126,6 +126,32 @@ public class ProtoConvertersTests
     }
 
     [Fact]
+    public void ToWorkflowMetadata_ShouldMapFailureDetails_WhenPresent()
+    {
+        var serializer = new JsonDaprSerializer();
+
+        var state = new Dapr.DurableTask.Protobuf.WorkflowState
+        {
+            InstanceId = "i",
+            Name = "n",
+            WorkflowStatus = OrchestrationStatus.Failed,
+            FailureDetails = new TaskFailureDetails
+            {
+                ErrorType = "System.InvalidOperationException",
+                ErrorMessage = "boom",
+                StackTrace = "trace"
+            }
+        };
+
+        var metadata = ProtoConverters.ToWorkflowMetadata(state, serializer);
+
+        Assert.NotNull(metadata.FailureDetails);
+        Assert.Equal("System.InvalidOperationException", metadata.FailureDetails!.ErrorType);
+        Assert.Equal("boom", metadata.FailureDetails.ErrorMessage);
+        Assert.Equal("trace", metadata.FailureDetails.StackTrace);
+    }
+
+    [Fact]
     public void ToWorkflowMetadata_ShouldKeepSerializedFields_WhenProtoStringsContainWhitespace()
     {
         var serializer = new JsonDaprSerializer();
