@@ -222,9 +222,6 @@ public class WorkflowHistoryPropagationTests
         Assert.True(workflow.TryGetLastActivityByName("ValidateMerchant", out var activity));
 
         Assert.Equal("ValidateMerchant", activity.Name);
-        Assert.True(activity.Started);
-        Assert.True(activity.Completed);
-        Assert.False(activity.Failed);
         Assert.Equal(PropagatedHistoryTaskStatus.Completed, activity.Status);
         Assert.Equal("\"merchant-1\"", activity.Input);
         Assert.Equal("true", activity.Output);
@@ -242,8 +239,6 @@ public class WorkflowHistoryPropagationTests
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowByName("Wf", out var workflow));
         Assert.True(workflow.TryGetLastActivityByName("ValidateCard", out var activity));
 
-        Assert.False(activity.Completed);
-        Assert.True(activity.Failed);
         Assert.Equal(PropagatedHistoryTaskStatus.Failed, activity.Status);
         Assert.NotNull(activity.FailureDetails);
         Assert.Equal("card declined", activity.FailureDetails.ErrorMessage);
@@ -259,9 +254,6 @@ public class WorkflowHistoryPropagationTests
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowByName("Wf", out var workflow));
         Assert.True(workflow.TryGetLastActivityByName("PendingCheck", out var activity));
 
-        Assert.True(activity.Started);
-        Assert.False(activity.Completed);
-        Assert.False(activity.Failed);
         Assert.Equal(PropagatedHistoryTaskStatus.Pending, activity.Status);
         Assert.Equal("\"in\"", activity.Input);
         Assert.Null(activity.Output);
@@ -282,11 +274,11 @@ public class WorkflowHistoryPropagationTests
 
         var all = workflow.GetActivitiesByName("ValidateCard");
         Assert.Equal(2, all.Count);
-        Assert.True(all[0].Completed);
-        Assert.True(all[1].Failed);
+        Assert.Equal(PropagatedHistoryTaskStatus.Completed, all[0].Status);
+        Assert.Equal(PropagatedHistoryTaskStatus.Failed, all[1].Status);
 
         Assert.True(workflow.TryGetLastActivityByName("ValidateCard", out var last));
-        Assert.True(last.Failed);
+        Assert.Equal(PropagatedHistoryTaskStatus.Failed, last.Status);
         Assert.Equal("card declined", last.FailureDetails!.ErrorMessage);
     }
 
@@ -318,9 +310,6 @@ public class WorkflowHistoryPropagationTests
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowByName("Wf", out var workflow));
         Assert.True(workflow.TryGetLastChildWorkflowByName("ProcessPayment", out var child));
 
-        Assert.True(child.Started);
-        Assert.True(child.Completed);
-        Assert.False(child.Failed);
         Assert.Equal(PropagatedHistoryTaskStatus.Completed, child.Status);
         Assert.Equal("\"paid\"", child.Output);
     }
@@ -336,7 +325,6 @@ public class WorkflowHistoryPropagationTests
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowByName("Wf", out var workflow));
         Assert.True(workflow.TryGetLastChildWorkflowByName("ProcessPayment", out var child));
 
-        Assert.True(child.Failed);
         Assert.Equal(PropagatedHistoryTaskStatus.Failed, child.Status);
         Assert.Equal("boom", child.FailureDetails!.ErrorMessage);
     }
@@ -402,10 +390,10 @@ public class WorkflowHistoryPropagationTests
         // and AppIds are matched case-insensitively elsewhere in the SDK. The propagated
         // history lookups must follow the same contract.
         var activity = new PropagatedHistoryActivityResult(
-            Name: "ValidateMerchant", Started: true, Completed: true, Failed: false,
+            Name: "ValidateMerchant", Status: PropagatedHistoryTaskStatus.Completed,
             Input: null, Output: null, FailureDetails: null);
         var child = new PropagatedHistoryChildWorkflowResult(
-            Name: "FraudDetection", Started: true, Completed: true, Failed: false,
+            Name: "FraudDetection", Status: PropagatedHistoryTaskStatus.Completed,
             Output: null, FailureDetails: null);
         var entry = new PropagatedHistoryEntry("inst-1", "AppA", "MerchantCheckout", [activity], [child]);
         var history = new PropagatedHistory([
@@ -426,26 +414,23 @@ public class WorkflowHistoryPropagationTests
     }
 
     [Fact]
-    public void Status_ProjectsFlags_AndFailedTakesPrecedenceOverCompleted()
+    public void Status_IsStoredAndReadBackCorrectly()
     {
         var pending = new PropagatedHistoryActivityResult(
-            Name: "A", Started: true, Completed: false, Failed: false,
+            Name: "A", Status: PropagatedHistoryTaskStatus.Pending,
             Input: null, Output: null, FailureDetails: null);
-        var completed = pending with { Completed = true };
-        var failed = pending with { Failed = true };
-        // Defensive: if both flags are ever set, Failed wins.
-        var both = pending with { Completed = true, Failed = true };
+        var completed = pending with { Status = PropagatedHistoryTaskStatus.Completed };
+        var failed = pending with { Status = PropagatedHistoryTaskStatus.Failed };
 
         Assert.Equal(PropagatedHistoryTaskStatus.Pending, pending.Status);
         Assert.Equal(PropagatedHistoryTaskStatus.Completed, completed.Status);
         Assert.Equal(PropagatedHistoryTaskStatus.Failed, failed.Status);
-        Assert.Equal(PropagatedHistoryTaskStatus.Failed, both.Status);
 
         var child = new PropagatedHistoryChildWorkflowResult(
-            Name: "C", Started: true, Completed: true, Failed: false,
+            Name: "C", Status: PropagatedHistoryTaskStatus.Completed,
             Output: null, FailureDetails: null);
         Assert.Equal(PropagatedHistoryTaskStatus.Completed, child.Status);
-        Assert.Equal(PropagatedHistoryTaskStatus.Failed, (child with { Failed = true }).Status);
+        Assert.Equal(PropagatedHistoryTaskStatus.Failed, (child with { Status = PropagatedHistoryTaskStatus.Failed }).Status);
     }
 
     // ------------------------------------------------------------------
