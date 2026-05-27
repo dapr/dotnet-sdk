@@ -26,8 +26,9 @@ using System.Linq;
 /// one per ancestor workflow. Order is execution order: index 0 is the oldest ancestor,
 /// the last entry is the immediate parent.
 /// <para>
-/// Use the <c>Get*</c> / <c>TryGet*</c> methods to walk the list by app, instance, or workflow name.
-/// Mirrors the <c>PropagatedHistory</c> type in the Go and Python SDKs.
+/// Use <see cref="GetEntries"/> for the full list, the <c>FilterBy*</c> methods to narrow by
+/// app, instance, or workflow name, and <see cref="TryGetLastWorkflowByName"/> for the most
+/// recent entry with a given name. Mirrors the <c>PropagatedHistory</c> type in the Go and Python SDKs.
 /// </para>
 /// </remarks>
 public sealed class PropagatedHistory
@@ -46,10 +47,10 @@ public sealed class PropagatedHistory
     }
 
     /// <summary>
-    /// Returns every workflow entry in the propagated history, in execution order
+    /// Returns every entry in the propagated history, in execution order
     /// (ancestor first, immediate parent last).
     /// </summary>
-    public IReadOnlyList<PropagatedHistoryEntry> GetWorkflows() => _entries;
+    public IReadOnlyList<PropagatedHistoryEntry> GetEntries() => _entries;
 
     /// <summary>
     /// Returns an ordered, deduplicated list of app IDs in this propagated history.
@@ -70,12 +71,12 @@ public sealed class PropagatedHistory
     }
 
     /// <summary>
-    /// Returns every workflow entry whose name matches, in execution order. Useful when the
+    /// Returns every entry whose workflow name matches, in execution order. Useful when the
     /// list contains the same name more than once (e.g. recursion or ContinueAsNew).
     /// </summary>
     /// <param name="name">The workflow name to filter by.</param>
     /// <returns>An empty list when no match is found.</returns>
-    public IReadOnlyList<PropagatedHistoryEntry> GetWorkflowsByName(string name)
+    public IReadOnlyList<PropagatedHistoryEntry> FilterByWorkflowName(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         return _entries
@@ -106,11 +107,11 @@ public sealed class PropagatedHistory
     }
 
     /// <summary>
-    /// Returns every workflow entry produced by the given app, in execution order.
+    /// Returns every entry produced by the given app, in execution order.
     /// </summary>
     /// <param name="appId">The Dapr App ID to filter by.</param>
     /// <returns>An empty list when no match is found.</returns>
-    public IReadOnlyList<PropagatedHistoryEntry> GetWorkflowsByAppId(string appId)
+    public IReadOnlyList<PropagatedHistoryEntry> FilterByAppId(string appId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
         return _entries
@@ -119,12 +120,12 @@ public sealed class PropagatedHistory
     }
 
     /// <summary>
-    /// Returns every workflow entry produced by the given instance, in execution order.
+    /// Returns every entry produced by the given instance, in execution order.
     /// Usually a single entry, except when the same instance reappears via ContinueAsNew.
     /// </summary>
     /// <param name="instanceId">The workflow instance ID to filter by.</param>
     /// <returns>An empty list when no match is found.</returns>
-    public IReadOnlyList<PropagatedHistoryEntry> GetWorkflowsByInstanceId(string instanceId)
+    public IReadOnlyList<PropagatedHistoryEntry> FilterByInstanceId(string instanceId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
         return _entries

@@ -162,13 +162,13 @@ public class WorkflowHistoryPropagationTests
         var history = context.GetPropagatedHistory();
 
         Assert.NotNull(history);
-        var workflows = history.GetWorkflows();
-        Assert.Single(workflows);
-        Assert.Equal("parent-app", workflows[0].AppId);
-        Assert.Equal("parent-instance", workflows[0].InstanceId);
-        Assert.Equal("ParentWorkflow", workflows[0].Name);
-        Assert.Empty(workflows[0].Activities);
-        Assert.Empty(workflows[0].ChildWorkflows);
+        var entries = history.GetEntries();
+        Assert.Single(entries);
+        Assert.Equal("parent-app", entries[0].AppId);
+        Assert.Equal("parent-instance", entries[0].InstanceId);
+        Assert.Equal("ParentWorkflow", entries[0].Name);
+        Assert.Empty(entries[0].Activities);
+        Assert.Empty(entries[0].ChildWorkflows);
     }
 
     [Fact]
@@ -184,10 +184,10 @@ public class WorkflowHistoryPropagationTests
         var history = context.GetPropagatedHistory();
 
         Assert.NotNull(history);
-        var workflows = history.GetWorkflows();
-        Assert.Equal(2, workflows.Count);
-        Assert.Equal("gp-inst", workflows[0].InstanceId);
-        Assert.Equal("p-inst", workflows[1].InstanceId);
+        var entries = history.GetEntries();
+        Assert.Equal(2, entries.Count);
+        Assert.Equal("gp-inst", entries[0].InstanceId);
+        Assert.Equal("p-inst", entries[1].InstanceId);
     }
 
     [Fact]
@@ -225,6 +225,7 @@ public class WorkflowHistoryPropagationTests
         Assert.True(activity.Started);
         Assert.True(activity.Completed);
         Assert.False(activity.Failed);
+        Assert.Equal(PropagatedHistoryTaskStatus.Completed, activity.Status);
         Assert.Equal("\"merchant-1\"", activity.Input);
         Assert.Equal("true", activity.Output);
         Assert.Null(activity.FailureDetails);
@@ -243,6 +244,7 @@ public class WorkflowHistoryPropagationTests
 
         Assert.False(activity.Completed);
         Assert.True(activity.Failed);
+        Assert.Equal(PropagatedHistoryTaskStatus.Failed, activity.Status);
         Assert.NotNull(activity.FailureDetails);
         Assert.Equal("card declined", activity.FailureDetails.ErrorMessage);
     }
@@ -260,6 +262,7 @@ public class WorkflowHistoryPropagationTests
         Assert.True(activity.Started);
         Assert.False(activity.Completed);
         Assert.False(activity.Failed);
+        Assert.Equal(PropagatedHistoryTaskStatus.Pending, activity.Status);
         Assert.Equal("\"in\"", activity.Input);
         Assert.Null(activity.Output);
     }
@@ -318,6 +321,7 @@ public class WorkflowHistoryPropagationTests
         Assert.True(child.Started);
         Assert.True(child.Completed);
         Assert.False(child.Failed);
+        Assert.Equal(PropagatedHistoryTaskStatus.Completed, child.Status);
         Assert.Equal("\"paid\"", child.Output);
     }
 
@@ -333,6 +337,7 @@ public class WorkflowHistoryPropagationTests
         Assert.True(workflow.TryGetLastChildWorkflowByName("ProcessPayment", out var child));
 
         Assert.True(child.Failed);
+        Assert.Equal(PropagatedHistoryTaskStatus.Failed, child.Status);
         Assert.Equal("boom", child.FailureDetails!.ErrorMessage);
     }
 
@@ -373,7 +378,7 @@ public class WorkflowHistoryPropagationTests
 
         Assert.True(history.TryGetLastWorkflowByName("Loop", out var last));
         Assert.Equal("wf-2", last.InstanceId);
-        Assert.Equal(2, history.GetWorkflowsByName("Loop").Count);
+        Assert.Equal(2, history.FilterByWorkflowName("Loop").Count);
     }
 
     [Fact]
@@ -385,7 +390,7 @@ public class WorkflowHistoryPropagationTests
     }
 
     [Fact]
-    public void PropagatedHistory_Ctor_ThrowsOnNullWorkflows()
+    public void PropagatedHistory_Ctor_ThrowsOnNullEntries()
     {
         Assert.Throws<ArgumentNullException>(() => new PropagatedHistory(null!));
     }
@@ -409,13 +414,36 @@ public class WorkflowHistoryPropagationTests
         ]);
 
         Assert.Single(history.GetAppIds());
-        Assert.Single(history.GetWorkflowsByAppId("APPA"));
-        Assert.Single(history.GetWorkflowsByName("merchantcheckout"));
+        Assert.Single(history.FilterByAppId("APPA"));
+        Assert.Single(history.FilterByWorkflowName("merchantcheckout"));
         Assert.True(history.TryGetLastWorkflowByName("MERCHANTCHECKOUT", out _));
         Assert.Single(entry.GetActivitiesByName("validatemerchant"));
         Assert.True(entry.TryGetLastActivityByName("VALIDATEMERCHANT", out _));
         Assert.Single(entry.GetChildWorkflowsByName("frauddetection"));
         Assert.True(entry.TryGetLastChildWorkflowByName("FRAUDDETECTION", out _));
+    }
+
+    [Fact]
+    public void Status_ProjectsFlags_AndFailedTakesPrecedenceOverCompleted()
+    {
+        var pending = new PropagatedHistoryActivityResult(
+            Name: "A", Started: true, Completed: false, Failed: false,
+            Input: null, Output: null, FailureDetails: null);
+        var completed = pending with { Completed = true };
+        var failed = pending with { Failed = true };
+        // Defensive: if both flags are ever set, Failed wins.
+        var both = pending with { Completed = true, Failed = true };
+
+        Assert.Equal(PropagatedHistoryTaskStatus.Pending, pending.Status);
+        Assert.Equal(PropagatedHistoryTaskStatus.Completed, completed.Status);
+        Assert.Equal(PropagatedHistoryTaskStatus.Failed, failed.Status);
+        Assert.Equal(PropagatedHistoryTaskStatus.Failed, both.Status);
+
+        var child = new PropagatedHistoryChildWorkflowResult(
+            Name: "C", Started: true, Completed: true, Failed: false,
+            Output: null, FailureDetails: null);
+        Assert.Equal(PropagatedHistoryTaskStatus.Completed, child.Status);
+        Assert.Equal(PropagatedHistoryTaskStatus.Failed, (child with { Failed = true }).Status);
     }
 
     // ------------------------------------------------------------------

@@ -343,8 +343,8 @@ public abstract class WorkflowContext : IWorkflowContext
     /// <para>
     /// Use <see cref="PropagatedHistory.TryGetLastWorkflowByName"/> and
     /// <see cref="PropagatedHistoryEntry.TryGetLastActivityByName"/> / <see cref="PropagatedHistoryEntry.TryGetLastChildWorkflowByName"/>
-    /// to look up specific items in the propagated history. The plural <c>Get*ByName</c> variants
-    /// return every match.
+    /// to look up the most recent matching item; the plural <c>FilterBy*</c> /
+    /// <c>Get*ByName</c> variants return every match.
     /// </para>
     /// <para>
     /// This method always returns the same value regardless of whether the workflow is replaying.

@@ -23,7 +23,10 @@ namespace Dapr.Workflow;
 /// <param name="Output">The JSON-encoded output payload, or <c>null</c> when the child workflow has not completed.</param>
 /// <param name="FailureDetails">The failure details when <paramref name="Failed"/> is true, otherwise <c>null</c>.</param>
 /// <remarks>
-/// Mirrors the <c>ChildWorkflowResult</c> type in the Go and Python SDKs.
+/// Mirrors the <c>ChildWorkflowResult</c> type in the Go and Python SDKs. The
+/// <see cref="Started"/> / <see cref="Completed"/> / <see cref="Failed"/> flags carry that
+/// parity; <see cref="Status"/> projects them onto a single value for callers that prefer to
+/// <c>switch</c> on the lifecycle.
 /// </remarks>
 public sealed record PropagatedHistoryChildWorkflowResult(
     string Name,
@@ -31,4 +34,15 @@ public sealed record PropagatedHistoryChildWorkflowResult(
     bool Completed,
     bool Failed,
     string? Output,
-    WorkflowTaskFailureDetails? FailureDetails);
+    WorkflowTaskFailureDetails? FailureDetails)
+{
+    /// <summary>
+    /// The resolved lifecycle status of this child workflow, derived from the
+    /// <see cref="Completed"/> and <see cref="Failed"/> flags. <see cref="Failed"/> takes
+    /// precedence over <see cref="Completed"/>.
+    /// </summary>
+    public PropagatedHistoryTaskStatus Status =>
+        Failed ? PropagatedHistoryTaskStatus.Failed
+        : Completed ? PropagatedHistoryTaskStatus.Completed
+        : PropagatedHistoryTaskStatus.Pending;
+}

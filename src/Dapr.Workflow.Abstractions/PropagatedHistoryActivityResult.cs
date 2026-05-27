@@ -25,7 +25,9 @@ namespace Dapr.Workflow;
 /// <param name="FailureDetails">The failure details when <paramref name="Failed"/> is true, otherwise <c>null</c>.</param>
 /// <remarks>
 /// Mirrors the <c>ActivityResult</c> type in the Go and Python SDKs so cross-language
-/// quickstarts and audit patterns line up.
+/// quickstarts and audit patterns line up. The <see cref="Started"/> / <see cref="Completed"/>
+/// / <see cref="Failed"/> flags carry that parity; <see cref="Status"/> projects them onto a
+/// single value for callers that prefer to <c>switch</c> on the lifecycle.
 /// </remarks>
 public sealed record PropagatedHistoryActivityResult(
     string Name,
@@ -34,4 +36,15 @@ public sealed record PropagatedHistoryActivityResult(
     bool Failed,
     string? Input,
     string? Output,
-    WorkflowTaskFailureDetails? FailureDetails);
+    WorkflowTaskFailureDetails? FailureDetails)
+{
+    /// <summary>
+    /// The resolved lifecycle status of this activity, derived from the
+    /// <see cref="Completed"/> and <see cref="Failed"/> flags. <see cref="Failed"/> takes
+    /// precedence over <see cref="Completed"/>.
+    /// </summary>
+    public PropagatedHistoryTaskStatus Status =>
+        Failed ? PropagatedHistoryTaskStatus.Failed
+        : Completed ? PropagatedHistoryTaskStatus.Completed
+        : PropagatedHistoryTaskStatus.Pending;
+}
