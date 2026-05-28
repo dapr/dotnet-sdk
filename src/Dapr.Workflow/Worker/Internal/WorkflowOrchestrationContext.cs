@@ -1003,7 +1003,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
     /// <summary>
     /// Converts a <see cref="PropagatedHistoryChunk"/> proto message into a public-facing
-    /// <see cref="PropagatedHistoryEntry"/> by resolving each scheduled activity and child workflow
+    /// <see cref="PropagatedHistoryEvent"/> by resolving each scheduled activity and child workflow
     /// against its matching completion/failure event.
     /// </summary>
     /// <remarks>
@@ -1014,7 +1014,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// Malformed event bytes are surfaced as exceptions — a runtime sending unparseable
     /// proto bytes is a contract violation we should not hide.
     /// </remarks>
-    private static PropagatedHistoryEntry ConvertChunk(PropagatedHistoryChunk chunk)
+    private static PropagatedHistoryEvent ConvertChunk(PropagatedHistoryChunk chunk)
     {
         var events = new List<HistoryEvent>(chunk.RawEvents.Count);
         foreach (var rawEvent in chunk.RawEvents)
@@ -1048,7 +1048,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         }
 
         var activities = new List<PropagatedHistoryActivityResult>();
-        var childWorkflows = new List<PropagatedHistoryChildWorkflowResult>();
+        var childWorkflows = new List<PropagatedHistoryWorkflowResult>();
         foreach (var historyEvent in events)
         {
             switch (historyEvent.EventTypeCase)
@@ -1062,7 +1062,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             }
         }
 
-        return new PropagatedHistoryEntry(
+        return new PropagatedHistoryEvent(
             chunk.InstanceId,
             chunk.AppId,
             chunk.WorkflowName,
@@ -1081,67 +1081,61 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     {
         var scheduled = scheduleEvent.TaskScheduled;
         var scheduleId = scheduleEvent.EventId;
-        var completed = false;
-        var failed = false;
+        var status = PropagatedHistoryStatus.Pending;
         string? output = null;
         WorkflowTaskFailureDetails? failureDetails = null;
 
         if (completions.TryGetValue(scheduleId, out var completion))
         {
-            completed = true;
+            status = PropagatedHistoryStatus.Completed;
             output = completion.TaskCompleted.Result;
         }
 
         if (failures.TryGetValue(scheduleId, out var failure))
         {
-            failed = true;
+            status = PropagatedHistoryStatus.Failed;
             failureDetails = MapFailureDetails(failure.TaskFailed.FailureDetails);
         }
 
         return new PropagatedHistoryActivityResult(
             Name: scheduled.Name,
-            Started: true,
-            Completed: completed,
-            Failed: failed,
+            Status: status,
             Input: scheduled.Input,
             Output: output,
             FailureDetails: failureDetails);
     }
 
     /// <summary>
-    /// Builds a <see cref="PropagatedHistoryChildWorkflowResult"/> by matching the create event's
+    /// Builds a <see cref="PropagatedHistoryWorkflowResult"/> by matching the create event's
     /// <c>EventId</c> against subsequent <c>ChildWorkflowInstanceCompleted</c> /
     /// <c>ChildWorkflowInstanceFailed</c> events.
     /// </summary>
-    private static PropagatedHistoryChildWorkflowResult ResolveChildWorkflow(
+    private static PropagatedHistoryWorkflowResult ResolveChildWorkflow(
         HistoryEvent createEvent,
         IReadOnlyDictionary<int, HistoryEvent> completions,
         IReadOnlyDictionary<int, HistoryEvent> failures)
     {
         var created = createEvent.ChildWorkflowInstanceCreated;
         var creationId = createEvent.EventId;
-        var completed = false;
-        var failed = false;
+        var status = PropagatedHistoryStatus.Pending;
         string? output = null;
         WorkflowTaskFailureDetails? failureDetails = null;
 
         if (completions.TryGetValue(creationId, out var completion))
         {
-            completed = true;
+            status = PropagatedHistoryStatus.Completed;
             output = completion.ChildWorkflowInstanceCompleted.Result;
         }
 
         if (failures.TryGetValue(creationId, out var failure))
         {
-            failed = true;
+            status = PropagatedHistoryStatus.Failed;
             failureDetails = MapFailureDetails(failure.ChildWorkflowInstanceFailed.FailureDetails);
         }
 
-        return new PropagatedHistoryChildWorkflowResult(
+        return new PropagatedHistoryWorkflowResult(
             Name: created.Name,
-            Started: true,
-            Completed: completed,
-            Failed: failed,
+            Status: status,
             Output: output,
             FailureDetails: failureDetails);
     }

@@ -19,12 +19,10 @@ namespace Dapr.Workflow;
 /// </summary>
 /// <remarks>
 /// Every task surfaced through propagated history was scheduled, so the status reflects how
-/// far it progressed past scheduling. It is a projection of the <c>Completed</c> and
-/// <c>Failed</c> flags on <see cref="PropagatedHistoryActivityResult"/> /
-/// <see cref="PropagatedHistoryChildWorkflowResult"/>, provided so callers can <c>switch</c>
-/// on a single value instead of evaluating the flags by hand.
+/// far it progressed past scheduling. Use a <c>switch</c> expression on this value to branch
+/// on the three possible states without needing to evaluate multiple boolean conditions.
 /// </remarks>
-public enum PropagatedHistoryTaskStatus
+public enum PropagatedHistoryStatus
 {
     /// <summary>
     /// The task was scheduled but has not yet completed or failed in the propagated history.

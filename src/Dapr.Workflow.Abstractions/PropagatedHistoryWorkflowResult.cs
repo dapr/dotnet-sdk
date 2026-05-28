@@ -14,22 +14,20 @@
 namespace Dapr.Workflow;
 
 /// <summary>
-/// A reconstructed view of a single activity invocation surfaced through propagated workflow history.
+/// A reconstructed view of a single child workflow invocation surfaced through propagated workflow history.
 /// </summary>
-/// <param name="Name">The scheduled name of the activity.</param>
-/// <param name="Status">The resolved lifecycle status of this activity.</param>
-/// <param name="Input">The JSON-encoded input payload, or <c>null</c> when unset.</param>
-/// <param name="Output">The JSON-encoded output payload, or <c>null</c> when the activity has not completed.</param>
+/// <param name="Name">The scheduled name of the child workflow.</param>
+/// <param name="Status">The resolved lifecycle status of this child workflow.</param>
+/// <param name="Output">The JSON-encoded output payload, or <c>null</c> when the child workflow has not completed.</param>
 /// <param name="FailureDetails">The failure details when <paramref name="Status"/> is <see cref="PropagatedHistoryStatus.Failed"/>, otherwise <c>null</c>.</param>
 /// <remarks>
-/// Every activity surfaced through propagated history was scheduled, so <see cref="Status"/>
+/// Every child workflow surfaced through propagated history was scheduled, so <see cref="Status"/>
 /// reflects how far it progressed past scheduling: <see cref="PropagatedHistoryStatus.Pending"/>
 /// means it was scheduled but has not yet completed or failed, <see cref="PropagatedHistoryStatus.Completed"/>
 /// means it succeeded, and <see cref="PropagatedHistoryStatus.Failed"/> means it failed.
 /// </remarks>
-public sealed record PropagatedHistoryActivityResult(
+public sealed record PropagatedHistoryWorkflowResult(
     string Name,
     PropagatedHistoryStatus Status,
-    string? Input,
     string? Output,
     WorkflowTaskFailureDetails? FailureDetails);
