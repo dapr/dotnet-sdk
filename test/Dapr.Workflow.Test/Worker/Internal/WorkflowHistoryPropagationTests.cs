@@ -162,7 +162,7 @@ public class WorkflowHistoryPropagationTests
         var history = context.GetPropagatedHistory();
 
         Assert.NotNull(history);
-        var entries = history.GetAllEvents();
+        var entries = history.Events;
         Assert.Single(entries);
         Assert.Equal("parent-app", entries[0].AppId);
         Assert.Equal("parent-instance", entries[0].InstanceId);
@@ -184,7 +184,7 @@ public class WorkflowHistoryPropagationTests
         var history = context.GetPropagatedHistory();
 
         Assert.NotNull(history);
-        var entries = history.GetAllEvents();
+        var entries = history.Events;
         Assert.Equal(2, entries.Count);
         Assert.Equal("gp-inst", entries[0].InstanceId);
         Assert.Equal("p-inst", entries[1].InstanceId);
