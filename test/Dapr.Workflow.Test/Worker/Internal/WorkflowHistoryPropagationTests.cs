@@ -222,7 +222,7 @@ public class WorkflowHistoryPropagationTests
         Assert.True(workflow.TryGetLastActivityByName("ValidateMerchant", out var activity));
 
         Assert.Equal("ValidateMerchant", activity.Name);
-        Assert.Equal(PropagatedHistoryTaskStatus.Completed, activity.Status);
+        Assert.Equal(PropagatedHistoryStatus.Completed, activity.Status);
         Assert.Equal("\"merchant-1\"", activity.Input);
         Assert.Equal("true", activity.Output);
         Assert.Null(activity.FailureDetails);
@@ -239,7 +239,7 @@ public class WorkflowHistoryPropagationTests
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowEventByName("Wf", out var workflow));
         Assert.True(workflow.TryGetLastActivityByName("ValidateCard", out var activity));
 
-        Assert.Equal(PropagatedHistoryTaskStatus.Failed, activity.Status);
+        Assert.Equal(PropagatedHistoryStatus.Failed, activity.Status);
         Assert.NotNull(activity.FailureDetails);
         Assert.Equal("card declined", activity.FailureDetails.ErrorMessage);
     }
@@ -254,7 +254,7 @@ public class WorkflowHistoryPropagationTests
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowEventByName("Wf", out var workflow));
         Assert.True(workflow.TryGetLastActivityByName("PendingCheck", out var activity));
 
-        Assert.Equal(PropagatedHistoryTaskStatus.Pending, activity.Status);
+        Assert.Equal(PropagatedHistoryStatus.Pending, activity.Status);
         Assert.Equal("\"in\"", activity.Input);
         Assert.Null(activity.Output);
     }
@@ -274,11 +274,11 @@ public class WorkflowHistoryPropagationTests
 
         var all = workflow.GetActivitiesByName("ValidateCard");
         Assert.Equal(2, all.Count);
-        Assert.Equal(PropagatedHistoryTaskStatus.Completed, all[0].Status);
-        Assert.Equal(PropagatedHistoryTaskStatus.Failed, all[1].Status);
+        Assert.Equal(PropagatedHistoryStatus.Completed, all[0].Status);
+        Assert.Equal(PropagatedHistoryStatus.Failed, all[1].Status);
 
         Assert.True(workflow.TryGetLastActivityByName("ValidateCard", out var last));
-        Assert.Equal(PropagatedHistoryTaskStatus.Failed, last.Status);
+        Assert.Equal(PropagatedHistoryStatus.Failed, last.Status);
         Assert.Equal("card declined", last.FailureDetails!.ErrorMessage);
     }
 
@@ -310,7 +310,7 @@ public class WorkflowHistoryPropagationTests
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowEventByName("Wf", out var workflow));
         Assert.True(workflow.TryGetLastWorkflowByName("ProcessPayment", out var child));
 
-        Assert.Equal(PropagatedHistoryTaskStatus.Completed, child.Status);
+        Assert.Equal(PropagatedHistoryStatus.Completed, child.Status);
         Assert.Equal("\"paid\"", child.Output);
     }
 
@@ -325,7 +325,7 @@ public class WorkflowHistoryPropagationTests
         Assert.True(context.GetPropagatedHistory()!.TryGetLastWorkflowEventByName("Wf", out var workflow));
         Assert.True(workflow.TryGetLastWorkflowByName("ProcessPayment", out var child));
 
-        Assert.Equal(PropagatedHistoryTaskStatus.Failed, child.Status);
+        Assert.Equal(PropagatedHistoryStatus.Failed, child.Status);
         Assert.Equal("boom", child.FailureDetails!.ErrorMessage);
     }
 
@@ -455,10 +455,10 @@ public class WorkflowHistoryPropagationTests
         // and AppIds are matched case-insensitively elsewhere in the SDK. The propagated
         // history lookups must follow the same contract.
         var activity = new PropagatedHistoryActivityResult(
-            Name: "ValidateMerchant", Status: PropagatedHistoryTaskStatus.Completed,
+            Name: "ValidateMerchant", Status: PropagatedHistoryStatus.Completed,
             Input: null, Output: null, FailureDetails: null);
         var child = new PropagatedHistoryWorkflowResult(
-            Name: "FraudDetection", Status: PropagatedHistoryTaskStatus.Completed,
+            Name: "FraudDetection", Status: PropagatedHistoryStatus.Completed,
             Output: null, FailureDetails: null);
         var entry = new PropagatedHistoryEvent("inst-1", "AppA", "MerchantCheckout", [activity], [child]);
         var history = new PropagatedHistory([
@@ -482,20 +482,20 @@ public class WorkflowHistoryPropagationTests
     public void Status_IsStoredAndReadBackCorrectly()
     {
         var pending = new PropagatedHistoryActivityResult(
-            Name: "A", Status: PropagatedHistoryTaskStatus.Pending,
+            Name: "A", Status: PropagatedHistoryStatus.Pending,
             Input: null, Output: null, FailureDetails: null);
-        var completed = pending with { Status = PropagatedHistoryTaskStatus.Completed };
-        var failed = pending with { Status = PropagatedHistoryTaskStatus.Failed };
+        var completed = pending with { Status = PropagatedHistoryStatus.Completed };
+        var failed = pending with { Status = PropagatedHistoryStatus.Failed };
 
-        Assert.Equal(PropagatedHistoryTaskStatus.Pending, pending.Status);
-        Assert.Equal(PropagatedHistoryTaskStatus.Completed, completed.Status);
-        Assert.Equal(PropagatedHistoryTaskStatus.Failed, failed.Status);
+        Assert.Equal(PropagatedHistoryStatus.Pending, pending.Status);
+        Assert.Equal(PropagatedHistoryStatus.Completed, completed.Status);
+        Assert.Equal(PropagatedHistoryStatus.Failed, failed.Status);
 
         var child = new PropagatedHistoryWorkflowResult(
-            Name: "C", Status: PropagatedHistoryTaskStatus.Completed,
+            Name: "C", Status: PropagatedHistoryStatus.Completed,
             Output: null, FailureDetails: null);
-        Assert.Equal(PropagatedHistoryTaskStatus.Completed, child.Status);
-        Assert.Equal(PropagatedHistoryTaskStatus.Failed, (child with { Status = PropagatedHistoryTaskStatus.Failed }).Status);
+        Assert.Equal(PropagatedHistoryStatus.Completed, child.Status);
+        Assert.Equal(PropagatedHistoryStatus.Failed, (child with { Status = PropagatedHistoryStatus.Failed }).Status);
     }
 
     // ------------------------------------------------------------------

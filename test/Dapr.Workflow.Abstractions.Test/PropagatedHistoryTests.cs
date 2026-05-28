@@ -282,10 +282,10 @@ public class PropagatedHistoryEventTests
 {
     // ----- Helpers -----
 
-    static PropagatedHistoryActivityResult MakeActivity(string name, PropagatedHistoryTaskStatus status = PropagatedHistoryTaskStatus.Completed) =>
+    static PropagatedHistoryActivityResult MakeActivity(string name, PropagatedHistoryStatus status = PropagatedHistoryStatus.Completed) =>
         new(name, status, null, null, null);
 
-    static PropagatedHistoryWorkflowResult MakeChildWorkflow(string name, PropagatedHistoryTaskStatus status = PropagatedHistoryTaskStatus.Completed) =>
+    static PropagatedHistoryWorkflowResult MakeChildWorkflow(string name, PropagatedHistoryStatus status = PropagatedHistoryStatus.Completed) =>
         new(name, status, null, null);
 
     // ----- Constructor null guards -----
@@ -413,9 +413,9 @@ public class PropagatedHistoryEventTests
     [Fact]
     public void TryGetLastActivityByName_ReturnsTrue_AndLastMatch()
     {
-        var a1 = MakeActivity("ActRepeat", PropagatedHistoryTaskStatus.Completed);
+        var a1 = MakeActivity("ActRepeat", PropagatedHistoryStatus.Completed);
         var a2 = MakeActivity("ActOther");
-        var a3 = MakeActivity("ActRepeat", PropagatedHistoryTaskStatus.Failed);
+        var a3 = MakeActivity("ActRepeat", PropagatedHistoryStatus.Failed);
         var evt = new PropagatedHistoryEvent("id", "app", "wf", [a1, a2, a3], []);
 
         Assert.True(evt.TryGetLastActivityByName("ActRepeat", out var result));
@@ -505,9 +505,9 @@ public class PropagatedHistoryEventTests
     [Fact]
     public void TryGetLastWorkflowByName_ReturnsTrue_AndLastMatch()
     {
-        var cw1 = MakeChildWorkflow("CWRepeat", PropagatedHistoryTaskStatus.Completed);
+        var cw1 = MakeChildWorkflow("CWRepeat", PropagatedHistoryStatus.Completed);
         var cw2 = MakeChildWorkflow("CWOther");
-        var cw3 = MakeChildWorkflow("CWRepeat", PropagatedHistoryTaskStatus.Failed);
+        var cw3 = MakeChildWorkflow("CWRepeat", PropagatedHistoryStatus.Failed);
         var evt = new PropagatedHistoryEvent("id", "app", "wf", [], [cw1, cw2, cw3]);
 
         Assert.True(evt.TryGetLastWorkflowByName("CWRepeat", out var result));
@@ -530,10 +530,10 @@ public class PropagatedHistoryActivityResultTests
     public void Constructor_SetsProperties()
     {
         var failure = new WorkflowTaskFailureDetails(typeof(InvalidOperationException).FullName!, "err");
-        var result = new PropagatedHistoryActivityResult("MyAct", PropagatedHistoryTaskStatus.Failed, """{"x":1}""", null, failure);
+        var result = new PropagatedHistoryActivityResult("MyAct", PropagatedHistoryStatus.Failed, """{"x":1}""", null, failure);
 
         Assert.Equal("MyAct", result.Name);
-        Assert.Equal(PropagatedHistoryTaskStatus.Failed, result.Status);
+        Assert.Equal(PropagatedHistoryStatus.Failed, result.Status);
         Assert.Equal("""{"x":1}""", result.Input);
         Assert.Null(result.Output);
         Assert.Same(failure, result.FailureDetails);
@@ -542,7 +542,7 @@ public class PropagatedHistoryActivityResultTests
     [Fact]
     public void Constructor_SetsNullableFields_ToNull()
     {
-        var result = new PropagatedHistoryActivityResult("Act1", PropagatedHistoryTaskStatus.Pending, null, null, null);
+        var result = new PropagatedHistoryActivityResult("Act1", PropagatedHistoryStatus.Pending, null, null, null);
         Assert.Null(result.Input);
         Assert.Null(result.Output);
         Assert.Null(result.FailureDetails);
@@ -551,32 +551,32 @@ public class PropagatedHistoryActivityResultTests
     [Fact]
     public void RecordEquality_SameValues_AreEqual()
     {
-        var r1 = new PropagatedHistoryActivityResult("Act", PropagatedHistoryTaskStatus.Completed, "in", "out", null);
-        var r2 = new PropagatedHistoryActivityResult("Act", PropagatedHistoryTaskStatus.Completed, "in", "out", null);
+        var r1 = new PropagatedHistoryActivityResult("Act", PropagatedHistoryStatus.Completed, "in", "out", null);
+        var r2 = new PropagatedHistoryActivityResult("Act", PropagatedHistoryStatus.Completed, "in", "out", null);
         Assert.Equal(r1, r2);
     }
 
     [Fact]
     public void RecordEquality_DifferentName_AreNotEqual()
     {
-        var r1 = new PropagatedHistoryActivityResult("Act1", PropagatedHistoryTaskStatus.Completed, null, null, null);
-        var r2 = new PropagatedHistoryActivityResult("Act2", PropagatedHistoryTaskStatus.Completed, null, null, null);
+        var r1 = new PropagatedHistoryActivityResult("Act1", PropagatedHistoryStatus.Completed, null, null, null);
+        var r2 = new PropagatedHistoryActivityResult("Act2", PropagatedHistoryStatus.Completed, null, null, null);
         Assert.NotEqual(r1, r2);
     }
 
     [Fact]
     public void RecordEquality_DifferentStatus_AreNotEqual()
     {
-        var r1 = new PropagatedHistoryActivityResult("Act", PropagatedHistoryTaskStatus.Completed, null, null, null);
-        var r2 = new PropagatedHistoryActivityResult("Act", PropagatedHistoryTaskStatus.Failed, null, null, null);
+        var r1 = new PropagatedHistoryActivityResult("Act", PropagatedHistoryStatus.Completed, null, null, null);
+        var r2 = new PropagatedHistoryActivityResult("Act", PropagatedHistoryStatus.Failed, null, null, null);
         Assert.NotEqual(r1, r2);
     }
 
     [Fact]
     public void CompletedActivity_HasOutputAndNoFailureDetails()
     {
-        var result = new PropagatedHistoryActivityResult("Act", PropagatedHistoryTaskStatus.Completed, """{"in":true}""", """{"out":42}""", null);
-        Assert.Equal(PropagatedHistoryTaskStatus.Completed, result.Status);
+        var result = new PropagatedHistoryActivityResult("Act", PropagatedHistoryStatus.Completed, """{"in":true}""", """{"out":42}""", null);
+        Assert.Equal(PropagatedHistoryStatus.Completed, result.Status);
         Assert.NotNull(result.Output);
         Assert.Null(result.FailureDetails);
     }
@@ -588,10 +588,10 @@ public class PropagatedHistoryWorkflowResultTests
     public void Constructor_SetsProperties()
     {
         var failure = new WorkflowTaskFailureDetails(typeof(Exception).FullName!, "err");
-        var result = new PropagatedHistoryWorkflowResult("ChildWF", PropagatedHistoryTaskStatus.Failed, null, failure);
+        var result = new PropagatedHistoryWorkflowResult("ChildWF", PropagatedHistoryStatus.Failed, null, failure);
 
         Assert.Equal("ChildWF", result.Name);
-        Assert.Equal(PropagatedHistoryTaskStatus.Failed, result.Status);
+        Assert.Equal(PropagatedHistoryStatus.Failed, result.Status);
         Assert.Null(result.Output);
         Assert.Same(failure, result.FailureDetails);
     }
@@ -599,7 +599,7 @@ public class PropagatedHistoryWorkflowResultTests
     [Fact]
     public void Constructor_SetsNullableFields_ToNull()
     {
-        var result = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryTaskStatus.Pending, null, null);
+        var result = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryStatus.Pending, null, null);
         Assert.Null(result.Output);
         Assert.Null(result.FailureDetails);
     }
@@ -607,69 +607,69 @@ public class PropagatedHistoryWorkflowResultTests
     [Fact]
     public void RecordEquality_SameValues_AreEqual()
     {
-        var r1 = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryTaskStatus.Completed, "out", null);
-        var r2 = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryTaskStatus.Completed, "out", null);
+        var r1 = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryStatus.Completed, "out", null);
+        var r2 = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryStatus.Completed, "out", null);
         Assert.Equal(r1, r2);
     }
 
     [Fact]
     public void RecordEquality_DifferentName_AreNotEqual()
     {
-        var r1 = new PropagatedHistoryWorkflowResult("CW1", PropagatedHistoryTaskStatus.Completed, null, null);
-        var r2 = new PropagatedHistoryWorkflowResult("CW2", PropagatedHistoryTaskStatus.Completed, null, null);
+        var r1 = new PropagatedHistoryWorkflowResult("CW1", PropagatedHistoryStatus.Completed, null, null);
+        var r2 = new PropagatedHistoryWorkflowResult("CW2", PropagatedHistoryStatus.Completed, null, null);
         Assert.NotEqual(r1, r2);
     }
 
     [Fact]
     public void RecordEquality_DifferentStatus_AreNotEqual()
     {
-        var r1 = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryTaskStatus.Completed, null, null);
-        var r2 = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryTaskStatus.Pending, null, null);
+        var r1 = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryStatus.Completed, null, null);
+        var r2 = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryStatus.Pending, null, null);
         Assert.NotEqual(r1, r2);
     }
 
     [Fact]
     public void CompletedWorkflow_HasOutputAndNoFailureDetails()
     {
-        var result = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryTaskStatus.Completed, """{"done":true}""", null);
-        Assert.Equal(PropagatedHistoryTaskStatus.Completed, result.Status);
+        var result = new PropagatedHistoryWorkflowResult("CW", PropagatedHistoryStatus.Completed, """{"done":true}""", null);
+        Assert.Equal(PropagatedHistoryStatus.Completed, result.Status);
         Assert.NotNull(result.Output);
         Assert.Null(result.FailureDetails);
     }
 }
 
-public class PropagatedHistoryTaskStatusTests
+public class PropagatedHistoryStatusTests
 {
     [Fact]
     public void Enum_HasExpectedValues()
     {
-        Assert.Equal(0, (int)PropagatedHistoryTaskStatus.Pending);
-        Assert.Equal(1, (int)PropagatedHistoryTaskStatus.Completed);
-        Assert.Equal(2, (int)PropagatedHistoryTaskStatus.Failed);
+        Assert.Equal(0, (int)PropagatedHistoryStatus.Pending);
+        Assert.Equal(1, (int)PropagatedHistoryStatus.Completed);
+        Assert.Equal(2, (int)PropagatedHistoryStatus.Failed);
     }
 
     [Fact]
     public void Enum_HasExactlyThreeValues()
     {
-        var values = Enum.GetValues<PropagatedHistoryTaskStatus>();
+        var values = Enum.GetValues<PropagatedHistoryStatus>();
         Assert.Equal(3, values.Length);
     }
 
     [Theory]
-    [InlineData(PropagatedHistoryTaskStatus.Pending)]
-    [InlineData(PropagatedHistoryTaskStatus.Completed)]
-    [InlineData(PropagatedHistoryTaskStatus.Failed)]
-    public void Status_IsStoredCorrectly_InActivityResult(PropagatedHistoryTaskStatus status)
+    [InlineData(PropagatedHistoryStatus.Pending)]
+    [InlineData(PropagatedHistoryStatus.Completed)]
+    [InlineData(PropagatedHistoryStatus.Failed)]
+    public void Status_IsStoredCorrectly_InActivityResult(PropagatedHistoryStatus status)
     {
         var result = new PropagatedHistoryActivityResult("Act", status, null, null, null);
         Assert.Equal(status, result.Status);
     }
 
     [Theory]
-    [InlineData(PropagatedHistoryTaskStatus.Pending)]
-    [InlineData(PropagatedHistoryTaskStatus.Completed)]
-    [InlineData(PropagatedHistoryTaskStatus.Failed)]
-    public void Status_IsStoredCorrectly_InWorkflowResult(PropagatedHistoryTaskStatus status)
+    [InlineData(PropagatedHistoryStatus.Pending)]
+    [InlineData(PropagatedHistoryStatus.Completed)]
+    [InlineData(PropagatedHistoryStatus.Failed)]
+    public void Status_IsStoredCorrectly_InWorkflowResult(PropagatedHistoryStatus status)
     {
         var result = new PropagatedHistoryWorkflowResult("CW", status, null, null);
         Assert.Equal(status, result.Status);

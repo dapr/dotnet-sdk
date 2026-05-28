@@ -22,7 +22,7 @@ namespace Dapr.Workflow;
 /// far it progressed past scheduling. Use a <c>switch</c> expression on this value to branch
 /// on the three possible states without needing to evaluate multiple boolean conditions.
 /// </remarks>
-public enum PropagatedHistoryTaskStatus
+public enum PropagatedHistoryStatus
 {
     /// <summary>
     /// The task was scheduled but has not yet completed or failed in the propagated history.

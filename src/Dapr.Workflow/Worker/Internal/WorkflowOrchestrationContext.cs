@@ -1081,19 +1081,19 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     {
         var scheduled = scheduleEvent.TaskScheduled;
         var scheduleId = scheduleEvent.EventId;
-        var status = PropagatedHistoryTaskStatus.Pending;
+        var status = PropagatedHistoryStatus.Pending;
         string? output = null;
         WorkflowTaskFailureDetails? failureDetails = null;
 
         if (completions.TryGetValue(scheduleId, out var completion))
         {
-            status = PropagatedHistoryTaskStatus.Completed;
+            status = PropagatedHistoryStatus.Completed;
             output = completion.TaskCompleted.Result;
         }
 
         if (failures.TryGetValue(scheduleId, out var failure))
         {
-            status = PropagatedHistoryTaskStatus.Failed;
+            status = PropagatedHistoryStatus.Failed;
             failureDetails = MapFailureDetails(failure.TaskFailed.FailureDetails);
         }
 
@@ -1117,19 +1117,19 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     {
         var created = createEvent.ChildWorkflowInstanceCreated;
         var creationId = createEvent.EventId;
-        var status = PropagatedHistoryTaskStatus.Pending;
+        var status = PropagatedHistoryStatus.Pending;
         string? output = null;
         WorkflowTaskFailureDetails? failureDetails = null;
 
         if (completions.TryGetValue(creationId, out var completion))
         {
-            status = PropagatedHistoryTaskStatus.Completed;
+            status = PropagatedHistoryStatus.Completed;
             output = completion.ChildWorkflowInstanceCompleted.Result;
         }
 
         if (failures.TryGetValue(creationId, out var failure))
         {
-            status = PropagatedHistoryTaskStatus.Failed;
+            status = PropagatedHistoryStatus.Failed;
             failureDetails = MapFailureDetails(failure.ChildWorkflowInstanceFailed.FailureDetails);
         }
 
