@@ -190,21 +190,21 @@ public class PropagatedHistoryTests
     public void FilterByAppId_ThrowsOnNull()
     {
         var history = new PropagatedHistory([]);
-        Assert.Throws<ArgumentNullException>(() => history.FilterByAppId(null!));
+        Assert.Throws<ArgumentNullException>(() => history.GetByAppId(null!));
     }
 
     [Fact]
     public void FilterByAppId_ThrowsOnWhitespace()
     {
         var history = new PropagatedHistory([]);
-        Assert.Throws<ArgumentException>(() => history.FilterByAppId(" "));
+        Assert.Throws<ArgumentException>(() => history.GetByAppId(" "));
     }
 
     [Fact]
     public void FilterByAppId_ReturnsEmpty_WhenNoMatch()
     {
         var history = new PropagatedHistory([MakeEvent("id1", "appA", "WF1")]);
-        Assert.Empty(history.FilterByAppId("appB"));
+        Assert.Empty(history.GetByAppId("appB"));
     }
 
     [Fact]
@@ -215,7 +215,7 @@ public class PropagatedHistoryTests
         var e3 = MakeEvent("id3", "appA", "WF3");
         var history = new PropagatedHistory([e1, e2, e3]);
 
-        var result = history.FilterByAppId("appA");
+        var result = history.GetByAppId("appA");
         Assert.Equal(2, result.Count);
         Assert.Same(e1, result[0]);
         Assert.Same(e3, result[1]);
@@ -226,8 +226,8 @@ public class PropagatedHistoryTests
     {
         var e = MakeEvent("id1", "AppA", "WF1");
         var history = new PropagatedHistory([e]);
-        Assert.Single(history.FilterByAppId("appa"));
-        Assert.Single(history.FilterByAppId("APPA"));
+        Assert.Single(history.GetByAppId("appa"));
+        Assert.Single(history.GetByAppId("APPA"));
     }
 
     // ----- FilterByInstanceId -----
@@ -236,21 +236,21 @@ public class PropagatedHistoryTests
     public void FilterByInstanceId_ThrowsOnNull()
     {
         var history = new PropagatedHistory([]);
-        Assert.Throws<ArgumentNullException>(() => history.FilterByInstanceId(null!));
+        Assert.Throws<ArgumentNullException>(() => history.GetByInstanceId(null!));
     }
 
     [Fact]
     public void FilterByInstanceId_ThrowsOnWhitespace()
     {
         var history = new PropagatedHistory([]);
-        Assert.Throws<ArgumentException>(() => history.FilterByInstanceId("  "));
+        Assert.Throws<ArgumentException>(() => history.GetByInstanceId("  "));
     }
 
     [Fact]
     public void FilterByInstanceId_ReturnsEmpty_WhenNoMatch()
     {
         var history = new PropagatedHistory([MakeEvent("idA", "app1", "WF1")]);
-        Assert.Empty(history.FilterByInstanceId("idB"));
+        Assert.Empty(history.GetByInstanceId("idB"));
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public class PropagatedHistoryTests
         var e3 = MakeEvent("idA", "app3", "WF3");
         var history = new PropagatedHistory([e1, e2, e3]);
 
-        var result = history.FilterByInstanceId("idA");
+        var result = history.GetByInstanceId("idA");
         Assert.Equal(2, result.Count);
         Assert.Same(e1, result[0]);
         Assert.Same(e3, result[1]);
@@ -272,9 +272,9 @@ public class PropagatedHistoryTests
     {
         var e = MakeEvent("idA", "app1", "WF1");
         var history = new PropagatedHistory([e]);
-        Assert.Empty(history.FilterByInstanceId("ida"));
-        Assert.Empty(history.FilterByInstanceId("IDA"));
-        Assert.Single(history.FilterByInstanceId("idA"));
+        Assert.Empty(history.GetByInstanceId("ida"));
+        Assert.Empty(history.GetByInstanceId("IDA"));
+        Assert.Single(history.GetByInstanceId("idA"));
     }
 }
 

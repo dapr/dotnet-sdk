@@ -384,7 +384,7 @@ public class WorkflowHistoryPropagationTests
     }
 
     [Fact]
-    public void FilterByInstanceId_ReturnsMatchingEntries_WhenInstanceIdMatches()
+    public void GetByInstanceId_ReturnsMatchingEntries_WhenInstanceIdMatches()
     {
         var history = new PropagatedHistory([
             new PropagatedHistoryEvent("inst-a", "app", "WfA", [], []),
@@ -392,26 +392,26 @@ public class WorkflowHistoryPropagationTests
             new PropagatedHistoryEvent("inst-c", "app", "WfC", [], []),
         ]);
 
-        var result = history.FilterByInstanceId("inst-b");
+        var result = history.GetByInstanceId("inst-b");
 
         Assert.Single(result);
         Assert.Equal("inst-b", result[0].InstanceId);
     }
 
     [Fact]
-    public void FilterByInstanceId_ReturnsEmptyList_WhenNoMatch()
+    public void GetByInstanceId_ReturnsEmptyList_WhenNoMatch()
     {
         var history = new PropagatedHistory([
             new PropagatedHistoryEvent("inst-a", "app", "WfA", [], []),
         ]);
 
-        var result = history.FilterByInstanceId("inst-z");
+        var result = history.GetByInstanceId("inst-z");
 
         Assert.Empty(result);
     }
 
     [Fact]
-    public void FilterByInstanceId_ReturnsBothEntries_WhenSameInstanceAppearsMultipleTimes()
+    public void GetByInstanceId_ReturnsBothEntries_WhenSameInstanceAppearsMultipleTimes()
     {
         // ContinueAsNew or replay can produce multiple chunks for the same instance ID.
         var history = new PropagatedHistory([
@@ -420,32 +420,39 @@ public class WorkflowHistoryPropagationTests
             new PropagatedHistoryEvent("inst-loop", "app", "LoopWf", [], []),
         ]);
 
-        var result = history.FilterByInstanceId("inst-loop");
+        var result = history.GetByInstanceId("inst-loop");
 
         Assert.Equal(2, result.Count);
         Assert.All(result, e => Assert.Equal("inst-loop", e.InstanceId));
     }
 
     [Fact]
-    public void FilterByInstanceId_IsCaseSensitive()
+    public void GetByInstanceId_IsCaseSensitive()
     {
         // Instance IDs use Ordinal comparison (unlike app/workflow name lookups which are OrdinalIgnoreCase).
         var history = new PropagatedHistory([
             new PropagatedHistoryEvent("Instance-1", "app", "Wf", [], []),
         ]);
 
-        Assert.Empty(history.FilterByInstanceId("instance-1"));
-        Assert.Single(history.FilterByInstanceId("Instance-1"));
+        Assert.Empty(history.GetByInstanceId("instance-1"));
+        Assert.Single(history.GetByInstanceId("Instance-1"));
+    }
+    
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void GetByInstanceId_ThrowsOnWhitespace(string? instanceId)
+    {
+        var history = new PropagatedHistory([]);
+        Assert.Throws<ArgumentException>(() => history.GetByInstanceId(instanceId!));
     }
 
     [Theory]
     [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void FilterByInstanceId_ThrowsOnNullOrWhitespace(string? instanceId)
+    public void GetByInstanceId_ThrowsOnNull(string? instanceId)
     {
         var history = new PropagatedHistory([]);
-        Assert.Throws<ArgumentException>(() => history.FilterByInstanceId(instanceId!));
+        Assert.Throws<ArgumentNullException>(() => history.GetByInstanceId(instanceId!));
     }
 
     [Fact]
@@ -469,7 +476,7 @@ public class WorkflowHistoryPropagationTests
         // Both entries belong to the same app (differing only in casing), so the de-duped
         // app-id list collapses to one, while a case-insensitive filter matches both entries.
         Assert.Single(history.GetAppIds());
-        Assert.Equal(2, history.FilterByAppId("APPA").Count);
+        Assert.Equal(2, history.GetByAppId("APPA").Count);
         Assert.Single(history.GetEventsByWorkflowName("merchantcheckout"));
         Assert.True(history.TryGetLastWorkflowEventByName("MERCHANTCHECKOUT", out _));
         Assert.Single(entry.GetActivitiesByName("validatemerchant"));

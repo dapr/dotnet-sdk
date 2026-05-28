@@ -36,20 +36,23 @@ using System.Linq;
 /// </remarks>
 public sealed class PropagatedHistory(IReadOnlyList<PropagatedHistoryEvent> events)
 {
+    private readonly IReadOnlyList<PropagatedHistoryEvent> _events =
+        events ?? throw new ArgumentNullException(nameof(events));
+
     /// <summary>
     /// Returns every event in the propagated history, in execution
     /// order (ancestor first, immediate parent last).
     /// </summary>
-    public IReadOnlyList<PropagatedHistoryEvent> Events => events ?? [];
-    
+    public IReadOnlyList<PropagatedHistoryEvent> Events => _events;
+
     /// <summary>
     /// Returns an ordered, deduplicated list of app IDs in this propagated history.
     /// </summary>
     public IReadOnlyList<string> GetAppIds()
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var result = new List<string>(events.Count);
-        result.AddRange(from entry in events where seen.Add(entry.AppId) select entry.AppId);
+        var result = new List<string>(_events.Count);
+        result.AddRange(from entry in _events where seen.Add(entry.AppId) select entry.AppId);
 
         return result;
     }
@@ -63,7 +66,7 @@ public sealed class PropagatedHistory(IReadOnlyList<PropagatedHistoryEvent> even
     public IReadOnlyList<PropagatedHistoryEvent> GetEventsByWorkflowName(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        return events
+        return _events
             .Where(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
@@ -77,11 +80,11 @@ public sealed class PropagatedHistory(IReadOnlyList<PropagatedHistoryEvent> even
     public bool TryGetLastWorkflowEventByName(string name, [NotNullWhen(true)] out PropagatedHistoryEvent? result)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        for (var i = events.Count - 1; i >= 0; i--)
+        for (var i = _events.Count - 1; i >= 0; i--)
         {
-            if (string.Equals(events[i].Name, name, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(_events[i].Name, name, StringComparison.OrdinalIgnoreCase))
             {
-                result = events[i];
+                result = _events[i];
                 return true;
             }
         }
@@ -95,10 +98,10 @@ public sealed class PropagatedHistory(IReadOnlyList<PropagatedHistoryEvent> even
     /// </summary>
     /// <param name="appId">The Dapr App ID to filter by.</param>
     /// <returns>An empty list when no match is found.</returns>
-    public IReadOnlyList<PropagatedHistoryEvent> FilterByAppId(string appId)
+    public IReadOnlyList<PropagatedHistoryEvent> GetByAppId(string appId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
-        return events
+        return _events
             .Where(e => string.Equals(e.AppId, appId, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
@@ -109,11 +112,11 @@ public sealed class PropagatedHistory(IReadOnlyList<PropagatedHistoryEvent> even
     /// </summary>
     /// <param name="instanceId">The workflow instance ID to filter by.</param>
     /// <returns>An empty list when no match is found.</returns>
-    public IReadOnlyList<PropagatedHistoryEvent> FilterByInstanceId(string instanceId)
+    public IReadOnlyList<PropagatedHistoryEvent> GetByInstanceId(string instanceId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
-        return events
+        return _events
             .Where(e => string.Equals(e.InstanceId, instanceId, StringComparison.Ordinal))
-            .ToList();
+            .ToList();   
     }
 }
