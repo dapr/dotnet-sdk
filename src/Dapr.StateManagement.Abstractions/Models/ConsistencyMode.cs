@@ -11,19 +11,22 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Workflow;
-
-using System.Collections.Generic;
+namespace Dapr.StateManagement;
 
 /// <summary>
-/// Represents a segment of propagated workflow history originating from a single ancestor workflow instance.
+/// Consistency mode for state operations with Dapr.
 /// </summary>
-/// <param name="AppId">The Dapr App ID of the application that ran the ancestor workflow.</param>
-/// <param name="InstanceId">The instance ID of the ancestor workflow.</param>
-/// <param name="WorkflowName">The name of the ancestor workflow.</param>
-/// <param name="Events">The ordered list of history events from the ancestor workflow.</param>
-public sealed record PropagatedHistoryEntry(
-    string AppId,
-    string InstanceId,
-    string WorkflowName,
-    IReadOnlyList<PropagatedHistoryEvent> Events);
+public enum ConsistencyMode
+{
+    /// <summary>
+    /// Eventual consistency: changes propagate asynchronously to all replicas.
+    /// This provides lower latency but may return stale data.
+    /// </summary>
+    Eventual,
+
+    /// <summary>
+    /// Strong consistency: all replicas reflect the latest write before reads are served.
+    /// This provides the most up-to-date data but may have higher latency.
+    /// </summary>
+    Strong,
+}

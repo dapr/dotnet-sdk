@@ -32,7 +32,8 @@ internal static class ProtoConverters
         {
             SerializedInput = string.IsNullOrEmpty(state.Input) ? null : state.Input,
             SerializedOutput = string.IsNullOrEmpty(state.Output) ? null : state.Output,
-            SerializedCustomStatus = string.IsNullOrEmpty(state.CustomStatus) ? null : state.CustomStatus
+            SerializedCustomStatus = string.IsNullOrEmpty(state.CustomStatus) ? null : state.CustomStatus,
+            FailureDetails = ToWorkflowTaskFailureDetails(state.FailureDetails),
         };
 
     /// <summary>
@@ -91,4 +92,12 @@ internal static class ProtoConverters
             HistoryEvent.EventTypeOneofCase.DetachedWorkflowInstanceCreated => WorkflowHistoryEventType.SubOrchestrationInstanceCreated,
             _ => WorkflowHistoryEventType.Unknown
         };
+
+    private static Workflow.WorkflowTaskFailureDetails? ToWorkflowTaskFailureDetails(TaskFailureDetails? failureDetails)
+        => failureDetails is null
+            ? null
+            : new Workflow.WorkflowTaskFailureDetails(
+                failureDetails.ErrorType,
+                failureDetails.ErrorMessage,
+                string.IsNullOrEmpty(failureDetails.StackTrace) ? null : failureDetails.StackTrace);
 }

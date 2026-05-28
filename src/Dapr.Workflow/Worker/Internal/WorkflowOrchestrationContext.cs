@@ -170,16 +170,29 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             return await HandleHistoryMatch<T>(name, earlyCompletion, taskId);
         }
 
+        var scheduleTaskAction = new ScheduleTaskAction
+        {
+            Name = name,
+            Input = _workflowSerializer.Serialize(input),
+            Router = router,
+            TaskExecutionId = taskExecutionId
+        };
+
+        var activityPropagationScope = options?.PropagationScope ?? HistoryPropagationScope.None;
+        if (activityPropagationScope != HistoryPropagationScope.None)
+        {
+            scheduleTaskAction.HistoryPropagationScope = activityPropagationScope switch
+            {
+                HistoryPropagationScope.OwnHistory => Dapr.DurableTask.Protobuf.HistoryPropagationScope.OwnHistory,
+                HistoryPropagationScope.Lineage => Dapr.DurableTask.Protobuf.HistoryPropagationScope.Lineage,
+                _ => Dapr.DurableTask.Protobuf.HistoryPropagationScope.None
+            };
+        }
+
         _pendingActions.Add(taskId, new WorkflowAction
         {
             Id = taskId,
-            ScheduleTask = new ScheduleTaskAction
-            {
-                Name = name, 
-                Input = _workflowSerializer.Serialize(input),
-                Router = router,
-                TaskExecutionId = taskExecutionId
-            },
+            ScheduleTask = scheduleTaskAction,
             Router = router
         });
 
@@ -989,72 +1002,149 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     }
 
     /// <summary>
-    /// Converts a <see cref="PropagatedHistoryChunk"/> proto message to a domain <see cref="PropagatedHistoryEntry"/>.
+    /// Converts a <see cref="PropagatedHistoryChunk"/> proto message into a public-facing
+    /// <see cref="PropagatedHistoryEvent"/> by resolving each scheduled activity and child workflow
+    /// against its matching completion/failure event.
     /// </summary>
     /// <remarks>
-    /// Each <see cref="PropagatedHistoryChunk.RawEvents"/> entry is the deterministic byte representation
-    /// of a single <see cref="HistoryEvent"/>; we parse the bytes here on demand rather than re-marshalling.
-    /// Malformed event bytes are skipped (mapped to nothing) so a single bad event cannot crash the workflow.
+    /// Each <see cref="PropagatedHistoryChunk.RawEvents"/> entry is the deterministic byte
+    /// representation of a single <see cref="HistoryEvent"/>; we parse the bytes here.
+    /// SDK retries reuse <c>TaskExecutionId</c>, so we match completions on
+    /// <c>TaskScheduledId</c> (the scheduling event ID) rather than execution ID.
+    /// Malformed event bytes are surfaced as exceptions — a runtime sending unparseable
+    /// proto bytes is a contract violation we should not hide.
     /// </remarks>
-    private static PropagatedHistoryEntry ConvertChunk(PropagatedHistoryChunk chunk)
+    private static PropagatedHistoryEvent ConvertChunk(PropagatedHistoryChunk chunk)
     {
-        var events = new List<PropagatedHistoryEvent>(chunk.RawEvents.Count);
+        var events = new List<HistoryEvent>(chunk.RawEvents.Count);
         foreach (var rawEvent in chunk.RawEvents)
         {
-            HistoryEvent? historyEvent;
-            try
-            {
-                historyEvent = HistoryEvent.Parser.ParseFrom(rawEvent);
-            }
-            catch (InvalidProtocolBufferException)
-            {
-                continue;
-            }
-
-            events.Add(new PropagatedHistoryEvent(
-                historyEvent.EventId,
-                MapEventKind(historyEvent),
-                MapTimestamp(historyEvent.Timestamp)));
+            events.Add(HistoryEvent.Parser.ParseFrom(rawEvent));
         }
 
-        return new PropagatedHistoryEntry(
-            chunk.AppId,
+        // Pre-index completion / failure events by TaskScheduledId so each scheduled
+        // activity or child workflow resolves in O(1) instead of rescanning the list.
+        var taskCompletions = new Dictionary<int, HistoryEvent>();
+        var taskFailures = new Dictionary<int, HistoryEvent>();
+        var childCompletions = new Dictionary<int, HistoryEvent>();
+        var childFailures = new Dictionary<int, HistoryEvent>();
+        foreach (var e in events)
+        {
+            switch (e.EventTypeCase)
+            {
+                case HistoryEvent.EventTypeOneofCase.TaskCompleted:
+                    taskCompletions[e.TaskCompleted.TaskScheduledId] = e;
+                    break;
+                case HistoryEvent.EventTypeOneofCase.TaskFailed:
+                    taskFailures[e.TaskFailed.TaskScheduledId] = e;
+                    break;
+                case HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCompleted:
+                    childCompletions[e.ChildWorkflowInstanceCompleted.TaskScheduledId] = e;
+                    break;
+                case HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceFailed:
+                    childFailures[e.ChildWorkflowInstanceFailed.TaskScheduledId] = e;
+                    break;
+            }
+        }
+
+        var activities = new List<PropagatedHistoryActivityResult>();
+        var childWorkflows = new List<PropagatedHistoryWorkflowResult>();
+        foreach (var historyEvent in events)
+        {
+            switch (historyEvent.EventTypeCase)
+            {
+                case HistoryEvent.EventTypeOneofCase.TaskScheduled:
+                    activities.Add(ResolveActivity(historyEvent, taskCompletions, taskFailures));
+                    break;
+                case HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCreated:
+                    childWorkflows.Add(ResolveChildWorkflow(historyEvent, childCompletions, childFailures));
+                    break;
+            }
+        }
+
+        return new PropagatedHistoryEvent(
             chunk.InstanceId,
+            chunk.AppId,
             chunk.WorkflowName,
-            events);
+            activities,
+            childWorkflows);
     }
 
     /// <summary>
-    /// Maps a proto <see cref="HistoryEvent"/> to a <see cref="HistoryEventKind"/>.
+    /// Builds a <see cref="PropagatedHistoryActivityResult"/> by matching <c>TaskCompleted</c> /
+    /// <c>TaskFailed</c> against the scheduling event's <c>EventId</c>.
     /// </summary>
-    private static HistoryEventKind MapEventKind(HistoryEvent e) => e.EventTypeCase switch
+    private static PropagatedHistoryActivityResult ResolveActivity(
+        HistoryEvent scheduleEvent,
+        IReadOnlyDictionary<int, HistoryEvent> completions,
+        IReadOnlyDictionary<int, HistoryEvent> failures)
     {
-        HistoryEvent.EventTypeOneofCase.ExecutionStarted => HistoryEventKind.ExecutionStarted,
-        HistoryEvent.EventTypeOneofCase.ExecutionCompleted => HistoryEventKind.ExecutionCompleted,
-        HistoryEvent.EventTypeOneofCase.ExecutionTerminated => HistoryEventKind.ExecutionTerminated,
-        HistoryEvent.EventTypeOneofCase.TaskScheduled => HistoryEventKind.TaskScheduled,
-        HistoryEvent.EventTypeOneofCase.TaskCompleted => HistoryEventKind.TaskCompleted,
-        HistoryEvent.EventTypeOneofCase.TaskFailed => HistoryEventKind.TaskFailed,
-        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCreated => HistoryEventKind.SubOrchestrationInstanceCreated,
-        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCompleted => HistoryEventKind.SubOrchestrationInstanceCompleted,
-        HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceFailed => HistoryEventKind.SubOrchestrationInstanceFailed,
-        HistoryEvent.EventTypeOneofCase.TimerCreated => HistoryEventKind.TimerCreated,
-        HistoryEvent.EventTypeOneofCase.TimerFired => HistoryEventKind.TimerFired,
-        HistoryEvent.EventTypeOneofCase.WorkflowStarted => HistoryEventKind.OrchestratorStarted,
-        HistoryEvent.EventTypeOneofCase.WorkflowCompleted => HistoryEventKind.OrchestratorCompleted,
-        HistoryEvent.EventTypeOneofCase.EventSent => HistoryEventKind.EventSent,
-        HistoryEvent.EventTypeOneofCase.EventRaised => HistoryEventKind.EventRaised,
-        HistoryEvent.EventTypeOneofCase.ContinueAsNew => HistoryEventKind.ContinueAsNew,
-        HistoryEvent.EventTypeOneofCase.ExecutionSuspended => HistoryEventKind.ExecutionSuspended,
-        HistoryEvent.EventTypeOneofCase.ExecutionResumed => HistoryEventKind.ExecutionResumed,
-        _ => HistoryEventKind.Unknown
-    };
+        var scheduled = scheduleEvent.TaskScheduled;
+        var scheduleId = scheduleEvent.EventId;
+        var status = PropagatedHistoryStatus.Pending;
+        string? output = null;
+        WorkflowTaskFailureDetails? failureDetails = null;
+
+        if (completions.TryGetValue(scheduleId, out var completion))
+        {
+            status = PropagatedHistoryStatus.Completed;
+            output = completion.TaskCompleted.Result;
+        }
+
+        if (failures.TryGetValue(scheduleId, out var failure))
+        {
+            status = PropagatedHistoryStatus.Failed;
+            failureDetails = MapFailureDetails(failure.TaskFailed.FailureDetails);
+        }
+
+        return new PropagatedHistoryActivityResult(
+            Name: scheduled.Name,
+            Status: status,
+            Input: scheduled.Input,
+            Output: output,
+            FailureDetails: failureDetails);
+    }
 
     /// <summary>
-    /// Converts a proto Timestamp to a <see cref="DateTimeOffset"/>.
+    /// Builds a <see cref="PropagatedHistoryWorkflowResult"/> by matching the create event's
+    /// <c>EventId</c> against subsequent <c>ChildWorkflowInstanceCompleted</c> /
+    /// <c>ChildWorkflowInstanceFailed</c> events.
     /// </summary>
-    private static DateTimeOffset MapTimestamp(Timestamp? timestamp) =>
-        timestamp is not null
-            ? new DateTimeOffset(timestamp.ToDateTime(), TimeSpan.Zero)
-            : DateTimeOffset.MinValue;
+    private static PropagatedHistoryWorkflowResult ResolveChildWorkflow(
+        HistoryEvent createEvent,
+        IReadOnlyDictionary<int, HistoryEvent> completions,
+        IReadOnlyDictionary<int, HistoryEvent> failures)
+    {
+        var created = createEvent.ChildWorkflowInstanceCreated;
+        var creationId = createEvent.EventId;
+        var status = PropagatedHistoryStatus.Pending;
+        string? output = null;
+        WorkflowTaskFailureDetails? failureDetails = null;
+
+        if (completions.TryGetValue(creationId, out var completion))
+        {
+            status = PropagatedHistoryStatus.Completed;
+            output = completion.ChildWorkflowInstanceCompleted.Result;
+        }
+
+        if (failures.TryGetValue(creationId, out var failure))
+        {
+            status = PropagatedHistoryStatus.Failed;
+            failureDetails = MapFailureDetails(failure.ChildWorkflowInstanceFailed.FailureDetails);
+        }
+
+        return new PropagatedHistoryWorkflowResult(
+            Name: created.Name,
+            Status: status,
+            Output: output,
+            FailureDetails: failureDetails);
+    }
+
+    private static WorkflowTaskFailureDetails? MapFailureDetails(TaskFailureDetails? failure) =>
+        failure is null
+            ? null
+            : new WorkflowTaskFailureDetails(
+                errorType: failure.ErrorType ?? "Exception",
+                errorMessage: failure.ErrorMessage ?? string.Empty,
+                stackTrace: failure.StackTrace);
 }

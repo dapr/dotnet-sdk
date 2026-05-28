@@ -202,14 +202,24 @@ public sealed class DaprdContainer : IAsyncStartable
         // Even after the TCP ports start accepting connections the Dapr runtime may still be
         // initializing (connecting to Placement/Scheduler, loading components, starting the
         // workflow engine). Poll the HTTP port until the Dapr HTTP server starts processing
-        // requests. Any HTTP response (including 5xx) confirms that the HTTP server — and by
-        // extension the gRPC server — is actively routing requests, eliminating the brief window
-        // in which the gRPC port accepts TCP connections but the gRPC handlers are not yet
-        // installed. This prevents the transient "Error connecting to subchannel / Connection
-        // refused" errors that occur when the gRPC client first connects while the runtime is
-        // still completing its startup sequence.
+        // requests. Any HTTP response (including 5xx) confirms that the HTTP server is
+        // actively routing requests.
         await ContainerReadinessProbe.WaitForHttpReachableAsync(
             $"http://127.0.0.1:{HttpPort}/v1.0/healthz",
+            TimeSpan.FromSeconds(30),
+            cancellationToken);
+
+        // The HTTP probe above only proves the HTTP server is up; it does not prove the
+        // gRPC server on a different port is fully serving. A successful TCP connect on
+        // the gRPC port likewise only proves Docker's port forwarding accepts SYN packets.
+        // On slow CI hosts there can be a brief window where the gRPC port accepts TCP
+        // but the upstream HTTP/2/gRPC server is not yet serving, which surfaces to the
+        // test as a transient `Grpc.Core.RpcException(StatusCode=Unavailable, "Error
+        // connecting to subchannel / Connection refused")` on the first RPC. Defeat that
+        // race by performing the HTTP/2 connection-preface handshake before returning.
+        await ContainerReadinessProbe.WaitForGrpcServerReadyAsync(
+            "127.0.0.1",
+            GrpcPort,
             TimeSpan.FromSeconds(30),
             cancellationToken);
     }

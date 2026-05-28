@@ -185,6 +185,408 @@ public sealed class GrpcProtocolHandlerTests
     }
 
     [Fact]
+    public async Task StartAsync_ShouldKeepActivityTraceCurrent_ThroughActivityCompletion()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+        const string completionToken = "abc";
+        const string expectedTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+        const string traceParent = $"00-{expectedTraceId}-00f067aa0ba902b7-01";
+        Activity.Current = null;
+
+        var workItems = new[]
+        {
+            new WorkItem
+            {
+                ActivityRequest = new ActivityRequest
+                {
+                    Name = "act",
+                    TaskId = 42,
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "i-2" },
+                    ParentTraceContext = new TraceContext { TraceParent = traceParent }
+                },
+                CompletionToken = completionToken
+            }
+        };
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCall(workItems));
+
+        var completedTcs = CreateTcs<(string? HandlerTraceId, string? CompletionTraceId)>();
+        string? handlerTraceId = null;
+
+        grpcClientMock
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
+            .Callback<ActivityResponse, CallOptions>((_, _) =>
+                completedTcs.TrySetResult((handlerTraceId, Activity.Current?.TraceId.ToHexString())))
+            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        await RunHandlerUntilAsync(
+            handler,
+            workflowHandler: (_, _) => Task.FromResult(new WorkflowResponse()),
+            activityHandler: (req, tok) =>
+            {
+                handlerTraceId = Activity.Current?.TraceId.ToHexString();
+                return Task.FromResult(new ActivityResponse
+                {
+                    InstanceId = req.WorkflowInstance.InstanceId,
+                    TaskId = req.TaskId,
+                    Result = "ok",
+                    CompletionToken = tok
+                });
+            },
+            until: completedTcs.Task,
+            timeout: TimeSpan.FromSeconds(2));
+
+        var completed = await completedTcs.Task;
+        Assert.Equal(expectedTraceId, completed.HandlerTraceId);
+        Assert.Equal(expectedTraceId, completed.CompletionTraceId);
+        Assert.Null(Activity.Current);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldPopulateActivityCurrent_FromParentTraceContext()
+    {
+        using var listener = new ActivityListener();
+        listener.ShouldListenTo = src => src.Name == "Dapr.Workflow";
+        listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
+        listener.SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllDataAndRecorded;
+        ActivitySource.AddActivityListener(listener);
+
+        var grpcClientMock = CreateGrpcClientMock();
+        const string completionToken = "abc";
+        const string expectedTraceId = "0af7651916cd43dd8448eb211c80319c";
+        const string parentSpanId = "b7ad6b7169203331";
+        const string traceParent = $"00-{expectedTraceId}-{parentSpanId}-01";
+        const string traceState = "vendor=value";
+        Activity.Current = null;
+
+        var workItems = new[]
+        {
+            new WorkItem
+            {
+                ActivityRequest = new ActivityRequest
+                {
+                    Name = "act",
+                    TaskId = 1,
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "wf-1" },
+                    ParentTraceContext = new TraceContext
+                    {
+                        TraceParent = traceParent,
+                        TraceState = traceState
+                    }
+                },
+                CompletionToken = completionToken
+            }
+        };
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCall(workItems));
+
+        var completedTcs = CreateTcs<bool>();
+        Activity? observedCurrent = null;
+        string? observedTraceId = null;
+        string? observedParentSpanId = null;
+        string? observedTraceState = null;
+
+        grpcClientMock
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
+            .Callback<ActivityResponse, CallOptions>((_, _) => completedTcs.TrySetResult(true))
+            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        await RunHandlerUntilAsync(
+            handler,
+            workflowHandler: (_, _) => Task.FromResult(new WorkflowResponse()),
+            activityHandler: (req, tok) =>
+            {
+                observedCurrent = Activity.Current;
+                observedTraceId = Activity.Current?.TraceId.ToHexString();
+                observedParentSpanId = Activity.Current?.ParentSpanId.ToHexString();
+                observedTraceState = Activity.Current?.TraceStateString;
+                return Task.FromResult(new ActivityResponse
+                {
+                    InstanceId = req.WorkflowInstance.InstanceId,
+                    TaskId = req.TaskId,
+                    Result = "ok",
+                    CompletionToken = tok
+                });
+            },
+            until: completedTcs.Task,
+            timeout: TimeSpan.FromSeconds(2));
+
+        Assert.NotNull(observedCurrent);
+        Assert.Equal(expectedTraceId, observedTraceId);
+        Assert.Equal(parentSpanId, observedParentSpanId);
+        Assert.Equal(traceState, observedTraceState);
+        Assert.Null(Activity.Current);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldPropagateTraceId_ToDownstreamActivities()
+    {
+        using var listener = new ActivityListener();
+        listener.ShouldListenTo = _ => true;
+        listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
+        listener.SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllDataAndRecorded;
+        ActivitySource.AddActivityListener(listener);
+
+        using var userSource = new ActivitySource("User.Code");
+
+        var grpcClientMock = CreateGrpcClientMock();
+        const string completionToken = "abc";
+        const string expectedTraceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+        const string traceParent = $"00-{expectedTraceId}-00f067aa0ba902b7-01";
+
+        var workItems = new[]
+        {
+            new WorkItem
+            {
+                ActivityRequest = new ActivityRequest
+                {
+                    Name = "act",
+                    TaskId = 2,
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "wf-2" },
+                    ParentTraceContext = new TraceContext { TraceParent = traceParent }
+                },
+                CompletionToken = completionToken
+            }
+        };
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCall(workItems));
+
+        var completedTcs = CreateTcs<bool>();
+        string? downstreamTraceId = null;
+
+        grpcClientMock
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
+            .Callback<ActivityResponse, CallOptions>((_, _) => completedTcs.TrySetResult(true))
+            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        await RunHandlerUntilAsync(
+            handler,
+            workflowHandler: (_, _) => Task.FromResult(new WorkflowResponse()),
+            activityHandler: (req, tok) =>
+            {
+                using var downstream = userSource.StartActivity("downstream-http-call");
+                downstreamTraceId = downstream?.TraceId.ToHexString();
+                return Task.FromResult(new ActivityResponse
+                {
+                    InstanceId = req.WorkflowInstance.InstanceId,
+                    TaskId = req.TaskId,
+                    Result = "ok",
+                    CompletionToken = tok
+                });
+            },
+            until: completedTcs.Task,
+            timeout: TimeSpan.FromSeconds(2));
+
+        Assert.Equal(expectedTraceId, downstreamTraceId);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldLeaveActivityCurrentNull_WhenParentTraceContextIsMissing()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+        const string completionToken = "abc";
+        Activity.Current = null;
+
+        var workItems = new[]
+        {
+            new WorkItem
+            {
+                ActivityRequest = new ActivityRequest
+                {
+                    Name = "act",
+                    TaskId = 3,
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "wf-3" }
+                },
+                CompletionToken = completionToken
+            }
+        };
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCall(workItems));
+
+        var completedTcs = CreateTcs<bool>();
+        Activity? observedCurrent = null;
+
+        grpcClientMock
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
+            .Callback<ActivityResponse, CallOptions>((_, _) => completedTcs.TrySetResult(true))
+            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        await RunHandlerUntilAsync(
+            handler,
+            workflowHandler: (_, _) => Task.FromResult(new WorkflowResponse()),
+            activityHandler: (req, tok) =>
+            {
+                observedCurrent = Activity.Current;
+                return Task.FromResult(new ActivityResponse
+                {
+                    InstanceId = req.WorkflowInstance.InstanceId,
+                    TaskId = req.TaskId,
+                    Result = "ok",
+                    CompletionToken = tok
+                });
+            },
+            until: completedTcs.Task,
+            timeout: TimeSpan.FromSeconds(2));
+
+        Assert.Null(observedCurrent);
+        Assert.Null(Activity.Current);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldFallBackToSetParentId_WhenTraceParentIsMalformed()
+    {
+        using var listener = new ActivityListener();
+        listener.ShouldListenTo = src => src.Name == "Dapr.Workflow";
+        listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
+        listener.SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllDataAndRecorded;
+        ActivitySource.AddActivityListener(listener);
+
+        var grpcClientMock = CreateGrpcClientMock();
+        const string completionToken = "abc";
+        const string malformedParentId = "not-a-valid-w3c-traceparent";
+        Activity.Current = null;
+
+        var workItems = new[]
+        {
+            new WorkItem
+            {
+                ActivityRequest = new ActivityRequest
+                {
+                    Name = "act",
+                    TaskId = 4,
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "wf-4" },
+                    ParentTraceContext = new TraceContext { TraceParent = malformedParentId }
+                },
+                CompletionToken = completionToken
+            }
+        };
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCall(workItems));
+
+        var completedTcs = CreateTcs<bool>();
+        string? observedParentId = null;
+
+        grpcClientMock
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
+            .Callback<ActivityResponse, CallOptions>((_, _) => completedTcs.TrySetResult(true))
+            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        await RunHandlerUntilAsync(
+            handler,
+            workflowHandler: (_, _) => Task.FromResult(new WorkflowResponse()),
+            activityHandler: (req, tok) =>
+            {
+                observedParentId = Activity.Current?.ParentId;
+                return Task.FromResult(new ActivityResponse
+                {
+                    InstanceId = req.WorkflowInstance.InstanceId,
+                    TaskId = req.TaskId,
+                    Result = "ok",
+                    CompletionToken = tok
+                });
+            },
+            until: completedTcs.Task,
+            timeout: TimeSpan.FromSeconds(2));
+
+        Assert.Equal(malformedParentId, observedParentId);
+        Assert.Null(Activity.Current);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldPopulateActivityCurrent_WithoutRegisteredListener()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+        const string completionToken = "abc";
+        const string expectedTraceId = "0af7651916cd43dd8448eb211c80319c";
+        const string parentSpanId = "b7ad6b7169203331";
+        const string traceParent = $"00-{expectedTraceId}-{parentSpanId}-01";
+        const string traceState = "vendor=value";
+        Activity.Current = null;
+
+        var workItems = new[]
+        {
+            new WorkItem
+            {
+                ActivityRequest = new ActivityRequest
+                {
+                    Name = "act",
+                    TaskId = 5,
+                    WorkflowInstance = new WorkflowInstance { InstanceId = "wf-5" },
+                    ParentTraceContext = new TraceContext
+                    {
+                        TraceParent = traceParent,
+                        TraceState = traceState
+                    }
+                },
+                CompletionToken = completionToken
+            }
+        };
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCall(workItems));
+
+        var completedTcs = CreateTcs<bool>();
+        Activity? observedCurrent = null;
+        string? observedTraceId = null;
+        string? observedParentSpanId = null;
+        string? observedTraceState = null;
+
+        grpcClientMock
+            .Setup(x => x.CompleteActivityTaskAsync(It.IsAny<ActivityResponse>(), It.IsAny<CallOptions>()))
+            .Callback<ActivityResponse, CallOptions>((_, _) => completedTcs.TrySetResult(true))
+            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        await RunHandlerUntilAsync(
+            handler,
+            workflowHandler: (_, _) => Task.FromResult(new WorkflowResponse()),
+            activityHandler: (req, tok) =>
+            {
+                observedCurrent = Activity.Current;
+                observedTraceId = Activity.Current?.TraceId.ToHexString();
+                observedParentSpanId = Activity.Current?.ParentSpanId.ToHexString();
+                observedTraceState = Activity.Current?.TraceStateString;
+                return Task.FromResult(new ActivityResponse
+                {
+                    InstanceId = req.WorkflowInstance.InstanceId,
+                    TaskId = req.TaskId,
+                    Result = "ok",
+                    CompletionToken = tok
+                });
+            },
+            until: completedTcs.Task,
+            timeout: TimeSpan.FromSeconds(2));
+
+        Assert.NotNull(observedCurrent);
+        Assert.Equal(expectedTraceId, observedTraceId);
+        Assert.Equal(parentSpanId, observedParentSpanId);
+        Assert.Equal(traceState, observedTraceState);
+        Assert.Null(Activity.Current);
+    }
+
+    [Fact]
     public async Task StartAsync_ShouldSendFailureResult_WhenOrchestratorHandlerThrows()
     {
         var grpcClientMock = CreateGrpcClientMock();

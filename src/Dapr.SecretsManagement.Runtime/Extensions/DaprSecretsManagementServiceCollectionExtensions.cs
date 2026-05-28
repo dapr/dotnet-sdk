@@ -35,5 +35,8 @@ public static class DaprSecretsManagementServiceCollectionExtensions
         Action<IServiceProvider, DaprSecretsManagementClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
         services.AddDaprClient<DaprSecretsManagementClient, DaprSecretsManagementGrpcClient, DaprSecretsManagementBuilder, DaprSecretsManagementClientBuilder>(
-            configure, lifetime);
+            config => new DaprSecretsManagementClientBuilder(config),
+            svc => new DaprSecretsManagementBuilder(svc),
+            configure,
+            lifetime);
 }

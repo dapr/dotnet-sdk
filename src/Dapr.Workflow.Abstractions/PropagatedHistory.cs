@@ -15,71 +15,108 @@ namespace Dapr.Workflow;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 /// <summary>
-/// Contains the workflow history that was propagated from ancestor workflow instances.
-/// Each entry corresponds to a single ancestor's history.
+/// Workflow history propagated from one or more ancestor workflows to a child workflow or activity.
 /// </summary>
+/// <param name="events">
+/// Workflow history events in execution order (ancestor first, immediate parent last).
+/// </param>
 /// <remarks>
-/// A workflow receives propagated history when it is scheduled with a
-/// <see cref="HistoryPropagationScope"/> other than <see cref="HistoryPropagationScope.None"/>.
-/// Use <see cref="WorkflowContext.GetPropagatedHistory"/> to retrieve the propagated history
-/// inside a workflow implementation.
+/// A propagated history is an ordered list of <see cref="PropagatedHistoryEvent"/> values,
+/// one per ancestor workflow. Order is execution order: index 0 is the oldest ancestor,
+/// the last entry is the immediate parent.
+/// <para>
+/// Use <see cref="Events"/> for the full list, the <c>FilterBy*</c> methods to narrow by
+/// app, instance, or workflow name, and <see cref="TryGetLastWorkflowEventByName"/> for the most
+/// recent entry with a given name. Mirrors the <c>PropagatedHistory</c> type in the Go and Python SDKs.
+/// </para>
 /// </remarks>
-public sealed class PropagatedHistory
+public sealed class PropagatedHistory(IReadOnlyList<PropagatedHistoryEvent> events)
 {
-    private readonly IReadOnlyList<PropagatedHistoryEntry> _entries;
+    private readonly IReadOnlyList<PropagatedHistoryEvent> _events =
+        events ?? throw new ArgumentNullException(nameof(events));
 
     /// <summary>
-    /// Initializes a new instance of <see cref="PropagatedHistory"/> with the given entries.
+    /// Returns every event in the propagated history, in execution
+    /// order (ancestor first, immediate parent last).
     /// </summary>
-    /// <param name="entries">The propagated history entries from ancestor workflows.</param>
-    public PropagatedHistory(IReadOnlyList<PropagatedHistoryEntry> entries)
+    public IReadOnlyList<PropagatedHistoryEvent> Events => _events;
+
+    /// <summary>
+    /// Returns an ordered, deduplicated list of app IDs in this propagated history.
+    /// </summary>
+    public IReadOnlyList<string> GetAppIds()
     {
-        _entries = entries ?? throw new ArgumentNullException(nameof(entries));
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<string>(_events.Count);
+        result.AddRange(from entry in _events where seen.Add(entry.AppId) select entry.AppId);
+
+        return result;
     }
 
     /// <summary>
-    /// Gets the ordered list of propagated history entries.
-    /// The first entry corresponds to the immediate parent workflow; subsequent entries
-    /// correspond to progressively older ancestors when <see cref="HistoryPropagationScope.Lineage"/> is used.
+    /// Returns every entry whose workflow name matches, in execution order. Useful when the
+    /// list contains the same name more than once (e.g. recursion or ContinueAsNew).
     /// </summary>
-    public IReadOnlyList<PropagatedHistoryEntry> Entries => _entries;
+    /// <param name="name">The workflow name to filter by.</param>
+    /// <returns>An empty list when no match is found.</returns>
+    public IReadOnlyList<PropagatedHistoryEvent> GetEventsByWorkflowName(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        return _events
+            .Where(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
 
     /// <summary>
-    /// Returns a new <see cref="PropagatedHistory"/> containing only entries from the specified App ID.
+    /// Tries to return the most recent workflow entry whose name matches.
+    /// </summary>
+    /// <param name="name">The workflow name to look up.</param>
+    /// <param name="result">When this method returns <see langword="true"/>, the last matching workflow entry; otherwise <see langword="null"/>.</param>
+    /// <returns><see langword="true"/> if a matching entry was found; otherwise <see langword="false"/>.</returns>
+    public bool TryGetLastWorkflowEventByName(string name, [NotNullWhen(true)] out PropagatedHistoryEvent? result)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        for (var i = _events.Count - 1; i >= 0; i--)
+        {
+            if (string.Equals(_events[i].Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                result = _events[i];
+                return true;
+            }
+        }
+
+        result = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Returns every entry produced by the given app, in execution order.
     /// </summary>
     /// <param name="appId">The Dapr App ID to filter by.</param>
-    /// <returns>A filtered <see cref="PropagatedHistory"/> instance.</returns>
-    public PropagatedHistory FilterByAppId(string appId)
+    /// <returns>An empty list when no match is found.</returns>
+    public IReadOnlyList<PropagatedHistoryEvent> GetByAppId(string appId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appId);
-        return new PropagatedHistory(
-            _entries.Where(e => string.Equals(e.AppId, appId, StringComparison.OrdinalIgnoreCase)).ToList());
+        return _events
+            .Where(e => string.Equals(e.AppId, appId, StringComparison.OrdinalIgnoreCase))
+            .ToList();
     }
 
     /// <summary>
-    /// Returns a new <see cref="PropagatedHistory"/> containing only the entry with the specified instance ID.
+    /// Returns every entry produced by the given instance, in execution order.
+    /// Usually a single entry, except when the same instance reappears via ContinueAsNew.
     /// </summary>
     /// <param name="instanceId">The workflow instance ID to filter by.</param>
-    /// <returns>A filtered <see cref="PropagatedHistory"/> instance.</returns>
-    public PropagatedHistory FilterByInstanceId(string instanceId)
+    /// <returns>An empty list when no match is found.</returns>
+    public IReadOnlyList<PropagatedHistoryEvent> GetByInstanceId(string instanceId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
-        return new PropagatedHistory(
-            _entries.Where(e => string.Equals(e.InstanceId, instanceId, StringComparison.Ordinal)).ToList());
-    }
-
-    /// <summary>
-    /// Returns a new <see cref="PropagatedHistory"/> containing only entries for the specified workflow name.
-    /// </summary>
-    /// <param name="workflowName">The workflow name to filter by.</param>
-    /// <returns>A filtered <see cref="PropagatedHistory"/> instance.</returns>
-    public PropagatedHistory FilterByWorkflowName(string workflowName)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
-        return new PropagatedHistory(
-            _entries.Where(e => string.Equals(e.WorkflowName, workflowName, StringComparison.Ordinal)).ToList());
+        return _events
+            .Where(e => string.Equals(e.InstanceId, instanceId, StringComparison.Ordinal))
+            .ToList();   
     }
 }

@@ -397,7 +397,7 @@ public sealed class HistoryPropagationWorkflowTests
             await context.CreateTimer(TimeSpan.Zero);
             return new PropagationTestResult(
                 ChildReceivedPropagatedHistory: propagated is not null,
-                PropagatedEntryCount: propagated?.Entries.Count ?? 0);
+                PropagatedEntryCount: propagated?.Events.Count ?? 0);
         }
     }
 
