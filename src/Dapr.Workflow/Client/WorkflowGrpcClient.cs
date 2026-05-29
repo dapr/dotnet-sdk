@@ -92,50 +92,43 @@ internal sealed class WorkflowGrpcClient(
     public override async Task<WorkflowMetadata> WaitForWorkflowStartAsync(string instanceId, bool getInputsAndOutputs = true,
         CancellationToken cancellationToken = default)
     {
-        // Poll until the workflow status (not Pending)
-        while (true)
+        var response = await WaitForInstanceAsync(
+            (request, callOptions) => grpcClient.WaitForInstanceStartAsync(request, callOptions),
+            instanceId,
+            getInputsAndOutputs,
+            cancellationToken);
+
+        if (!response.Exists)
         {
-            var metadata = await GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellationToken);
-
-            if (metadata is null)
-            {
-                var ex = new InvalidOperationException($"Workflow instance '{instanceId}' does not exist");
-                logger.LogWaitForStartException(ex, instanceId);
-                throw ex;
-            }
-
-            if (metadata.RuntimeStatus != WorkflowRuntimeStatus.Pending)
-            {
-                logger.LogWaitForStartCompleted(instanceId, metadata.RuntimeStatus);
-                return metadata;
-            }
-
-            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            var ex = new InvalidOperationException($"Workflow instance '{instanceId}' does not exist");
+            logger.LogWaitForStartException(ex, instanceId);
+            throw ex;
         }
+
+        var metadata = ProtoConverters.ToWorkflowMetadata(response.WorkflowState, serializer);
+        logger.LogWaitForStartCompleted(instanceId, metadata.RuntimeStatus);
+        return metadata;
     }
 
     /// <inheritdoc />
     public override async Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(string instanceId, bool getInputsAndOutputs = true, CancellationToken cancellationToken = default)
     {
-        while (true)
+        var response = await WaitForInstanceAsync(
+            (request, callOptions) => grpcClient.WaitForInstanceCompletionAsync(request, callOptions),
+            instanceId,
+            getInputsAndOutputs,
+            cancellationToken);
+
+        if (!response.Exists)
         {
-            var metadata = await GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellationToken);
-
-            if (metadata is null)
-            {
-                var ex = new InvalidOperationException($"Workflow instance '{instanceId}' does not exist");
-                logger.LogWaitForCompletionException(ex, instanceId);
-                throw ex;
-            }
-
-            if (IsTerminalStatus(metadata.RuntimeStatus))
-            {
-                logger.LogWaitForCompletionCompleted(instanceId, metadata.RuntimeStatus);
-                return metadata;
-            }
-
-            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            var ex = new InvalidOperationException($"Workflow instance '{instanceId}' does not exist");
+            logger.LogWaitForCompletionException(ex, instanceId);
+            throw ex;
         }
+
+        var metadata = ProtoConverters.ToWorkflowMetadata(response.WorkflowState, serializer);
+        logger.LogWaitForCompletionCompleted(instanceId, metadata.RuntimeStatus);
+        return metadata;
     }
 
     /// <inheritdoc />
@@ -333,8 +326,48 @@ internal sealed class WorkflowGrpcClient(
     private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>
         DaprClientUtilities.ConfigureGrpcCallOptions(typeof(DaprWorkflowClient).Assembly, daprApiToken, cancellationToken);
 
-    private static bool IsTerminalStatus(WorkflowRuntimeStatus status) =>
-        status is WorkflowRuntimeStatus.Completed 
-            or WorkflowRuntimeStatus.Failed
-            or WorkflowRuntimeStatus.Terminated;
+    private static readonly TimeSpan MinWaitRetryDelay = TimeSpan.FromMilliseconds(50);
+    private static readonly TimeSpan MaxWaitRetryDelay = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// Issues a server-side blocking wait RPC (<c>WaitForInstanceStart</c> /
+    /// <c>WaitForInstanceCompletion</c>), which returns the moment the instance reaches the
+    /// target state. The blocking call can be interrupted by a deadline or a transient
+    /// sidecar/connection drop; in that case it is re-issued with exponential backoff rather
+    /// than failing the wait — mirroring the durabletask-go client. The loop ends only when the
+    /// RPC succeeds or the caller cancels.
+    /// </summary>
+    private async Task<grpc.GetInstanceResponse> WaitForInstanceAsync(
+        Func<grpc.GetInstanceRequest, CallOptions, AsyncUnaryCall<grpc.GetInstanceResponse>> waitCall,
+        string instanceId,
+        bool getInputsAndOutputs,
+        CancellationToken cancellationToken)
+    {
+        var request = new grpc.GetInstanceRequest
+        {
+            InstanceId = instanceId,
+            GetInputsAndOutputs = getInputsAndOutputs
+        };
+
+        var delay = MinWaitRetryDelay;
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var grpcCallOptions = CreateCallOptions(cancellationToken);
+                return await waitCall(request, grpcCallOptions);
+            }
+            catch (RpcException ex) when (
+                !cancellationToken.IsCancellationRequested &&
+                ex.StatusCode is StatusCode.DeadlineExceeded or StatusCode.Unavailable)
+            {
+                logger.LogWaitForInstanceRetry(ex, instanceId, ex.StatusCode, delay);
+                await Task.Delay(delay, cancellationToken);
+                delay = TimeSpan.FromMilliseconds(
+                    Math.Min(delay.TotalMilliseconds * 2, MaxWaitRetryDelay.TotalMilliseconds));
+            }
+        }
+    }
 }
