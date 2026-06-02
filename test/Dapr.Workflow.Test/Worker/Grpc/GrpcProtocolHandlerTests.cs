@@ -13,9 +13,11 @@
 
 using System.Diagnostics;
 using System.Reflection;
+using System.Collections.Concurrent;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Worker.Grpc;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -1063,6 +1065,79 @@ public sealed class GrpcProtocolHandlerTests
         Assert.True(Volatile.Read(ref getWorkItemsCalls) >= 1);
     }
 
+    [Fact]
+    public async Task StartAsync_ShouldNotLogException_WhenReceiveLoopCancellationIsRequested()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+        using var loggerFactory = new CapturingLoggerFactory();
+
+        var loggedCancellation = CreateTcs<LogEntry>();
+
+        loggerFactory.Logged += entry =>
+        {
+            if (entry.Message == "Workflow worker gRPC stream canceled during shutdown (expected)")
+            {
+                loggedCancellation.TrySetResult(entry);
+            }
+        };
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(() => CreateServerStreamingCallFromReader(new CancelledWhenTokenCanceledStreamReader()));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, loggerFactory);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+
+        var runTask = handler.StartAsync(
+            workflowHandler: (_, _) => Task.FromResult(new WorkflowResponse()),
+            activityHandler: (_, _) => Task.FromResult(new ActivityResponse()),
+            cancellationToken: cts.Token);
+
+        await Task.Delay(50, cts.Token);
+        cts.Cancel();
+
+        await runTask;
+
+        var cancellationLog = await loggedCancellation.Task.WaitAsync(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
+        Assert.Equal(LogLevel.Information, cancellationLog.Level);
+        Assert.Null(cancellationLog.Exception);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldLogException_WhenReceiveLoopCancellationIsUnexpected()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+        using var loggerFactory = new CapturingLoggerFactory();
+
+        var loggedUnexpectedCancellation = CreateTcs<LogEntry>();
+
+        loggerFactory.Logged += entry =>
+        {
+            if (entry.Message == "Error in receive loop" && entry.Exception is RpcException { StatusCode: StatusCode.Cancelled })
+            {
+                loggedUnexpectedCancellation.TrySetResult(entry);
+            }
+        };
+
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCallFromReader(
+                new ThrowingAsyncStreamReader(new RpcException(new Status(StatusCode.Cancelled, "unexpected")))));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, loggerFactory);
+
+        await RunHandlerUntilAsync(
+            handler,
+            workflowHandler: (_, _) => Task.FromResult(new WorkflowResponse()),
+            activityHandler: (_, _) => Task.FromResult(new ActivityResponse()),
+            until: loggedUnexpectedCancellation.Task,
+            timeout: TimeSpan.FromSeconds(2));
+
+        var cancellationLog = await loggedUnexpectedCancellation.Task;
+        Assert.Equal(LogLevel.Error, cancellationLog.Level);
+        Assert.NotNull(cancellationLog.Exception);
+    }
+
     /// <summary>
     /// Regression test for: "Task failed: Status(StatusCode="Unknown", Detail="no such instance exists")"
     ///
@@ -1219,6 +1294,17 @@ public sealed class GrpcProtocolHandlerTests
         }
     }
 
+    private sealed class CancelledWhenTokenCanceledStreamReader : IAsyncStreamReader<WorkItem>
+    {
+        public WorkItem Current => new();
+
+        public async Task<bool> MoveNext(CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return false;
+        }
+    }
+
     private sealed class ThrowingAfterOneAsyncStreamReader(WorkItem first, Exception thenThrow) : IAsyncStreamReader<WorkItem>
     {
         private int _state; // 0 = before first, 1 = after first (throw), 2 = done (never reached)
@@ -1273,6 +1359,50 @@ public sealed class GrpcProtocolHandlerTests
     private sealed class NullStackTraceException(string message) : Exception(message)
     {
         public override string? StackTrace => null;
+    }
+
+    private sealed record LogEntry(LogLevel Level, string Category, string Message, Exception? Exception);
+
+    private sealed class CapturingLoggerFactory : ILoggerFactory
+    {
+        private readonly ConcurrentQueue<LogEntry> _entries = new();
+
+        public event Action<LogEntry>? Logged;
+
+        public IReadOnlyCollection<LogEntry> Entries => _entries.ToArray();
+
+        public ILogger CreateLogger(string categoryName) => new CapturingLogger(categoryName, Capture);
+
+        public void AddProvider(ILoggerProvider provider)
+        {
+        }
+
+        public void Dispose()
+        {
+        }
+
+        private void Capture(LogEntry entry)
+        {
+            _entries.Enqueue(entry);
+            Logged?.Invoke(entry);
+        }
+
+        private sealed class CapturingLogger(string categoryName, Action<LogEntry> capture) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                capture(new LogEntry(logLevel, categoryName, formatter(state, exception), exception));
+            }
+        }
     }
 
     private static Mock<TaskHubSidecarService.TaskHubSidecarServiceClient> CreateGrpcClientMock()
