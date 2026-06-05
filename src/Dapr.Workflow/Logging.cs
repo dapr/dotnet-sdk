@@ -155,6 +155,9 @@ internal static partial class Logging
     [LoggerMessage(LogLevel.Debug, "Workflow '{InstanceId}' completed with status '{Status}'")]
     public static partial void LogWaitForCompletionCompleted(this ILogger logger, string instanceId, WorkflowRuntimeStatus status);
 
+    [LoggerMessage(LogLevel.Debug, "Wait for workflow instance '{InstanceId}' was interrupted with status '{StatusCode}'; retrying in {Delay}")]
+    public static partial void LogWaitForInstanceRetry(this ILogger logger, RpcException ex, string instanceId, StatusCode statusCode, TimeSpan delay);
+
     [LoggerMessage(LogLevel.Information, "Raised event '{EventName}' to workflow '{InstanceId}'")]
     public static partial void LogRaisedEvent(this ILogger logger, string eventName, string instanceId);
     
