@@ -119,8 +119,9 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// Overrides the gRPC endpoint used by the Dapr client for communicating with the Dapr runtime.
     /// </summary>
     /// <param name="grpcEndpoint">
-    /// The URI endpoint to use for gRPC calls to the Dapr runtime. The default value will be 
-    /// <c>http://127.0.0.1:DAPR_GRPC_PORT</c> where <c>DAPR_GRPC_PORT</c> represents the value of the 
+    /// The URI endpoint to use for gRPC calls to the Dapr runtime. Accepts either <c>http(s)://host:port</c>
+    /// or the canonical gRPC URI form <c>dns://host:port?tls=&lt;bool&gt;</c>. The default value will be
+    /// <c>http://127.0.0.1:DAPR_GRPC_PORT</c> where <c>DAPR_GRPC_PORT</c> represents the value of the
     /// <c>DAPR_GRPC_PORT</c> environment variable.
     /// </param>
     /// <returns>The <see cref="DaprGenericClientBuilder{TClientBuilder}" /> instance.</returns>
@@ -188,11 +189,8 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
     /// <exception cref="InvalidOperationException"></exception>
     protected internal (GrpcChannel channel, HttpClient httpClient, Uri httpEndpoint, string daprApiToken) BuildDaprClientDependencies(Assembly assembly)
     {
-        var grpcEndpoint = new Uri(this.GrpcEndpoint);
-        if (grpcEndpoint.Scheme != "http" && grpcEndpoint.Scheme != "https")
-        {
-            throw new InvalidOperationException("The gRPC endpoint must use http or https.");
-        }
+        var normalizedGrpcEndpoint = DaprDefaults.NormalizeGrpcEndpoint(this.GrpcEndpoint);
+        var grpcEndpoint = new Uri(normalizedGrpcEndpoint);
 
         if (grpcEndpoint.Scheme.Equals(Uri.UriSchemeHttp))
         {
@@ -209,8 +207,8 @@ public abstract class DaprGenericClientBuilder<TClientBuilder> where TClientBuil
         //Configure the HTTP client
         var httpClient = ConfigureHttpClient(assembly);
         this.GrpcChannelOptions.HttpClient = httpClient;
-        
-        var channel = GrpcChannel.ForAddress(this.GrpcEndpoint, this.GrpcChannelOptions);        
+
+        var channel = GrpcChannel.ForAddress(normalizedGrpcEndpoint, this.GrpcChannelOptions);
         return (channel, httpClient, httpEndpoint, this.DaprApiToken);
     }
 

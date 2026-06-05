@@ -34,6 +34,13 @@ internal static class DaprDefaults
     public const int DefaultHttpPort = 3500;
     public const int DefaultGrpcPort = 50001;
 
+    // Canonical gRPC URI scheme per https://github.com/grpc/grpc/blob/master/doc/naming.md.
+    // The SDK accepts dns://host:port?tls=<bool> in addition to http(s) and rewrites it to
+    // http(s) before handing the URI to GrpcChannel.ForAddress (which is HttpClient-backed
+    // and does not understand the dns scheme natively).
+    private const string DnsScheme = "dns";
+    private const string TlsQueryParameter = "tls";
+
     /// <summary>
     /// Get the value of environment variable DAPR_API_TOKEN
     /// </summary>
@@ -77,11 +84,90 @@ internal static class DaprDefaults
         //Prioritize pulling from the IConfiguration and fallback to the environment variable if not populated
         var endpoint = GetResourceValue(configuration, DaprGrpcEndpointName);
         var port = GetResourceValue(configuration, DaprGrpcPortName);
-            
+
         //Use the default gRPC port if we're unable to retrieve/parse the provided port
         int? parsedGrpcPort = string.IsNullOrWhiteSpace(port) ? DefaultGrpcPort : int.Parse(port);
 
+        // Rewrite the canonical gRPC URI form (dns://host:port?tls=<bool>) to http/https before
+        // BuildEndpoint strips the query string when reassembling via UriBuilder.
+        if (!string.IsNullOrWhiteSpace(endpoint))
+        {
+            endpoint = NormalizeGrpcEndpoint(endpoint);
+        }
+
         return BuildEndpoint(endpoint, parsedGrpcPort.Value);
+    }
+
+    /// <summary>
+    /// Translates a gRPC endpoint into the http/https form that <see cref="Grpc.Net.Client.GrpcChannel.ForAddress(string)"/>
+    /// understands. Accepts:
+    /// <list type="bullet">
+    /// <item><description><c>http://host:port</c> and <c>https://host:port</c> — returned unchanged.</description></item>
+    /// <item><description>The canonical gRPC URI form <c>dns://host:port?tls=&lt;bool&gt;</c> — rewritten to
+    /// <c>https://host:port</c> when <c>tls=true</c> and <c>http://host:port</c> when <c>tls=false</c>.</description></item>
+    /// </list>
+    /// Throws <see cref="InvalidOperationException"/> for any other scheme, or for a <c>dns</c> URI without
+    /// a parseable <c>tls</c> query parameter.
+    /// </summary>
+    internal static string NormalizeGrpcEndpoint(string endpoint)
+    {
+        var uri = new Uri(endpoint, UriKind.Absolute);
+
+        if (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+        {
+            return endpoint;
+        }
+
+        if (uri.Scheme == DnsScheme)
+        {
+            var useTls = TryParseTlsQuery(uri.Query);
+            if (useTls is null)
+            {
+                throw new InvalidOperationException(
+                    $"The gRPC endpoint '{endpoint}' uses the 'dns' scheme but is missing or has an invalid 'tls' " +
+                    "query parameter. Use the canonical gRPC URI form 'dns://host:port?tls=true' or 'dns://host:port?tls=false'.");
+            }
+
+            var scheme = useTls.Value ? Uri.UriSchemeHttps : Uri.UriSchemeHttp;
+            return new UriBuilder { Scheme = scheme, Host = uri.Host, Port = uri.Port }.ToString();
+        }
+
+        throw new InvalidOperationException(
+            "The gRPC endpoint must use 'http', 'https', or the canonical gRPC URI form 'dns://host:port?tls=<bool>'.");
+    }
+
+    private static bool? TryParseTlsQuery(string query)
+    {
+        if (string.IsNullOrEmpty(query))
+        {
+            return null;
+        }
+
+        var trimmed = query.StartsWith("?") ? query.Substring(1) : query;
+        foreach (var pair in trimmed.Split('&'))
+        {
+            if (pair.Length == 0)
+            {
+                continue;
+            }
+
+            var eq = pair.IndexOf('=');
+            if (eq < 0)
+            {
+                continue;
+            }
+
+            var key = pair.Substring(0, eq);
+            if (!string.Equals(key, TlsQueryParameter, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var value = pair.Substring(eq + 1);
+            return bool.TryParse(value, out var parsed) ? parsed : null;
+        }
+
+        return null;
     }
 
     /// <summary>

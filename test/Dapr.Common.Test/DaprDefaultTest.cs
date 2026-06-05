@@ -503,6 +503,73 @@ public class DaprDefaultTest
             }
         }
 
+        [Theory]
+        [InlineData("dns://grpc.dapr.io:443?tls=true", "https://grpc.dapr.io:443/")]
+        [InlineData("dns://grpc.dapr.io:50001?tls=false", "http://grpc.dapr.io:50001/")]
+        public void ShouldBuildGrpcEndpointFromCanonicalDnsForm(string envValue, string expected)
+        {
+            const string endpointVarName = DaprDefaults.DaprGrpcEndpointName;
+            const string portVarName = DaprDefaults.DaprGrpcPortName;
+            var original_GrpcEndpoint = Environment.GetEnvironmentVariable(endpointVarName);
+            var original_GrpcPort = Environment.GetEnvironmentVariable(portVarName);
+
+            try
+            {
+                Environment.SetEnvironmentVariable(endpointVarName, envValue);
+                Environment.SetEnvironmentVariable(portVarName, null);
+
+                var configurationBuilder = new ConfigurationBuilder();
+                configurationBuilder.AddEnvironmentVariables();
+                var configuration = configurationBuilder.Build();
+
+                var grpcEndpoint = DaprDefaults.GetDefaultGrpcEndpoint(configuration);
+                Assert.Equal(expected, grpcEndpoint);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(endpointVarName, original_GrpcEndpoint);
+                Environment.SetEnvironmentVariable(portVarName, original_GrpcPort);
+            }
+        }
+
+        [Theory]
+        [InlineData("http://example.com:1234", "http://example.com:1234")]
+        [InlineData("https://example.com:443", "https://example.com:443")]
+        [InlineData("dns://example.com:50001?tls=true", "https://example.com:50001/")]
+        [InlineData("dns://example.com:50001?tls=false", "http://example.com:50001/")]
+        [InlineData("dns://example.com:50001?TLS=True", "https://example.com:50001/")]
+        public void NormalizeGrpcEndpoint_AcceptsHttpHttpsAndCanonicalDnsForms(string input, string expected)
+        {
+            var normalized = DaprDefaults.NormalizeGrpcEndpoint(input);
+            Assert.Equal(expected, normalized);
+        }
+
+        [Fact]
+        public void NormalizeGrpcEndpoint_DnsWithoutTlsThrows()
+        {
+            var ex = Assert.Throws<InvalidOperationException>(
+                () => DaprDefaults.NormalizeGrpcEndpoint("dns://example.com:50001"));
+            Assert.Contains("missing or has an invalid 'tls'", ex.Message);
+        }
+
+        [Fact]
+        public void NormalizeGrpcEndpoint_DnsWithUnparseableTlsThrows()
+        {
+            var ex = Assert.Throws<InvalidOperationException>(
+                () => DaprDefaults.NormalizeGrpcEndpoint("dns://example.com:50001?tls=yes"));
+            Assert.Contains("missing or has an invalid 'tls'", ex.Message);
+        }
+
+        [Fact]
+        public void NormalizeGrpcEndpoint_RejectsUnsupportedScheme()
+        {
+            var ex = Assert.Throws<InvalidOperationException>(
+                () => DaprDefaults.NormalizeGrpcEndpoint("ftp://example.com"));
+            Assert.Equal(
+                "The gRPC endpoint must use 'http', 'https', or the canonical gRPC URI form 'dns://host:port?tls=<bool>'.",
+                ex.Message);
+        }
+
         [Fact]
         public void ShouldBuildApiTokenUsingConfiguration()
         {
