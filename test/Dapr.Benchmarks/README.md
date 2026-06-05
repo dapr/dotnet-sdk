@@ -87,7 +87,7 @@ Once the workflow has run at least once on `master`, the dashboard is available
 at:
 
 ```
-https://<org>.github.io/dotnet-sdk/
+https://dapr.github.io/dotnet-sdk/
 ```
 
 Each framework (`net8.0`, `net9.0`, `net10.0`) and package sizes have their own

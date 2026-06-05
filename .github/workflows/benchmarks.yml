@@ -147,8 +147,8 @@ jobs:
           for PKG in ./nupkgs/*.nupkg; do
             if [ ! -f "$PKG" ]; then continue; fi
             NAME=$(basename "$PKG" .nupkg)
-            # Extract just the package name without version
-            PKG_NAME=$(echo "$NAME" | sed 's/\.[0-9].*//')
+            # Extract just the package name without version (match semver pattern)
+            PKG_NAME=$(echo "$NAME" | sed 's/\.[0-9][0-9]*\.[0-9][0-9]*\..*//')
             SIZE_BYTES=$(stat -c%s "$PKG")
             SIZE_KB=$(echo "scale=2; $SIZE_BYTES / 1024" | bc)
 
@@ -176,7 +176,7 @@ jobs:
           for PKG in ./nupkgs/*.nupkg; do
             if [ ! -f "$PKG" ]; then continue; fi
             NAME=$(basename "$PKG" .nupkg)
-            PKG_NAME=$(echo "$NAME" | sed 's/\.[0-9].*//')
+            PKG_NAME=$(echo "$NAME" | sed 's/\.[0-9][0-9]*\.[0-9][0-9]*\..*//')
             SIZE_BYTES=$(stat -c%s "$PKG")
             SIZE_KB=$(echo "scale=2; $SIZE_BYTES / 1024" | bc)
             echo "| ${PKG_NAME} | ${SIZE_KB} KB |" >> "$GITHUB_STEP_SUMMARY"
