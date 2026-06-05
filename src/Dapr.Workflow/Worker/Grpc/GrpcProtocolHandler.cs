@@ -17,7 +17,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
 using Dapr.DurableTask.Protobuf;
-using Dapr.Workflow.Worker;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
@@ -193,15 +192,15 @@ internal sealed class GrpcProtocolHandler(
                 await Task.WhenAll(activeWorkItems);
             }
         }
-        catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             // Normal shutdown path (host stopping / handler disposing / token canceled)
-            _logger.LogGrpcProtocolHandlerReceiveLoopCanceled(ex);
+            _logger.LogGrpcProtocolHandlerReceiveLoopCanceled();
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && cancellationToken.IsCancellationRequested)
         {
             // gRPC surfaces token/dispose cancellation as StatusCode.Cancelled
-            _logger.LogGrpcProtocolHandlerReceiveLoopCanceled(ex);
+            _logger.LogGrpcProtocolHandlerReceiveLoopCanceled();
         }
         catch (Exception ex)
         {

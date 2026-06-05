@@ -83,7 +83,7 @@ internal static partial class Logging
     public static partial void LogGrpcProtocolHandlerReceiveLoopError(this ILogger logger, Exception ex);
 
     [LoggerMessage(LogLevel.Information, "Workflow worker gRPC stream canceled during shutdown (expected)")]
-    public static partial void LogGrpcProtocolHandlerReceiveLoopCanceled(this ILogger logger, Exception ex);
+    public static partial void LogGrpcProtocolHandlerReceiveLoopCanceled(this ILogger logger);
 
     [LoggerMessage(LogLevel.Information, "Disposing gRPC protocol handler")]
     public static partial void LogGrpcProtocolHandlerDisposing(this ILogger logger);
@@ -154,6 +154,9 @@ internal static partial class Logging
 
     [LoggerMessage(LogLevel.Debug, "Workflow '{InstanceId}' completed with status '{Status}'")]
     public static partial void LogWaitForCompletionCompleted(this ILogger logger, string instanceId, WorkflowRuntimeStatus status);
+
+    [LoggerMessage(LogLevel.Debug, "Wait for workflow instance '{InstanceId}' was interrupted with status '{StatusCode}'; retrying in {Delay}")]
+    public static partial void LogWaitForInstanceRetry(this ILogger logger, RpcException ex, string instanceId, StatusCode statusCode, TimeSpan delay);
 
     [LoggerMessage(LogLevel.Information, "Raised event '{EventName}' to workflow '{InstanceId}'")]
     public static partial void LogRaisedEvent(this ILogger logger, string eventName, string instanceId);
