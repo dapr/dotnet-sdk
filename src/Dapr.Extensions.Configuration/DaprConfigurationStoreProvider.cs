@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
+using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 
 namespace Dapr.Extensions.Configuration;
@@ -26,14 +27,19 @@ namespace Dapr.Extensions.Configuration;
 /// </summary>
 internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposable
 {
-    private string store;
-    private IReadOnlyList<string> keys;
-    private DaprClient daprClient;
-    private TimeSpan sidecarWaitTimeout;
-    private bool isStreaming;
-    private IReadOnlyDictionary<string, string>? metadata;
-    private CancellationTokenSource cts;
+    private static readonly TimeSpan DisposeWaitTimeout = TimeSpan.FromSeconds(1);
+
+    private readonly string store;
+    private readonly IReadOnlyList<string> keys;
+    private readonly DaprClient daprClient;
+    private readonly TimeSpan sidecarWaitTimeout;
+    private readonly bool isStreaming;
+    private readonly bool isOptional;
+    private readonly IReadOnlyDictionary<string, string>? metadata;
+    private readonly CancellationTokenSource cts;
+    private Task loadTask = Task.CompletedTask;
     private Task subscribeTask = Task.CompletedTask;
+    private int disposed;
 
     /// <summary>
     /// Constructor.
@@ -44,30 +50,108 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
     /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
     /// <param name="isStreaming">Determines if the source is streaming or not.</param>
     /// <param name="metadata">Optional metadata sent to the configuration store.</param>
+    /// <param name="isOptional">When true, does not block startup waiting for the sidecar.</param>
     public DaprConfigurationStoreProvider(
         string store,
         IReadOnlyList<string> keys,
         DaprClient daprClient,
         TimeSpan sidecarWaitTimeout,
         bool isStreaming = false,
-        IReadOnlyDictionary<string, string>? metadata = default)
+        IReadOnlyDictionary<string, string>? metadata = default,
+        bool isOptional = false)
     {
         this.store = store;
         this.keys = keys;
         this.daprClient = daprClient;
         this.sidecarWaitTimeout = sidecarWaitTimeout;
         this.isStreaming = isStreaming;
+        this.isOptional = isOptional;
         this.metadata = metadata ?? new Dictionary<string, string>();
         this.cts = new CancellationTokenSource();
     }
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
+        {
+            return;
+        }
+
         cts.Cancel();
+
+        var loadTaskCompleted = WaitForBackgroundTask(loadTask);
+        var subscribeTaskCompleted = WaitForBackgroundTask(subscribeTask);
+        if (loadTaskCompleted && subscribeTaskCompleted)
+        {
+            // Only dispose the CTS after tracked tasks have stopped using cts.Token.
+            cts.Dispose();
+        }
     }
 
     /// <inheritdoc/>
-    public override void Load() => LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+    public override void Load()
+    {
+        if (isOptional)
+        {
+            Data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            loadTask = Task.Run(() => LoadInBackgroundAsync());
+        }
+        else
+        {
+            LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+    }
+
+    private static bool WaitForBackgroundTask(Task task)
+    {
+        try
+        {
+            return task.Wait(DisposeWaitTimeout);
+        }
+        catch
+        {
+            // Observe background task exceptions during disposal.
+            return true;
+        }
+    }
+
+    private async Task LoadInBackgroundAsync()
+    {
+        while (!cts.Token.IsCancellationRequested)
+        {
+            try
+            {
+                using var tokenSource = new CancellationTokenSource(sidecarWaitTimeout);
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(tokenSource.Token, cts.Token);
+                await daprClient.WaitForSidecarAsync(linked.Token);
+
+                await FetchDataAsync();
+                OnReload();
+                return;
+            }
+            catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                // Sidecar wait timed out — retry after delay.
+            }
+            catch (DaprException)
+            {
+                // Transient Dapr error — retry after delay.
+            }
+
+            try
+            {
+                await Task.Delay(sidecarWaitTimeout, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+    }
 
     private async Task LoadAsync()
     {
@@ -77,6 +161,11 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
             await daprClient.WaitForSidecarAsync(tokenSource.Token);
         }
 
+        await FetchDataAsync();
+    }
+
+    private async Task FetchDataAsync()
+    {
         if (isStreaming)
         {
             subscribeTask = Task.Run(async () =>
@@ -100,12 +189,43 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
                             OnReload();
                         }
                     }
-                    catch (Exception)
+                    catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
                     {
-                        // If we catch an exception, try and cancel the subscription so we can connect again.
+                        return;
+                    }
+                    catch (RpcException ex) when (cts.Token.IsCancellationRequested && ex.StatusCode == StatusCode.Cancelled)
+                    {
+                        return;
+                    }
+                    catch (Exception ex) when (ex is DaprException or RpcException)
+                    {
                         if (!string.IsNullOrEmpty(id))
                         {
-                            await daprClient.UnsubscribeConfiguration(store, id);
+                            try
+                            {
+                                await daprClient.UnsubscribeConfiguration(store, id, cts.Token);
+                            }
+                            catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+                            {
+                                return;
+                            }
+                            catch (RpcException unsubscribeException) when (cts.Token.IsCancellationRequested && unsubscribeException.StatusCode == StatusCode.Cancelled)
+                            {
+                                return;
+                            }
+                            catch (Exception unsubscribeException) when (unsubscribeException is DaprException or RpcException)
+                            {
+                                // Ignore transient unsubscribe failures and reconnect after the retry delay.
+                            }
+                        }
+
+                        try
+                        {
+                            await Task.Delay(sidecarWaitTimeout, cts.Token);
+                        }
+                        catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+                        {
+                            return;
                         }
                     }
                 }
@@ -115,10 +235,13 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
         {
             // We don't need to worry about ReloadTokens here because it is a constant response.
             var getConfigurationResponse = await daprClient.GetConfiguration(store, keys, metadata, cts.Token);
+            var data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
             foreach (var item in getConfigurationResponse.Items)
             {
-                Set(item.Key, item.Value.Value);
+                data[item.Key] = item.Value.Value;
             }
+
+            Data = data;
         }
     }
 }
