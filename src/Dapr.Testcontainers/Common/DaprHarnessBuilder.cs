@@ -27,7 +27,7 @@ public sealed class DaprHarnessBuilder
     /// <summary>
     /// The Dapr container runtime options.
     /// </summary>
-    private DaprRuntimeOptions _options { get; set; } = new("1.17.0");
+    private DaprRuntimeOptions _options { get; set; } = new("1.17.0-rc.3");
     /// <summary>
     /// The isolated test environment to use with the harness, if any.
     /// </summary>
@@ -92,6 +92,11 @@ public sealed class DaprHarnessBuilder
     /// Builds a distributed lock harness.
     /// </summary>
 	public DistributedLockHarness BuildDistributedLock() => new(_componentsDirectory, _startApp, _options, _environment);
+
+    /// <summary>
+    /// Builds a secret store harness.
+    /// </summary>
+	public SecretStoreHarness BuildSecretStore() => new(_componentsDirectory, _startApp, _options, _environment);
     
     /// <summary>
     /// Builds a conversation harness.

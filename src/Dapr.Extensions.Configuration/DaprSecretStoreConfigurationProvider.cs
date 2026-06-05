@@ -24,9 +24,10 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore;
 /// <summary>
 /// A Dapr Secret Store based <see cref="ConfigurationProvider"/>.
 /// </summary>
-internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
+internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDisposable
 {
     internal static readonly TimeSpan DefaultSidecarWaitTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DisposeWaitTimeout = TimeSpan.FromSeconds(1);
 
     private readonly string store;
 
@@ -41,6 +42,12 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
     private readonly DaprClient client;
 
     private readonly TimeSpan sidecarWaitTimeout;
+
+    private readonly bool isOptional;
+
+    private readonly CancellationTokenSource cts = new();
+    private Task loadTask = Task.CompletedTask;
+    private int disposed;
 
     /// <summary>
     /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
@@ -83,19 +90,22 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
     /// <param name="secretDescriptors">The secrets to retrieve.</param>
     /// <param name="client">Dapr client used to retrieve Secrets</param>
     /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
+    /// <param name="isOptional">When true, does not block startup waiting for the sidecar.</param>
     public DaprSecretStoreConfigurationProvider(
         string store,
         bool normalizeKey,
         IList<string>? keyDelimiters,
         IEnumerable<DaprSecretDescriptor> secretDescriptors,
         DaprClient client,
-        TimeSpan sidecarWaitTimeout)
+        TimeSpan sidecarWaitTimeout,
+        bool isOptional = false)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
         ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));
         ArgumentVerifier.ThrowIfNull(client, nameof(client));
 
-        if (secretDescriptors.Count() == 0)
+        var daprSecretDescriptors = secretDescriptors.ToList();
+        if (daprSecretDescriptors.Count == 0)
         {
             throw new ArgumentException("No secret descriptor was provided", nameof(secretDescriptors));
         }
@@ -103,9 +113,10 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
         this.store = store;
         this.normalizeKey = normalizeKey;
         this.keyDelimiters = keyDelimiters;
-        this.secretDescriptors = secretDescriptors;
+        this.secretDescriptors = daprSecretDescriptors;
         this.client = client;
         this.sidecarWaitTimeout = sidecarWaitTimeout;
+        this.isOptional = isOptional;
     }
 
     /// <summary>
@@ -149,13 +160,15 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
     /// <param name="metadata">A collection of metadata key-value pairs that will be provided to the secret store. The valid metadata keys and values are determined by the type of secret store used.</param>
     /// <param name="client">Dapr client used to retrieve Secrets</param>
     /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
+    /// <param name="isOptional">When true, does not block startup waiting for the sidecar.</param>
     public DaprSecretStoreConfigurationProvider(
         string store,
         bool normalizeKey,
         IList<string>? keyDelimiters,
         IReadOnlyDictionary<string, string>? metadata,
         DaprClient client,
-        TimeSpan sidecarWaitTimeout)
+        TimeSpan sidecarWaitTimeout,
+        bool isOptional = false)
     {
         ArgumentVerifier.ThrowIfNullOrEmpty(store, nameof(store));
         ArgumentVerifier.ThrowIfNull(client, nameof(client));
@@ -166,16 +179,31 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
         this.metadata = metadata;
         this.client = client;
         this.sidecarWaitTimeout = sidecarWaitTimeout;
+        this.isOptional = isOptional;
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
+        {
+            return;
+        }
+
+        cts.Cancel();
+
+        if (WaitForBackgroundTask(loadTask))
+        {
+            // Only dispose the CTS after tracked tasks have stopped using cts.Token.
+            cts.Dispose();
+        }
     }
 
     private string NormalizeKey(string key)
     {
         if (this.keyDelimiters?.Count > 0)
         {
-            foreach (var keyDelimiter in this.keyDelimiters)
-            {
-                key = key.Replace(keyDelimiter, ConfigurationPath.KeyDelimiter);
-            }
+            key = this.keyDelimiters.Aggregate(key, (current, keyDelimiter) => current.Replace(keyDelimiter, ConfigurationPath.KeyDelimiter));
         }
 
         return key;
@@ -185,17 +213,84 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
     /// Loads the configuration by calling the asynchronous LoadAsync method and blocking the calling
     /// thread until the operation is completed.
     /// </summary>
-    public override void Load() => LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+    public override void Load()
+    {
+        if (isOptional)
+        {
+            Data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            loadTask = Task.Run(LoadInBackgroundAsync);
+        }
+        else
+        {
+            LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+    }
+
+    private static bool WaitForBackgroundTask(Task task)
+    {
+        try
+        {
+            return task.Wait(DisposeWaitTimeout);
+        }
+        catch
+        {
+            // Observe background task exceptions during disposal.
+            return true;
+        }
+    }
+
+    private async Task LoadInBackgroundAsync()
+    {
+        while (!cts.Token.IsCancellationRequested)
+        {
+            try
+            {
+                using var tokenSource = new CancellationTokenSource(sidecarWaitTimeout);
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(tokenSource.Token, cts.Token);
+                await client.WaitForSidecarAsync(linked.Token);
+
+                await FetchSecretsAsync(linked.Token);
+                OnReload();
+                return;
+            }
+            catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                // Sidecar wait timed out — retry after delay.
+            }
+            catch (DaprException)
+            {
+                // Transient Dapr error — retry after delay.
+            }
+
+            try
+            {
+                await Task.Delay(sidecarWaitTimeout, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+    }
 
     private async Task LoadAsync()
     {
-        var data = new Dictionary<string, string?>(StringComparer.InvariantCultureIgnoreCase);
-
         // Wait for the Dapr Sidecar to report healthy before attempting to fetch secrets.
         using (var tokenSource = new CancellationTokenSource(sidecarWaitTimeout))
         {
             await client.WaitForSidecarAsync(tokenSource.Token);
         }
+
+        await FetchSecretsAsync();
+    }
+
+    private async Task FetchSecretsAsync(CancellationToken cancellationToken = default)
+    {
+        var data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
         if (secretDescriptors != null)
         {
@@ -207,7 +302,7 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
                 try
                 {
                     result = await client
-                        .GetSecretAsync(store, secretDescriptor.SecretKey, secretDescriptor.Metadata)
+                        .GetSecretAsync(store, secretDescriptor.SecretKey, secretDescriptor.Metadata, cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (DaprException)
@@ -238,25 +333,21 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider
                     data.Add(normalizedKey, result[key]);
                 }
             }
-
-            Data = data;
         }
         else
         {
-            var result = await client.GetBulkSecretAsync(store, metadata).ConfigureAwait(false);
-            foreach (var key in result.Keys)
+            var result = await client.GetBulkSecretAsync(store, metadata, cancellationToken).ConfigureAwait(false);
+            foreach (KeyValuePair<string, string> secret in result.Keys.SelectMany(key => result[key]))
             {
-                foreach (var secret in result[key])
+                if (data.ContainsKey(secret.Key))
                 {
-                    if (data.ContainsKey(secret.Key))
-                    {
-                        throw new InvalidOperationException($"A duplicate key '{secret.Key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
-                    }
-
-                    data.Add(normalizeKey ? NormalizeKey(secret.Key) : secret.Key, secret.Value);
+                    throw new InvalidOperationException($"A duplicate key '{secret.Key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                 }
+
+                data.Add(normalizeKey ? NormalizeKey(secret.Key) : secret.Key, secret.Value);
             }
-            Data = data;
         }
+
+        Data = data;
     }
 }
