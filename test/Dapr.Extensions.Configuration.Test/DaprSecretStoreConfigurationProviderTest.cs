@@ -936,7 +936,7 @@ public class DaprSecretStoreConfigurationProviderTest
             });
 
         daprClient
-            .Setup(c => c.GetBulkSecretAsync("store", null, default))
+            .Setup(c => c.GetBulkSecretAsync("store", null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<string, Dictionary<string, string>>
             {
                 ["secret1"] = new Dictionary<string, string> { ["secret1"] = "value1" }
@@ -952,7 +952,7 @@ public class DaprSecretStoreConfigurationProviderTest
         // Wait for the reload token to fire, indicating background load completed
         var reloaded = new TaskCompletionSource<bool>();
         config.GetReloadToken().RegisterChangeCallback(_ => reloaded.TrySetResult(true), null);
-        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         config["secret1"].ShouldBe("value1");
     }
@@ -971,7 +971,7 @@ public class DaprSecretStoreConfigurationProviderTest
             .Returns(Task.CompletedTask);
 
         daprClient
-            .Setup(c => c.GetSecretAsync(storeName, secretKey, It.IsAny<Dictionary<string, string>>(), default))
+            .Setup(c => c.GetSecretAsync(storeName, secretKey, It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<string, string> { { secretKey, secretValue } });
 
         var secretDescriptors = new[] { new DaprSecretDescriptor(secretKey) };
@@ -983,7 +983,7 @@ public class DaprSecretStoreConfigurationProviderTest
         // Wait for the reload token to fire, indicating background load completed
         var reloaded = new TaskCompletionSource<bool>();
         config.GetReloadToken().RegisterChangeCallback(_ => reloaded.TrySetResult(true), null);
-        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         config[secretKey].ShouldBe(secretValue);
     }
@@ -999,7 +999,7 @@ public class DaprSecretStoreConfigurationProviderTest
             .Returns(Task.CompletedTask);
 
         daprClient
-            .Setup(c => c.GetBulkSecretAsync("store", null, default))
+            .Setup(c => c.GetBulkSecretAsync("store", null, It.IsAny<CancellationToken>()))
             .Returns(() =>
             {
                 var current = Interlocked.Increment(ref callCount);
@@ -1024,7 +1024,7 @@ public class DaprSecretStoreConfigurationProviderTest
         // Wait for the reload token to fire after retry succeeds
         var reloaded = new TaskCompletionSource<bool>();
         config.GetReloadToken().RegisterChangeCallback(_ => reloaded.TrySetResult(true), null);
-        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         config["secret1"].ShouldBe("value1");
     }
@@ -1048,7 +1048,7 @@ public class DaprSecretStoreConfigurationProviderTest
             .Build();
 
         // Ensure background task has started
-        await waitCalled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await waitCalled.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         // Dispose the provider to cancel the background task
         (config as IDisposable)?.Dispose();

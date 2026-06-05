@@ -27,6 +27,7 @@ namespace Dapr.Extensions.Configuration.DaprSecretStore;
 internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDisposable
 {
     internal static readonly TimeSpan DefaultSidecarWaitTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DisposeWaitTimeout = TimeSpan.FromSeconds(1);
 
     private readonly string store;
 
@@ -45,6 +46,8 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDi
     private readonly bool isOptional;
 
     private readonly CancellationTokenSource cts = new();
+    private Task loadTask = Task.CompletedTask;
+    private int disposed;
 
     /// <summary>
     /// Creates a new instance of <see cref="DaprSecretStoreConfigurationProvider"/>.
@@ -182,8 +185,18 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDi
     /// <inheritdoc />
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
+        {
+            return;
+        }
+
         cts.Cancel();
-        cts.Dispose();
+
+        if (WaitForBackgroundTask(loadTask))
+        {
+            // Only dispose the CTS after tracked tasks have stopped using cts.Token.
+            cts.Dispose();
+        }
     }
 
     private string NormalizeKey(string key)
@@ -205,11 +218,24 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDi
         if (isOptional)
         {
             Data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-            _ = Task.Run(LoadInBackgroundAsync);
+            loadTask = Task.Run(LoadInBackgroundAsync);
         }
         else
         {
             LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+    }
+
+    private static bool WaitForBackgroundTask(Task task)
+    {
+        try
+        {
+            return task.Wait(DisposeWaitTimeout);
+        }
+        catch
+        {
+            // Observe background task exceptions during disposal.
+            return true;
         }
     }
 

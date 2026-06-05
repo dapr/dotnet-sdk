@@ -27,6 +27,8 @@ namespace Dapr.Extensions.Configuration;
 /// </summary>
 internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposable
 {
+    private static readonly TimeSpan DisposeWaitTimeout = TimeSpan.FromSeconds(1);
+
     private readonly string store;
     private readonly IReadOnlyList<string> keys;
     private readonly DaprClient daprClient;
@@ -35,7 +37,9 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
     private readonly bool isOptional;
     private readonly IReadOnlyDictionary<string, string>? metadata;
     private readonly CancellationTokenSource cts;
+    private Task loadTask = Task.CompletedTask;
     private Task subscribeTask = Task.CompletedTask;
+    private int disposed;
 
     /// <summary>
     /// Constructor.
@@ -68,8 +72,20 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
+        {
+            return;
+        }
+
         cts.Cancel();
-        cts.Dispose();
+
+        var loadTaskCompleted = WaitForBackgroundTask(loadTask);
+        var subscribeTaskCompleted = WaitForBackgroundTask(subscribeTask);
+        if (loadTaskCompleted && subscribeTaskCompleted)
+        {
+            // Only dispose the CTS after tracked tasks have stopped using cts.Token.
+            cts.Dispose();
+        }
     }
 
     /// <inheritdoc/>
@@ -78,11 +94,24 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
         if (isOptional)
         {
             Data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-            _ = Task.Run(() => LoadInBackgroundAsync());
+            loadTask = Task.Run(() => LoadInBackgroundAsync());
         }
         else
         {
             LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+    }
+
+    private static bool WaitForBackgroundTask(Task task)
+    {
+        try
+        {
+            return task.Wait(DisposeWaitTimeout);
+        }
+        catch
+        {
+            // Observe background task exceptions during disposal.
+            return true;
         }
     }
 
