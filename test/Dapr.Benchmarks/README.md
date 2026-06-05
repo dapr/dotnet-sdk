@@ -54,6 +54,45 @@ dotnet run -c Release --project test/Dapr.Benchmarks -- --filter '*' --artifacts
 | Pub/Sub | `PubSubBenchmarks` | `PublishMessages` and end-to-end `PublishAndReceiveMessages` via the Dapr sidecar with a RabbitMQ broker. |
 | Workflow | `WorkflowBenchmarks` | `SimpleWorkflow` (single activity) and `FanOutWorkflow` (parallel activities) execution through the Dapr workflow engine. |
 
+## Metrics Tracked
+
+The CI pipeline captures and publishes the following metrics on every push to
+`master` and on every release:
+
+| Metric | Source | Unit |
+|--------|--------|------|
+| **Latency** | BenchmarkDotNet (mean execution time) | ns / μs / ms |
+| **Memory allocations** | BenchmarkDotNet `[MemoryDiagnoser]` | bytes allocated per operation |
+| **Package size** | `dotnet pack` output measurement | KB per `.nupkg` |
+
+All metrics are tracked historically and displayed on an interactive
+[GitHub Pages dashboard](../../gh-pages) powered by
+[benchmark-action/github-action-benchmark](https://github.com/benchmark-action/github-action-benchmark).
+
+### How historical comparison works
+
+1. **On every `master` push / release**: BenchmarkDotNet results (JSON) and
+   package sizes are fed to `benchmark-action/github-action-benchmark`.
+2. The action commits data points to the `gh-pages` branch under
+   `benchmarks/<framework>/` and `package-sizes/`.
+3. GitHub Pages serves an interactive chart showing trends over time — each
+   data point is a commit or release.
+4. **Alert threshold**: If latency regresses by >150% or package size grows by
+   >120%, the action posts a comment on the commit (but does **not** fail the
+   workflow).
+
+### Viewing the dashboard
+
+Once the workflow has run at least once on `master`, the dashboard is available
+at:
+
+```
+https://<org>.github.io/dotnet-sdk/
+```
+
+Each framework (`net8.0`, `net9.0`, `net10.0`) and package sizes have their own
+chart panel.
+
 ## Adding a New Benchmark
 
 1. Create a new class in the appropriate subdirectory (or create a new one).
@@ -66,8 +105,15 @@ dotnet run -c Release --project test/Dapr.Benchmarks -- --filter '*' --artifacts
 
 ## CI Integration
 
-Benchmarks run in the **benchmarks** GitHub Actions workflow on pushes to
-`master`, on a weekly schedule, and on-demand via `workflow_dispatch`. The
-workflow is **informational only** and does not block releases.
+Benchmarks run in the **benchmarks** GitHub Actions workflow on:
+- Pushes to `master`
+- Published releases (tags)
+- Weekly schedule (Sundays at 04:00 UTC)
+- Manual `workflow_dispatch`
 
-Results are uploaded as workflow artifacts for historical comparison.
+The workflow is **informational only** and does not block releases.
+
+Results are:
+- Uploaded as workflow artifacts (90-day retention) for raw data access
+- Published to the GitHub Pages dashboard for historical trend visualization
+- Summarized in the GitHub Actions job summary (package sizes table)

@@ -4,12 +4,21 @@ on:
   push:
     branches:
       - master
+  release:
+    types: [published]
   schedule:
     # Run weekly on Sundays at 04:00 UTC
     - cron: '0 4 * * 0'
   workflow_dispatch:
 
+permissions:
+  contents: write
+  deployments: write
+
 jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1: Run BenchmarkDotNet benchmarks (latency + memory allocations)
+  # ─────────────────────────────────────────────────────────────────────────────
   benchmarks:
     name: Benchmarks (${{ matrix.display-name }})
     runs-on: ubuntu-latest
@@ -76,3 +85,121 @@ jobs:
           name: benchmark-results-${{ matrix.framework }}
           path: ${{ github.workspace }}/BenchmarkResults
           retention-days: 90
+
+      - name: Find BenchmarkDotNet JSON result
+        id: find-json
+        if: success()
+        run: |
+          # BenchmarkDotNet outputs *-report-full.json in the results directory
+          JSON_FILE=$(find "${{ github.workspace }}/BenchmarkResults" -name "*-report-full.json" | head -1)
+          if [ -z "$JSON_FILE" ]; then
+            echo "No BenchmarkDotNet JSON report found"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "json_path=$JSON_FILE" >> "$GITHUB_OUTPUT"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Store benchmark results for historical tracking
+        if: steps.find-json.outputs.found == 'true' && github.ref == 'refs/heads/master'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: "Dapr .NET SDK Benchmarks (${{ matrix.framework }})"
+          tool: 'benchmarkdotnet'
+          output-file-path: ${{ steps.find-json.outputs.json_path }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: 'gh-pages'
+          benchmark-data-dir-path: 'benchmarks/${{ matrix.framework }}'
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: false
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2: Measure NuGet package sizes
+  # ─────────────────────────────────────────────────────────────────────────────
+  package-size:
+    name: Package Size Metrics
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9.0
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+          dotnet-quality: 'ga'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Pack all NuGet packages
+        run: dotnet pack --configuration Release --output ./nupkgs
+
+      - name: Measure package sizes
+        id: measure
+        run: |
+          # Generate a JSON file compatible with benchmark-action's
+          # 'customSmallerIsBetter' format for package size tracking
+          echo '[' > package-sizes.json
+          FIRST=true
+          for PKG in ./nupkgs/*.nupkg; do
+            if [ ! -f "$PKG" ]; then continue; fi
+            NAME=$(basename "$PKG" .nupkg)
+            # Extract just the package name without version
+            PKG_NAME=$(echo "$NAME" | sed 's/\.[0-9].*//')
+            SIZE_BYTES=$(stat -c%s "$PKG")
+            SIZE_KB=$(echo "scale=2; $SIZE_BYTES / 1024" | bc)
+
+            if [ "$FIRST" = true ]; then
+              FIRST=false
+            else
+              echo ',' >> package-sizes.json
+            fi
+
+            cat >> package-sizes.json <<EOF
+          {
+            "name": "${PKG_NAME} (KB)",
+            "unit": "KB",
+            "value": ${SIZE_KB}
+          }
+          EOF
+          done
+          echo ']' >> package-sizes.json
+
+          # Print summary table
+          echo "## Package Sizes" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Package | Size |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---------|------|" >> "$GITHUB_STEP_SUMMARY"
+          for PKG in ./nupkgs/*.nupkg; do
+            if [ ! -f "$PKG" ]; then continue; fi
+            NAME=$(basename "$PKG" .nupkg)
+            PKG_NAME=$(echo "$NAME" | sed 's/\.[0-9].*//')
+            SIZE_BYTES=$(stat -c%s "$PKG")
+            SIZE_KB=$(echo "scale=2; $SIZE_BYTES / 1024" | bc)
+            echo "| ${PKG_NAME} | ${SIZE_KB} KB |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Upload package size metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-size-metrics
+          path: package-sizes.json
+          retention-days: 90
+
+      - name: Store package size metrics for historical tracking
+        if: github.ref == 'refs/heads/master'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: 'Dapr .NET SDK Package Sizes'
+          tool: 'customSmallerIsBetter'
+          output-file-path: package-sizes.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: 'gh-pages'
+          benchmark-data-dir-path: 'package-sizes'
+          alert-threshold: '120%'
+          comment-on-alert: true
+          fail-on-alert: false

@@ -11,6 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Exporters.Json;
 using BenchmarkDotNet.Running;
 
-BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+var config = DefaultConfig.Instance
+    .AddExporter(JsonExporter.Full);
+
+BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
