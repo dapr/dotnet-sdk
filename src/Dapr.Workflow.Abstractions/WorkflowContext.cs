@@ -169,14 +169,14 @@ public abstract class WorkflowContext : IWorkflowContext
         Task winner = await Task.WhenAny(timeoutTask, externalEventTask);
         if (winner == externalEventTask)
         {
-            timerCts.Cancel();
+            await timerCts.CancelAsync();
         }
         else
         {
-            eventCts.Cancel();
+            await eventCts.CancelAsync();
         }
 
-        // This will either return the received value or throw if the task was cancelled.
+        // This will either return the received value or throw if the task was canceled.
         return await externalEventTask;
     }
 
@@ -330,4 +330,29 @@ public abstract class WorkflowContext : IWorkflowContext
     /// </remarks>
     /// <returns>The new <see cref="Guid"/> value.</returns>
     public abstract Guid NewGuid();
+
+    /// <summary>
+    /// Gets the workflow history that was propagated from ancestor workflow instances, or <c>null</c>
+    /// if no history was propagated to this workflow.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A workflow receives propagated history when it is scheduled as a child workflow and the parent
+    /// specified a <see cref="HistoryPropagationScope"/> other than <see cref="HistoryPropagationScope.None"/>.
+    /// </para>
+    /// <para>
+    /// Use <see cref="PropagatedHistory.TryGetLastWorkflowEventByName"/> and
+    /// <see cref="PropagatedHistoryEvent.TryGetLastActivityByName"/> / <see cref="PropagatedHistoryEvent.TryGetLastWorkflowByName"/>
+    /// to look up the most recent matching item; the plural <c>FilterBy*</c> /
+    /// <c>Get*ByName</c> variants return every match.
+    /// </para>
+    /// <para>
+    /// This method always returns the same value regardless of whether the workflow is replaying.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// A <see cref="PropagatedHistory"/> containing the list of ancestor workflow entries,
+    /// or <c>null</c> if no history was propagated to this workflow instance.
+    /// </returns>
+    public abstract PropagatedHistory? GetPropagatedHistory();
 }

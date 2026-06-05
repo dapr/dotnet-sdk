@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +24,7 @@ public sealed class FanOutFanInTests
 {
     private const string CompletedMessage = "Workflow completed!";
     
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldFanOutAndFanIn()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");

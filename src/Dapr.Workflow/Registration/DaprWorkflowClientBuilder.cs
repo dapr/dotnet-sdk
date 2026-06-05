@@ -14,6 +14,7 @@
 using System;
 using System.Text.Json;
 using Dapr.Common;
+using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
 using Dapr.Workflow.Serialization;
@@ -29,7 +30,7 @@ namespace Dapr.Workflow.Registration;
 /// </summary>
 public sealed class DaprWorkflowClientBuilder(IConfiguration? configuration = null) : DaprGenericClientBuilder<DaprWorkflowClient>(configuration)
 {
-    private IWorkflowSerializer? _serializer;
+    private IDaprSerializer? _serializer;
     private IServiceProvider? _serviceProvider;
     private Func<IServiceProvider, IWorkflowSerializer>? _serializerFactory;
     
@@ -38,7 +39,7 @@ public sealed class DaprWorkflowClientBuilder(IConfiguration? configuration = nu
     /// </summary>
     /// <param name="serializer">The custom serializer instance to use.</param>
     /// <returns>The <see cref="DaprWorkflowClientBuilder" /> instance.</returns>
-    public DaprWorkflowClientBuilder UseSerializer(IWorkflowSerializer serializer)
+    public DaprWorkflowClientBuilder UseSerializer(IDaprSerializer serializer)
     {
         ArgumentNullException.ThrowIfNull(serializer);
         _serializer = serializer;
@@ -67,7 +68,7 @@ public sealed class DaprWorkflowClientBuilder(IConfiguration? configuration = nu
     public DaprWorkflowClientBuilder UseJsonSerializer(JsonSerializerOptions jsonOptions)
     {
         ArgumentNullException.ThrowIfNull(jsonOptions);
-        return UseSerializer(new JsonWorkflowSerializer(jsonOptions));
+        return UseSerializer(new JsonDaprSerializer(jsonOptions));
     }
 
     /// <summary>
@@ -107,7 +108,7 @@ public sealed class DaprWorkflowClientBuilder(IConfiguration? configuration = nu
         }
         
         // Resolve serializer
-        IWorkflowSerializer serializer;
+        IDaprSerializer serializer;
         if (_serializer is not null)
         {
             serializer = _serializer;
@@ -116,7 +117,7 @@ public sealed class DaprWorkflowClientBuilder(IConfiguration? configuration = nu
         {
             serializer = _serializerFactory is not null && _serviceProvider is not null
                 ? _serializerFactory(_serviceProvider)
-                : new JsonWorkflowSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                : new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         }
         
         // Resolve logger

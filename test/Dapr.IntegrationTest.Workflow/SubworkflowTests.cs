@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +22,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class SubworkflowTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldHandleSubworkflow()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -68,7 +69,7 @@ public sealed class SubworkflowTests
         Assert.True(subworkflowResultValue);
     }
     
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldHandleMultipleParallelSubworkflows()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");

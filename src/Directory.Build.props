@@ -19,6 +19,13 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All"/>
   </ItemGroup>
 
+  <!-- Make IsDaprSdkProject visible to Roslyn analyzers/generators in all src projects.
+       Projects that opt-in set <IsDaprSdkProject>true</IsDaprSdkProject>; the generator
+       ignores projects where the property is absent or false. -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="IsDaprSdkProject" />
+  </ItemGroup>
+
   <!-- Enable Deterministic Builds for github actions -->
   <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>

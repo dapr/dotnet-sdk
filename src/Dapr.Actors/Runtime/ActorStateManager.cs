@@ -35,6 +35,29 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
         this.defaultTracker = new Dictionary<string, StateMetadata>();
     }
 
+    public Task UnloadStateAsync(string stateName, UnloadStateOptions options = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentVerifier.ThrowIfNull(stateName, nameof(stateName));
+        EnsureStateProviderInitialized();
+
+        var stateChangeTracker = GetContextualStateTracker();
+        if (!stateChangeTracker.ContainsKey(stateName))
+        {
+            // Nothing to unload from memory
+            return Task.CompletedTask;
+        }
+
+        var stateMetadata = stateChangeTracker[stateName];
+        bool isModified = stateMetadata.ChangeKind == StateChangeKind.Add || stateMetadata.ChangeKind == StateChangeKind.Update || stateMetadata.ChangeKind == StateChangeKind.Remove;
+        if (isModified && (options == null || !options.AllowUnloadingWhenStateModified))
+        {
+            throw new InvalidOperationException($"Cannot unload state '{stateName}' because it has been modified and not yet persisted. Set AllowUnloadingWhenStateModified to true to override.");
+        }
+
+        stateChangeTracker.Remove(stateName);
+        return Task.CompletedTask;
+    }
+
     public async Task AddStateAsync<T>(string stateName, T value, CancellationToken cancellationToken)
     {
         EnsureStateProviderInitialized();
@@ -543,12 +566,16 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
             this.Type = type;
             this.ChangeKind = changeKind;
 
-            if (ttlExpireTime.HasValue && ttl.HasValue) {
+            if (ttlExpireTime.HasValue && ttl.HasValue)
+            {
                 throw new ArgumentException("Cannot specify both TTLExpireTime and TTL");
             }
-            if (ttl.HasValue) {
+            if (ttl.HasValue)
+            {
                 this.TTLExpireTime = DateTimeOffset.UtcNow.Add(ttl.Value);
-            } else {
+            }
+            else
+            {
                 this.TTLExpireTime = ttlExpireTime;
             }
         }

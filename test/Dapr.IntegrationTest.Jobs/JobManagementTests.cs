@@ -17,6 +17,7 @@ using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,7 +25,7 @@ namespace Dapr.IntegrationTest.Jobs;
 
 public sealed class JobManagementTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.16")]
     public async Task ShouldGetJobDetails()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
@@ -71,7 +72,7 @@ public sealed class JobManagementTests
         Assert.Equal(Encoding.UTF8.GetString(payload), Encoding.UTF8.GetString(jobDetails.Payload));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.16")]
     public async Task ShouldDeleteJob()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
@@ -114,7 +115,7 @@ public sealed class JobManagementTests
             await daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldOverwriteExistingJob()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
@@ -162,7 +163,7 @@ public sealed class JobManagementTests
         await daprJobsClient.DeleteJobAsync(jobName, TestContext.Current.CancellationToken);
     }
     
-    [Fact]
+    [MinimumDaprRuntimeFact("1.16")]
     public async Task ShouldScheduleJobWithTTL()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");

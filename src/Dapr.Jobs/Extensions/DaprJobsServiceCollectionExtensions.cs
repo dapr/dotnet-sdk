@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Diagnostics.CodeAnalysis;
 using Dapr.Common.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,7 +19,6 @@ namespace Dapr.Jobs.Extensions;
 /// <summary>
 /// Contains extension methods for using Dapr Jobs with dependency injection.
 /// </summary>
-[Experimental("DAPR_JOBS", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/jobs/jobs-overview/")]
 public static class DaprJobsServiceCollectionExtensions
 {
     /// <summary>
@@ -34,5 +32,9 @@ public static class DaprJobsServiceCollectionExtensions
         this IServiceCollection services,
         Action<IServiceProvider, DaprJobsClientBuilder>? configure = null,
         ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
-        services.AddDaprClient<DaprJobsClient, DaprJobsGrpcClient, DaprJobsBuilder, DaprJobsClientBuilder>(configure, lifetime);
+        services.AddDaprClient<DaprJobsClient, DaprJobsGrpcClient, DaprJobsBuilder, DaprJobsClientBuilder>(
+            config => new DaprJobsClientBuilder(config),
+            svc => new DaprJobsBuilder(svc),
+            configure,
+            lifetime);
 }

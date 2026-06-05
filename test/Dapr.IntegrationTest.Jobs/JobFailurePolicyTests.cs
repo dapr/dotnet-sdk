@@ -17,6 +17,7 @@ using Dapr.Jobs.Models;
 using Dapr.Jobs.Models.Responses;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ namespace Dapr.IntegrationTest.Jobs;
 
 public sealed class JobFailurePolicyTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldScheduleJobWithDropFailurePolicy()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
@@ -80,7 +81,7 @@ public sealed class JobFailurePolicyTests
         Assert.Contains("job not found", ex.InnerException.Message);
     }
     
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldScheduleJobWithConstantFailurePolicy()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");

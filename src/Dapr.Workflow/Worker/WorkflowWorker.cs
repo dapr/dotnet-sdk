@@ -12,13 +12,14 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
+using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
-using Dapr.Workflow.Serialization;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
@@ -37,17 +38,15 @@ internal sealed class WorkflowWorker(
     TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, 
     IWorkflowsFactory workflowsFactory, 
     ILoggerFactory loggerFactory, 
-    IWorkflowSerializer workflowSerializer, 
-    IServiceProvider serviceProvider, 
-    WorkflowRuntimeOptions options,
+    IDaprSerializer workflowSerializer,
+    IServiceProvider serviceProvider,
     IConfiguration? configuration = null) : BackgroundService
 {
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient = grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly IWorkflowsFactory _workflowsFactory = workflowsFactory ?? throw new ArgumentNullException(nameof(workflowsFactory));
     private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     private readonly ILogger<WorkflowWorker> _logger = loggerFactory.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
-    private readonly WorkflowRuntimeOptions _options = options ?? throw new ArgumentNullException(nameof(options));
-    private readonly IWorkflowSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
+    private readonly IDaprSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
     private readonly string? _daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
     
     private GrpcProtocolHandler? _protocolHandler;
@@ -62,10 +61,10 @@ internal sealed class WorkflowWorker(
         try
         {
             // Create the protocol handler
-            _protocolHandler = new GrpcProtocolHandler(_grpcClient, loggerFactory, _options.MaxConcurrentWorkflows, _options.MaxConcurrentActivities, _daprApiToken);
+            _protocolHandler = new GrpcProtocolHandler(_grpcClient, loggerFactory, _daprApiToken);
 
             // Start processing work items
-            await _protocolHandler.StartAsync(HandleOrchestratorResponseAsync, HandleActivityResponseAsync, stoppingToken);
+            await _protocolHandler.StartAsync(HandleWorkflowResponseAsync, HandleActivityResponseAsync, stoppingToken);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -78,10 +77,11 @@ internal sealed class WorkflowWorker(
         }
     }
 
-    private async Task<OrchestratorResponse> HandleOrchestratorResponseAsync(OrchestratorRequest request, string completionToken)
+    private async Task<WorkflowResponse> HandleWorkflowResponseAsync(WorkflowRequest request, string completionToken)
     {
         _logger.LogWorkerWorkflowHandleOrchestratorRequestStart(request.InstanceId);
 
+        WorkflowTrace.TraceActivityScope traceScope = default;
         try
         {
             // Create a scope for DI
@@ -98,38 +98,33 @@ internal sealed class WorkflowWorker(
 
             if (request.RequiresHistoryStreaming)
             {
-                var streamRequest = new StreamInstanceHistoryRequest
-                {
-                    InstanceId = request.InstanceId,
-                    ExecutionId = request.ExecutionId,
-                    ForWorkItemProcessing = true
-                };
-                
-                using var call = _grpcClient.StreamInstanceHistory(streamRequest, CreateCallOptions(CancellationToken.None));
-                while (await call.ResponseStream.MoveNext(CancellationToken.None).ConfigureAwait(false))
-                {
-                    var chunk = call.ResponseStream.Current.Events;
-                    allPastEvents.AddRange(chunk);
-                }
+                var streamRequest = new GetInstanceHistoryRequest { InstanceId = request.InstanceId };
+
+                var result = await _grpcClient.GetInstanceHistoryAsync(streamRequest, CreateCallOptions())
+                    .ConfigureAwait(false);
+                allPastEvents.AddRange(result.Events);
             }
             
             // If the most recent event is `ExecutionTerminated`, acknowledge termination immediately.
             var timelineEvents = allPastEvents.Concat(request.NewEvents).ToList();
             var latestEvent = timelineEvents.Count > 0 ? timelineEvents[^1] : null;
             
+            // Restore the trace context provided by the sidecar so Activity.Current is non-null
+            traceScope = WorkflowTrace.StartOrchestrationTrace(timelineEvents);
+            
             if (latestEvent?.ExecutionTerminated != null)
             {
-                return new OrchestratorResponse
+                return new WorkflowResponse
                 {
                     InstanceId = request.InstanceId,
                     CompletionToken = completionToken,
                     Actions =
                     {
-                        new OrchestratorAction
+                        new WorkflowAction
                         {
-                            CompleteOrchestration = new CompleteOrchestrationAction
+                            CompleteWorkflow = new CompleteWorkflowAction
                             {
-                                OrchestrationStatus = OrchestrationStatus.Terminated
+                                WorkflowStatus = OrchestrationStatus.Terminated
                             }
                         }
                     }
@@ -140,7 +135,7 @@ internal sealed class WorkflowWorker(
             // This keeps the workflow paused while still committing the suspension event.
             if (latestEvent?.ExecutionSuspended != null)
             {
-                return new OrchestratorResponse
+                return new WorkflowResponse
                 {
                     InstanceId = request.InstanceId,
                     CompletionToken = completionToken
@@ -176,29 +171,19 @@ internal sealed class WorkflowWorker(
                 }
             }
 
-            if (string.IsNullOrEmpty(workflowName))
-            {
-                foreach (var e in allPastEvents.Concat(request.NewEvents).Reverse())
-                {
-                    var state = e.HistoryState?.OrchestrationState;
-                    if (state is null || string.IsNullOrEmpty(state.Name))
-                        continue;
-
-                    workflowName = state.Name;
-                    if (string.IsNullOrEmpty(serializedInput) && !string.IsNullOrEmpty(state.Input))
-                    {
-                        serializedInput = state.Input;
-                    }
-
-                    break;
-                }
-            }
+            // if (string.IsNullOrEmpty(workflowName))
+            // {
+            //     foreach (var e in allPastEvents.Concat(request.NewEvents).Reverse())
+            //     {
+            //         var state = e.
+            //     }
+            // }
 
             if (string.IsNullOrEmpty(workflowName))
             {
                 foreach (var e in allPastEvents.Concat(request.NewEvents).Reverse())
                 {
-                    var versionName = e.OrchestratorStarted?.Version?.Name;
+                    var versionName = e.WorkflowStarted?.Version?.Name;
                     if (!string.IsNullOrEmpty(versionName))
                     {
                         workflowName = versionName;
@@ -216,17 +201,17 @@ internal sealed class WorkflowWorker(
                 else
                 {
                     _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry("<unknown>");
-                    return new OrchestratorResponse
+                    return new WorkflowResponse
                     {
                         InstanceId = request.InstanceId,
                         CompletionToken = completionToken,
                         Actions =
                         {
-                            new OrchestratorAction
+                            new WorkflowAction
                             {
-                                CompleteOrchestration = new CompleteOrchestrationAction
+                                CompleteWorkflow = new CompleteWorkflowAction
                                 {
-                                    OrchestrationStatus = OrchestrationStatus.Failed,
+                                    WorkflowStatus = OrchestrationStatus.Failed,
                                     FailureDetails = new()
                                     {
                                         IsNonRetriable = true,
@@ -244,17 +229,17 @@ internal sealed class WorkflowWorker(
             if (routerRegistry is not null && !routerRegistry.Contains(workflowName))
             {
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(workflowName);
-                return new OrchestratorResponse
+                return new WorkflowResponse
                 {
                     InstanceId = request.InstanceId,
                     CompletionToken = completionToken,
                     Actions =
                     {
-                        new OrchestratorAction
+                        new WorkflowAction
                         {
-                            CompleteOrchestration = new CompleteOrchestrationAction
+                            CompleteWorkflow = new CompleteWorkflowAction
                             {
-                                OrchestrationStatus = OrchestrationStatus.Failed,
+                                WorkflowStatus = OrchestrationStatus.Failed,
                                 FailureDetails = new()
                                 {
                                     IsNonRetriable = true,
@@ -276,17 +261,17 @@ internal sealed class WorkflowWorker(
                 {
                     _logger.LogWorkerWorkflowHandleOrchestratorRequestActivationFailed(workflowActivationException, workflowName);
                     
-                    return new OrchestratorResponse
+                    return new WorkflowResponse
                     {
                         InstanceId = request.InstanceId,
                         CompletionToken = completionToken,
                         Actions =
                         {
-                            new OrchestratorAction
+                            new WorkflowAction
                             {
-                                CompleteOrchestration = new CompleteOrchestrationAction
+                                CompleteWorkflow = new CompleteWorkflowAction
                                 {
-                                    OrchestrationStatus = OrchestrationStatus.Failed,
+                                    WorkflowStatus = OrchestrationStatus.Failed,
                                     FailureDetails = new()
                                     {
                                         IsNonRetriable = true,
@@ -302,17 +287,17 @@ internal sealed class WorkflowWorker(
 
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestNotInRegistry(workflowName);
 
-                return new OrchestratorResponse
+                return new WorkflowResponse
                 {
                     InstanceId = request.InstanceId,
                     CompletionToken = completionToken,
                     Actions =
                     {
-                        new OrchestratorAction
+                        new WorkflowAction
                         {
-                            CompleteOrchestration = new CompleteOrchestrationAction
+                            CompleteWorkflow = new CompleteWorkflowAction
                             {
-                                OrchestrationStatus = OrchestrationStatus.Failed,
+                                WorkflowStatus = OrchestrationStatus.Failed,
                                 FailureDetails = new()
                                 {
                                     IsNonRetriable = true,
@@ -331,14 +316,19 @@ internal sealed class WorkflowWorker(
                 : DateTime.UtcNow;
 
             var currentTurnStartedEvent = request.NewEvents.Reverse()
-                .FirstOrDefault(e => e.OrchestratorStarted != null);
+                .FirstOrDefault(e => e.WorkflowStarted != null);
 
             var currentTurnTimestamp = currentTurnStartedEvent?.Timestamp?.ToDateTime()
                 ?? currentUtcDateTime;
 
             // Initialize the context with the FULL history
-            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime, 
-                _serializer, loggerFactory, versionTracker, appId, request.ExecutionId);
+            var incomingPropagatedHistory = request.PropagatedHistory?.Chunks.Count > 0
+                ? request.PropagatedHistory.Chunks
+                : null;
+            var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime,
+                _serializer, loggerFactory, versionTracker, appId, request.ExecutionId,
+                allPastEvents,
+                incomingPropagatedHistory);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
@@ -381,17 +371,17 @@ internal sealed class WorkflowWorker(
             // If the history processing caused a stall (e.g. via OnOrchestratorStarted), return immediately
             if (versionTracker.IsStalled)
             {
-                return new OrchestratorResponse
+                return new WorkflowResponse
                 {
                     InstanceId = request.InstanceId,
                     CompletionToken = completionToken,
                     Actions =
                     {
-                        new OrchestratorAction
+                        new WorkflowAction
                         {
-                            CompleteOrchestration = new CompleteOrchestrationAction
+                            CompleteWorkflow = new CompleteWorkflowAction
                             {
-                                OrchestrationStatus = OrchestrationStatus.Stalled,
+                                WorkflowStatus = OrchestrationStatus.Stalled,
                                 Details = versionTracker.StalledEvent?.Description ??
                                           "Workflow stalled due to patch mismatch."
                             }
@@ -401,7 +391,7 @@ internal sealed class WorkflowWorker(
             }
             
             // Get all pending actions from the context
-            var response = new OrchestratorResponse
+            var response = new WorkflowResponse
             {
                 InstanceId = request.InstanceId,
                 CompletionToken = completionToken
@@ -422,7 +412,7 @@ internal sealed class WorkflowWorker(
 
             // If the workflow issued ContinueAsNew, it already queued a completion action; just return it.
             if (context.PendingActions.Any(a => 
-                    a.CompleteOrchestration?.OrchestrationStatus == OrchestrationStatus.ContinuedAsNew))
+                    a.CompleteWorkflow?.WorkflowStatus == OrchestrationStatus.ContinuedAsNew))
             {
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
                 return response;
@@ -447,23 +437,25 @@ internal sealed class WorkflowWorker(
                 var output = await runTask.ConfigureAwait(false);
                 var outputJson = output != null ? _serializer.Serialize(output) : string.Empty;
 
-                response.Actions.Add(new OrchestratorAction
+                response.Actions.Add(new WorkflowAction
                 {
-                    CompleteOrchestration = new CompleteOrchestrationAction
+                    CompleteWorkflow = new CompleteWorkflowAction
                     {
                         Result = outputJson,
-                        OrchestrationStatus = OrchestrationStatus.Completed
+                        WorkflowStatus = OrchestrationStatus.Completed
                     }
                 });
             }
             catch (Exception ex)
             {
+                WorkflowTrace.SetCurrentError(ex);
+                
                 // Report the failure as an action so Dapr records the workflow as FAILED
-                response.Actions.Add(new OrchestratorAction
+                response.Actions.Add(new WorkflowAction
                 {
-                    CompleteOrchestration = new CompleteOrchestrationAction
+                    CompleteWorkflow = new CompleteWorkflowAction
                     {
-                        OrchestrationStatus = OrchestrationStatus.Failed,
+                        WorkflowStatus = OrchestrationStatus.Failed,
                         FailureDetails = new()
                         {
                             IsNonRetriable = true,
@@ -480,19 +472,20 @@ internal sealed class WorkflowWorker(
         }
         catch (Exception ex)
         {
+            WorkflowTrace.SetCurrentError(ex);
             _logger.LogWorkerWorkflowHandleOrchestratorRequestFailed(ex, request.InstanceId);
 
-            return new OrchestratorResponse
+            return new WorkflowResponse
             {
                 InstanceId = request.InstanceId,
                 CompletionToken = completionToken,
                 Actions =
                 {
-                    new OrchestratorAction
+                    new WorkflowAction
                     {
-                        CompleteOrchestration = new()
+                        CompleteWorkflow = new()
                         {
-                            OrchestrationStatus = OrchestrationStatus.Failed,
+                            WorkflowStatus = OrchestrationStatus.Failed,
                             FailureDetails = new()
                             {
                                 ErrorType = ex.GetType().FullName ?? "Exception",
@@ -504,11 +497,15 @@ internal sealed class WorkflowWorker(
                 }
             };
         }
+        finally
+        {
+            traceScope.Dispose();
+        }
     }
 
     private async Task<ActivityResponse> HandleActivityResponseAsync(ActivityRequest request, string completionToken)
     {
-        _logger.LogWorkerWorkflowHandleActivityRequestStart(request.Name, request.OrchestrationInstance?.InstanceId, request.TaskId);
+        _logger.LogWorkerWorkflowHandleActivityRequestStart(request.Name, request.WorkflowInstance?.InstanceId, request.TaskId);
 
         try
         {
@@ -521,11 +518,12 @@ internal sealed class WorkflowWorker(
             {
                 if (activityActivationException != null)
                 {
+                    WorkflowTrace.SetCurrentError(activityActivationException);
                     _logger.LogWorkerWorkflowHandleActivityRequestActivationFailed(activityActivationException, request.Name);
 
                     return new ActivityResponse
                     {
-                        InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
+                        InstanceId = request.WorkflowInstance?.InstanceId ?? string.Empty,
                         TaskId = request.TaskId,
                         CompletionToken = completionToken,
                         FailureDetails = new()
@@ -541,7 +539,7 @@ internal sealed class WorkflowWorker(
 
                 return new ActivityResponse
                 {
-                    InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
+                    InstanceId = request.WorkflowInstance?.InstanceId ?? string.Empty,
                     TaskId = request.TaskId,
                     CompletionToken = completionToken,
                     FailureDetails = new()
@@ -559,7 +557,7 @@ internal sealed class WorkflowWorker(
                 : request.TaskId.ToString();
 
             var context = new WorkflowActivityContextImpl(activityIdentifier,
-                request.OrchestrationInstance?.InstanceId ?? string.Empty, taskExecutionKey);
+                request.WorkflowInstance?.InstanceId ?? string.Empty, taskExecutionKey);
 
             // Deserialize the input
             object? input = null;
@@ -580,7 +578,7 @@ internal sealed class WorkflowWorker(
 
             return new ActivityResponse
             {
-                InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
+                InstanceId = request.WorkflowInstance?.InstanceId ?? string.Empty,
                 TaskId = request.TaskId,
                 Result = outputJson,
                 CompletionToken = completionToken
@@ -588,11 +586,12 @@ internal sealed class WorkflowWorker(
         }
         catch (Exception ex)
         {
-            _logger.LogWorkerWorkflowHandleActivityRequestFailed(ex, request.Name, request.OrchestrationInstance?.InstanceId);
+            WorkflowTrace.SetCurrentError(ex);
+            _logger.LogWorkerWorkflowHandleActivityRequestFailed(ex, request.Name, request.WorkflowInstance?.InstanceId);
 
             return new ActivityResponse
             {
-                InstanceId = request.OrchestrationInstance?.InstanceId ?? string.Empty,
+                InstanceId = request.WorkflowInstance?.InstanceId ?? string.Empty,
                 TaskId = request.TaskId,
                 CompletionToken = completionToken,
                 FailureDetails = new()
@@ -617,7 +616,6 @@ internal sealed class WorkflowWorker(
 
         await base.StopAsync(cancellationToken);
     }
-
-    private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>
+    private CallOptions CreateCallOptions(CancellationToken cancellationToken = default) =>
         DaprClientUtilities.ConfigureGrpcCallOptions(typeof(WorkflowWorker).Assembly, _daprApiToken, cancellationToken);
 }

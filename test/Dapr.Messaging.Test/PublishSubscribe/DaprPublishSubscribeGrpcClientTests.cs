@@ -66,7 +66,7 @@ public class DaprPublishSubscribeGrpcClientTests
 
     private static DaprPublishSubscribeGrpcClient CreateGrpcClient(Mock<P.Dapr.DaprClient> mockDaprClient,
         string? apiToken = null) =>
-        new(mockDaprClient.Object, new HttpClient(), apiToken);
+        new(mockDaprClient.Object, new HttpClient(), Mock.Of<Dapr.Common.IDaprRuntimeCapabilities>(), apiToken);
 
     // -------------------------------------------------------------------------
     // SubscribeAsync tests
@@ -173,7 +173,7 @@ public class DaprPublishSubscribeGrpcClientTests
     {
         var httpClient = new HttpClient();
         var client = new DaprPublishSubscribeGrpcClient(
-            BuildMockDaprClient().Object, httpClient, daprApiToken: null);
+            BuildMockDaprClient().Object, httpClient, Mock.Of<Dapr.Common.IDaprRuntimeCapabilities>(), daprApiToken: null);
 
         client.Dispose();
 

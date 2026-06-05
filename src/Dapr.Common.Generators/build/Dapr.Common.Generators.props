@@ -1,0 +1,16 @@
+<Project>
+  <!--
+    Registers IsDaprSdkProject as a compiler-visible MSBuild property so the
+    DaprVersionAwareGenerator can read it from AnalyzerConfigOptionsProvider.
+
+    SDK projects opt in with:
+        <IsDaprSdkProject>true</IsDaprSdkProject>
+
+    When true, the generator scans the compilation for Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient
+    methods that have versioned variants (Alpha1/Beta1/etc.) and emits a VersionAwareDaprClient
+    wrapper that automatically falls back through supported runtime versions.
+  -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="IsDaprSdkProject" />
+  </ItemGroup>
+</Project>

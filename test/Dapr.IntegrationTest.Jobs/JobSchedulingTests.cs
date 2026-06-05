@@ -16,6 +16,7 @@ using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -24,7 +25,7 @@ namespace Dapr.IntegrationTest.Jobs;
 
 public sealed class JobSchedulingTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.16")]
     public async Task ShouldScheduleJobWithCronExpression()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
@@ -76,7 +77,7 @@ public sealed class JobSchedulingTests
         Assert.Equal(jobName, received);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.16")]
     public async Task ShouldScheduleJobWithDateTime()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
@@ -126,7 +127,7 @@ public sealed class JobSchedulingTests
         Assert.Equal(jobName, received);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.16")]
     public async Task ShouldScheduleJobWithStartingFrom()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
@@ -176,7 +177,7 @@ public sealed class JobSchedulingTests
         Assert.Equal(jobName, received);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.16")]
     public async Task ShouldScheduleMultipleRepeatingJob()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");

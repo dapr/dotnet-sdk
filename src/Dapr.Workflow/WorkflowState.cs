@@ -33,6 +33,11 @@ public sealed class WorkflowState
     }
 
     /// <summary>
+    /// Gets the name of the requested workflow that the state corresponds to. 
+    /// </summary>
+    public string? WorkflowName => _metadata?.Name;
+
+    /// <summary>
     /// Gets a value indicating whether the requested workflow instance exists.
     /// </summary>
     public bool Exists => _metadata is not null;

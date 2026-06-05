@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,7 +36,7 @@ public sealed class ContinueAsNewCarryoverEventsTests
     /// After the fix the full buffer is captured once all events are processed, so every
     /// signal survives as a carryover event and the workflow counts down to zero.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ContinueAsNew_ShouldCarryOverEvents_WhenMultipleSignalsArriveTogether()
     {
         const int signalCount = 250;

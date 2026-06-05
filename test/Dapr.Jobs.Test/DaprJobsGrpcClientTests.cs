@@ -15,14 +15,14 @@ using System;
 using System.Net.Http;
 using Dapr.Client.Autogen.Grpc.v1;
 using Dapr.Jobs.Models;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Moq;
 
 namespace Dapr.Jobs.Test;
 
 public sealed class DaprJobsGrpcClientTests
 {
-
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ScheduleJobAsync_RepeatsCannotBeLessThanZero()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -38,7 +38,7 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ScheduleJobAsync_JobNameCannotBeNull()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -54,7 +54,7 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ScheduleJobAsync_JobNameCannotBeEmpty()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -70,7 +70,7 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ScheduleJobAsync_ScheduleCannotBeEmpty()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -86,7 +86,7 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ScheduleJobAsync_TtlCannotBeEarlierThanStartingFrom()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -104,7 +104,7 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void GetJobAsync_NameCannotBeNull()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -120,7 +120,7 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void GetJobAsync_NameCannotBeEmpty()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -136,7 +136,7 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void DeleteJobAsync_NameCannotBeNull()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -152,7 +152,7 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void DeleteJobAsync_NameCannotBeEmpty()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -182,6 +182,4 @@ public sealed class DaprJobsGrpcClientTests
         Assert.Null(jobDetails.DueTime);
         Assert.Equal(jobDetails.Schedule.ExpressionValue, schedule.ExpressionValue);
     }
-
-    private sealed record TestPayload(string Name, string Color);
 }

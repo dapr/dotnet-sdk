@@ -1,4 +1,4 @@
-﻿// ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Copyright 2023 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,23 @@ namespace Dapr.Workflow;
 /// </summary>
 /// <param name="RetryPolicy">The workflow retry policy.</param>
 /// <param name="TargetAppId">The App ID indicating the app in which to find the named activity to run.</param>
-public record WorkflowTaskOptions(WorkflowRetryPolicy? RetryPolicy = null, string? TargetAppId = null);
+/// <param name="PropagationScope">
+/// Determines which ancestor history events are propagated to the scheduled activity or child workflow.
+/// Defaults to <see cref="HistoryPropagationScope.None"/>, meaning no history is propagated.
+/// </param>
+public record WorkflowTaskOptions(
+    WorkflowRetryPolicy? RetryPolicy = null,
+    string? TargetAppId = null,
+    HistoryPropagationScope PropagationScope = HistoryPropagationScope.None)
+{
+    /// <summary>
+    /// Returns a new <see cref="WorkflowTaskOptions"/> with the specified history propagation scope.
+    /// </summary>
+    /// <param name="scope">The propagation scope to apply.</param>
+    /// <returns>A new options instance with the propagation scope set.</returns>
+    public WorkflowTaskOptions WithHistoryPropagation(HistoryPropagationScope scope) =>
+        this with { PropagationScope = scope };
+}
 
 /// <summary>
 /// Options for controlling the behavior of child workflow execution.
@@ -26,7 +42,28 @@ public record WorkflowTaskOptions(WorkflowRetryPolicy? RetryPolicy = null, strin
 /// <param name="InstanceId">The instance ID to use for the child workflow.</param>
 /// <param name="RetryPolicy">The child workflow's retry policy.</param>
 /// <param name="TargetAppId">The App ID indicating the app in which to find the named child workflow to run.</param>
+/// <param name="PropagationScope">
+/// Determines which ancestor history events are propagated to the child workflow.
+/// Defaults to <see cref="HistoryPropagationScope.None"/>, meaning no history is propagated.
+/// </param>
 public record ChildWorkflowTaskOptions(
-    string? InstanceId = null, 
-    WorkflowRetryPolicy? RetryPolicy = null, 
-    string? TargetAppId = null) : WorkflowTaskOptions(RetryPolicy, TargetAppId);
+    string? InstanceId = null,
+    WorkflowRetryPolicy? RetryPolicy = null,
+    string? TargetAppId = null,
+    HistoryPropagationScope PropagationScope = HistoryPropagationScope.None)
+    : WorkflowTaskOptions(RetryPolicy, TargetAppId, PropagationScope)
+{
+    /// <summary>
+    /// Returns a new <see cref="ChildWorkflowTaskOptions"/> with the specified history propagation scope.
+    /// </summary>
+    /// <param name="scope">The propagation scope to apply.</param>
+    /// <returns>A new options instance with the propagation scope set.</returns>
+    /// <remarks>
+    /// Hides the base method (records cannot override) so the derived type is returned —
+    /// callers must hold a <see cref="ChildWorkflowTaskOptions"/> reference to preserve
+    /// <see cref="InstanceId"/>. Calling through a <see cref="WorkflowTaskOptions"/> reference
+    /// invokes the base method and returns a plain <see cref="WorkflowTaskOptions"/>.
+    /// </remarks>
+    public new ChildWorkflowTaskOptions WithHistoryPropagation(HistoryPropagationScope scope) =>
+        this with { PropagationScope = scope };
+}

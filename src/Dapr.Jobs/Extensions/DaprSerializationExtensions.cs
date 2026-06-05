@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 using Dapr.Jobs.Models;
@@ -21,13 +20,12 @@ namespace Dapr.Jobs.Extensions;
 /// <summary>
 /// Provides helper extensions for performing serialization operations when scheduling one-time Cron jobs for the developer.
 /// </summary>
-[Experimental("DAPR_JOBS", UrlFormat = "https://docs.dapr.io/developing-applications/building-blocks/jobs/jobs-overview/")]
 public static class DaprJobsSerializationExtensions
 {
     /// <summary>
     /// Default JSON serializer options.
     /// </summary>
-    private static readonly JsonSerializerOptions defaultOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions DefaultOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Schedules a job with Dapr.
@@ -51,7 +49,7 @@ public static class DaprJobsSerializationExtensions
     {
         ArgumentNullException.ThrowIfNull(payload, nameof(payload));
 
-        var serializerOptions = jsonSerializerOptions ?? defaultOptions;
+        var serializerOptions = jsonSerializerOptions ?? DefaultOptions;
         var payloadBytes =
             JsonSerializer.SerializeToUtf8Bytes(payload, serializerOptions);
 

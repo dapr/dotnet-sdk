@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Threading.Channels;
+using Dapr;
 using Dapr.AppCallback.Autogen.Grpc.v1;
 using Dapr.Messaging.PublishSubscribe;
 using Grpc.Core;
@@ -197,8 +198,13 @@ public class PublishSubscribeReceiverTests
     {
         var task = Task.FromException(new InvalidOperationException("Test exception"));
 
-        var exception = Assert.Throws<AggregateException>(() =>
-            PublishSubscribeReceiver.HandleTaskCompletion(task, null));
+        var options = new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success));
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        var receiver = new PublishSubscribeReceiver("testPubSub", "testTopic", options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        var exception = Assert.Throws<DaprException>(() =>
+            receiver.HandleTaskCompletion(task));
 
         Assert.IsType<InvalidOperationException>(exception.InnerException);
         Assert.Equal("Test exception", exception.InnerException.Message);
@@ -208,8 +214,105 @@ public class PublishSubscribeReceiverTests
     public void HandleTaskCompletion_SuccessfulTask_DoesNotThrow()
     {
         var task = Task.CompletedTask;
+        var options = new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success));
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        var receiver = new PublishSubscribeReceiver("testPubSub", "testTopic", options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
         // Should not throw for a completed (non-faulted) task
-        PublishSubscribeReceiver.HandleTaskCompletion(task, null);
+        receiver.HandleTaskCompletion(task);
+    }
+
+    [Fact]
+    public async Task SubscribeAsync_ShouldThrowDaprException_WhenSidecarUnavailable()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success));
+
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
+            .Throws(new RpcException(new Status(StatusCode.Unavailable, "Connection refused")));
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        var ex = await Assert.ThrowsAsync<DaprException>(() => receiver.SubscribeAsync(CancellationToken.None));
+        Assert.IsType<RpcException>(ex.InnerException);
+        Assert.Contains("testTopic", ex.Message);
+        Assert.Contains("testPubSub", ex.Message);
+    }
+
+    [Fact]
+    public async Task SubscribeAsync_ShouldAllowRetry_AfterSidecarFailure()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success));
+
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        var callCount = 0;
+
+        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
+        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
+            mockRequestStream.Object, mockResponseStream.Object,
+            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
+
+        mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                callCount++;
+                if (callCount == 1)
+                    throw new RpcException(new Status(StatusCode.Unavailable, "Connection refused"));
+                return mockCall;
+            });
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        // First call fails
+        await Assert.ThrowsAsync<DaprException>(() => receiver.SubscribeAsync(CancellationToken.None));
+
+        // Second call should succeed (hasInitialized was reset)
+        await receiver.SubscribeAsync(CancellationToken.None);
+        Assert.Equal(2, callCount);
+    }
+
+    [Fact]
+    public async Task HandleTaskCompletion_ShouldInvokeErrorHandler_WhenConfigured()
+    {
+        DaprException? capturedEx = null;
+        var tcs = new TaskCompletionSource();
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        {
+            ErrorHandler = ex =>
+            {
+                capturedEx = ex;
+                tcs.SetResult();
+                return Task.CompletedTask;
+            }
+        };
+
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        var receiver = new PublishSubscribeReceiver("testPubSub", "testTopic", options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        var faultedTask = Task.FromException(new InvalidOperationException("background error"));
+
+        // Should not throw when error handler is provided
+        receiver.HandleTaskCompletion(faultedTask);
+
+        // Wait for the error handler to be invoked
+        await tcs.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        Assert.NotNull(capturedEx);
+        Assert.IsType<InvalidOperationException>(capturedEx.InnerException);
+        Assert.Contains("background error", capturedEx.InnerException!.Message);
+        Assert.Contains("testTopic", capturedEx.Message);
     }
 
     [Fact]
@@ -656,8 +759,8 @@ public class PublishSubscribeReceiverTests
 
         // Verify HandleTaskCompletion correctly re-throws when given the faulted task.
         var faultedStub = Task.FromException(new InvalidOperationException("Unrecognized topic acknowledgement action: 99"));
-        var ex = Assert.Throws<AggregateException>(() =>
-            PublishSubscribeReceiver.HandleTaskCompletion(faultedStub, null));
+        var ex = Assert.Throws<DaprException>(() =>
+            receiver.HandleTaskCompletion(faultedStub));
         Assert.IsType<InvalidOperationException>(ex.InnerException);
         Assert.Contains("99", ex.InnerException!.Message);
 

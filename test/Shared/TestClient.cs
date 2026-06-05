@@ -27,6 +27,7 @@ using System.Threading.Tasks;
 using Dapr.Actors;
 #endif
 using Dapr.Client;
+using Dapr.Common;
 using Google.Protobuf;
 using Grpc.Net.Client;
 
@@ -62,8 +63,25 @@ namespace Dapr
                 HttpClient = httpClient,
                 ThrowOperationCanceledOnCancellation = true,
             });
+            // Inject a stub that reports all capabilities as available so unit tests
+            // are not required to handle the gRPC reflection round-trip.
+            builder.UseRuntimeCapabilities(new AlwaysAvailableRuntimeCapabilities());
 
             return new TestClient<DaprClient>(builder.Build(), handler);
+        }
+
+        /// <summary>
+        /// Stub implementation of <see cref="IDaprRuntimeCapabilities"/> that reports every
+        /// method and service as available. Used in unit tests to bypass the gRPC reflection
+        /// call that <see cref="DaprRuntimeCapabilities"/> would otherwise make.
+        /// </summary>
+        private sealed class AlwaysAvailableRuntimeCapabilities : IDaprRuntimeCapabilities
+        {
+            public Task<bool> SupportsMethodAsync(string fullyQualifiedMethodName, CancellationToken cancellationToken = default)
+                => Task.FromResult(true);
+
+            public Task<bool> SupportsServiceAsync(string serviceName, CancellationToken cancellationToken = default)
+                => Task.FromResult(true);
         }
 
         private static async Task WithTimeout(Task task, TimeSpan timeout, string message)

@@ -12,6 +12,7 @@
 //  ------------------------------------------------------------------------
 
 using Dapr.Workflow.Client;
+using Dapr.Common.Serialization;
 using Dapr.Workflow.Serialization;
 
 namespace Dapr.Workflow.Test;
@@ -30,6 +31,7 @@ public class WorkflowStateTests
         Assert.Equal(DateTime.MinValue, state.LastUpdatedAt.DateTime);
         Assert.Equal(WorkflowRuntimeStatus.Unknown, state.RuntimeStatus);
         Assert.Null(state.FailureDetails);
+        Assert.Null(state.WorkflowName);
 
         Assert.Equal(default, state.ReadInputAs<int>());
         Assert.Equal(default, state.ReadOutputAs<int>());
@@ -39,7 +41,7 @@ public class WorkflowStateTests
     [Fact]
     public void Properties_ShouldReflectMetadata_WhenPresent()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
         var created = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
         var updated = new DateTime(2025, 01, 02, 0, 0, 0, DateTimeKind.Utc);
 
@@ -59,12 +61,13 @@ public class WorkflowStateTests
         Assert.Equal(created, state.CreatedAt.DateTime);
         Assert.Equal(updated, state.LastUpdatedAt.DateTime);
         Assert.Equal(WorkflowRuntimeStatus.Running, state.RuntimeStatus);
+        Assert.Equal("wf", state.WorkflowName);
     }
 
     [Fact]
     public void CreatedAt_ShouldReturnDefault_WhenMetadataCreatedAtIsMinValue()
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
         var metadata = new WorkflowMetadata(
             InstanceId: "i",
             Name: "wf",
@@ -85,7 +88,7 @@ public class WorkflowStateTests
     [InlineData(WorkflowRuntimeStatus.Terminated)]
     public void IsWorkflowCompleted_ShouldBeTrue_ForTerminalStatuses(WorkflowRuntimeStatus status)
     {
-        var serializer = new JsonWorkflowSerializer();
+        var serializer = new JsonDaprSerializer();
         var metadata = new WorkflowMetadata("i", "wf", status, DateTime.MinValue, DateTime.MinValue, serializer);
 
         var state = new WorkflowState(metadata);

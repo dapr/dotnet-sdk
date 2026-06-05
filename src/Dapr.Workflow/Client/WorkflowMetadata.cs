@@ -12,7 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
-using Dapr.Workflow.Serialization;
+using Dapr.Common.Serialization;
 
 namespace Dapr.Workflow.Client;
 
@@ -31,7 +31,7 @@ internal sealed record WorkflowMetadata(
     WorkflowRuntimeStatus RuntimeStatus,
     DateTime CreatedAt,
     DateTime LastUpdatedAt,
-    IWorkflowSerializer Serializer)
+    IDaprSerializer Serializer)
 {
     /// <summary>
     /// Gets the serialized input of the workflow, if available.

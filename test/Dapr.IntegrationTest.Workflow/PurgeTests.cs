@@ -13,6 +13,7 @@
 
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow;
 using Grpc.Core;
 using Microsoft.Extensions.Configuration;
@@ -22,7 +23,7 @@ namespace Dapr.IntegrationTest.Workflow;
 
 public sealed class PurgeTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldPurgeCompletedWorkflowInstance()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -68,7 +69,7 @@ public sealed class PurgeTests
         Assert.Null(stateAfterPurge);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task PurgeShouldNotWorkOnSuspendedWorkflowInstance()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
@@ -112,7 +113,7 @@ public sealed class PurgeTests
         await daprWorkflowClient.TerminateWorkflowAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ShouldPurgeTerminatedWorkflowInstance()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
