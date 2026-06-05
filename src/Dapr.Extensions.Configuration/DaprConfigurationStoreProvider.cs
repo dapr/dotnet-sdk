@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
+using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 
 namespace Dapr.Extensions.Configuration;
@@ -159,12 +160,43 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
                             OnReload();
                         }
                     }
-                    catch (Exception)
+                    catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
                     {
-                        // If we catch an exception, try and cancel the subscription so we can connect again.
+                        return;
+                    }
+                    catch (RpcException ex) when (cts.Token.IsCancellationRequested && ex.StatusCode == StatusCode.Cancelled)
+                    {
+                        return;
+                    }
+                    catch (Exception ex) when (ex is DaprException or RpcException)
+                    {
                         if (!string.IsNullOrEmpty(id))
                         {
-                            await daprClient.UnsubscribeConfiguration(store, id);
+                            try
+                            {
+                                await daprClient.UnsubscribeConfiguration(store, id, cts.Token);
+                            }
+                            catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+                            {
+                                return;
+                            }
+                            catch (RpcException unsubscribeException) when (cts.Token.IsCancellationRequested && unsubscribeException.StatusCode == StatusCode.Cancelled)
+                            {
+                                return;
+                            }
+                            catch (Exception unsubscribeException) when (unsubscribeException is DaprException or RpcException)
+                            {
+                                // Ignore transient unsubscribe failures and reconnect after the retry delay.
+                            }
+                        }
+
+                        try
+                        {
+                            await Task.Delay(sidecarWaitTimeout, cts.Token);
+                        }
+                        catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+                        {
+                            return;
                         }
                     }
                 }
