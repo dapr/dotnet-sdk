@@ -143,6 +143,48 @@ public class DaprConfigurationStoreProviderTest
     }
 
     [Fact]
+    public void TestConfigurationStoreExtension_ReloadReplacesData()
+    {
+        var responses = new Queue<GetConfigurationResponse>(new[]
+        {
+            new GetConfigurationResponse(
+                new Dictionary<string, ConfigurationItem>
+                {
+                    ["oldKey"] = new ConfigurationItem("oldValue", "v1", null)
+                }),
+            new GetConfigurationResponse(
+                new Dictionary<string, ConfigurationItem>
+                {
+                    ["newKey"] = new ConfigurationItem("newValue", "v2", null)
+                })
+        });
+
+        var daprClient = new Mock<DaprClient>();
+        daprClient
+            .Setup(c => c.WaitForSidecarAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        daprClient
+            .Setup(c => c.GetConfiguration(
+                "store",
+                It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<IReadOnlyDictionary<string, string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => responses.Dequeue());
+
+        var config = new ConfigurationBuilder()
+            .AddDaprConfigurationStore("store", new List<string>(), daprClient.Object, TimeSpan.FromSeconds(5))
+            .Build();
+
+        config["oldKey"].ShouldBe("oldValue");
+
+        config.Reload();
+
+        config["oldKey"].ShouldBeNull();
+        config["newKey"].ShouldBe("newValue");
+    }
+
+    [Fact]
     public async Task TestStreamingConfigurationStoreExtension_ProperlyStoresValues()
     {
         // Sample item.
@@ -249,7 +291,7 @@ public class DaprConfigurationStoreProviderTest
         // Wait for the reload token to fire, indicating background load completed
         var reloaded = new TaskCompletionSource<bool>();
         config.GetReloadToken().RegisterChangeCallback(_ => reloaded.TrySetResult(true), null);
-        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         config["testKey"].ShouldBe("testValue");
     }
@@ -296,7 +338,7 @@ public class DaprConfigurationStoreProviderTest
         // Wait for the reload token to fire after retry succeeds
         var reloaded = new TaskCompletionSource<bool>();
         config.GetReloadToken().RegisterChangeCallback(_ => reloaded.TrySetResult(true), null);
-        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         config["testKey"].ShouldBe("testValue");
     }
@@ -320,7 +362,7 @@ public class DaprConfigurationStoreProviderTest
             .Build();
 
         // Ensure background task has started
-        await waitCalled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await waitCalled.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         // Dispose the provider to cancel the background task
         (config as IDisposable)?.Dispose();

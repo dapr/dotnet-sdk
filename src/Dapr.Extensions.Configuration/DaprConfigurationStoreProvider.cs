@@ -235,10 +235,13 @@ internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposab
         {
             // We don't need to worry about ReloadTokens here because it is a constant response.
             var getConfigurationResponse = await daprClient.GetConfiguration(store, keys, metadata, cts.Token);
+            var data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
             foreach (var item in getConfigurationResponse.Items)
             {
-                Set(item.Key, item.Value.Value);
+                data[item.Key] = item.Value.Value;
             }
+
+            Data = data;
         }
     }
 }
