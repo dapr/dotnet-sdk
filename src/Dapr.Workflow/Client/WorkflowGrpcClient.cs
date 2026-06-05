@@ -93,7 +93,7 @@ internal sealed class WorkflowGrpcClient(
         CancellationToken cancellationToken = default)
     {
         var response = await WaitForInstanceAsync(
-            (request, callOptions) => grpcClient.WaitForInstanceStartAsync(request, callOptions),
+            grpcClient.WaitForInstanceStartAsync,
             instanceId,
             getInputsAndOutputs,
             cancellationToken);
@@ -114,7 +114,7 @@ internal sealed class WorkflowGrpcClient(
     public override async Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(string instanceId, bool getInputsAndOutputs = true, CancellationToken cancellationToken = default)
     {
         var response = await WaitForInstanceAsync(
-            (request, callOptions) => grpcClient.WaitForInstanceCompletionAsync(request, callOptions),
+            grpcClient.WaitForInstanceCompletionAsync,
             instanceId,
             getInputsAndOutputs,
             cancellationToken);
@@ -285,7 +285,7 @@ internal sealed class WorkflowGrpcClient(
         if (options is { Input: not null, OverwriteInput: false })
         {
             throw new ArgumentException(
-                $"{nameof(RerunWorkflowFromEventOptions.OverwriteInput)} must be true when {nameof(RerunWorkflowFromEventOptions.Input)} is set.",
+                $@"{nameof(RerunWorkflowFromEventOptions.OverwriteInput)} must be true when {nameof(RerunWorkflowFromEventOptions.Input)} is set.",
                 nameof(options));
         }
 
@@ -358,6 +358,11 @@ internal sealed class WorkflowGrpcClient(
             {
                 var grpcCallOptions = CreateCallOptions(cancellationToken);
                 return await waitCall(request, grpcCallOptions);
+            }
+            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled &&
+                                          cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(cancellationToken);
             }
             catch (RpcException ex) when (
                 !cancellationToken.IsCancellationRequested &&
