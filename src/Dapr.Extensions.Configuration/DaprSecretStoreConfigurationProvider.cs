@@ -101,7 +101,8 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDi
         ArgumentVerifier.ThrowIfNull(secretDescriptors, nameof(secretDescriptors));
         ArgumentVerifier.ThrowIfNull(client, nameof(client));
 
-        if (secretDescriptors.Count() == 0)
+        var daprSecretDescriptors = secretDescriptors.ToList();
+        if (daprSecretDescriptors.Count == 0)
         {
             throw new ArgumentException("No secret descriptor was provided", nameof(secretDescriptors));
         }
@@ -109,7 +110,7 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDi
         this.store = store;
         this.normalizeKey = normalizeKey;
         this.keyDelimiters = keyDelimiters;
-        this.secretDescriptors = secretDescriptors;
+        this.secretDescriptors = daprSecretDescriptors;
         this.client = client;
         this.sidecarWaitTimeout = sidecarWaitTimeout;
         this.isOptional = isOptional;
@@ -189,10 +190,7 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDi
     {
         if (this.keyDelimiters?.Count > 0)
         {
-            foreach (var keyDelimiter in this.keyDelimiters)
-            {
-                key = key.Replace(keyDelimiter, ConfigurationPath.KeyDelimiter);
-            }
+            key = this.keyDelimiters.Aggregate(key, (current, keyDelimiter) => current.Replace(keyDelimiter, ConfigurationPath.KeyDelimiter));
         }
 
         return key;
@@ -207,7 +205,7 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDi
         if (isOptional)
         {
             Data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-            _ = Task.Run(() => LoadInBackgroundAsync());
+            _ = Task.Run(LoadInBackgroundAsync);
         }
         else
         {
@@ -225,7 +223,7 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDi
                 using var linked = CancellationTokenSource.CreateLinkedTokenSource(tokenSource.Token, cts.Token);
                 await client.WaitForSidecarAsync(linked.Token);
 
-                await FetchSecretsAsync();
+                await FetchSecretsAsync(linked.Token);
                 OnReload();
                 return;
             }
@@ -264,7 +262,7 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDi
         await FetchSecretsAsync();
     }
 
-    private async Task FetchSecretsAsync()
+    private async Task FetchSecretsAsync(CancellationToken cancellationToken = default)
     {
         var data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
@@ -278,7 +276,7 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDi
                 try
                 {
                     result = await client
-                        .GetSecretAsync(store, secretDescriptor.SecretKey, secretDescriptor.Metadata)
+                        .GetSecretAsync(store, secretDescriptor.SecretKey, secretDescriptor.Metadata, cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (DaprException)
@@ -309,25 +307,21 @@ internal class DaprSecretStoreConfigurationProvider : ConfigurationProvider, IDi
                     data.Add(normalizedKey, result[key]);
                 }
             }
-
-            Data = data;
         }
         else
         {
-            var result = await client.GetBulkSecretAsync(store, metadata).ConfigureAwait(false);
-            foreach (var key in result.Keys)
+            var result = await client.GetBulkSecretAsync(store, metadata, cancellationToken).ConfigureAwait(false);
+            foreach (KeyValuePair<string, string> secret in result.Keys.SelectMany(key => result[key]))
             {
-                foreach (var secret in result[key])
+                if (data.ContainsKey(secret.Key))
                 {
-                    if (data.ContainsKey(secret.Key))
-                    {
-                        throw new InvalidOperationException($"A duplicate key '{secret.Key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
-                    }
-
-                    data.Add(normalizeKey ? NormalizeKey(secret.Key) : secret.Key, secret.Value);
+                    throw new InvalidOperationException($"A duplicate key '{secret.Key}' was found in the secret store '{store}'. Please remove any duplicates from your secret store.");
                 }
+
+                data.Add(normalizeKey ? NormalizeKey(secret.Key) : secret.Key, secret.Value);
             }
-            Data = data;
         }
+
+        Data = data;
     }
 }
