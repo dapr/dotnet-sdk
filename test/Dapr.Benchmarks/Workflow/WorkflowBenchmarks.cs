@@ -16,6 +16,7 @@ using Dapr.Benchmarks.Infrastructure;
 using Dapr.Workflow;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using DaprWorkflow = Dapr.Workflow;
 
 namespace Dapr.Benchmarks.Workflow;
 
@@ -81,9 +82,9 @@ public class WorkflowBenchmarks : DaprBenchmarkBase
     /// <summary>
     /// A minimal workflow that calls a single activity.
     /// </summary>
-    private sealed class SimpleWorkflow : Workflow<int, int>
+    private sealed class SimpleWorkflow : DaprWorkflow.Workflow<int, int>
     {
-        public override async Task<int> RunAsync(WorkflowContext context, int input)
+        public override async Task<int> RunAsync(DaprWorkflow.WorkflowContext context, int input)
         {
             return await context.CallActivityAsync<int>(nameof(DoublingActivity), input);
         }
@@ -92,9 +93,9 @@ public class WorkflowBenchmarks : DaprBenchmarkBase
     /// <summary>
     /// A workflow that fans out to N parallel activities.
     /// </summary>
-    private sealed class FanOutWorkflow : Workflow<int, int[]>
+    private sealed class FanOutWorkflow : DaprWorkflow.Workflow<int, int[]>
     {
-        public override async Task<int[]> RunAsync(WorkflowContext context, int count)
+        public override async Task<int[]> RunAsync(DaprWorkflow.WorkflowContext context, int count)
         {
             var tasks = new List<Task<int>>(count);
             for (var i = 0; i < count; i++)
@@ -109,9 +110,9 @@ public class WorkflowBenchmarks : DaprBenchmarkBase
     /// <summary>
     /// A simple activity that doubles its input.
     /// </summary>
-    private sealed class DoublingActivity : WorkflowActivity<int, int>
+    private sealed class DoublingActivity : DaprWorkflow.WorkflowActivity<int, int>
     {
-        public override Task<int> RunAsync(WorkflowActivityContext context, int input)
+        public override Task<int> RunAsync(DaprWorkflow.WorkflowActivityContext context, int input)
         {
             return Task.FromResult(input * 2);
         }
