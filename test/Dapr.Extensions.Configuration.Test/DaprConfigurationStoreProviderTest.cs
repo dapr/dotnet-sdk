@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading;
@@ -297,6 +298,60 @@ public class DaprConfigurationStoreProviderTest
     }
 
     [Fact]
+    public async Task TestConfigurationStore_OptionalBackgroundLoad_DoesNotPublishPartiallyBuiltData()
+    {
+        var firstItemEnumerated = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var continueEnumeration = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var daprClient = new Mock<DaprClient>();
+        daprClient
+            .Setup(c => c.WaitForSidecarAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var configResponse = new GetConfigurationResponse(
+            new BlockingConfigurationItems(
+                new Dictionary<string, ConfigurationItem>
+                {
+                    ["firstKey"] = new ConfigurationItem("firstValue", "v1", null),
+                    ["secondKey"] = new ConfigurationItem("secondValue", "v1", null)
+                },
+                firstItemEnumerated,
+                continueEnumeration));
+
+        daprClient
+            .Setup(c => c.GetConfiguration(
+                "store",
+                It.IsAny<IReadOnlyList<string>>(),
+                It.IsAny<IReadOnlyDictionary<string, string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(configResponse);
+
+        var config = new ConfigurationBuilder()
+            .AddDaprConfigurationStore("store", new List<string>(), daprClient.Object, TimeSpan.FromSeconds(5), optional: true)
+            .Build();
+
+        var reloaded = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        config.GetReloadToken().RegisterChangeCallback(_ => reloaded.TrySetResult(true), null);
+
+        await firstItemEnumerated.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        try
+        {
+            config["firstKey"].ShouldBeNull();
+            config["secondKey"].ShouldBeNull();
+        }
+        finally
+        {
+            continueEnumeration.TrySetResult(true);
+        }
+
+        await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        config["firstKey"].ShouldBe("firstValue");
+        config["secondKey"].ShouldBe("secondValue");
+    }
+
+    [Fact]
     public async Task TestConfigurationStore_OptionalAndFetchThrowsTransientError_RetriesAndSucceeds()
     {
         var callCount = 0;
@@ -480,6 +535,51 @@ public class DaprConfigurationStoreProviderTest
             streamBlocked.TrySetResult(true);
             await Task.Delay(Timeout.Infinite, cancellationToken);
             return false;
+        }
+    }
+
+    private sealed class BlockingConfigurationItems(
+        IReadOnlyDictionary<string, ConfigurationItem> inner,
+        TaskCompletionSource<bool> firstItemEnumerated,
+        TaskCompletionSource<bool> continueEnumeration) : IReadOnlyDictionary<string, ConfigurationItem>
+    {
+        public IEnumerable<string> Keys => inner.Keys;
+
+        public IEnumerable<ConfigurationItem> Values => inner.Values;
+
+        public int Count => inner.Count;
+
+        public ConfigurationItem this[string key] => inner[key];
+
+        public bool ContainsKey(string key)
+        {
+            return inner.ContainsKey(key);
+        }
+
+        public bool TryGetValue(string key, out ConfigurationItem value)
+        {
+            return inner.TryGetValue(key, out value);
+        }
+
+        public IEnumerator<KeyValuePair<string, ConfigurationItem>> GetEnumerator()
+        {
+            var shouldBlock = true;
+            foreach (var item in inner)
+            {
+                if (shouldBlock)
+                {
+                    shouldBlock = false;
+                    firstItemEnumerated.TrySetResult(true);
+                    continueEnumeration.Task.GetAwaiter().GetResult();
+                }
+
+                yield return item;
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 }
