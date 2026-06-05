@@ -17,7 +17,7 @@ public sealed class SecretStoreOptionalTests
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
         await environment.StartAsync(TestContext.Current.CancellationToken);
 
-        var harness = new DaprHarnessBuilder(componentsDir)
+        await using var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
             .BuildSecretStore();
 
@@ -58,8 +58,6 @@ public sealed class SecretStoreOptionalTests
 
         Assert.Equal("value1", config["secret1"]);
         Assert.Equal("value2", config["secret2"]);
-
-        await harness.DisposeAsync();
     }
 
     [Fact]
@@ -70,7 +68,7 @@ public sealed class SecretStoreOptionalTests
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
         await environment.StartAsync(TestContext.Current.CancellationToken);
 
-        var harness = new DaprHarnessBuilder(componentsDir)
+        await using var harness = new DaprHarnessBuilder(componentsDir)
             .WithEnvironment(environment)
             .BuildSecretStore();
 
@@ -91,8 +89,6 @@ public sealed class SecretStoreOptionalTests
 
         Assert.Equal("value1", config["secret1"]);
         Assert.Equal("value2", config["secret2"]);
-
-        await harness.DisposeAsync();
     }
 
     [Fact]
