@@ -15,23 +15,57 @@ using Microsoft.Extensions.Configuration;
 
 namespace Dapr;
 
-internal static class DaprDefaults
+/// <summary>
+/// Provides access to the default and computed values for accessing the Dapr runtime.
+/// </summary>
+public static class DaprDefaults
 {
-    private static string httpEndpoint = string.Empty;
-    private static string grpcEndpoint = string.Empty;
-    private static string daprApiToken = string.Empty;
-    private static string appApiToken = string.Empty;
+    // Configured values
+    private static string _httpEndpoint = string.Empty;
+    private static string _grpcEndpoint = string.Empty;
+    private static string _daprApiToken = string.Empty;
+    private static string _appApiToken = string.Empty;
 
-    public const string DaprApiTokenName = "DAPR_API_TOKEN";
-    public const string AppApiTokenName = "APP_API_TOKEN";
-    public const string DaprHttpEndpointName = "DAPR_HTTP_ENDPOINT";
-    public const string DaprHttpPortName = "DAPR_HTTP_PORT";
-    public const string DaprGrpcEndpointName = "DAPR_GRPC_ENDPOINT";
-    public const string DaprGrpcPortName = "DAPR_GRPC_PORT";
-
+    /// <summary>
+    /// The name of the environment variable containing the Dapr API token.
+    /// </summary>
+    public const string DaprApiTokenEnvironmentVariableName = "DAPR_API_TOKEN";
+    /// <summary>
+    /// The name of the environment variable containing the App API token. 
+    /// </summary>
+    public const string AppApiTokenEnvironmentVariableName = "APP_API_TOKEN";
+    /// <summary>
+    /// The name of the environment variable containing the Dapr HTTP endpoint value.
+    /// </summary>
+    public const string DaprHttpEndpointEnvironmentVariableName = "DAPR_HTTP_ENDPOINT";
+    /// <summary>
+    /// The name of the environment variable containing the Dapr HTTP port value.
+    /// </summary>
+    public const string DaprHttpPortEnvironmentVariableName = "DAPR_HTTP_PORT";
+    /// <summary>
+    /// The name of the environment variable containing the Dapr GRPC endpoint value.
+    /// </summary>
+    public const string DaprGrpcEndpointEnvironmentVariableName = "DAPR_GRPC_ENDPOINT";
+    /// <summary>
+    /// The name of the environment variable containing the Dapr GRPC port value.
+    /// </summary>
+    public const string DaprGrpcPortEnvironmentVariableName = "DAPR_GRPC_PORT";
+    
+    /// <summary>
+    /// The default scheme to use for HTTP communication with the Dapr runtime.
+    /// </summary>
     public const string DefaultDaprScheme = "http";
+    /// <summary>
+    /// The default hostname to use for HTTP communication with the Dapr runtime.
+    /// </summary>
     public const string DefaultDaprHost = "localhost";
+    /// <summary>
+    /// The default port to use for HTTP communication with the Dapr runtime.
+    /// </summary>
     public const int DefaultHttpPort = 3500;
+    /// <summary>
+    /// The default port to use for GRPC communication with the Dapr runtime.
+    /// </summary>
     public const int DefaultGrpcPort = 50001;
 
     /// <summary>
@@ -40,7 +74,7 @@ internal static class DaprDefaults
     /// <param name="configuration">The optional <see cref="IConfiguration"/> to pull the value from.</param>
     /// <returns>The value of environment variable DAPR_API_TOKEN</returns>
     public static string GetDefaultDaprApiToken(IConfiguration? configuration) =>
-        GetResourceValue(configuration, DaprApiTokenName) ?? string.Empty;
+        GetResourceValue(configuration, DaprApiTokenEnvironmentVariableName) ?? string.Empty;
 
     /// <summary>
     /// Get the value of environment variable APP_API_TOKEN
@@ -48,7 +82,7 @@ internal static class DaprDefaults
     /// <param name="configuration">The optional <see cref="IConfiguration"/> to pull the value from.</param>
     /// <returns>The value of environment variable APP_API_TOKEN</returns>
     public static string GetDefaultAppApiToken(IConfiguration? configuration) =>
-        GetResourceValue(configuration, AppApiTokenName) ?? string.Empty;
+        GetResourceValue(configuration, AppApiTokenEnvironmentVariableName) ?? string.Empty;
 
     /// <summary>
     /// Get the value of HTTP endpoint based off environment variables
@@ -58,8 +92,8 @@ internal static class DaprDefaults
     public static string GetDefaultHttpEndpoint(IConfiguration? configuration = null)
     {
         //Prioritize pulling from the IConfiguration and fallback to the environment variable if not populated
-        var endpoint = GetResourceValue(configuration, DaprHttpEndpointName);
-        var port = GetResourceValue(configuration, DaprHttpPortName);
+        var endpoint = GetResourceValue(configuration, DaprHttpEndpointEnvironmentVariableName);
+        var port = GetResourceValue(configuration, DaprHttpPortEnvironmentVariableName);
             
         //Use the default HTTP port if we're unable to retrieve/parse the provided port
         int? parsedGrpcPort = string.IsNullOrWhiteSpace(port) ? DefaultHttpPort : int.Parse(port);
@@ -75,8 +109,8 @@ internal static class DaprDefaults
     public static string GetDefaultGrpcEndpoint(IConfiguration? configuration = null)
     {
         //Prioritize pulling from the IConfiguration and fallback to the environment variable if not populated
-        var endpoint = GetResourceValue(configuration, DaprGrpcEndpointName);
-        var port = GetResourceValue(configuration, DaprGrpcPortName);
+        var endpoint = GetResourceValue(configuration, DaprGrpcEndpointEnvironmentVariableName);
+        var port = GetResourceValue(configuration, DaprGrpcPortEnvironmentVariableName);
             
         //Use the default gRPC port if we're unable to retrieve/parse the provided port
         int? parsedGrpcPort = string.IsNullOrWhiteSpace(port) ? DefaultGrpcPort : int.Parse(port);
