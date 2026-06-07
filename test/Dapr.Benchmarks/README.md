@@ -56,8 +56,8 @@ dotnet run -c Release --project test/Dapr.Benchmarks -- --filter '*' --artifacts
 
 ## Metrics Tracked
 
-The CI pipeline captures and publishes the following metrics on every push to
-`master` and on every release:
+The CI pipeline captures and publishes the following metrics on every tagged
+release build (RC and GA):
 
 | Metric | Source | Unit |
 |--------|--------|------|
@@ -71,20 +71,20 @@ All metrics are tracked historically and displayed on an interactive
 
 ### How historical comparison works
 
-1. **On every `master` push / release**: BenchmarkDotNet results (JSON) and
-   package sizes are fed to `benchmark-action/github-action-benchmark`.
+1. **On every tagged release build (RC or GA)**: BenchmarkDotNet results (JSON)
+   and package sizes are fed to `benchmark-action/github-action-benchmark`.
 2. The action commits data points to the `gh-pages` branch under
    `benchmarks/<framework>/` and `package-sizes/`.
 3. GitHub Pages serves an interactive chart showing trends over time — each
-   data point is a commit or release.
+   data point is a release (or weekly schedule snapshot between releases).
 4. **Alert threshold**: If latency regresses by >150% or package size grows by
    >120%, the action posts a comment on the commit (but does **not** fail the
    workflow).
 
 ### Viewing the dashboard
 
-Once the workflow has run at least once on `master`, the dashboard is available
-at:
+Once the workflow has run at least once on a tagged release, the dashboard is
+available at:
 
 ```
 https://dapr.github.io/dotnet-sdk/
@@ -106,10 +106,14 @@ chart panel.
 ## CI Integration
 
 Benchmarks run in the **benchmarks** GitHub Actions workflow on:
-- Pushes to `master`
-- Published releases (tags)
-- Weekly schedule (Sundays at 04:00 UTC)
+- Tag pushes matching `v*` or `v*-rc*` (GA and release candidate builds)
+- Published GitHub releases
+- Weekly schedule (Sundays at 04:00 UTC) for baseline drift detection
 - Manual `workflow_dispatch`
+
+Benchmarks intentionally do **not** run on every PR or `master` push — the
+per-test sidecar startup cost makes that prohibitive, and release-cadence data
+is what drives the per-release improvement narrative.
 
 The workflow is **informational only** and does not block releases.
 
