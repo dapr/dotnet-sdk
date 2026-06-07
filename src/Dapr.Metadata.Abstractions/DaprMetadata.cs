@@ -71,15 +71,17 @@ public class DaprMetadata
     /// App connection properties.
     /// </summary>
     [JsonPropertyName("appConnectionProperties")]
-    public IReadOnlyCollection<AppConnectionPropertyMetadata> AppConnectionProperties { get; init; } = [];
+    public AppConnectionPropertyMetadata AppConnectionProperties { get; init; } = new();
 
     /// <summary>
     /// Scheduler connection metadata properties.
     /// </summary>
-    public IReadOnlyCollection<SchedulerMetadata> SchedulerMetadata { get; init; } = [];
+    [JsonPropertyName("scheduler")]
+    public SchedulerMetadata SchedulerMetadata { get; init; } = new();
 
     /// <summary>
     /// Workflow runtime metadata properties.
     /// </summary>
-    public IReadOnlyCollection<WorkflowMetadata> Workflows { get; init; } = [];
+    [JsonPropertyName("workflows")]
+    public WorkflowMetadata Workflows { get; init; } = new();
 }
