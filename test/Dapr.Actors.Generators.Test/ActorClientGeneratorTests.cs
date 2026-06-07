@@ -56,6 +56,9 @@ namespace Dapr.Actors.Generators
         Path.Combine("Dapr.Actors.Generators", "Dapr.Actors.Generators.ActorClientGenerator", "Dapr.Actors.Generators.GenerateActorClientAttribute.g.cs"),
         SourceText.From(GenerateActorClientAttributeText, Encoding.UTF8));
 
+    private static SourceText CreateGeneratedSourceText(string text) =>
+        SourceText.From(text, Encoding.UTF8, SourceHashAlgorithm.Sha256);
+
     private static VerifyCS.Test CreateTest(string originalSource, string? generatedName = null, string? generatedSource = null)
     {
         var test = new VerifyCS.Test
@@ -76,7 +79,7 @@ namespace Dapr.Actors.Generators
         {
             test.TestState.GeneratedSources.Add((
                 Path.Combine("Dapr.Actors.Generators", "Dapr.Actors.Generators.ActorClientGenerator", generatedName),
-                SourceText.From(generatedSource, Encoding.UTF8)));
+                CreateGeneratedSourceText(generatedSource)));
         }
 
         return test;

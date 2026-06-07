@@ -116,6 +116,11 @@ public sealed class DaprHarnessBuilder
 	public JobsHarness BuildJobs() => new(_componentsDirectory, _startApp, _options, _environment);
 
     /// <summary>
+    /// Builds a Metadata harness.
+    /// </summary>
+    public MetadataHarness BuildMetadata() => new(_componentsDirectory, _startApp, _options, _environment);
+
+    /// <summary>
     /// Builds a PubSub harness.
     /// </summary>
 	public PubSubHarness BuildPubSub() => new(_componentsDirectory, _startApp, _options, _environment);
