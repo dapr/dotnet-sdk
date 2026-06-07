@@ -1,9 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <PackageId>Dapr Metadata Abstractions</PackageId>
+        <Title>Dapr Metadata Abstractions</Title>
+        <Description>Provides abstractions for the Dapr Abstraction SDK implementation.</Description>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
