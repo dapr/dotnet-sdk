@@ -43,6 +43,28 @@ internal static class DaprDefaults
         GetResourceValue(configuration, DaprApiTokenName) ?? string.Empty;
 
     /// <summary>
+    /// Creates an <see cref="HttpClient"/> configured to communicate with the default Dapr HTTP endpoint.
+    /// </summary>
+    /// <param name="httpClientFactory">The factory used to create the <see cref="HttpClient"/> instance.</param>
+    /// <param name="configuration">The optional <see cref="IConfiguration"/> to pull values from.</param>
+    /// <returns>A configured <see cref="HttpClient"/> instance.</returns>
+    public static HttpClient CreateDefaultHttpClient(IHttpClientFactory httpClientFactory, IConfiguration? configuration = null)
+    {
+        ArgumentNullException.ThrowIfNull(httpClientFactory);
+
+        var httpClient = httpClientFactory.CreateClient();
+        httpClient.BaseAddress = new Uri(GetDefaultHttpEndpoint(configuration));
+
+        var apiTokenHeader = global::Dapr.Common.DaprClientUtilities.GetDaprApiTokenHeader(GetDefaultDaprApiToken(configuration));
+        if (apiTokenHeader is not null)
+        {
+            httpClient.DefaultRequestHeaders.Add(apiTokenHeader.Value.Key, apiTokenHeader.Value.Value);
+        }
+
+        return httpClient;
+    }
+
+    /// <summary>
     /// Get the value of environment variable APP_API_TOKEN
     /// </summary>
     /// <param name="configuration">The optional <see cref="IConfiguration"/> to pull the value from.</param>

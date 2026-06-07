@@ -15,7 +15,7 @@ internal static class DaprClientUtilities
     /// <returns>The gRPC call options.</returns>
     internal static CallOptions ConfigureGrpcCallOptions(Assembly assembly, string? daprApiToken, CancellationToken cancellationToken = default)
     {
-        var callOptions = new CallOptions(headers: new Metadata(), cancellationToken: cancellationToken);
+        var callOptions = new CallOptions(headers: [], cancellationToken: cancellationToken);
         
         //Add the user-agent header to the gRPC call options
         var assemblyVersion = assembly
