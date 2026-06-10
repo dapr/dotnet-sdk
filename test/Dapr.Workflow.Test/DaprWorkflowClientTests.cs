@@ -85,20 +85,21 @@ public class DaprWorkflowClientTests
     }
 
     [Fact]
-    public async Task GetWorkflowStateAsync_ShouldReturnNull_WhenInnerReturnsNullMetadata()
+    public async Task GetWorkflowStateAsync_ShouldReflectNotExists_WhenInnerReturnsNullMetadata()
     {
         var inner = new CapturingWorkflowClient { GetWorkflowMetadataResult = null };
         var client = new DaprWorkflowClient(inner);
 
         var state = await client.GetWorkflowStateAsync("missing", cancellation: TestContext.Current.CancellationToken);
 
-        Assert.Null(state);
+        Assert.NotNull(state);
+        Assert.False(state.Exists);
         Assert.Equal("missing", inner.LastGetMetadataInstanceId);
         Assert.True(inner.LastGetMetadataGetInputsAndOutputs);
     }
 
     [Fact]
-    public async Task GetWorkflowStateAsync_ShouldReturnNull_WhenInnerThrowsRpcException()
+    public async Task GetWorkflowStateAsync_ShouldReflectNotExists_WhenInnerThrowsRpcException()
     {
         var inner = new CapturingWorkflowClient
         {
@@ -108,7 +109,8 @@ public class DaprWorkflowClientTests
 
         var state = await client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken);
 
-        Assert.Null(state);
+        Assert.NotNull(state);
+        Assert.False(state.Exists);
     }
 
     [Fact]
