@@ -22,7 +22,10 @@ async function run() {
             per_page: 100
         });
 
-        const tagNames = tags.map((t: { name: string }) => t.name);
+        // Temporary: skip Dapr 1.17.x while that version is blocked in testing.
+        const tagNames = tags
+            .map((t: { name: string }) => t.name)
+            .filter((name) => !name.includes("1.17."));
         const result = computeFromTags({
             tags: tagNames,
             tagPrefix,
