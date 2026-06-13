@@ -66,7 +66,8 @@ public sealed class PurgeTests
 
         // Verify workflow state no longer exists after purge
         var stateAfterPurge = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
-        Assert.Null(stateAfterPurge);
+        Assert.NotNull(stateAfterPurge);
+        Assert.False(stateAfterPurge.Exists);
     }
 
     [MinimumDaprRuntimeFact("1.17")]
@@ -153,15 +154,13 @@ public sealed class PurgeTests
         Assert.True(purged);
 
         var stateAfterPurge = await daprWorkflowClient.GetWorkflowStateAsync(workflowInstanceId, cancellation: TestContext.Current.CancellationToken);
-        Assert.Null(stateAfterPurge);
+        Assert.NotNull(stateAfterPurge);
+        Assert.False(stateAfterPurge.Exists);
     }
 
     private sealed class SimpleWorkflow : Workflow<string, string>
     {
-        public override Task<string> RunAsync(WorkflowContext context, string input)
-        {
-            return Task.FromResult($"Processed: {input}");
-        }
+        public override Task<string> RunAsync(WorkflowContext context, string input) => Task.FromResult($"Processed: {input}");
     }
 
     private sealed class LongRunningWorkflow : Workflow<object?, string>
