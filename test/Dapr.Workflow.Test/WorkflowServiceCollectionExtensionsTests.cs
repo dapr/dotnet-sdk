@@ -4,6 +4,7 @@ using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
 using Dapr.Workflow.Client;
 using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker;
 using Grpc.Core;
 using Grpc.Net.Client;
@@ -295,6 +296,129 @@ public class WorkflowServiceCollectionExtensionsTests
 
         Assert.Contains(hostedDescriptors, d => d.ImplementationType == typeof(WorkflowWorker));
     }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldAutoRegisterDiscoveredWorkflowSimpleNames()
+    {
+        WorkflowAutoRegistry.Register(options =>
+        {
+            options.RegisterWorkflow<PlainAutoRegisteredWorkflow>();
+        });
+
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddDaprWorkflow(_ => { });
+
+        using var sp = services.BuildServiceProvider();
+        var factory = sp.GetRequiredService<IWorkflowsFactory>();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier(nameof(PlainAutoRegisteredWorkflow)), sp, out var workflow, out _));
+        Assert.NotNull(workflow);
+        Assert.IsType<PlainAutoRegisteredWorkflow>(workflow);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_WithVersioning_ShouldRouteCanonicalNameToLatestNumericSuffixWorkflow()
+    {
+        WorkflowAutoRegistry.Register(options =>
+        {
+            options.RegisterWorkflow<NumericRoutingWorkflow>();
+            options.RegisterWorkflow<NumericRoutingWorkflowV2>();
+            options.RegisterWorkflow<NumericRoutingWorkflowV3>();
+        });
+
+        WorkflowVersioningRegistry.Register((options, _) =>
+        {
+            options.RegisterWorkflow<NumericRoutingWorkflowV3>(nameof(NumericRoutingWorkflow));
+            options.RegisterWorkflow<NumericRoutingWorkflow>(nameof(NumericRoutingWorkflow));
+            options.RegisterWorkflow<NumericRoutingWorkflowV2>(nameof(NumericRoutingWorkflowV2));
+            options.RegisterWorkflow<NumericRoutingWorkflowV3>(nameof(NumericRoutingWorkflowV3));
+        });
+
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddDaprWorkflow(_ => { });
+        services.AddDaprWorkflowVersioning();
+
+        using var sp = services.BuildServiceProvider();
+        _ = sp.GetServices<IHostedService>().ToArray();
+        var factory = sp.GetRequiredService<IWorkflowsFactory>();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier(nameof(NumericRoutingWorkflow)), sp, out var workflow, out _));
+        Assert.NotNull(workflow);
+        Assert.IsType<NumericRoutingWorkflowV3>(workflow);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_WithVersioning_ShouldSelectV3ForUnsuffixedCanonicalBaseWorkflowName()
+    {
+        WorkflowAutoRegistry.Register(options =>
+        {
+            options.RegisterWorkflow<DiagnosticsWorkflow>();
+            options.RegisterWorkflow<DiagnosticsWorkflowV2>();
+            options.RegisterWorkflow<DiagnosticsWorkflowV3>();
+        });
+
+        WorkflowVersioningRegistry.Register((options, _) =>
+        {
+            options.RegisterWorkflow<DiagnosticsWorkflowV3>(nameof(DiagnosticsWorkflow));
+            options.RegisterWorkflow<DiagnosticsWorkflow>(nameof(DiagnosticsWorkflow));
+            options.RegisterWorkflow<DiagnosticsWorkflowV2>(nameof(DiagnosticsWorkflowV2));
+            options.RegisterWorkflow<DiagnosticsWorkflowV3>(nameof(DiagnosticsWorkflowV3));
+        });
+
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddDaprWorkflow(_ => { });
+        services.AddDaprWorkflowVersioning();
+
+        using var sp = services.BuildServiceProvider();
+        _ = sp.GetServices<IHostedService>().ToArray();
+        var factory = sp.GetRequiredService<IWorkflowsFactory>();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier(nameof(DiagnosticsWorkflow)), sp, out var workflow, out _));
+        Assert.NotNull(workflow);
+        Assert.IsType<DiagnosticsWorkflowV3>(workflow);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_WithVersioning_ShouldPreserveExplicitWorkflowRegistrationPrecedence()
+    {
+        WorkflowAutoRegistry.Register(options =>
+        {
+            options.RegisterWorkflow<ExplicitAliasWorkflow>();
+            options.RegisterWorkflow<ExplicitAliasWorkflowV2>();
+            options.RegisterWorkflow<ExplicitAliasWorkflowV3>();
+        });
+
+        WorkflowVersioningRegistry.Register((options, _) =>
+        {
+            options.RegisterWorkflow<ExplicitAliasWorkflowV3>(nameof(ExplicitAliasWorkflow));
+            options.RegisterWorkflow<ExplicitAliasWorkflow>(nameof(ExplicitAliasWorkflow));
+            options.RegisterWorkflow<ExplicitAliasWorkflowV2>(nameof(ExplicitAliasWorkflowV2));
+            options.RegisterWorkflow<ExplicitAliasWorkflowV3>(nameof(ExplicitAliasWorkflowV3));
+        });
+
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddDaprWorkflow(options =>
+        {
+            options.RegisterWorkflow<ExplicitAliasOverrideWorkflow>(nameof(ExplicitAliasWorkflow));
+        });
+        services.AddDaprWorkflowVersioning();
+
+        using var sp = services.BuildServiceProvider();
+        _ = sp.GetServices<IHostedService>().ToArray();
+        var factory = sp.GetRequiredService<IWorkflowsFactory>();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier(nameof(ExplicitAliasWorkflow)), sp, out var workflow, out _));
+        Assert.NotNull(workflow);
+        Assert.IsType<ExplicitAliasOverrideWorkflow>(workflow);
+    }
     
     [Fact]
     public void AddDaprWorkflowClient_WithGrpcMessageSizeLimits_ShouldApplyIntoGrpcClientFactoryOptions()
@@ -530,6 +654,57 @@ public class WorkflowServiceCollectionExtensionsTests
     }
     
     private sealed record SerializerDependency(string Value);
+
+    private sealed class PlainAutoRegisteredWorkflow : TestWorkflow
+    {
+    }
+
+    private sealed class NumericRoutingWorkflow : TestWorkflow
+    {
+    }
+
+    private sealed class NumericRoutingWorkflowV2 : TestWorkflow
+    {
+    }
+
+    private sealed class NumericRoutingWorkflowV3 : TestWorkflow
+    {
+    }
+
+    private sealed class DiagnosticsWorkflow : TestWorkflow
+    {
+    }
+
+    private sealed class DiagnosticsWorkflowV2 : TestWorkflow
+    {
+    }
+
+    private sealed class DiagnosticsWorkflowV3 : TestWorkflow
+    {
+    }
+
+    private sealed class ExplicitAliasWorkflow : TestWorkflow
+    {
+    }
+
+    private sealed class ExplicitAliasWorkflowV2 : TestWorkflow
+    {
+    }
+
+    private sealed class ExplicitAliasWorkflowV3 : TestWorkflow
+    {
+    }
+
+    private sealed class ExplicitAliasOverrideWorkflow : TestWorkflow
+    {
+    }
+
+    private abstract class TestWorkflow : IWorkflow
+    {
+        public Type InputType => typeof(object);
+        public Type OutputType => typeof(object);
+        public Task<object?> RunAsync(WorkflowContext context, object? input) => Task.FromResult<object?>(null);
+    }
 
     private sealed class DependencyBasedSerializer(SerializerDependency dep) : IWorkflowSerializer
     {
