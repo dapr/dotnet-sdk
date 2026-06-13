@@ -91,7 +91,7 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
     /// A <see cref="WorkflowMetadata"/> object, or <c>null</c> if the workflow instance does not exist.
     /// </returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
-    Task<WorkflowState?> GetWorkflowStateAsync(
+    Task<WorkflowState> GetWorkflowStateAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default);

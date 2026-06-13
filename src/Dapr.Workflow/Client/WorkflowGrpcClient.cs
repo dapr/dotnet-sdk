@@ -73,9 +73,14 @@ internal sealed class WorkflowGrpcClient(
             var grpcCallOptions = CreateCallOptions(cancellationToken);
             var response = await grpcClient.GetInstanceAsync(request, grpcCallOptions);
 
-            if (!response.Exists)
+            if (response is null)
             {
                 logger.LogGetWorkflowMetadataInstanceNotFound(instanceId);
+                return null;
+            }
+
+            if (!response.Exists)
+            {
                 return null;
             }
 
@@ -83,7 +88,11 @@ internal sealed class WorkflowGrpcClient(
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
         {
-            logger.LogGetWorkflowMetadataInstanceNotFound(ex, instanceId);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting workflow metadata for instance '{InstanceId}'", instanceId);
             return null;
         }
     }

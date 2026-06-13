@@ -128,7 +128,7 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// exist or an error occurs retrieving the metadata.
     /// This method never throws.
     /// </returns>
-    public async Task<WorkflowState?> GetWorkflowStateAsync(
+    public async Task<WorkflowState> GetWorkflowStateAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default)
@@ -138,12 +138,12 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
         try
         {
             var metadata = await _innerClient.GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellation);
-            return metadata is null ? null : new WorkflowState(metadata);    
+            return new WorkflowState(metadata);    
         }
         catch (RpcException)
         {
             // If the state doesn't exist, we typically get an `RpcException`, so this wraps this and just returns null
-            return null;
+            return new WorkflowState(null);
         }
     }
     
