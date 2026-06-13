@@ -128,7 +128,7 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// exist or an error occurs retrieving the metadata.
     /// This method never throws.
     /// </returns>
-    public async Task<WorkflowState?> GetWorkflowStateAsync(
+    public async Task<WorkflowState> GetWorkflowStateAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default)
