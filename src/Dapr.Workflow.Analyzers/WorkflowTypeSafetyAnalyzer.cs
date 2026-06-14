@@ -32,11 +32,9 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
     /// <summary>
     /// Gets the diagnostics supported by this analyzer.
     /// </summary>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-    [
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(
         InputTypeMismatchDescriptor,
-        OutputTypeMismatchDescriptor
-    ];
+        OutputTypeMismatchDescriptor);
 
     /// <summary>
     /// Initializes analyzer actions.
