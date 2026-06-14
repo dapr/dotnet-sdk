@@ -2,6 +2,8 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <!-- Shipping analyzers must reference a Roslyn version that is no newer than supported consumer compilers. -->
+    <ShippingAnalyzerRoslynVersion>4.8.0</ShippingAnalyzerRoslynVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="A2A" Version="0.1.0-preview.2" />

@@ -308,9 +308,38 @@ public sealed class RegistrationOrderRegressionIntegrationTests
         using var archive = ZipFile.OpenRead(packagePath);
         var entries = archive.Entries.Select(e => e.FullName).ToHashSet(StringComparer.Ordinal);
 
+        Assert.Contains("analyzers/dotnet/cs/Dapr.Workflow.Analyzers.dll", entries);
         Assert.Contains("analyzers/dotnet/cs/Dapr.Workflow.Versioning.Generators.dll", entries);
         Assert.Contains("lib/net8.0/Dapr.Workflow.Versioning.Abstractions.dll", entries);
         Assert.Contains("lib/net8.0/Dapr.Workflow.Versioning.Runtime.dll", entries);
+
+        AssertAnalyzerReferencesSupportedRoslynVersion(archive, "analyzers/dotnet/cs/Dapr.Workflow.Analyzers.dll");
+        AssertAnalyzerReferencesSupportedRoslynVersion(archive, "analyzers/dotnet/cs/Dapr.Workflow.Versioning.Generators.dll");
+    }
+
+    private static void AssertAnalyzerReferencesSupportedRoslynVersion(ZipArchive archive, string entryName)
+    {
+        var maximumSupportedRoslynReferenceVersion = new Version(4, 8, 0, 0);
+        var entry = archive.GetEntry(entryName)
+            ?? throw new InvalidOperationException($"Could not find package entry '{entryName}'.");
+
+        using var stream = entry.Open();
+        using var assemblyStream = new MemoryStream();
+        stream.CopyTo(assemblyStream);
+
+        var assembly = System.Reflection.Assembly.Load(assemblyStream.ToArray());
+        var references = assembly.GetReferencedAssemblies()
+            .Where(reference => reference.Name?.StartsWith("Microsoft.CodeAnalysis", StringComparison.Ordinal) == true)
+            .ToArray();
+
+        Assert.NotEmpty(references);
+
+        foreach (var reference in references)
+        {
+            Assert.True(
+                reference.Version <= maximumSupportedRoslynReferenceVersion,
+                $"{entryName} references {reference.Name} {reference.Version}, which is newer than {maximumSupportedRoslynReferenceVersion}.");
+        }
     }
 
     private static void RunDotNet(string workingDirectory, params string[] arguments) =>

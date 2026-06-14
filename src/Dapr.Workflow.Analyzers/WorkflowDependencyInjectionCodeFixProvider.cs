@@ -32,7 +32,7 @@ public sealed class WorkflowDependencyInjectionCodeFixProvider : CodeFixProvider
     /// <summary>
     /// Gets the diagnostic IDs that this provider can fix.
     /// </summary>
-    public override ImmutableArray<string> FixableDiagnosticIds => ["DAPR1305"];
+    public override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create("DAPR1305");
 
     /// <summary>
     /// Registers the code fix for the diagnostic.
