@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Collections.Immutable;
+using System.Text;
 using Dapr.Actors.Generators.Diagnostics;
 using Dapr.Actors.Generators.Extensions;
 using Dapr.Actors.Generators.Helpers;
@@ -19,6 +20,7 @@ using Dapr.Actors.Generators.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Dapr.Actors.Generators;
 
@@ -191,7 +193,9 @@ public sealed class ActorClientGenerator : IIncrementalGenerator
                 .NormalizeWhitespace()
                 .ToFullString();
 
-            context.AddSource($"{descriptor.FullyQualifiedTypeName}.g.cs", compilationOutput);
+            context.AddSource(
+                $"{descriptor.FullyQualifiedTypeName}.g.cs",
+                SourceText.From(compilationOutput, Encoding.UTF8, SourceHashAlgorithm.Sha256));
         }
         catch (DiagnosticsException e)
         {
