@@ -121,8 +121,7 @@ public sealed class VersioningIntegrationTests
                 }
             }
 
-            var startedState = await client1.GetWorkflowStateAsync(instanceId, getInputsAndOutputs: false);
-            Assert.True(startedState?.Exists, "Expected workflow instance to exist before shutdown.");
+            await WaitForWorkflowExistsAsync(client1, instanceId, TimeSpan.FromMinutes(1));
         }
 
         await using (var appV2 = await StartNonVersionedAppAsync(componentsDirV2, environment, options))
