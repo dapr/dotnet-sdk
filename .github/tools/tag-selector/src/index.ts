@@ -15,19 +15,26 @@ async function run() {
 
         const octokit = github.getOctokit(token);
 
-        // Paginate all tags
-        const tags: Tag[] = await octokit.paginate(octokit.rest.repos.listTags, {
+        // Paginate releases so prerelease releases are excluded from stable selection
+        // even when their tag name does not include a prerelease suffix.
+        const releases = await octokit.paginate(octokit.rest.repos.listReleases, {
             owner,
             repo,
             per_page: 100
         });
 
         // Temporary: skip Dapr 1.17.x while that version is blocked in testing.
-        const tagNames = tags
-            .map((t: { name: string }) => t.name)
-            .filter((name) => !name.includes("1.17."));
+        const releaseTags = releases
+            .filter((release) => !release.draft)
+            .filter((release) => !release.tag_name.includes("1.17."))
+            .map((release) => ({
+                name: release.tag_name,
+                prerelease: release.prerelease,
+            }));
+
         const result = computeFromTags({
-            tags: tagNames,
+            tags: releaseTags.map((tag) => tag.name),
+            prereleaseTags: releaseTags.filter((tag) => tag.prerelease).map((tag) => tag.name),
             tagPrefix,
             stableCount,
             rcCount,

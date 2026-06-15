@@ -2,6 +2,7 @@ import semver from "semver";
 
 export type ComputeInput = {
     tags: string[];         // raw tag names e.g., ["v1.16.8", "1.17.0-rc.3"]
+    prereleaseTags?: string[]; // tags marked as prerelease by the release source
     tagPrefix?: string;     // e.g., "v"
     stableCount?: number;   // number of distinct stable minor versions to include; default: 2
     rcCount?: number;       // default: 1
@@ -34,24 +35,36 @@ export function computeFromTags(input: ComputeInput): ComputeOutput {
     const stableCount = input.stableCount ?? 2;
     const rcCount = input.rcCount ?? 1;
     const rcIdent = input.rcIdent ?? "rc";
+    const prereleaseTagSet = new Set(
+        (input.prereleaseTags ?? []).map((t) => stripPrefix(t.replace(/^refs\/tags\//, ""), tagPrefix))
+    );
 
     // Normalize tags -> semver.valid versions
-    const versions: string[] = [];
+    const versions: { version: string; isPrereleaseRelease: boolean }[] = [];
     for (const t of input.tags) {
         const raw = stripPrefix(t.replace(/^refs\/tags\//, ""), tagPrefix);
         const cleaned = semver.valid(raw);
-        if (cleaned) versions.push(cleaned);
+        if (cleaned) {
+            versions.push({
+                version: cleaned,
+                isPrereleaseRelease: prereleaseTagSet.has(raw),
+            });
+        }
     }
 
     if (versions.length === 0) {
         return { matrix_json: [] };
     }
 
-    const stable = versions.filter((v) => !semver.prerelease(v));
-    const prerelease = versions.filter((v) => !!semver.prerelease(v));
+    const stable = versions
+        .filter((v) => !v.isPrereleaseRelease && !semver.prerelease(v.version))
+        .map((v) => v.version);
+    const prerelease = versions
+        .filter((v) => v.isPrereleaseRelease || !!semver.prerelease(v.version))
+        .map((v) => v.version);
 
     // Highest overall version determines whether we're in an RC phase
-    const allSorted = [...versions].sort(semver.rcompare);
+    const allSorted = versions.map((v) => v.version).sort(semver.rcompare);
     const highestOverall = allSorted[0];
     const highestMajor = semver.major(highestOverall);
     const highestMinor = semver.minor(highestOverall);
