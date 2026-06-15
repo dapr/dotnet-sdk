@@ -130,7 +130,7 @@ public sealed class AggregatorPackageTests
 
         foreach (var requiredProjectReference in package.RequiredProjectReferences)
         {
-            Assert.Contains(projectReferences, reference => Path.GetFileName(reference) == requiredProjectReference);
+            Assert.Contains(projectReferences, reference => GetProjectFileName(reference) == requiredProjectReference);
         }
 
         foreach (var requiredPackageReference in package.RequiredPackageReferences)
@@ -140,12 +140,12 @@ public sealed class AggregatorPackageTests
 
         foreach (var requiredBundledProject in package.RequiredBundledProjects)
         {
-            Assert.Contains(bundledProjectReferences, reference => Path.GetFileName(reference) == requiredBundledProject);
+            Assert.Contains(bundledProjectReferences, reference => GetProjectFileName(reference) == requiredBundledProject);
         }
 
         foreach (var requiredAnalyzerProject in package.RequiredAnalyzerProjects)
         {
-            Assert.Contains(projectPathMentions, reference => Path.GetFileName(reference) == requiredAnalyzerProject);
+            Assert.Contains(projectPathMentions, reference => GetProjectFileName(reference) == requiredAnalyzerProject);
         }
 
         AssertTargetsTfmSpecificPackageFiles(elements);
@@ -182,6 +182,12 @@ public sealed class AggregatorPackageTests
             .SelectMany(value => value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             .Where(value => value.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
             .ToArray();
+
+    private static string GetProjectFileName(string msbuildPath) =>
+        msbuildPath
+            .Replace('\\', '/')
+            .Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Last();
 
     private static void AssertTargetsTfmSpecificPackageFiles(IEnumerable<XElement> elements)
     {
