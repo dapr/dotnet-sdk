@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.Build.NoTargets/3.7.0">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <IsPackable>true</IsPackable>
@@ -11,10 +11,7 @@
         <!-- This aggregator produces no own binaries -->
         <IncludeBuildOutput>false</IncludeBuildOutput>
 
-        <!-- We embed children; do NOT emit dependency groups -->
-        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-
-        <!-- Aggregator package has lib assets but no dependencies -->
+        <!-- Aggregator package has lib assets from bundled child projects -->
         <NoWarn>$(NoWarn);NU5128</NoWarn>
 
         <!-- Avoid creating an empty .snupkg -->
@@ -43,16 +40,30 @@
     </Target>
 
     <ItemGroup>
-        <!-- Build children but do NOT turn them into NuGet dependencies -->
-        <ProjectReference Include="..\Dapr.StateManagement.Abstractions\Dapr.StateManagement.Abstractions.csproj"
+        <!-- Child projects whose outputs are bundled into this package but are NOT NuGet dependencies. -->
+        <_StateManagementChildLib Include="..\Dapr.StateManagement.Abstractions\Dapr.StateManagement.Abstractions.csproj" />
+        <_StateManagementChildLib Include="..\Dapr.StateManagement.Runtime\Dapr.StateManagement.Runtime.csproj" />
+
+        <ProjectReference Include="@(_StateManagementChildLib)"
                           PrivateAssets="all" ReferenceOutputAssembly="false" />
-        <ProjectReference Include="..\Dapr.StateManagement.Runtime\Dapr.StateManagement.Runtime.csproj"
-                          PrivateAssets="all" ReferenceOutputAssembly="false" />
+
+        <!-- Dapr.Common remains a visible dependency because the bundled assemblies expose and use
+             its public types, and consumers need it as a compile/runtime asset. -->
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+    </ItemGroup>
+
+    <!-- Package references required by the bundled child assemblies. These must remain visible to
+         consumers because the child projects are bundled privately instead of published separately. -->
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" />
+        <PackageReference Include="Grpc.Net.Client" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Http" />
     </ItemGroup>
 
     <!-- Build child libs for the current TFM -->
     <Target Name="_BuildChildrenForCurrentTFM">
-        <MSBuild Projects="@(ProjectReference)"
+        <MSBuild Projects="@(_StateManagementChildLib)"
                  Targets="Build"
                  Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)"
                  BuildInParallel="true" />
@@ -61,7 +72,7 @@
     <!-- Collect per-TFM outputs and map them into lib/<tfm>/ in the package -->
     <Target Name="_CollectChildOutputsForCurrentTFM" DependsOnTargets="_BuildChildrenForCurrentTFM">
         <!-- Ask children for their TargetPath for THIS TFM -->
-        <MSBuild Projects="@(ProjectReference)"
+        <MSBuild Projects="@(_StateManagementChildLib)"
                  Targets="GetTargetPath"
                  Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)">
             <Output TaskParameter="TargetOutputs" ItemName="_BuiltChildOutputs" />
