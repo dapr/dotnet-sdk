@@ -23,10 +23,8 @@ async function run() {
             per_page: 100
         });
 
-        // Temporary: skip Dapr 1.17.x while that version is blocked in testing.
         const releaseTags = releases
             .filter((release) => !release.draft)
-            .filter((release) => !release.tag_name.includes("1.17."))
             .map((release) => ({
                 name: release.tag_name,
                 prerelease: release.prerelease,
