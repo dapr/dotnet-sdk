@@ -84,6 +84,14 @@ public sealed class DaprHarnessBuilder
     }
     
     /// <summary>
+    /// Builds a service-invocation harness (HTTP or gRPC proxy).
+    /// No external infrastructure is started; configure <see cref="DaprRuntimeOptions.AppProtocol"/>
+    /// via <see cref="WithOptions"/> to select the protocol ("http" or "grpc").
+    /// </summary>
+    public ServiceInvocationHarness BuildServiceInvocation() =>
+        new(_componentsDirectory, _startApp, _options, _environment);
+
+    /// <summary>
     /// Builds a workflow harness.
     /// </summary>
 	public WorkflowHarness BuildWorkflow() => new(_componentsDirectory, _startApp, _options, _environment);
