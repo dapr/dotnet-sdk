@@ -2301,6 +2301,8 @@ internal class DaprClientGrpc : DaprClient
             {
                 options.Headers.Add(this.apiTokenHeader.Value.Key, this.apiTokenHeader.Value.Value);
             }
+
+            DaprClientUtilities.AddCurrentTraceContextHeaders(options.Headers);
         }
 
         return options;
