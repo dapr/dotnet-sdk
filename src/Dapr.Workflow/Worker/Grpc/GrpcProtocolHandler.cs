@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
@@ -29,9 +30,14 @@ namespace Dapr.Workflow.Worker.Grpc;
 internal sealed class GrpcProtocolHandler(
     TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient,
     ILoggerFactory loggerFactory,
-    string? daprApiToken = null) : IAsyncDisposable {
+    string? daprApiToken = null,
+    bool disableStatefulHistory = false,
+    TimeSpan? historyCacheTtl = null,
+    int historyCacheMaxInstances = 0,
+    long historyCacheMaxBytes = 0) : IAsyncDisposable {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan KeepaliveInterval = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan HistorySweepInterval = TimeSpan.FromMinutes(1);
 
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
@@ -39,6 +45,10 @@ internal sealed class GrpcProtocolHandler(
         grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly SemaphoreSlim _orchestrationSemaphore = new(100);
     private readonly SemaphoreSlim _activitySemaphore = new(100);
+
+    private readonly bool _disableStatefulHistory = disableStatefulHistory;
+    private readonly WorkflowHistoryCache _historyCache =
+        new(historyCacheTtl, historyCacheMaxInstances, historyCacheMaxBytes);
 
     private AsyncServerStreamingCall<WorkItem>? _streamingCall;
     private int _activeWorkItemCount;
@@ -57,10 +67,20 @@ internal sealed class GrpcProtocolHandler(
     {
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposalCts.Token);
         var token = linkedCts.Token;
-        
-        // Establish the bidirectional stream
-        var request = new GetWorkItemsRequest();
 
+        // Reclaim idle history-cache entries for the lifetime of this listener.
+        var janitorTask = _disableStatefulHistory ? Task.CompletedTask : RunHistoryJanitorAsync(token);
+
+        // Establish the bidirectional stream. Advertise stateful-history support so the
+        // sidecar can send deltas instead of the full history each turn.
+        var request = new GetWorkItemsRequest();
+        if (!_disableStatefulHistory)
+        {
+            request.Capabilities.Add(WorkerCapability.StatefulHistory);
+        }
+
+        try
+        {
         while (!token.IsCancellationRequested)
         {
             CancellationTokenSource? keepaliveCts = null;
@@ -127,10 +147,34 @@ internal sealed class GrpcProtocolHandler(
 
                 _streamingCall?.Dispose();
                 _streamingCall = null;
+
+                // The next stream starts cold: the sidecar drops this stream's warm set,
+                // so the cached histories from this connection are no longer in sync.
+                _historyCache.Reset();
             }
-        }        
+        }
+        }
+        finally
+        {
+            await janitorTask;
+        }
     }
-    
+
+    private async Task RunHistoryJanitorAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(HistorySweepInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                _historyCache.SweepExpired();
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+    }
+
     private static async Task DelayOrStopAsync(TimeSpan delay, CancellationToken token)
     {
         try
@@ -222,6 +266,31 @@ internal sealed class GrpcProtocolHandler(
         {
             _logger.LogGrpcProtocolHandlerWorkflowProcessorStart(request.InstanceId, activeCount);
 
+            // Resolve the committed history before replay. A delta work item (cachedHistory set)
+            // carries only the events new since this worker was last warm for the instance, so we
+            // rebuild the full history from our per-stream cache, or fetch it on a miss. Overwriting
+            // request.PastEvents here keeps the workflow handler oblivious to the delta protocol.
+            if (!_disableStatefulHistory && request.CachedHistory is not null)
+            {
+                try
+                {
+                    await ResolveCachedHistoryAsync(request, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogGrpcProtocolHandlerWorkflowProcessorCanceled(request.InstanceId);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    // The cache-miss fallback fetch failed and there is no per-item NACK. Abandon
+                    // the work item so the backend redelivers it (as a full-history send on a future
+                    // stream) rather than marking an otherwise-healthy turn as failed.
+                    _logger.LogGrpcProtocolHandlerWorkflowProcessorFailedToSendError(ex, request.InstanceId);
+                    return;
+                }
+            }
+
             // Execute the orchestrator and determine the response (normal actions or application failure).
             // This try/catch must NOT include the CompleteOrchestratorTaskAsync call below — a transport
             // failure during delivery must not be converted into an orchestrator-level failure, as that
@@ -230,6 +299,7 @@ internal sealed class GrpcProtocolHandler(
             try
             {
                 result = await handler(request, completionToken);
+                UpdateHistoryCache(request, result);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -264,6 +334,55 @@ internal sealed class GrpcProtocolHandler(
         {
             _orchestrationSemaphore.Release();
             Interlocked.Decrement(ref _activeWorkItemCount);
+        }
+    }
+
+    /// <summary>
+    /// Rebuilds the full committed history for a delta work item into <paramref name="request"/>.PastEvents:
+    /// the cached prefix (validated against the sidecar's expected event count) plus the delta, or the
+    /// full history fetched via GetInstanceHistory on a cache miss.
+    /// </summary>
+    private async Task ResolveCachedHistoryAsync(WorkflowRequest request, CancellationToken token)
+    {
+        var cached = _historyCache.Get(request.InstanceId);
+        if (cached is not null && cached.Count == request.CachedHistory.EventCount)
+        {
+            var full = new List<HistoryEvent>(cached.Count + request.PastEvents.Count);
+            full.AddRange(cached);
+            full.AddRange(request.PastEvents);
+            request.PastEvents.Clear();
+            request.PastEvents.AddRange(full);
+            return;
+        }
+
+        var historyRequest = new GetInstanceHistoryRequest { InstanceId = request.InstanceId };
+        var response = await _grpcClient.GetInstanceHistoryAsync(historyRequest, CreateCallOptions(token));
+        request.PastEvents.Clear();
+        request.PastEvents.AddRange(response.Events);
+    }
+
+    /// <summary>
+    /// Refreshes the per-stream history cache after a turn so the next turn can be served as a delta.
+    /// Caches only the committed history just replayed (never the not-yet-committed NewEvents), and drops
+    /// the entry once the instance ends (a CompleteWorkflow action, covering completed/failed/terminated/
+    /// continued-as-new). Skipped when stateful history is disabled or the request used history streaming
+    /// (which leaves PastEvents partial).
+    /// </summary>
+    private void UpdateHistoryCache(WorkflowRequest request, WorkflowResponse result)
+    {
+        if (_disableStatefulHistory || request.RequiresHistoryStreaming)
+        {
+            return;
+        }
+
+        var ended = result.Actions.Any(a => a.CompleteWorkflow is not null);
+        if (ended)
+        {
+            _historyCache.Remove(request.InstanceId);
+        }
+        else
+        {
+            _historyCache.Put(request.InstanceId, request.PastEvents);
         }
     }
 
