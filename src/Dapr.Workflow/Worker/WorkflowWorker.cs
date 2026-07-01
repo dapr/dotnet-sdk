@@ -35,18 +35,20 @@ namespace Dapr.Workflow.Worker;
 /// Background service that processes workflow and activity work items from the Dapr sidecar.
 /// </summary>
 internal sealed class WorkflowWorker(
-    TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient, 
-    IWorkflowsFactory workflowsFactory, 
-    ILoggerFactory loggerFactory, 
+    TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient,
+    IWorkflowsFactory workflowsFactory,
+    ILoggerFactory loggerFactory,
     IDaprSerializer workflowSerializer,
     IServiceProvider serviceProvider,
-    IConfiguration? configuration = null) : BackgroundService
+    IConfiguration? configuration = null,
+    WorkflowRuntimeOptions? options = null) : BackgroundService
 {
     private readonly TaskHubSidecarService.TaskHubSidecarServiceClient _grpcClient = grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly IWorkflowsFactory _workflowsFactory = workflowsFactory ?? throw new ArgumentNullException(nameof(workflowsFactory));
     private readonly IServiceProvider _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     private readonly ILogger<WorkflowWorker> _logger = loggerFactory.CreateLogger<WorkflowWorker>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     private readonly IDaprSerializer _serializer = workflowSerializer ?? throw new ArgumentNullException(nameof(workflowSerializer));
+    private readonly WorkflowRuntimeOptions _options = options ?? new WorkflowRuntimeOptions();
     private readonly string? _daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
     
     private GrpcProtocolHandler? _protocolHandler;
@@ -61,7 +63,9 @@ internal sealed class WorkflowWorker(
         try
         {
             // Create the protocol handler
-            _protocolHandler = new GrpcProtocolHandler(_grpcClient, loggerFactory, _daprApiToken);
+            _protocolHandler = new GrpcProtocolHandler(_grpcClient, loggerFactory, _daprApiToken,
+                _options.DisableStatefulHistory, _options.HistoryCacheTtl,
+                _options.HistoryCacheMaxInstances, _options.HistoryCacheMaxBytes);
 
             // Start processing work items
             await _protocolHandler.StartAsync(HandleWorkflowResponseAsync, HandleActivityResponseAsync, stoppingToken);

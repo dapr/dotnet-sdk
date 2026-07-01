@@ -38,6 +38,25 @@ message ActivityResponse {
   string completionToken = 5;
 }
 
+// CachedHistory is set on a WorkflowRequest when the service has intentionally
+// omitted the committed history prefix the worker is expected to already hold for
+// this instance from a previous turn on the same stream (see
+// WORKER_CAPABILITY_STATEFUL_HISTORY). Its presence means pastEvents carries only
+// the delta since the worker was last brought up to date; its absence means
+// pastEvents is the full committed history. The worker reconstructs the full past
+// history by prepending its cached events to pastEvents. The service only sets this
+// for workers that advertised WORKER_CAPABILITY_STATEFUL_HISTORY and that it
+// believes to be warm for the instance, so it is always safe for a worker to fall
+// back to the GetInstanceHistory RPC.
+message CachedHistory {
+  // eventCount is the number of leading (committed) history events the service
+  // believes the worker already holds, i.e. the length of the prefix omitted from
+  // pastEvents. The worker's cached prefix must contain exactly this many events;
+  // if it does not, the worker must treat this as a cache miss and fetch the full
+  // history via GetInstanceHistory before applying newEvents.
+  int32 eventCount = 1;
+}
+
 message WorkflowRequest {
   string instanceId = 1;
   google.protobuf.StringValue executionId = 2;
@@ -51,6 +70,11 @@ message WorkflowRequest {
   // Delivered via the work item stream to the SDK, so that the
   // workflow function can access it via ctx.
   optional PropagatedHistory propagatedHistory = 8;
+
+  // cachedHistory, when present, signals that pastEvents holds only the delta and
+  // the worker must reconstruct the omitted prefix from its own cache (or fetch it
+  // via GetInstanceHistory on a miss). Absent for full-history sends.
+  optional CachedHistory cachedHistory = 9;
 }
 
 message WorkflowResponse {
@@ -163,16 +187,26 @@ message PurgeInstancesResponse {
 
 message GetWorkItemsRequest {
   reserved 1, 2, 3, 10;
+
+  // capabilities advertises the optional protocol features this worker supports,
+  // so the service can opt into optimizations on a per-stream basis. Workers that
+  // leave this empty receive the default (fully self-contained) behavior.
+  repeated WorkerCapability capabilities = 4;
 }
 
 enum WorkerCapability {
   WORKER_CAPABILITY_UNSPECIFIED = 0;
 
-  // Indicates that the worker is capable of streaming instance history as a more optimized
-  // alternative to receiving the full history embedded in the workflow work-item.
-  // When set, the service may return work items without any history events as an optimization.
-  // It is strongly recommended that all SDKs support this capability.
-  WORKER_CAPABILITY_HISTORY_STREAMING = 1;
+  // 1 was WORKER_CAPABILITY_HISTORY_STREAMING, which was never implemented.
+  reserved 1;
+  reserved "WORKER_CAPABILITY_HISTORY_STREAMING";
+
+  // Indicates that the worker retains an instance's accumulated history in memory
+  // between workflow turns on the same work-item stream, so that the service can
+  // send only the new events (the delta) instead of the full history each turn.
+  // On a cache miss the worker recovers the full history via the GetInstanceHistory
+  // RPC, so the optimization never affects correctness.
+  WORKER_CAPABILITY_STATEFUL_HISTORY = 2;
 }
 
 message WorkItem {
