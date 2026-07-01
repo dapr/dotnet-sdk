@@ -252,9 +252,57 @@ jobs:
         with:
           TRX_PATH: ${{ github.workspace }}/TestResults
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # The stateful-history delta path (dapr/durabletask-go#110, reaching dapr via dapr/dapr#10142) is
+  # not in any dapr release, so the matrix above -- which only ever selects released tags -- cannot
+  # exercise it. This job builds the runtime images from dapr master under a private tag and points
+  # DAPR_RUNTIME_VERSION at it. DaprRuntimeOptions derives all three image tags from that one
+  # variable, so no test-infrastructure change is needed. Tests that need this sidecar skip
+  # themselves on every other leg.
+  integration-tests-dapr-head:
+    name: dapr-head-Workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - name: Parse release version
+        run: python ./.github/scripts/get_release_version.py
+      - name: Setup .NET 10.0
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0'
+          dotnet-quality: 'ga'
+      - name: Checkout dapr/dapr at master
+        uses: actions/checkout@v6
+        with:
+          repository: dapr/dapr
+          ref: master
+          path: dapr
+      - name: Setup Go from dapr/go.mod
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: dapr/go.mod
+      # Build all three from the same commit so the control plane cannot drift against daprd. The
+      # tag is what DAPR_RUNTIME_VERSION resolves to for daprd, placement and scheduler alike.
+      - name: Build dapr master runtime images
+        run: |
+          cd dapr
+          make build-linux BINARIES="daprd placement scheduler"
+          make docker-build DAPR_REGISTRY=daprio DAPR_TAG=dapr-head \
+            BINARIES="daprd placement scheduler"
+      - name: Stateful-history integration tests
+        env:
+          DAPR_RUNTIME_VERSION: dapr-head
+        run: |
+          dotnet test test/Dapr.IntegrationTest.Workflow/Dapr.IntegrationTest.Workflow.csproj \
+          --configuration release \
+          --framework net10.0 \
+          --logger "console;verbosity=detailed" \
+          /p:RuntimeIdentifier=linux-x64 \
+          /p:GITHUB_ACTIONS=false
+        timeout-minutes: 30
   ci-integration-tests-gate:
     runs-on: ubuntu-latest
-    needs: [integration-tests-v2, integration-test]
+    needs: [integration-tests-v2, integration-test, integration-tests-dapr-head]
     steps:
       - name: "All integration tests passed"
         run: echo "All unit tests passed"

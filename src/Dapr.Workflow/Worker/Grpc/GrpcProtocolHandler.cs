@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
@@ -29,9 +30,14 @@ namespace Dapr.Workflow.Worker.Grpc;
 internal sealed class GrpcProtocolHandler(
     TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient,
     ILoggerFactory loggerFactory,
-    string? daprApiToken = null) : IAsyncDisposable {
+    string? daprApiToken = null,
+    bool disableStatefulHistory = false,
+    TimeSpan? historyCacheTtl = null,
+    int historyCacheMaxInstances = 0,
+    long historyCacheMaxBytes = 0) : IAsyncDisposable {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan KeepaliveInterval = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan HistorySweepInterval = TimeSpan.FromMinutes(1);
 
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
@@ -39,6 +45,10 @@ internal sealed class GrpcProtocolHandler(
         grpcClient ?? throw new ArgumentNullException(nameof(grpcClient));
     private readonly SemaphoreSlim _orchestrationSemaphore = new(100);
     private readonly SemaphoreSlim _activitySemaphore = new(100);
+
+    private readonly bool _disableStatefulHistory = disableStatefulHistory;
+    private readonly WorkflowHistoryCache _historyCache =
+        new(historyCacheTtl, historyCacheMaxInstances, historyCacheMaxBytes);
 
     private AsyncServerStreamingCall<WorkItem>? _streamingCall;
     private int _activeWorkItemCount;
@@ -57,80 +67,122 @@ internal sealed class GrpcProtocolHandler(
     {
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _disposalCts.Token);
         var token = linkedCts.Token;
-        
-        // Establish the bidirectional stream
+
+        // Reclaim idle history-cache entries for the lifetime of this listener. The janitor gets its
+        // own cancellation source rather than riding directly on `token`: if the teardown below
+        // throws while the caller's token is still live, the outer finally must still be able to
+        // stop it, otherwise awaiting it would hang forever.
+        using var janitorCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+        var janitorTask = _disableStatefulHistory
+            ? Task.CompletedTask
+            : RunHistoryJanitorAsync(janitorCts.Token);
+
+        // Establish the bidirectional stream. Advertise stateful-history support so the
+        // sidecar can send deltas instead of the full history each turn.
         var request = new GetWorkItemsRequest();
-
-        while (!token.IsCancellationRequested)
+        if (!_disableStatefulHistory)
         {
-            CancellationTokenSource? keepaliveCts = null;
-            Task? keepaliveTask = null;
+            request.Capabilities.Add(WorkerCapability.StatefulHistory);
+        }
 
-            try
+        try
+        {
+            while (!token.IsCancellationRequested)
             {
-                _logger.LogGrpcProtocolHandlerStartStream();
+                CancellationTokenSource? keepaliveCts = null;
+                Task? keepaliveTask = null;
 
-                // Establish the server streaming call
-                var grpcCallOptions = CreateCallOptions(token);
-                _streamingCall = _grpcClient.GetWorkItems(request, grpcCallOptions);
-
-                _logger.LogGrpcProtocolHandlerStreamEstablished();
-
-                // Start the background keepalive loop to keep the connection alive
-                keepaliveCts = CancellationTokenSource.CreateLinkedTokenSource(token);
-                keepaliveTask = KeepaliveLoopAsync(keepaliveCts.Token);
-
-                // Process work items from the stream
-                await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
-
-                // Stream ended gracefully => treat as an interrupted and reconnect unless shutting down
-                if (!token.IsCancellationRequested)
+                try
                 {
+                    _logger.LogGrpcProtocolHandlerStartStream();
+
+                    // Establish the server streaming call
+                    var grpcCallOptions = CreateCallOptions(token);
+                    _streamingCall = _grpcClient.GetWorkItems(request, grpcCallOptions);
+
+                    _logger.LogGrpcProtocolHandlerStreamEstablished();
+
+                    // Start the background keepalive loop to keep the connection alive
+                    keepaliveCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                    keepaliveTask = KeepaliveLoopAsync(keepaliveCts.Token);
+
+                    // Process work items from the stream
+                    await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
+
+                    // Stream ended gracefully => treat as an interrupted and reconnect unless shutting down
+                    if (!token.IsCancellationRequested)
+                    {
+                        await DelayOrStopAsync(ReconnectDelay, token);
+                    }
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
+                {
+                    _logger.LogGrpcProtocolHandlerStreamCanceled();
+                    break;
+                }
+                catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && token.IsCancellationRequested)
+                {
+                    _logger.LogGrpcProtocolHandlerStreamCanceled();
+                    break;
+                }
+                catch (RpcException ex) when (!token.IsCancellationRequested)
+                {
+                    // Any RpcException while not shutting down -> retry indefinitely (transient or not)
+                    _logger.LogGrpcProtocolHandlerGenericError(ex);
                     await DelayOrStopAsync(ReconnectDelay, token);
                 }
-            }
-            catch (OperationCanceledException) when (token.IsCancellationRequested)
-            {
-                _logger.LogGrpcProtocolHandlerStreamCanceled();
-                break;
-            }
-            catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && token.IsCancellationRequested)
-            {
-                _logger.LogGrpcProtocolHandlerStreamCanceled();
-                break;
-            }
-            catch (RpcException ex) when (!token.IsCancellationRequested)
-            {
-                // Any RpcException while not shutting down -> retry indefinitely (transient or not)
-                _logger.LogGrpcProtocolHandlerGenericError(ex);
-                await DelayOrStopAsync(ReconnectDelay, token);
-            }
-            catch (Exception ex) when (!token.IsCancellationRequested)
-            {
-                // Any other interruption -> retry indefinitely
-                _logger.LogGrpcProtocolHandlerGenericError(ex);
-                await DelayOrStopAsync(ReconnectDelay, token);
-            }
-            finally
-            {
-                // Stop the keepalive loop when the receive loop ends (reconnect or shutdown).
-                // This runs after catch filters evaluate, avoiding a race where teardown delay
-                // allows external cancellation to change filter outcomes.
-                if (keepaliveCts != null)
+                catch (Exception ex) when (!token.IsCancellationRequested)
                 {
-                    await keepaliveCts.CancelAsync();
-                    try { await keepaliveTask!; }
-                    catch (OperationCanceledException) { }
-                    catch (Exception ex) { _logger.LogGrpcProtocolHandlerKeepaliveFailed(ex); }
-                    keepaliveCts.Dispose();
+                    // Any other interruption -> retry indefinitely
+                    _logger.LogGrpcProtocolHandlerGenericError(ex);
+                    await DelayOrStopAsync(ReconnectDelay, token);
                 }
+                finally
+                {
+                    // Stop the keepalive loop when the receive loop ends (reconnect or shutdown).
+                    // This runs after catch filters evaluate, avoiding a race where teardown delay
+                    // allows external cancellation to change filter outcomes.
+                    if (keepaliveCts != null)
+                    {
+                        await keepaliveCts.CancelAsync();
+                        try { await keepaliveTask!; }
+                        catch (OperationCanceledException) { }
+                        catch (Exception ex) { _logger.LogGrpcProtocolHandlerKeepaliveFailed(ex); }
+                        keepaliveCts.Dispose();
+                    }
 
-                _streamingCall?.Dispose();
-                _streamingCall = null;
+                    _streamingCall?.Dispose();
+                    _streamingCall = null;
+
+                    // The next stream starts cold: the sidecar drops this stream's warm set,
+                    // so the cached histories from this connection are no longer in sync.
+                    _historyCache.Reset();
+                }
             }
-        }        
+        }
+        finally
+        {
+            await janitorCts.CancelAsync();
+            try { await janitorTask; }
+            catch (OperationCanceledException) { }
+        }
     }
-    
+
+    private async Task RunHistoryJanitorAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(HistorySweepInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token))
+            {
+                _historyCache.SweepExpired();
+            }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+        }
+    }
+
     private static async Task DelayOrStopAsync(TimeSpan delay, CancellationToken token)
     {
         try
@@ -222,6 +274,31 @@ internal sealed class GrpcProtocolHandler(
         {
             _logger.LogGrpcProtocolHandlerWorkflowProcessorStart(request.InstanceId, activeCount);
 
+            // Resolve the committed history before replay. A delta work item (cachedHistory set)
+            // carries only the events new since this worker was last warm for the instance, so we
+            // rebuild the full history from our per-stream cache, or fetch it on a miss. Overwriting
+            // request.PastEvents here keeps the workflow handler oblivious to the delta protocol.
+            if (!_disableStatefulHistory && request.CachedHistory is not null)
+            {
+                try
+                {
+                    await ResolveCachedHistoryAsync(request, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogGrpcProtocolHandlerWorkflowProcessorCanceled(request.InstanceId);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    // The cache-miss fallback fetch failed and there is no per-item NACK. Abandon
+                    // the work item so the backend redelivers it (as a full-history send on a future
+                    // stream) rather than marking an otherwise-healthy turn as failed.
+                    _logger.LogGrpcProtocolHandlerWorkflowProcessorFailedToSendError(ex, request.InstanceId);
+                    return;
+                }
+            }
+
             // Execute the orchestrator and determine the response (normal actions or application failure).
             // This try/catch must NOT include the CompleteOrchestratorTaskAsync call below — a transport
             // failure during delivery must not be converted into an orchestrator-level failure, as that
@@ -230,6 +307,7 @@ internal sealed class GrpcProtocolHandler(
             try
             {
                 result = await handler(request, completionToken);
+                UpdateHistoryCache(request, result);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -264,6 +342,61 @@ internal sealed class GrpcProtocolHandler(
         {
             _orchestrationSemaphore.Release();
             Interlocked.Decrement(ref _activeWorkItemCount);
+        }
+    }
+
+    /// <summary>
+    /// Rebuilds the full committed history for a delta work item into <paramref name="request"/>.PastEvents:
+    /// the cached prefix (validated against the sidecar's expected event count) plus the delta, or the
+    /// full history fetched via GetInstanceHistory on a cache miss.
+    /// </summary>
+    private async Task ResolveCachedHistoryAsync(WorkflowRequest request, CancellationToken token)
+    {
+        var cached = _historyCache.Get(request.InstanceId);
+        if (cached is not null && cached.Count == request.CachedHistory.EventCount)
+        {
+            var full = new List<HistoryEvent>(cached.Count + request.PastEvents.Count);
+            full.AddRange(cached);
+            full.AddRange(request.PastEvents);
+            request.PastEvents.Clear();
+            request.PastEvents.AddRange(full);
+            return;
+        }
+
+        // Cache miss: whatever is held for this instance disagrees with what the sidecar believes we
+        // have, so drop it now rather than leaving a prefix we already know is wrong sitting there
+        // until the post-turn Put overwrites it. A turn that abandons below would otherwise leave
+        // the stale entry to be matched against on the next delta.
+        _historyCache.Remove(request.InstanceId);
+
+        var historyRequest = new GetInstanceHistoryRequest { InstanceId = request.InstanceId };
+        var response = await _grpcClient.GetInstanceHistoryAsync(historyRequest, CreateCallOptions(token));
+        request.PastEvents.Clear();
+        request.PastEvents.AddRange(response.Events);
+    }
+
+    /// <summary>
+    /// Refreshes the per-stream history cache after a turn so the next turn can be served as a delta.
+    /// Caches only the committed history just replayed (never the not-yet-committed NewEvents), and drops
+    /// the entry once the instance ends (a CompleteWorkflow action, covering completed/failed/terminated/
+    /// continued-as-new). Skipped when stateful history is disabled or the request used history streaming
+    /// (which leaves PastEvents partial).
+    /// </summary>
+    private void UpdateHistoryCache(WorkflowRequest request, WorkflowResponse result)
+    {
+        if (_disableStatefulHistory || request.RequiresHistoryStreaming)
+        {
+            return;
+        }
+
+        var ended = result.Actions.Any(a => a.CompleteWorkflow is not null);
+        if (ended)
+        {
+            _historyCache.Remove(request.InstanceId);
+        }
+        else
+        {
+            _historyCache.Put(request.InstanceId, request.PastEvents);
         }
     }
 
