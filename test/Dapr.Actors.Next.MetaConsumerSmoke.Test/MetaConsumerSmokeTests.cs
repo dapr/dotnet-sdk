@@ -5,6 +5,8 @@ namespace Dapr.Actors.Next.MetaConsumerSmoke.Test;
 
 public sealed class MetaConsumerSmokeTests
 {
+    private const string PackageConfiguration = "Release";
+
     [Fact]
     public async Task Generator_flows_through_meta_package()
     {
@@ -129,7 +131,7 @@ public sealed class MetaConsumerSmokeTests
 
         foreach (var project in projects)
         {
-            var result = await RunDotnetAsync($"pack {project} -c Debug -o \"{packages}\" --no-build /p:IncludeSymbols=false /p:Version={packageVersion} /p:PackageVersion={packageVersion} /p:MinVerVersionOverride={packageVersion} /nr:false", root, TimeSpan.FromSeconds(90));
+            var result = await RunDotnetAsync($"pack {project} -c {PackageConfiguration} -o \"{packages}\" /p:IncludeSymbols=false /p:Version={packageVersion} /p:PackageVersion={packageVersion} /p:MinVerVersionOverride={packageVersion} /nr:false", root, TimeSpan.FromSeconds(90));
             Assert.True(result.ExitCode == 0, result.Output);
         }
 
