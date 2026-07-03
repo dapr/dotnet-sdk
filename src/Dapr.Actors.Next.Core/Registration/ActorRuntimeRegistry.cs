@@ -18,13 +18,13 @@ public sealed class ActorRuntimeRegistry
         ArgumentNullException.ThrowIfNull(services);
         this.services = services;
         var actorTypeSnapshot = new Dictionary<string, ActorRuntimeRegistration>(StringComparer.Ordinal);
-        var interfaceTypeSnapshot = new Dictionary<Type, ActorRuntimeRegistration>();
+        var interfaceTypeSnapshot = new Dictionary<Type, IReadOnlyList<ActorRuntimeRegistration>>();
 
         foreach (var registration in registrations)
         {
             ResolveRegistration(registration);
             actorTypeSnapshot.Add(registration.ActorType, registration);
-            interfaceTypeSnapshot.Add(registration.InterfaceType, registration);
+            AddInterfaceRegistration(interfaceTypeSnapshot, registration);
         }
 
         snapshot = new RegistrySnapshot(actorTypeSnapshot, interfaceTypeSnapshot);
@@ -50,11 +50,11 @@ public sealed class ActorRuntimeRegistry
             : throw new InvalidOperationException($"Actor type '{actorType}' is not registered.");
 
     /// <summary>
-    /// Gets a registration by interface type.
+    /// Gets registrations by actor interface type.
     /// </summary>
-    public ActorRuntimeRegistration GetByInterfaceType(Type interfaceType) =>
-        TryGetByInterfaceType(interfaceType, out var registration)
-            ? registration
+    public IReadOnlyList<ActorRuntimeRegistration> GetAllByInterfaceType(Type interfaceType) =>
+        TryGetAllByInterfaceType(interfaceType, out var registrations)
+            ? registrations
             : throw new InvalidOperationException($"Actor interface '{interfaceType.FullName}' is not registered.");
 
     internal bool TryAdd(ActorRuntimeRegistration registration)
@@ -63,7 +63,7 @@ public sealed class ActorRuntimeRegistry
         lock (syncRoot)
         {
             var current = snapshot;
-            if (current.ByActorType.ContainsKey(registration.ActorType) || current.ByInterfaceType.ContainsKey(registration.InterfaceType))
+            if (current.ByActorType.ContainsKey(registration.ActorType))
             {
                 return false;
             }
@@ -74,10 +74,8 @@ public sealed class ActorRuntimeRegistry
             {
                 [registration.ActorType] = registration,
             };
-            var nextByInterfaceType = new Dictionary<Type, ActorRuntimeRegistration>(current.ByInterfaceType)
-            {
-                [registration.InterfaceType] = registration,
-            };
+            var nextByInterfaceType = new Dictionary<Type, IReadOnlyList<ActorRuntimeRegistration>>(current.ByInterfaceType);
+            AddInterfaceRegistration(nextByInterfaceType, registration);
             Volatile.Write(ref snapshot, new RegistrySnapshot(nextByActorType, nextByInterfaceType));
             return true;
         }
@@ -95,9 +93,9 @@ public sealed class ActorRuntimeRegistry
             }
 
             var nextByActorType = new Dictionary<string, ActorRuntimeRegistration>(current.ByActorType, StringComparer.Ordinal);
-            var nextByInterfaceType = new Dictionary<Type, ActorRuntimeRegistration>(current.ByInterfaceType);
+            var nextByInterfaceType = new Dictionary<Type, IReadOnlyList<ActorRuntimeRegistration>>(current.ByInterfaceType);
             nextByActorType.Remove(actorType);
-            nextByInterfaceType.Remove(registration.InterfaceType);
+            RemoveInterfaceRegistration(nextByInterfaceType, registration);
             Volatile.Write(ref snapshot, new RegistrySnapshot(nextByActorType, nextByInterfaceType));
             return true;
         }
@@ -108,9 +106,10 @@ public sealed class ActorRuntimeRegistry
         return Volatile.Read(ref snapshot).ByActorType.TryGetValue(actorType, out registration!);
     }
 
-    private bool TryGetByInterfaceType(Type interfaceType, out ActorRuntimeRegistration registration)
+    private bool TryGetAllByInterfaceType(Type interfaceType, out IReadOnlyList<ActorRuntimeRegistration> registrations)
     {
-        return Volatile.Read(ref snapshot).ByInterfaceType.TryGetValue(interfaceType, out registration!);
+        ArgumentNullException.ThrowIfNull(interfaceType);
+        return Volatile.Read(ref snapshot).ByInterfaceType.TryGetValue(interfaceType, out registrations!);
     }
 
     private void ResolveRegistration(ActorRuntimeRegistration registration)
@@ -118,7 +117,35 @@ public sealed class ActorRuntimeRegistry
         registration.ResolveDispatcher(services);
     }
 
+    private static void AddInterfaceRegistration(Dictionary<Type, IReadOnlyList<ActorRuntimeRegistration>> registrations, ActorRuntimeRegistration registration)
+    {
+        if (!registrations.TryGetValue(registration.InterfaceType, out var existing))
+        {
+            registrations[registration.InterfaceType] = [registration];
+            return;
+        }
+
+        registrations[registration.InterfaceType] = existing.Concat([registration]).ToArray();
+    }
+
+    private static void RemoveInterfaceRegistration(Dictionary<Type, IReadOnlyList<ActorRuntimeRegistration>> registrations, ActorRuntimeRegistration registration)
+    {
+        if (!registrations.TryGetValue(registration.InterfaceType, out var existing))
+        {
+            return;
+        }
+
+        var remaining = existing.Where(item => !StringComparer.Ordinal.Equals(item.ActorType, registration.ActorType)).ToArray();
+        if (remaining.Length == 0)
+        {
+            registrations.Remove(registration.InterfaceType);
+            return;
+        }
+
+        registrations[registration.InterfaceType] = remaining;
+    }
+
     private sealed record RegistrySnapshot(
         Dictionary<string, ActorRuntimeRegistration> ByActorType,
-        Dictionary<Type, ActorRuntimeRegistration> ByInterfaceType);
+        Dictionary<Type, IReadOnlyList<ActorRuntimeRegistration>> ByInterfaceType);
 }

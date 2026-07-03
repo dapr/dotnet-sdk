@@ -106,6 +106,151 @@ public sealed class ActorsNextAnalyzerTests
     }
 
     [Fact]
+    public Task Duplicate_actor_type_names_for_shared_interface_are_reported()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+
+            namespace Contracts
+            {
+                [GenerateActorClient]
+                public interface ICartActor : IActor
+                {
+                    Task Save();
+                }
+            }
+
+            namespace StoreA
+            {
+                using Contracts;
+
+                [DaprActor]
+                public sealed class {|DAPR1420:CartActor|} : Actor, ICartActor
+                {
+                    protected override ActorId Id => ActorId.Create("a");
+                    protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+                    public Task Save() => Task.CompletedTask;
+                }
+            }
+
+            namespace StoreB
+            {
+                using Contracts;
+
+                [DaprActor]
+                public sealed class {|DAPR1420:CartActor|} : Actor, ICartActor
+                {
+                    protected override ActorId Id => ActorId.Create("b");
+                    protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+                    public Task Save() => Task.CompletedTask;
+                }
+            }
+            """;
+
+        return AnalyzerTest.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public Task Shared_interface_with_distinct_actor_attribute_names_is_silent()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+
+            namespace Sample;
+
+            [GenerateActorClient]
+            public interface ICartActor : IActor
+            {
+                Task Save();
+            }
+
+            [DaprActor("StoreCart")]
+            public sealed class StoreCartActor : Actor, ICartActor
+            {
+                protected override ActorId Id => ActorId.Create("a");
+                protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+                public Task Save() => Task.CompletedTask;
+            }
+
+            [DaprActor("WholesaleCart")]
+            public sealed class WholesaleCartActor : Actor, ICartActor
+            {
+                protected override ActorId Id => ActorId.Create("b");
+                protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+                public Task Save() => Task.CompletedTask;
+            }
+            """;
+
+        return AnalyzerTest.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public Task Explicit_registration_alias_disambiguates_shared_interface_actor_names()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+            using Dapr.Actors.Next.Abstractions.Options;
+
+            namespace Contracts
+            {
+                [GenerateActorClient]
+                public interface ICartActor : IActor
+                {
+                    Task Save();
+                }
+            }
+
+            namespace StoreA
+            {
+                using Contracts;
+
+                [DaprActor]
+                public sealed class CartActor : Actor, ICartActor
+                {
+                    protected override ActorId Id => ActorId.Create("a");
+                    protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+                    public Task Save() => Task.CompletedTask;
+                }
+            }
+
+            namespace StoreB
+            {
+                using Contracts;
+
+                [DaprActor]
+                public sealed class CartActor : Actor, ICartActor
+                {
+                    protected override ActorId Id => ActorId.Create("b");
+                    protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+                    public Task Save() => Task.CompletedTask;
+                }
+            }
+
+            namespace Host
+            {
+                public static class Registration
+                {
+                    public static void Configure(DaprActorsOptions options)
+                    {
+                        options.Actors.RegisterActor<StoreB.CartActor>("StoreBCart");
+                    }
+                }
+            }
+            """;
+
+        return AnalyzerTest.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
     public Task Mutable_actor_fields_are_reported_with_injected_client_allowlist()
     {
         const string source = """

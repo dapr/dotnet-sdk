@@ -151,11 +151,33 @@ public sealed class CoreEdgeCaseTests
 
         var registry = new ActorRuntimeRegistry(Array.Empty<ActorRuntimeRegistration>(), new ServiceCollection().BuildServiceProvider());
         Assert.Throws<InvalidOperationException>(() => registry.GetByActorType("missing"));
-        Assert.Throws<InvalidOperationException>(() => registry.GetByInterfaceType(typeof(ICounterActor)));
+        Assert.Throws<InvalidOperationException>(() => registry.GetAllByInterfaceType(typeof(ICounterActor)));
 
         Assert.Throws<ArgumentNullException>(() => ActorProxy.Configure(null!));
         ActorProxy.Reset();
         Assert.Throws<InvalidOperationException>(() => ActorProxy.Create<ICounterActor>(ActorId.Create("x"), "Counter"));
+    }
+
+    [Fact]
+    public void Registry_allows_multiple_actor_types_for_the_same_interface()
+    {
+        using var services = new ServiceCollection().BuildServiceProvider();
+        var first = new ActorRuntimeRegistration("CounterA", typeof(ICounterActor), typeof(CounterActor), (_, _) => new TestActor(), new CounterDispatcher());
+        var second = new ActorRuntimeRegistration("CounterB", typeof(ICounterActor), typeof(CounterActor), (_, _) => new TestActor(), new CounterDispatcher());
+        var registry = new ActorRuntimeRegistry([first, second], services);
+
+        Assert.Equal(["CounterA", "CounterB"], registry.ActorTypes.Order(StringComparer.Ordinal).ToArray());
+        Assert.Same(first, registry.GetByActorType("CounterA"));
+        Assert.Same(second, registry.GetByActorType("CounterB"));
+        Assert.Equal([first, second], registry.GetAllByInterfaceType(typeof(ICounterActor)));
+
+        var dynamicRegistration = new ActorRuntimeRegistration("CounterC", typeof(ICounterActor), typeof(CounterActor), (_, _) => new TestActor(), new CounterDispatcher());
+        Assert.True(registry.TryAdd(dynamicRegistration));
+        Assert.False(registry.TryAdd(new ActorRuntimeRegistration("CounterC", typeof(IOtherCounterActor), typeof(CounterActor), (_, _) => new TestActor(), new CounterDispatcher())));
+        Assert.Equal(3, registry.GetAllByInterfaceType(typeof(ICounterActor)).Count);
+
+        Assert.True(registry.TryRemove("CounterB"));
+        Assert.Equal(["CounterA", "CounterC"], registry.GetAllByInterfaceType(typeof(ICounterActor)).Select(registration => registration.ActorType).Order(StringComparer.Ordinal).ToArray());
     }
 
     [Fact]

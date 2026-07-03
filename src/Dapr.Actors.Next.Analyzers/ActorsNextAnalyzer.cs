@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -30,7 +31,8 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         ActorAnalyzerDiagnostics.BusinessLogicInFilter,
         ActorAnalyzerDiagnostics.InvalidActorMethodReturnType,
         ActorAnalyzerDiagnostics.WireContractChanged,
-        ActorAnalyzerDiagnostics.MutableActorField);
+        ActorAnalyzerDiagnostics.MutableActorField,
+        ActorAnalyzerDiagnostics.DuplicateActorTypeName);
 
     /// <summary>
     /// Initializes analyzer actions.
@@ -43,12 +45,19 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         context.RegisterCompilationStartAction(static startContext =>
         {
             var baseline = ActorBaseline.Load(startContext.Options.AdditionalFiles, startContext.CancellationToken);
-            startContext.RegisterOperationAction(AnalyzeInvocation, OperationKind.Invocation);
+            var actorImplementations = new ConcurrentBag<ActorImplementationInfo>();
+            var explicitActorNames = new ConcurrentBag<ExplicitActorName>();
+            startContext.RegisterOperationAction(ctx =>
+            {
+                AnalyzeInvocation(ctx);
+                CollectExplicitActorRegistration(ctx, explicitActorNames);
+            }, OperationKind.Invocation);
             startContext.RegisterOperationAction(AnalyzeObjectCreation, OperationKind.ObjectCreation);
             startContext.RegisterOperationAction(AnalyzePropertyReference, OperationKind.PropertyReference);
-            startContext.RegisterSymbolAction(ctx => AnalyzeNamedType(ctx, baseline), SymbolKind.NamedType);
+            startContext.RegisterSymbolAction(ctx => AnalyzeNamedType(ctx, baseline, actorImplementations), SymbolKind.NamedType);
             startContext.RegisterSymbolAction(AnalyzeField, SymbolKind.Field);
             startContext.RegisterSymbolAction(AnalyzeUpcasterChain, SymbolKind.NamedType);
+            startContext.RegisterCompilationEndAction(ctx => AnalyzeDuplicateActorTypeNames(ctx, actorImplementations, explicitActorNames));
         });
     }
 
@@ -88,6 +97,37 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         if (containingType == "System.Guid" && methodName == "NewGuid")
         {
             context.ReportDiagnostic(Diagnostic.Create(ActorAnalyzerDiagnostics.NondeterministicSource, invocation.Syntax.GetLocation(), "Guid.NewGuid"));
+        }
+    }
+
+    private static void CollectExplicitActorRegistration(OperationAnalysisContext context, ConcurrentBag<ExplicitActorName> explicitActorNames)
+    {
+        var invocation = (IInvocationOperation)context.Operation;
+        var method = invocation.TargetMethod;
+        if (method.Name != "RegisterActor" ||
+            method.TypeArguments.Length != 1 ||
+            method.ContainingType?.ToDisplayString() != "Dapr.Actors.Next.Abstractions.Options.DaprActorRegistrationCollection")
+        {
+            return;
+        }
+
+        var actorType = method.TypeArguments[0] as INamedTypeSymbol;
+        if (actorType is null)
+        {
+            return;
+        }
+
+        foreach (var argument in invocation.Arguments)
+        {
+            if (argument.Parameter?.Name != "actorTypeName" ||
+                argument.Value.ConstantValue is not { HasValue: true, Value: string value } ||
+                string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            explicitActorNames.Add(new ExplicitActorName(actorType, value));
+            return;
         }
     }
 
@@ -144,7 +184,7 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static void AnalyzeNamedType(SymbolAnalysisContext context, ActorBaseline baseline)
+    private static void AnalyzeNamedType(SymbolAnalysisContext context, ActorBaseline baseline, ConcurrentBag<ActorImplementationInfo> actorImplementations)
     {
         var type = (INamedTypeSymbol)context.Symbol;
 
@@ -156,6 +196,117 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
 
         AnalyzeStateBaseline(context, baseline, type);
         AnalyzeFilter(context, type);
+        CollectActorImplementation(type, actorImplementations);
+    }
+
+    private static void CollectActorImplementation(INamedTypeSymbol type, ConcurrentBag<ActorImplementationInfo> actorImplementations)
+    {
+        if (type.IsAbstract || !type.HasAttribute("Dapr.Actors.Next.Abstractions.Attributes.DaprActorAttribute"))
+        {
+            return;
+        }
+
+        var actorInterfaces = type.AllInterfaces
+            .Where(IsConcreteActorInterface)
+            .Select(actorInterface => actorInterface.OriginalDefinition)
+            .GroupBy(actorInterface => actorInterface.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), StringComparer.Ordinal)
+            .Select(group => group.First())
+            .ToImmutableArray();
+        if (actorInterfaces.Length == 0)
+        {
+            return;
+        }
+
+        actorImplementations.Add(new ActorImplementationInfo(type, GetDaprActorTypeName(type), actorInterfaces, type.Locations.FirstOrDefault()));
+    }
+
+    private static bool IsConcreteActorInterface(INamedTypeSymbol type) =>
+        type.ToDisplayString() != "Dapr.Actors.Next.Abstractions.IActor" &&
+        type.Implements("Dapr.Actors.Next.Abstractions.IActor");
+
+    private static string GetDaprActorTypeName(INamedTypeSymbol type)
+    {
+        foreach (var attribute in type.GetAttributes())
+        {
+            if (attribute.AttributeClass?.ToDisplayString() != "Dapr.Actors.Next.Abstractions.Attributes.DaprActorAttribute")
+            {
+                continue;
+            }
+
+            if (attribute.ConstructorArguments.Length == 1 &&
+                attribute.ConstructorArguments[0].Value is string value &&
+                !string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return type.Name;
+    }
+
+    private static void AnalyzeDuplicateActorTypeNames(
+        CompilationAnalysisContext context,
+        ConcurrentBag<ActorImplementationInfo> actorImplementations,
+        ConcurrentBag<ExplicitActorName> explicitActorNames)
+    {
+        var actors = actorImplementations.ToArray();
+        if (actors.Length < 2)
+        {
+            return;
+        }
+
+        var aliases = explicitActorNames.ToArray();
+        var effectiveActors = actors
+            .Select(actor => actor with { ActorTypeName = GetEffectiveActorTypeName(actor.Type, actor.ActorTypeName, aliases) })
+            .ToArray();
+
+        foreach (var group in effectiveActors.GroupBy(actor => actor.ActorTypeName, StringComparer.Ordinal))
+        {
+            var duplicateActors = group.ToArray();
+            if (duplicateActors.Length < 2)
+            {
+                continue;
+            }
+
+            foreach (var sharedInterface in SharedActorInterfaces(duplicateActors))
+            {
+                foreach (var actor in duplicateActors.Where(item => item.Interfaces.Any(actorInterface => SymbolEqualityComparer.Default.Equals(actorInterface, sharedInterface))))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        ActorAnalyzerDiagnostics.DuplicateActorTypeName,
+                        actor.Location,
+                        actor.ActorTypeName,
+                        sharedInterface.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)));
+                }
+            }
+        }
+    }
+
+    private static string GetEffectiveActorTypeName(INamedTypeSymbol actorType, string attributeActorTypeName, ExplicitActorName[] aliases)
+    {
+        var actorAliases = aliases
+            .Where(alias => SymbolEqualityComparer.Default.Equals(alias.ActorType, actorType))
+            .Select(alias => alias.ActorTypeName)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return actorAliases.Length == 1 ? actorAliases[0] : attributeActorTypeName;
+    }
+
+    private static IEnumerable<INamedTypeSymbol> SharedActorInterfaces(IReadOnlyList<ActorImplementationInfo> actors)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var actor in actors)
+        {
+            foreach (var actorInterface in actor.Interfaces)
+            {
+                var name = actorInterface.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+                if (!seen.Add(name))
+                {
+                    yield return actorInterface;
+                }
+            }
+        }
     }
 
     private static void AnalyzeActorInterfaceReturns(SymbolAnalysisContext context, INamedTypeSymbol type)
@@ -484,4 +635,12 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
             "System.Threading.Tasks.ValueTask<TResult>" or
             "System.Threading.WaitHandle";
     }
+
+    private sealed record ActorImplementationInfo(
+        INamedTypeSymbol Type,
+        string ActorTypeName,
+        ImmutableArray<INamedTypeSymbol> Interfaces,
+        Location? Location);
+
+    private sealed record ExplicitActorName(INamedTypeSymbol ActorType, string ActorTypeName);
 }

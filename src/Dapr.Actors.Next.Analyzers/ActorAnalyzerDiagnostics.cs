@@ -10,7 +10,7 @@ public static class ActorAnalyzerDiagnostics
     /// <summary>
     /// Gets the analyzer id range reserved for Dapr Actors Next.
     /// </summary>
-    public const string ReservedRange = "DAPR1410-DAPR1419";
+    public const string ReservedRange = "DAPR1410-DAPR1420";
 
     /// <summary>
     /// Diagnostic raised when a shipped actor state shape is changed in a breaking way.
@@ -122,4 +122,16 @@ public static class ActorAnalyzerDiagnostics
         "Concurrency",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// Diagnostic raised when multiple actor implementations that share a contract register the same actor type.
+    /// </summary>
+    public static readonly DiagnosticDescriptor DuplicateActorTypeName = new(
+        "DAPR1420",
+        "Actor type name must disambiguate shared actor contracts",
+        "Actor type name '{0}' is used by multiple actors implementing '{1}'; set distinct DaprActor names or explicit registration aliases",
+        "Usage",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
 }

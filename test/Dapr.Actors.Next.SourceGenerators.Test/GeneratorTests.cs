@@ -182,6 +182,69 @@ public sealed class GeneratorTests
     }
 
     [Fact]
+    public void Generator_emits_distinct_actor_type_registrations_for_shared_interfaces()
+    {
+        var source = """
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+            using Dapr.Actors.Next.Abstractions.State;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace SharedInterfaceSample;
+
+            [GenerateActorClient]
+            public interface ISharedActor : IActor
+            {
+                Task PingAsync(CancellationToken cancellationToken = default);
+            }
+
+            [DaprActor("SharedAlpha", ContractVersion = 2)]
+            public sealed class SharedAlphaActor : Actor, ISharedActor
+            {
+                protected override ActorId Id => ActorId.Create("alpha");
+                protected override IActorStateAccessor State => throw new System.NotSupportedException();
+                public Task PingAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+            }
+
+            [DaprActor("SharedBeta", ContractVersion = 3)]
+            public sealed class SharedBetaActor : Actor, ISharedActor
+            {
+                protected override ActorId Id => ActorId.Create("beta");
+                protected override IActorStateAccessor State => throw new System.NotSupportedException();
+                public Task PingAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+            }
+
+            public sealed class SharedStateV1
+            {
+                public int Value { get; set; }
+            }
+
+            public sealed class SharedStateV2
+            {
+                public int Value { get; set; }
+            }
+
+            public sealed class SharedStateUpcaster : IActorStateUpcaster<SharedStateV1, SharedStateV2>
+            {
+                public ValueTask<SharedStateV2> UpcastAsync(SharedStateV1 state, CancellationToken cancellationToken = default) =>
+                    ValueTask.FromResult(new SharedStateV2 { Value = state.Value });
+            }
+            """;
+
+        var generated = RunGenerator(CreateCompilation("SharedInterfaceSample", source), scanReferences: false);
+
+        Assert.Equal(2, CountOccurrences(generated, "builder.Add(actorType, typeof(global::SharedInterfaceSample.ISharedActor)"));
+        Assert.Equal(2, CountOccurrences(generated, "ActorTypeDescriptor(actorType,"));
+        Assert.Contains("SharedAlphaActorDispatcherExplicitRegistration?.ActorTypeName ?? @\"SharedAlpha\"", generated);
+        Assert.Contains("SharedBetaActorDispatcherExplicitRegistration?.ActorTypeName ?? @\"SharedBeta\"", generated);
+        Assert.Contains("ActorTypeDescriptor(actorType, 2", generated);
+        Assert.Contains("ActorTypeDescriptor(actorType, 3", generated);
+        Assert.Contains("if (options.EnableAutoStateMigrationRegistration)", generated);
+        Assert.Contains("IActorStateUpcaster<global::SharedInterfaceSample.SharedStateV1, global::SharedInterfaceSample.SharedStateV2>", generated);
+    }
+
+    [Fact]
     public async Task Sample_generated_registration_dispatcher_factory_and_proxy_run_end_to_end()
     {
         _ = typeof(CalculatorActor);
@@ -304,6 +367,19 @@ public sealed class GeneratorTests
             [CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Latest))],
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+    }
+
+    private static int CountOccurrences(string text, string value)
+    {
+        var count = 0;
+        var index = 0;
+        while ((index = text.IndexOf(value, index, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            index += value.Length;
+        }
+
+        return count;
     }
 
     private sealed class TestAnalyzerConfigOptionsProvider(bool? scanReferences) : AnalyzerConfigOptionsProvider

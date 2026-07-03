@@ -15,3 +15,4 @@ DAPR1416 | Design | Info | Actor turn filter should stay cross-cutting
 DAPR1417 | Usage | Warning | Actor interface method must return an asynchronous type
 DAPR1418 | Compatibility | Warning | Actor interface change breaks shipped wire contract
 DAPR1419 | Concurrency | Warning | Actor field should not hold mutable shared state
+DAPR1420 | Usage | Warning | Actor type name must disambiguate shared actor contracts
