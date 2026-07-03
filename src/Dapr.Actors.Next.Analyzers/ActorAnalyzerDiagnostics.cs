@@ -1,0 +1,125 @@
+using Microsoft.CodeAnalysis;
+
+namespace Dapr.Actors.Next.Analyzers;
+
+/// <summary>
+/// Defines diagnostics produced by the Dapr Actors Next analyzers.
+/// </summary>
+public static class ActorAnalyzerDiagnostics
+{
+    /// <summary>
+    /// Gets the analyzer id range reserved for Dapr Actors Next.
+    /// </summary>
+    public const string ReservedRange = "DAPR1410-DAPR1419";
+
+    /// <summary>
+    /// Diagnostic raised when a shipped actor state shape is changed in a breaking way.
+    /// </summary>
+    public static readonly DiagnosticDescriptor StateShapeChanged = new(
+        "DAPR1410",
+        "Actor state shape change breaks shipped serialization",
+        "State type '{0}' no longer matches the shipped state baseline: {1}",
+        "Compatibility",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
+
+    /// <summary>
+    /// Diagnostic raised when work escapes the actor scheduler.
+    /// </summary>
+    public static readonly DiagnosticDescriptor SchedulerEscape = new(
+        "DAPR1411",
+        "Actor turn must not escape the scheduler",
+        "Avoid '{0}' inside an actor turn because it escapes the actor scheduler",
+        "Concurrency",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// Diagnostic raised when actor code blocks the cooperative scheduler.
+    /// </summary>
+    public static readonly DiagnosticDescriptor BlockingCall = new(
+        "DAPR1412",
+        "Actor turn must not block",
+        "Avoid blocking call '{0}' inside an actor turn",
+        "Concurrency",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// Diagnostic raised when actor code reads wall-clock time directly.
+    /// </summary>
+    public static readonly DiagnosticDescriptor DirectTime = new(
+        "DAPR1413",
+        "Actor turn must use TimeProvider",
+        "Use an injected TimeProvider instead of '{0}' inside an actor turn",
+        "Determinism",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// Diagnostic raised when actor code uses an unseeded nondeterministic source.
+    /// </summary>
+    public static readonly DiagnosticDescriptor NondeterministicSource = new(
+        "DAPR1414",
+        "Actor turn must use a scheduler-aware seeded source",
+        "Use a scheduler-aware seeded source instead of '{0}' inside an actor turn",
+        "Determinism",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// Diagnostic raised when an upcaster version chain has a missing hop.
+    /// </summary>
+    public static readonly DiagnosticDescriptor BrokenUpcasterChain = new(
+        "DAPR1415",
+        "Actor state upcaster chain has a version gap",
+        "Add an actor state upcaster from '{0}' to '{1}'",
+        "Compatibility",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// Diagnostic raised when a global turn filter appears to contain actor business logic.
+    /// </summary>
+    public static readonly DiagnosticDescriptor BusinessLogicInFilter = new(
+        "DAPR1416",
+        "Actor turn filter should stay cross-cutting",
+        "Move business logic '{0}' out of IActorTurnFilter and into the actor",
+        "Design",
+        DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// Diagnostic raised when an actor interface method has an unsupported return type.
+    /// </summary>
+    public static readonly DiagnosticDescriptor InvalidActorMethodReturnType = new(
+        "DAPR1417",
+        "Actor interface method must return an asynchronous type",
+        "Actor interface method '{0}' must return Task, ValueTask, or IAsyncEnumerable<T>",
+        "Usage",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// Diagnostic raised when a shipped actor interface wire contract is edited in place.
+    /// </summary>
+    public static readonly DiagnosticDescriptor WireContractChanged = new(
+        "DAPR1418",
+        "Actor interface change breaks shipped wire contract",
+        "Actor interface '{0}' no longer matches the shipped wire baseline: {1}",
+        "Compatibility",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// Diagnostic raised when an actor stores mutable shared state in an instance field.
+    /// </summary>
+    public static readonly DiagnosticDescriptor MutableActorField = new(
+        "DAPR1419",
+        "Actor field should not hold mutable shared state",
+        "Make actor field '{0}' readonly or move mutable state into actor state storage",
+        "Concurrency",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+}
