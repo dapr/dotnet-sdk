@@ -43,7 +43,7 @@ public sealed class ActorStreamRoutingKeyExtractor
 
         using var document = JsonDocument.Parse(data);
         var current = document.RootElement;
-        if (path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Any(segment => current.ValueKind != JsonValueKind.Object || !current.TryGetProperty(segment, out current)))
+        if (path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Any(segment => current.ValueKind != JsonValueKind.Object || !TryGetProperty(current, segment, out current)))
         {
             throw new ArgumentException($"RouteBy '{routeBy}' could not be resolved from CloudEvent data.", nameof(routeBy));
         }
@@ -60,4 +60,24 @@ public sealed class ActorStreamRoutingKeyExtractor
         string.IsNullOrWhiteSpace(value)
             ? throw new ArgumentException($"RouteBy '{routeBy}' resolved to an empty actor id.", nameof(routeBy))
             : value;
+
+    private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
+    {
+        if (element.TryGetProperty(name, out value))
+        {
+            return true;
+        }
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                value = property.Value;
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
+    }
 }
