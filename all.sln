@@ -380,11 +380,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Auction.Next.Example04", "e
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Auction.Next.Example04.Tests", "examples\Actor.Next\04-Auction\Auction.Next.Example04.Tests\Auction.Next.Example04.Tests.csproj", "{2F912CC7-6FDB-4F77-9275-454697805785}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "05-Agentic", "05-Agentic", "{BABDFF95-7632-D464-1F6B-63175294355E}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "05-Interpreted", "05-Interpreted", "{BABDFF95-7632-D464-1F6B-63175294355E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agentic.Next.Example05", "examples\Actor.Next\05-Agentic\Agentic.Next.Example05.csproj", "{7F61FB7C-B96D-4904-AA31-7C1B83883657}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Device.Next.Example05", "examples\Actor.Next\05-Interpreted\Device.Next.Example05.csproj", "{7F61FB7C-B96D-4904-AA31-7C1B83883657}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agentic.Next.Example05.Tests", "examples\Actor.Next\05-Agentic\Agentic.Next.Example05.Tests\Agentic.Next.Example05.Tests.csproj", "{E3A8F0B8-EE44-4043-A666-8B9E73CFDC0B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Device.Next.Example05.Tests", "examples\Actor.Next\05-Interpreted\Device.Next.Example05.Tests\Device.Next.Example05.Tests.csproj", "{E3A8F0B8-EE44-4043-A666-8B9E73CFDC0B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", "{66320409-64EC-F7C5-3DEF-65E7510DAAD1}"
 EndProject
