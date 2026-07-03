@@ -81,8 +81,7 @@ public sealed class ActorTestRuntimeTests
         var call = runtime.InvokeAsync(
             "Testing",
             ActorId.Create("reentrant"),
-            "Reenter",
-            headers: new Dictionary<string, string> { ["dapr-reentrant-id"] = "test-chain" });
+            "Reenter");
 
         await runtime.RunToIdle();
 

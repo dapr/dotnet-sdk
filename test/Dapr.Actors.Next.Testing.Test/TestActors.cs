@@ -54,7 +54,7 @@ public sealed class TestingActor(ActorActivationContext context, IActorInvocatio
             Id.Value,
             "Inner",
             ReadOnlyMemory<byte>.Empty,
-            new Dictionary<string, string> { ["dapr-reentrant-id"] = "test-chain" },
+            Dapr.Actors.Next.Core.ActorHeaders.Empty,
             cancellationToken);
         state.Value.Events.Add("outer-after");
         return int.Parse(System.Text.Encoding.UTF8.GetString(response!));

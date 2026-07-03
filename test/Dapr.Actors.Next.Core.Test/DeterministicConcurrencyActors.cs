@@ -1,6 +1,7 @@
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Dispatching;
 using Dapr.Actors.Next.Abstractions.State;
+using Dapr.Actors.Next.Core;
 using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.Client;
 
@@ -74,7 +75,7 @@ public sealed class NastyActor(ActorActivationContext context, IActorInvocationC
             Id.Value,
             "ReentrantInner",
             ReadOnlyMemory<byte>.Empty,
-            new Dictionary<string, string> { ["dapr-reentrant-id"] = "core-chain" },
+            ActorHeaders.Empty,
             cancellationToken);
         state.Value.Events.Add("outer-after");
         return int.Parse(System.Text.Encoding.UTF8.GetString(response!));

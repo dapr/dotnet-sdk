@@ -43,6 +43,7 @@ public sealed class ActorRuntime(
     /// <inheritdoc />
     public async Task<byte[]?> DispatchAsync(ActorRuntimeRequest request, CancellationToken cancellationToken = default)
     {
+        request = request with { Headers = ActorHeaders.WithCurrentReentrancy(request.Headers) };
         var key = new ActorKey(request.ActorType, request.ActorId.Value);
         var current = ActorTurnExecution.Current;
         if (current is not null && current.Key.Equals(key) && IsSameCallChain(current.Headers, request.Headers))
@@ -98,6 +99,7 @@ public sealed class ActorRuntime(
 
     internal async Task<byte[]?> ExecuteTurnAsync(ActorRuntimeRequest request, CancellationToken cancellationToken)
     {
+        request = request with { Headers = ActorHeaders.EnsureReentrancy(request.Headers) };
         if (request.Kind == ActorTurnKind.Deactivate)
         {
             await DeactivateAsync(request.ActorType, request.ActorId, cancellationToken).ConfigureAwait(false);
@@ -121,12 +123,7 @@ public sealed class ActorRuntime(
             ? ActorRequestContextSnapshot.Restore(request.RequestContext)
             : null;
 
-        // Only establish the ambient turn execution (an AsyncLocal write plus allocations) when this turn can
-        // actually participate in a reentrant call chain, i.e. it carries a reentrancy id. Non-reentrant turns
-        // never consult ActorTurnExecution.Current, so the push is pure overhead for them.
-        using var executionScope = TryGetCallChain(request.Headers, out _)
-            ? ActorTurnExecution.Push(new ActorTurnExecution(new ActorKey(request.ActorType, request.ActorId.Value), request.Headers))
-            : null;
+        using var executionScope = ActorTurnExecution.Push(new ActorTurnExecution(new ActorKey(request.ActorType, request.ActorId.Value), request.Headers));
 
         ActorDispatchResponse? response = null;
         Exception? exception = null;
@@ -226,20 +223,9 @@ public sealed class ActorRuntime(
         new(request.ActorType, request.ActorId, request.MethodName, Array.Empty<object?>(), request.Headers);
 
     private static bool IsSameCallChain(IReadOnlyDictionary<string, string> currentHeaders, IReadOnlyDictionary<string, string> nextHeaders) =>
-        TryGetCallChain(currentHeaders, out var current)
-        && TryGetCallChain(nextHeaders, out var next)
+        ActorHeaders.TryGetReentrancy(currentHeaders, out _, out var current)
+        && ActorHeaders.TryGetReentrancy(nextHeaders, out _, out var next)
         && string.Equals(current, next, StringComparison.Ordinal);
-
-    private static bool TryGetCallChain(IReadOnlyDictionary<string, string> headers, out string value)
-    {
-        if (headers.TryGetValue("dapr-reentrant-id", out value!) || headers.TryGetValue("x-dapr-reentrant-id", out value!))
-        {
-            return !string.IsNullOrWhiteSpace(value);
-        }
-
-        value = string.Empty;
-        return false;
-    }
 
     private static IEnumerable<ActivityLink>? CreateLinks(ActorRuntimeRequest request)
     {

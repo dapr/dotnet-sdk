@@ -1,4 +1,5 @@
 using Google.Protobuf;
+using Dapr.Actors.Next.Core;
 using Dapr.Actors.Next.Core.Transport;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
@@ -48,6 +49,7 @@ public sealed class DaprActorInvocationClient : IActorInvocationClient
         ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
         ArgumentException.ThrowIfNullOrWhiteSpace(actorId);
         ArgumentException.ThrowIfNullOrWhiteSpace(methodName);
+        headers = ActorHeaders.WithCurrentReentrancy(headers);
 
         var request = new P.InvokeActorRequest
         {

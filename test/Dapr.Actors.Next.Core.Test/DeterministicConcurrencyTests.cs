@@ -16,8 +16,7 @@ public sealed class DeterministicConcurrencyTests
         var call = runtime.InvokeAsync(
             "Nasty",
             ActorId.Create("chain"),
-            "StartReentrant",
-            headers: new Dictionary<string, string> { ["dapr-reentrant-id"] = "core-chain" });
+            "StartReentrant");
 
         await runtime.RunToIdle();
 
