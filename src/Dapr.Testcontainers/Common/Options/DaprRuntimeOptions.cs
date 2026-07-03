@@ -58,6 +58,11 @@ public sealed record DaprRuntimeOptions
     /// The application's port.
     /// </summary>
     public int AppPort { get; set; } = 8080;
+
+    /// <summary>
+    /// The protocol Dapr uses for the application channel.
+    /// </summary>
+    public string AppProtocol { get; private set; } = "http";
     
     /// <summary>
     /// The ID of the test application.
@@ -120,6 +125,17 @@ public sealed record DaprRuntimeOptions
     public DaprRuntimeOptions WithAppId(string appId)
     {
         AppId = appId;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the Dapr application channel protocol.
+    /// </summary>
+    /// <param name="appProtocol">The application protocol to use.</param>
+    public DaprRuntimeOptions WithAppProtocol(string appProtocol)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(appProtocol);
+        AppProtocol = appProtocol;
         return this;
     }
 
