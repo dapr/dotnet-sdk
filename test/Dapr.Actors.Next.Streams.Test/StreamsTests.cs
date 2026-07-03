@@ -27,6 +27,7 @@ public sealed class StreamsTests
         Assert.Equal("content-cart", extractor.ExtractActorId(Subscription with { RouteBy = "data.order.cartId" }, byContent));
         Assert.Equal("42", extractor.ExtractActorId(Subscription with { RouteBy = "cartId" }, Event("""{"cartId":42}""")));
         Assert.Equal("True", extractor.ExtractActorId(Subscription with { RouteBy = "cartId" }, Event("""{"cartId":true}""")));
+        Assert.Equal("camel-cart", extractor.ExtractActorId(Subscription with { RouteBy = "CartId" }, Event("""{"cartId":"camel-cart"}""")));
     }
 
     [Fact]
