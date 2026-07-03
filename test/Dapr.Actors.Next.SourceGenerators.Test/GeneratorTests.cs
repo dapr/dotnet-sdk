@@ -1,0 +1,345 @@
+using System.Collections.Immutable;
+using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Options;
+using Dapr.Actors.Next.Abstractions.Registry;
+using Dapr.Actors.Next.Abstractions.State;
+using Dapr.Actors.Next.Core.Client;
+using Dapr.Actors.Next.Core.Runtime;
+using Dapr.Actors.Next.SourceGenerators.Sample;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Dapr.Actors.Next.SourceGenerators.Test;
+
+public sealed class GeneratorTests
+{
+    [Fact]
+    public void Generated_output_contains_proxy_dispatcher_registry_and_generic_serializer_calls()
+    {
+        var source = """
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+            using Dapr.Actors.Next.Abstractions.State;
+            using Dapr.Actors.Next.Core.Activation;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace SnapshotSample;
+
+            [GenerateActorClient]
+            public interface ICartActor : IActor
+            {
+                Task AddAsync(CartItem item, CancellationToken cancellationToken = default);
+                Task<CartSummary> GetAsync(CancellationToken cancellationToken = default);
+                Task<int> CountAsync(int left, int right, CancellationToken cancellationToken = default);
+            }
+
+            public sealed record CartItem(string Sku, int Quantity);
+            public sealed record CartSummary(int Count);
+
+            [DaprActor("Cart", ContractVersion = 3)]
+            public sealed class CartActor(ActorActivationContext context) : Actor, ICartActor
+            {
+                protected override ActorId Id => context.ActorId;
+                protected override IActorStateAccessor State => context.State;
+                public Task AddAsync(CartItem item, CancellationToken cancellationToken = default) => Task.CompletedTask;
+                public Task<CartSummary> GetAsync(CancellationToken cancellationToken = default) => Task.FromResult(new CartSummary(1));
+                public Task<int> CountAsync(int left, int right, CancellationToken cancellationToken = default) => Task.FromResult(left + right);
+            }
+            """;
+
+        var generated = RunGenerator(CreateCompilation("SnapshotSample", source), scanReferences: false);
+
+        Assert.Contains("GeneratedCartActorProxy", generated);
+        Assert.Contains("CartActorDispatcher", generated);
+        Assert.Contains("?? @\"Cart\"", generated);
+        Assert.Contains("ActorTypeDescriptor(actorType, 3", generated);
+        Assert.Contains("ActorHeaders.Empty", generated);
+        Assert.Contains("CompleteResultAsync<global::SnapshotSample.CartSummary>", generated);
+        Assert.Contains("SerializeToBytes<TResult>(result)", generated);
+        Assert.DoesNotContain("public async global::System.Threading.Tasks.ValueTask<global::Dapr.Actors.Next.Abstractions.Dispatching.ActorDispatchResponse> DispatchAsync", generated);
+        Assert.Contains("DeserializeFromBytes<global::SnapshotSample.CartItem>(request.Payload)", generated);
+        Assert.Contains("SerializeToBytes<global::SnapshotSample.CartItem>(item)", generated);
+        Assert.Contains("JsonSerializable(typeof(global::SnapshotSample.CartItem))", generated);
+    }
+
+    [Fact]
+    public void Cross_assembly_discovery_is_gated_by_scan_property()
+    {
+        var library = CreateCompilation("ExternalActors", """
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+            using Dapr.Actors.Next.Abstractions.State;
+            using Dapr.Actors.Next.Core.Activation;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace ExternalActors;
+
+            [GenerateActorClient]
+            public interface IExternalActor : IActor
+            {
+                Task<int> PingAsync(int value, CancellationToken cancellationToken = default);
+            }
+
+            [DaprActor("External")]
+            public sealed class ExternalActor(ActorActivationContext context) : Actor, IExternalActor
+            {
+                protected override ActorId Id => context.ActorId;
+                protected override IActorStateAccessor State => context.State;
+                public Task<int> PingAsync(int value, CancellationToken cancellationToken = default) => Task.FromResult(value);
+            }
+            """);
+        var image = new MemoryStream();
+        var emit = library.Emit(image);
+        Assert.True(emit.Success, string.Join(Environment.NewLine, emit.Diagnostics));
+        image.Position = 0;
+
+        var app = CreateCompilation("ExternalApp", "namespace ExternalApp; public sealed class Marker {}", MetadataReference.CreateFromImage(image.ToArray()));
+
+        var off = RunGenerator(app, scanReferences: false);
+        var on = RunGenerator(app, scanReferences: true);
+
+        Assert.DoesNotContain("ExternalActorDispatcher", off);
+        Assert.Contains("ExternalActorDispatcher", on);
+        Assert.Contains("?? @\"External\"", on);
+        Assert.Contains("ActorTypeDescriptor(actorType", on);
+    }
+
+    [Fact]
+    public void Generator_handles_edge_shapes_without_emitting_invalid_code()
+    {
+        var source = """
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+            using Dapr.Actors.Next.Abstractions.State;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace EdgeSample;
+
+            [GenerateActorClient]
+            public interface WorkerActor : IActor
+            {
+                ValueTask ResetAsync();
+                ValueTask<int> ReadAsync();
+                Task OptionalAsync(int value = 1);
+                void Ignored();
+            }
+
+            [GenerateActorClient]
+            public interface INoCtorActor : IActor
+            {
+                Task PingAsync();
+            }
+
+            [GenerateActorClient]
+            public interface IGenericActor<T> : IActor
+            {
+                Task PingAsync();
+            }
+
+            [DaprActor]
+            public sealed class WorkerActorImpl(ActorId id) : Actor, WorkerActor
+            {
+                protected override ActorId Id => id;
+                protected override IActorStateAccessor State => throw new System.NotSupportedException();
+                public ValueTask ResetAsync() => ValueTask.CompletedTask;
+                public ValueTask<int> ReadAsync() => ValueTask.FromResult(7);
+                public Task OptionalAsync(int value = 1) => Task.CompletedTask;
+                public void Ignored() { }
+            }
+
+            [DaprActor]
+            public sealed class NoCtorActor : Actor, INoCtorActor
+            {
+                protected override ActorId Id => ActorId.Create("no-ctor");
+                protected override IActorStateAccessor State => throw new System.NotSupportedException();
+                public Task PingAsync() => Task.CompletedTask;
+            }
+
+            [DaprActor]
+            public sealed class NotRegisteredActor : Actor
+            {
+                protected override ActorId Id => ActorId.Create("none");
+                protected override IActorStateAccessor State => throw new System.NotSupportedException();
+            }
+            """;
+
+        var generated = RunGenerator(CreateCompilation("EdgeSample", source), scanReferences: null);
+
+        Assert.Contains("GeneratedWorkerActorProxy", generated);
+        Assert.Contains("WorkerActorImplDispatcher", generated);
+        Assert.Contains("NoCtorActorDispatcher", generated);
+        Assert.Contains("?? @\"WorkerActorImpl\"", generated);
+        Assert.Contains("ActorTypeDescriptor(actorType, 1", generated);
+        Assert.Contains("(sp, actorId) => new global::EdgeSample.WorkerActorImpl(actorId)", generated);
+        Assert.Contains("(sp, actorId) => new global::EdgeSample.NoCtorActor()", generated);
+        Assert.DoesNotContain("GenericActor", generated);
+        Assert.DoesNotContain("Ignored()", generated);
+    }
+
+    [Fact]
+    public async Task Sample_generated_registration_dispatcher_factory_and_proxy_run_end_to_end()
+    {
+        _ = typeof(CalculatorActor);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<CalculatorDependency>();
+        // This test exercises the generated proxy end-to-end against only the library (no sidecar), so route
+        // proxy invocations through the in-process runtime rather than the (unreachable) gRPC sidecar client.
+        services.AddDaprActors(options => options.EnableSidecarTransport = false);
+        await using var provider = services.BuildServiceProvider(validateScopes: true);
+
+        var registry = provider.GetRequiredService<IActorRegistry>();
+        var runtime = provider.GetRequiredService<IActorRuntime>();
+        var proxyFactory = provider.GetRequiredService<IActorProxyFactory>();
+        ActorProxy.Configure(proxyFactory);
+
+        Assert.True(registry.TryGet("Calculator", out var descriptor));
+        Assert.Equal(2, descriptor.ContractVersion);
+        Assert.Contains(descriptor.Methods, method => method.Name == "SumAsync" && method.Parameters.Count == 3);
+        Assert.NotNull(provider.GetRequiredService<IActorStateUpcaster<CalculatorStateV1, CalculatorStateV2>>());
+
+        var proxy = ActorProxy.Create<ICalculatorActor>(ActorId.Create("calc-1"), "Calculator");
+        Assert.Equal(4, await proxy.SumAsync(1, 2));
+        await proxy.AddAsync(new CalculationInput(5));
+        var result = await proxy.GetAsync();
+
+        Assert.Equal(6, result.Value);
+        Assert.Equal(["generated", "calc-1"], result.Tags);
+
+        var weakResult = await runtime.InvokeAsync("Calculator", "calc-2", "SumAsync", System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { left = 2, right = 3 }), new Dictionary<string, string>());
+        Assert.NotNull(weakResult);
+    }
+
+    [Fact]
+    public async Task Explicit_actor_name_overrides_auto_registered_name_once()
+    {
+        _ = typeof(CalculatorActor);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<CalculatorDependency>();
+        services.AddDaprActors(options => options.Actors.RegisterActor<CalculatorActor>("RenamedCalculator"));
+        await using var provider = services.BuildServiceProvider(validateScopes: true);
+
+        var registry = provider.GetRequiredService<IActorRegistry>();
+        var runtime = provider.GetRequiredService<IActorRuntime>();
+
+        Assert.False(registry.TryGet("Calculator", out _));
+        Assert.True(registry.TryGet("RenamedCalculator", out var descriptor));
+        Assert.Equal(typeof(CalculatorActor), descriptor.ImplementationType);
+        Assert.Single(registry.Actors);
+
+        var weakResult = await runtime.InvokeAsync("RenamedCalculator", "calc-2", "SumAsync", System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { left = 2, right = 3 }), new Dictionary<string, string>());
+        Assert.NotNull(weakResult);
+    }
+
+    [Fact]
+    public async Task Auto_registration_flags_gate_hosted_actors_and_upcasters_independently()
+    {
+        _ = typeof(CalculatorActor);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<CalculatorDependency>();
+        services.AddDaprActors(options =>
+        {
+            options.EnableAutoActorRegistration = false;
+            options.EnableAutoStateMigrationRegistration = false;
+            options.Actors.RegisterActor<CalculatorActor>();
+        });
+        await using var provider = services.BuildServiceProvider(validateScopes: true);
+
+        var registry = provider.GetRequiredService<IActorRegistry>();
+        var runtime = provider.GetRequiredService<IActorRuntime>();
+
+        Assert.True(registry.TryGet("Calculator", out _));
+        Assert.Empty(provider.GetServices<IActorStateUpcaster<CalculatorStateV1, CalculatorStateV2>>());
+
+        var weakResult = await runtime.InvokeAsync("Calculator", "calc-3", "SumAsync", System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { left = 4, right = 5 }), new Dictionary<string, string>());
+        Assert.NotNull(weakResult);
+    }
+
+    [Fact]
+    public async Task Auto_actor_registration_off_still_installs_runtime_services()
+    {
+        _ = typeof(CalculatorActor);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<CalculatorDependency>();
+        services.AddDaprActors(options => options.EnableAutoActorRegistration = false);
+        await using var provider = services.BuildServiceProvider(validateScopes: true);
+
+        var registry = provider.GetRequiredService<IActorRegistry>();
+
+        Assert.NotNull(provider.GetRequiredService<IActorRuntime>());
+        Assert.Empty(registry.Actors);
+    }
+
+    private static string RunGenerator(CSharpCompilation compilation, bool? scanReferences)
+    {
+        var generator = new ActorsNextSourceGenerator();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [generator.AsSourceGenerator()],
+            driverOptions: new GeneratorDriverOptions(IncrementalGeneratorOutputKind.None),
+            optionsProvider: new TestAnalyzerConfigOptionsProvider(scanReferences));
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out var diagnostics);
+        Assert.Empty(diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+
+        var result = driver.GetRunResult().Results.Single();
+        return string.Join(Environment.NewLine, result.GeneratedSources.Select(source => source.SourceText.ToString()));
+    }
+
+    private static CSharpCompilation CreateCompilation(string assemblyName, string source, params MetadataReference[] additionalReferences)
+    {
+        var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!)
+            .Split(Path.PathSeparator)
+            .Select(path => MetadataReference.CreateFromFile(path))
+            .Concat(additionalReferences);
+
+        return CSharpCompilation.Create(
+            assemblyName,
+            [CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Latest))],
+            references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+    }
+
+    private sealed class TestAnalyzerConfigOptionsProvider(bool? scanReferences) : AnalyzerConfigOptionsProvider
+    {
+        private readonly TestAnalyzerConfigOptions globalOptions = new(scanReferences);
+
+        public override AnalyzerConfigOptions GlobalOptions => globalOptions;
+
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => EmptyAnalyzerConfigOptions.Instance;
+
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => EmptyAnalyzerConfigOptions.Instance;
+    }
+
+    private sealed class TestAnalyzerConfigOptions(bool? scanReferences) : AnalyzerConfigOptions
+    {
+        public override bool TryGetValue(string key, out string value)
+        {
+            if (key == "build_property.DaprActorsScanReferences" && scanReferences.HasValue)
+            {
+                value = scanReferences.Value ? "true" : "false";
+                return true;
+            }
+
+            value = string.Empty;
+            return false;
+        }
+    }
+
+    private sealed class EmptyAnalyzerConfigOptions : AnalyzerConfigOptions
+    {
+        public static readonly EmptyAnalyzerConfigOptions Instance = new();
+
+        public override bool TryGetValue(string key, out string value)
+        {
+            value = string.Empty;
+            return false;
+        }
+    }
+}
