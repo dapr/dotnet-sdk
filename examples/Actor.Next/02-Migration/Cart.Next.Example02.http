@@ -1,0 +1,40 @@
+@host = http://localhost:5000
+@cartId = demo
+
+### Import V1 state and migrate to V3
+POST {{host}}/carts/{{cartId}}/legacy/v1
+Content-Type: application/json
+
+{
+  "skus": [
+    "sku-1",
+    "sku-1",
+    "sku-2"
+  ]
+}
+
+### Read migrated state
+GET {{host}}/carts/{{cartId}}
+
+### Clear state
+DELETE {{host}}/carts/{{cartId}}
+
+### Import V2 state and migrate to V3
+POST {{host}}/carts/{{cartId}}/legacy/v2
+Content-Type: application/json
+
+{
+  "lines": [
+    {
+      "sku": "sku-3",
+      "quantity": 2
+    },
+    {
+      "sku": "sku-4",
+      "quantity": 5
+    }
+  ]
+}
+
+### Read migrated V2 state
+GET {{host}}/carts/{{cartId}}
