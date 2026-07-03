@@ -45,7 +45,11 @@ public class JsonDaprSerializer : IDaprSerializer
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="options"/> is null.</exception>
     public JsonDaprSerializer(JsonSerializerOptions options)
     {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
+
+        _options = options.TypeInfoResolver is null && JsonSerializer.IsReflectionEnabledByDefault
+            ? new JsonSerializerOptions(options) { TypeInfoResolver = new DefaultJsonTypeInfoResolver() }
+            : options;
     }
 
     /// <inheritdoc />
@@ -113,7 +117,7 @@ public class JsonDaprSerializer : IDaprSerializer
 
         if (JsonSerializer.IsReflectionEnabledByDefault)
         {
-            return (JsonTypeInfo<T>)JsonSerializerOptions.Default.GetTypeInfo(typeof(T));
+            return (JsonTypeInfo<T>)_options.GetTypeInfo(typeof(T));
         }
 
         throw new NotSupportedException($"JsonTypeInfo metadata for '{typeof(T)}' was not provided.");
