@@ -73,6 +73,20 @@ public sealed class OptionsTests
     public void AddDaprActors_RejectsNullArguments()
     {
         Assert.Throws<ArgumentNullException>(() => DaprActorsServiceCollectionExtensions.AddDaprActors(null!, _ => { }));
-        Assert.Throws<ArgumentNullException>(() => new ServiceCollection().AddDaprActors(null!));
+    }
+
+    [Fact]
+    public void AddDaprActors_AllowsNullConfigureAndUsesDefaults()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprActors(null);
+
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<IOptions<DaprActorsOptions>>().Value;
+
+        Assert.Equal(1, options.DefaultContractVersion);
+        Assert.True(options.EnableAutoActorRegistration);
+        Assert.Contains(provider.GetServices<IValidateOptions<DaprActorsOptions>>(), validator => validator is DaprActorsOptionsValidator);
     }
 }
