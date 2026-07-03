@@ -5,7 +5,7 @@ namespace Dapr.Actors.Next.Abstractions.Test;
 
 public sealed class AttributeTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void DaprActorAttribute_DefaultsContractVersion()
     {
         var attribute = new DaprActorAttribute();
@@ -14,7 +14,7 @@ public sealed class AttributeTests
         Assert.Equal(1, attribute.ContractVersion);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void DaprActorAttribute_StoresActorTypeAndContractVersion()
     {
         var attribute = new DaprActorAttribute("CartActor")
@@ -26,7 +26,7 @@ public sealed class AttributeTests
         Assert.Equal(3, attribute.ContractVersion);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void AttributeUsage_MatchesPublicContract()
     {
         AssertUsage<DaprActorAttribute>(AttributeTargets.Class, allowMultiple: false);
@@ -34,7 +34,7 @@ public sealed class AttributeTests
         AssertUsage<SubscribeAttribute>(AttributeTargets.Method, allowMultiple: true);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void SubscribeAttribute_StoresSubscriptionShape()
     {
         var attribute = new SubscribeAttribute("pubsub", "topic")

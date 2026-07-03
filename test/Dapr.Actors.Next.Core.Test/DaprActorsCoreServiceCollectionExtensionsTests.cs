@@ -16,7 +16,7 @@ namespace Dapr.Actors.Next.Core.Test;
 
 public sealed class DaprActorsCoreServiceCollectionExtensionsTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void AddDaprActorsCore_registers_generated_dapr_grpc_client_with_workflow_style_channel_options()
     {
         var services = new ServiceCollection();
@@ -52,7 +52,7 @@ public sealed class DaprActorsCoreServiceCollectionExtensionsTests
         Assert.Null(options.MaxSendMessageSize);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void AddDaprActorsCore_preserves_existing_generated_dapr_grpc_client()
     {
         var services = new ServiceCollection();

@@ -8,7 +8,7 @@ namespace Dapr.Actors.Next.Analyzers.Test;
 
 public sealed class ActorsNextCodeFixTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Inlines_task_run_lambda()
     {
         const string source = """
@@ -51,7 +51,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1411");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Inlines_task_run_anonymous_delegate_return()
     {
         const string source = """
@@ -94,7 +94,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1411");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Direct_code_fix_inlines_task_run_simple_lambda()
     {
         const string source = "class C { void M() { var next = {|DAPR1411:Task.Run(value => Save(value))|}; } }";
@@ -105,7 +105,7 @@ public sealed class ActorsNextCodeFixTests
         Assert.Equal(fixedSource, fixedText);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Direct_code_fix_preserves_non_lambda_task_run_argument()
     {
         const string source = "class C { void M() { var next = {|DAPR1411:Task.Run(Save())|}; } }";
@@ -116,7 +116,7 @@ public sealed class ActorsNextCodeFixTests
         Assert.Equal(fixedSource, fixedText);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Direct_code_fix_ignores_non_run_scheduler_escape()
     {
         const string source = "class C { void M() { {|DAPR1411:Task.Factory.StartNew(() => 1)|}; } }";
@@ -127,7 +127,7 @@ public sealed class ActorsNextCodeFixTests
         Assert.Equal(fixedSource, fixedText);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Converts_result_to_await()
     {
         var source = ActorSource("_ = {|DAPR1412:Task.FromResult(1).Result|};");
@@ -135,7 +135,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1412");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Converts_wait_to_await()
     {
         var source = ActorSource("{|DAPR1412:Task.Delay(1).Wait()|};");
@@ -143,7 +143,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1412");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Converts_thread_sleep_to_task_delay()
     {
         var source = ActorSource("{|DAPR1412:Thread.Sleep(1)|};");
@@ -151,7 +151,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1412");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Direct_code_fix_ignores_unknown_blocking_node()
     {
         const string source = "class C { void M() { var task = {|DAPR1412:Task.Delay(1)|}; } }";
@@ -162,7 +162,7 @@ public sealed class ActorsNextCodeFixTests
         Assert.Equal(fixedSource, fixedText);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Converts_datetime_to_time_provider()
     {
         var source = ActorSource("_ = {|DAPR1413:DateTime.UtcNow|};");
@@ -170,7 +170,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1413");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Converts_datetime_now_to_time_provider()
     {
         var source = ActorSource("_ = {|DAPR1413:DateTime.Now|};");
@@ -178,7 +178,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1413");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Converts_datetime_offset_utc_now_to_time_provider()
     {
         var source = ActorSource("_ = {|DAPR1413:DateTimeOffset.UtcNow|};");
@@ -186,7 +186,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1413");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Converts_datetime_offset_to_time_provider()
     {
         var source = ActorSource("_ = {|DAPR1413:DateTimeOffset.Now|};");
@@ -194,7 +194,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1413");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Converts_stopwatch_start_to_time_provider_timestamp()
     {
         var source = ActorSource("_ = {|DAPR1413:Stopwatch.StartNew()|};", extraUsing: "using System.Diagnostics;");
@@ -202,7 +202,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1413");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Direct_code_fix_ignores_unknown_time_source()
     {
         const string source = "class C { void M() { var now = {|DAPR1413:DateTime.Today|}; } }";
@@ -213,7 +213,7 @@ public sealed class ActorsNextCodeFixTests
         Assert.Equal(fixedSource, fixedText);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Seeds_random_source()
     {
         var source = ActorSource("_ = {|DAPR1414:new Random()|};");
@@ -221,7 +221,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1414");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Direct_code_fix_ignores_unknown_nondeterministic_source()
     {
         const string source = "class C { void M() { var value = {|DAPR1414:RandomNumberGenerator.Create()|}; } }";
@@ -232,7 +232,7 @@ public sealed class ActorsNextCodeFixTests
         Assert.Equal(fixedSource, fixedText);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Replaces_random_shared_with_seeded_random()
     {
         var source = ActorSource("_ = {|DAPR1414:Random.Shared|};");
@@ -240,7 +240,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1414");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Replaces_guid_new_guid_with_deterministic_placeholder()
     {
         var source = ActorSource("_ = {|DAPR1414:Guid.NewGuid()|};");
@@ -248,7 +248,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1414");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Scaffolds_missing_upcaster_hop()
     {
         const string source = """
@@ -308,7 +308,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1415");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Replaces_filter_business_logic_with_handoff_comment()
     {
         const string source = """
@@ -342,7 +342,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1416");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Promotes_state_baseline()
     {
         const string source = """
@@ -368,7 +368,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixWithBaselineAsync(source, fixedSource, shipped, fixedBaseline, "DAPR1410", codeActionIndex: 0);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Direct_code_fix_ignores_baseline_promotion_without_required_properties()
     {
         const string source = "class CartState { }";
@@ -379,7 +379,7 @@ public sealed class ActorsNextCodeFixTests
         Assert.Equal(source, fixedText);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Direct_code_fix_ignores_baseline_promotion_without_shipped_file()
     {
         const string source = "class CartState { }";
@@ -398,7 +398,7 @@ public sealed class ActorsNextCodeFixTests
         Assert.Equal(source, fixedText);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Scaffolds_state_upcaster_for_state_baseline_change()
     {
         const string source = """
@@ -438,7 +438,7 @@ public sealed class ActorsNextCodeFixTests
         Assert.Equal(fixedSource, fixedText);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Bumps_actor_contract_version_for_wire_break()
     {
         const string source = """
@@ -490,7 +490,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixWithBaselineAsync(source, fixedSource, shipped, shipped, "DAPR1418", codeActionIndex: 0);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Promotes_wire_baseline_for_contract_break()
     {
         const string source = """
@@ -541,7 +541,7 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixWithBaselineAsync(source, fixedSource, shipped, fixedBaseline, "DAPR1418", codeActionIndex: 1);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Adds_actor_contract_version_for_wire_break()
     {
         const string source = """

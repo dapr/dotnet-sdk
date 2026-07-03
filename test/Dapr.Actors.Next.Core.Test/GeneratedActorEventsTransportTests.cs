@@ -9,7 +9,7 @@ namespace Dapr.Actors.Next.Core.Test;
 
 public sealed class GeneratedActorEventsTransportTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Transport_maps_generated_actor_stream_messages()
     {
         var harness = new GeneratedActorEventsHarness();
@@ -76,7 +76,7 @@ public sealed class GeneratedActorEventsTransportTests
         Assert.False(response.InvokeResponse.Error);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Transport_maps_failures_and_non_invoke_callbacks()
     {
         var harness = new GeneratedActorEventsHarness();
@@ -185,7 +185,7 @@ public sealed class GeneratedActorEventsTransportTests
         Assert.Equal("deactivate-1", deactivateAck.DeactivateResponse.Id);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Transport_adds_dapr_api_token_to_stream_call_options()
     {
         var harness = new GeneratedActorEventsHarness();
@@ -198,7 +198,7 @@ public sealed class GeneratedActorEventsTransportTests
         Assert.Contains(harness.StreamCallOptions.Headers!, entry => entry.Key == "user-agent");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Transport_explains_http2_protocol_mismatch_on_initial_write()
     {
         var harness = new ProtocolMismatchHarness();

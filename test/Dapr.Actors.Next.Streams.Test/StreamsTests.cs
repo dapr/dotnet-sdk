@@ -14,7 +14,7 @@ public sealed class StreamsTests
 {
     private static readonly ActorStreamSubscription Subscription = new("pubsub", "topic", "CartActor", "OnEvent", "cartId");
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Routing_key_reads_cloudevents_attribute_subject_and_content_path()
     {
         var extractor = new ActorStreamRoutingKeyExtractor();
@@ -30,7 +30,7 @@ public sealed class StreamsTests
         Assert.Equal("camel-cart", extractor.ExtractActorId(Subscription with { RouteBy = "CartId" }, Event("""{"cartId":"camel-cart"}""")));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Routing_key_rejects_empty_missing_and_non_scalar_values()
     {
         var extractor = new ActorStreamRoutingKeyExtractor();
@@ -41,7 +41,7 @@ public sealed class StreamsTests
         Assert.Throws<ArgumentException>(() => extractor.ExtractActorId(Subscription, new ActorStreamEvent("1", "pubsub", "topic", ReadOnlyMemory<byte>.Empty, new Dictionary<string, string>())));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Cloudevents_attribute_lookup_is_case_insensitive()
     {
         var evt = Event("""{"cartId":"json"}""", new Dictionary<string, string> { ["TraceParent"] = "trace", ["CartId"] = "cart" });
@@ -52,7 +52,7 @@ public sealed class StreamsTests
         Assert.Equal("cart", new ActorStreamRoutingKeyExtractor().ExtractActorId(Subscription, evt));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Topic_message_mapper_preserves_cloudevents_attributes_and_extensions()
     {
         var message = new TopicMessage("id-1", "source", "type", "1.0", "application/json", "topic", "pubsub")
@@ -83,7 +83,7 @@ public sealed class StreamsTests
         Assert.NotEmpty(evt.Attributes["object"]);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Delivery_ack_is_gated_until_forward_invoke_completes()
     {
         var client = new FakeInvocationClient();
@@ -98,7 +98,7 @@ public sealed class StreamsTests
         Assert.Equal("""{"cartId":"cart-1"}""", Encoding.UTF8.GetString(client.Invocations[0].Payload.ToArray()));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Delivery_retries_transient_failure_and_drops_poison_failure()
     {
         var transient = new FakeInvocationClient { Failure = new ActorStreamTransientException("try again") };
@@ -108,7 +108,7 @@ public sealed class StreamsTests
         Assert.Equal(ActorStreamDeliveryAction.Drop, await Runner(poison).ProcessEventAsync(Subscription, Event("""{"cartId":"b"}""")));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Run_uses_component_single_delivery_and_acknowledges_each_event_once()
     {
         var source = new FakeSubscriptionSource([
@@ -132,7 +132,7 @@ public sealed class StreamsTests
         Assert.All(acknowledgements, item => Assert.Equal(ActorStreamDeliveryAction.Ack, item.Action));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Traceparent_is_attached_to_forward_invoke_headers()
     {
         var client = new FakeInvocationClient();
@@ -145,7 +145,7 @@ public sealed class StreamsTests
         Assert.Equal(traceParent, client.Invocations[0].Headers["traceparent"]);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Dapr_messaging_subscriber_maps_runner_outcome_to_topic_response()
     {
         var client = new FakePublishSubscribeClient();
@@ -178,7 +178,7 @@ public sealed class StreamsTests
         Assert.Equal("trace", invocation.Invocations[0].Headers["traceparent"]);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Dapr_messaging_subscriber_maps_retry_and_drop()
     {
         var retryClient = new FakePublishSubscribeClient();
@@ -208,7 +208,7 @@ public sealed class StreamsTests
         }
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Hosted_service_opens_and_disposes_registered_subscriptions()
     {
         var client = new FakePublishSubscribeClient();
@@ -228,7 +228,7 @@ public sealed class StreamsTests
         Assert.All(client.Disposables, disposable => Assert.True(disposable.Disposed));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Invalid_route_is_poison()
     {
         var classifier = new DefaultActorStreamFailureClassifier();
@@ -241,7 +241,7 @@ public sealed class StreamsTests
         Assert.Equal(ActorStreamDeliveryAction.Retry, classifier.Classify(new InvalidOperationException()));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Service_collection_extension_registers_stream_services()
     {
         var services = new ServiceCollection();

@@ -4,7 +4,7 @@ namespace Dapr.Actors.Next.Abstractions.Test;
 
 public sealed class ExceptionTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void BaseException_ConstructorsSetExpectedProperties()
     {
         var inner = new InvalidOperationException("inner");
@@ -14,7 +14,7 @@ public sealed class ExceptionTests
         Assert.Same(inner, new DaprActorException("message", inner).InnerException);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void DerivedException_ConstructorsSetExpectedProperties()
     {
         var inner = new InvalidOperationException("inner");
@@ -25,7 +25,7 @@ public sealed class ExceptionTests
         AssertDerived(new InvalidActorEventException(), new InvalidActorEventException("message"), new InvalidActorEventException("message", inner), inner);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void InvalidActorEventException_StateEventConstructorCapturesNames()
     {
         var ex = new InvalidActorEventException(TestState.Open, new TestEvent());
@@ -36,7 +36,7 @@ public sealed class ExceptionTests
         Assert.Equal(typeof(TestEvent).FullName, ex.EventName);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void InvalidActorEventException_StateEventConstructorAllowsNulls()
     {
         var ex = new InvalidActorEventException((object?)null, (object?)null);

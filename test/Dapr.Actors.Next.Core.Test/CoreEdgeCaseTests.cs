@@ -17,7 +17,7 @@ namespace Dapr.Actors.Next.Core.Test;
 
 public sealed class CoreEdgeCaseTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task State_accessor_supports_set_remove_missing_and_dirty_setter()
     {
         var store = new InMemoryActorStateStore();
@@ -39,7 +39,7 @@ public sealed class CoreEdgeCaseTests
         await Assert.ThrowsAsync<ArgumentNullException>(async () => await state.GetOrCreateAsync<CounterState>("x", null!));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Loaded_state_stays_clean_until_it_changes()
     {
         var store = new RecordingActorStateStore();
@@ -70,7 +70,7 @@ public sealed class CoreEdgeCaseTests
         Assert.Equal(2, store.WriteCount);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task State_accessor_reports_null_envelope()
     {
         var store = new InMemoryActorStateStore();
@@ -80,7 +80,7 @@ public sealed class CoreEdgeCaseTests
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await state.TryGetAsync<CounterState>("state"));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task State_accessor_reports_bad_envelope()
     {
         var store = new InMemoryActorStateStore();
@@ -91,7 +91,7 @@ public sealed class CoreEdgeCaseTests
         await Assert.ThrowsAsync<System.Text.Json.JsonException>(async () => await state.TryGetAsync<CounterState>("state"));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Disabled_transport_and_error_response_paths_are_exercised()
     {
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await new DisabledSubscribeActorEventsTransport().OpenStreamAsync());
@@ -112,7 +112,7 @@ public sealed class CoreEdgeCaseTests
         Assert.NotNull(response.FailureMessage);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Callback_host_maps_all_callback_kinds_and_trace_headers()
     {
         var harness = new InMemoryTransportHarness();
@@ -134,7 +134,7 @@ public sealed class CoreEdgeCaseTests
         Assert.Equal(new[] { "deact", "rem", "timer" }, new[] { reminder.Id, timer.Id, deactivate.Id }.Order(StringComparer.Ordinal).ToArray());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Registry_proxy_registration_and_lifecycle_defensive_branches()
     {
         Assert.Throws<ArgumentException>(() => new ActorRuntimeRegistration("", typeof(ICounterActor), typeof(CounterActor), (_, _) => new TestActor(), new CounterDispatcher()));
@@ -158,7 +158,7 @@ public sealed class CoreEdgeCaseTests
         Assert.Throws<InvalidOperationException>(() => ActorProxy.Create<ICounterActor>(ActorId.Create("x"), "Counter"));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Registry_allows_multiple_actor_types_for_the_same_interface()
     {
         using var services = new ServiceCollection().BuildServiceProvider();
@@ -180,7 +180,7 @@ public sealed class CoreEdgeCaseTests
         Assert.Equal(["CounterA", "CounterC"], registry.GetAllByInterfaceType(typeof(ICounterActor)).Select(registration => registration.ActorType).Order(StringComparer.Ordinal).ToArray());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Wire_serializer_handles_null_empty_and_custom_serializer()
     {
         Assert.Throws<ArgumentNullException>(() => new ActorWireSerializer(null!));
@@ -193,7 +193,7 @@ public sealed class CoreEdgeCaseTests
         Assert.Equal("plain", serializer.DeserializeFromBytes<string>(System.Text.Encoding.UTF8.GetBytes("plain")));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Dynamic_client_returns_null_when_runtime_returns_null()
     {
         var client = new DynamicActorClient(new NullInvocationClient(), new ActorWireSerializer(new JsonDaprSerializer()));
@@ -201,7 +201,7 @@ public sealed class CoreEdgeCaseTests
         Assert.Null(await client.InvokeAsync("a", "b", "c", "{}"));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Activation_dispose_handles_plain_and_async_disposable_actors()
     {
         var services = new ServiceCollection();
@@ -220,7 +220,7 @@ public sealed class CoreEdgeCaseTests
         Assert.True(asyncActor.Disposed);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Runtime_deactivate_turn_and_invalid_reminder_link_are_handled()
     {
         await using var provider = CoreRuntimeTestsAccess.CreateProvider(new InMemoryTransportHarness());
@@ -230,7 +230,7 @@ public sealed class CoreEdgeCaseTests
         await runtime.DispatchAsync(new ActorRuntimeRequest("Counter", ActorId.Create("badlink"), "Increment", ActorTurnKind.Reminder, System.Text.Encoding.UTF8.GetBytes("1"), new Dictionary<string, string> { ["dapr-actors-origin-traceparent"] = "bad" }, new ActorRequestContext(null, null, new Dictionary<string, string>())));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Scheduler_ignores_foreign_mailbox_and_activation_provider_returns_runtime_services()
     {
         var scheduler = new ProductionActorScheduler();
@@ -251,7 +251,7 @@ public sealed class CoreEdgeCaseTests
         await activationProvider.DisposeAsync();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Core_timer_scheduler_validates_replaces_cancels_and_disposes_timers()
     {
         var scheduler = new CoreActorTimerScheduler(

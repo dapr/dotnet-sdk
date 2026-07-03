@@ -14,7 +14,7 @@ namespace Dapr.Actors.Next.Core.Test;
 
 public sealed class SidecarAdapterTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Invocation_client_maps_actor_invoke_request_and_response()
     {
         var client = new RecordingDaprClient { InvokeActorResponse = new P.InvokeActorResponse { Data = ByteString.CopyFromUtf8("ok") } };
@@ -38,7 +38,7 @@ public sealed class SidecarAdapterTests
         await Assert.ThrowsAsync<ArgumentException>(async () => await invocation.InvokeAsync("", "one", "Read", ReadOnlyMemory<byte>.Empty, new Dictionary<string, string>()));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Sidecar_adapters_add_dapr_api_token_to_call_options()
     {
         var client = new RecordingDaprClient { InvokeActorResponse = new P.InvokeActorResponse() };
@@ -56,7 +56,7 @@ public sealed class SidecarAdapterTests
         AssertToken(client.RegisterActorTimerOptions);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task State_store_maps_sidecar_state_requests()
     {
         var client = new RecordingDaprClient { GetStateResponse = new P.GetStateResponse { Data = ByteString.CopyFromUtf8("value") } };
@@ -77,7 +77,7 @@ public sealed class SidecarAdapterTests
         Assert.Equal(client.GetStateRequest.Key, client.DeleteStateRequest!.Key);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task State_store_treats_sidecar_json_null_as_missing_state()
     {
         var client = new RecordingDaprClient { GetStateResponse = new P.GetStateResponse { Data = ByteString.CopyFromUtf8("null") } };
@@ -88,7 +88,7 @@ public sealed class SidecarAdapterTests
         Assert.Null(value);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Timer_scheduler_maps_sidecar_timer_requests()
     {
         var client = new RecordingDaprClient();

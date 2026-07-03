@@ -13,7 +13,7 @@ namespace Dapr.Actors.Next.StateMachine.Test;
 
 public sealed class StateMachineEdgeTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Internal_raise_async_entry_and_exit_run_in_order()
     {
         await using var runtime = CreateRuntime();
@@ -25,7 +25,7 @@ public sealed class StateMachineEdgeTests
         Assert.Equal(["exit-a", "begin", "entry-b", "follow"], data.Log);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Named_effect_and_guard_fail_without_registry()
     {
         await using var runtime = CreateRuntime();
@@ -35,7 +35,7 @@ public sealed class StateMachineEdgeTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => Invoke<string>(runtime, id, "UseNamedGuard"));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Custom_timer_schedule_and_cancel_use_virtual_time()
     {
         await using var runtime = CreateRuntime();
@@ -53,7 +53,7 @@ public sealed class StateMachineEdgeTests
         Assert.Empty((await Invoke<EdgeData>(runtime, canceled, "ReadData")).Log);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Reply_and_no_branch_edges_are_reported_consistently()
     {
         await using var runtime = CreateRuntime();
@@ -65,7 +65,7 @@ public sealed class StateMachineEdgeTests
         Assert.Equal(4, await Invoke<int>(runtime, id, "TableStateCount"));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Unhandled_without_fallback_and_bad_timer_payload_throw()
     {
         await using var runtime = CreateRuntime();
@@ -77,7 +77,7 @@ public sealed class StateMachineEdgeTests
         await Assert.ThrowsAsync<JsonException>(() => malformed);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Global_fallback_can_reply_and_stale_timeout_is_ignored()
     {
         await using var runtime = CreateRuntime();
@@ -94,7 +94,7 @@ public sealed class StateMachineEdgeTests
         Assert.Empty((await Invoke<EdgeData>(runtime, id, "ReadData")).Log);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Missing_initial_state_fails_on_activation()
     {
         await using var runtime = CreateRuntime();
@@ -103,7 +103,7 @@ public sealed class StateMachineEdgeTests
         Assert.Contains("initial state", ex.Message);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Builder_and_analyzer_cover_named_table_shapes()
     {
         var table = StateMachineActor<EdgeState, EdgeData>.BuildDefinitionFor(typeof(EdgeActor));
@@ -117,7 +117,7 @@ public sealed class StateMachineEdgeTests
         Assert.Throws<InvalidOperationException>(() => StateMachineAnalyzer.Analyze(typeof(object)));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Actor_constructor_validates_required_runtime_services()
     {
         var context = (ActorActivationContext)RuntimeHelpers.GetUninitializedObject(typeof(ActorActivationContext));

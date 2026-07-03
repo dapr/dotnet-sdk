@@ -18,11 +18,14 @@
 
     <ItemGroup>
         <Using Include="Xunit" />
+        <Using Include="Dapr.Testcontainers.Xunit.Attributes" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\Dapr.Actors.Next.Interpreted\Dapr.Actors.Next.Interpreted.csproj" />
         <ProjectReference Include="..\..\src\Dapr.Actors.Next.Testing\Dapr.Actors.Next.Testing.csproj" />
+        <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
+
     </ItemGroup>
 
 </Project>

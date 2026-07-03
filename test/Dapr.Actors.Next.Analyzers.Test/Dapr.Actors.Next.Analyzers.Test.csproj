@@ -31,6 +31,9 @@
 
     <ItemGroup>
         <Using Include="Xunit" />
+        <Using Include="Dapr.Testcontainers.Xunit.Attributes" />
+        <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
+
     </ItemGroup>
 
 </Project>

@@ -9,7 +9,7 @@ namespace Dapr.Actors.Next.Testing.Test;
 
 public sealed class ActorTestRuntimeTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Generated_proxy_runs_against_in_memory_runtime_and_exposes_state()
     {
         _ = typeof(CalculatorActor);
@@ -29,7 +29,7 @@ public sealed class ActorTestRuntimeTests
         Assert.Equal(4, state.Value);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Same_seed_replays_same_interleaving_and_result()
     {
         var first = await RunTwoActorAdds(seed: 17);
@@ -40,7 +40,7 @@ public sealed class ActorTestRuntimeTests
         Assert.Equal(first.Right, second.Right);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Injected_state_write_fault_surfaces_and_next_turn_recovers_dirty_state()
     {
         await using var runtime = CreateTestingRuntime(new SeededRandomActorScheduler(1));
@@ -57,7 +57,7 @@ public sealed class ActorTestRuntimeTests
         Assert.Equal(5, recovered);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Virtual_time_fires_timer_and_reminder_in_due_time_order()
     {
         await using var runtime = CreateTestingRuntime(new PriorityActorScheduler(4));
@@ -74,7 +74,7 @@ public sealed class ActorTestRuntimeTests
         Assert.Equal(["Timer", "Reminder", "Add"], runtime.Transcript.Select(entry => entry.OperationName).ToArray());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Reentrant_call_chain_completes_under_controlled_scheduler()
     {
         await using var runtime = CreateTestingRuntime(new SeededRandomActorScheduler(3));
@@ -89,7 +89,7 @@ public sealed class ActorTestRuntimeTests
         Assert.Contains(runtime.Transcript, entry => entry.OperationName == "Reenter");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Failing_interleaving_replays_from_seed()
     {
         static async Task<IReadOnlyList<InterleavingTranscriptEntry>> RunFailure()
@@ -108,7 +108,7 @@ public sealed class ActorTestRuntimeTests
         Assert.Equal(first, second);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Structural_analysis_placeholder_reports_plain_actor_methods()
     {
         var analysis = ActorStateMachine.Analyze<TestingActor>();
@@ -119,7 +119,7 @@ public sealed class ActorTestRuntimeTests
         Assert.False(CoyoteBridge.IsEnabled);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Fault_filters_only_consume_matching_faults_and_support_permanent_failures()
     {
         await using var runtime = CreateTestingRuntime(new SeededRandomActorScheduler(5));
@@ -143,7 +143,7 @@ public sealed class ActorTestRuntimeTests
         Assert.IsType<ActorInjectedPermanentException>(Record.Exception((Action)InvokeFault));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Runtime_and_scheduler_edges_are_observable()
     {
         await using var runtime = CreateTestingRuntime(new SeededRandomActorScheduler(6));
@@ -163,7 +163,7 @@ public sealed class ActorTestRuntimeTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => inconsistent.StepAsync());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Run_to_idle_waits_for_in_flight_turns_and_priority_scheduler_replays_seed()
     {
         var priority = new PriorityActorScheduler(2, priorityChangeBound: 1);
@@ -180,7 +180,7 @@ public sealed class ActorTestRuntimeTests
         Assert.Contains(runtime.Transcript, entry => entry.OperationName == "Slow");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Virtual_time_rejects_invalid_advances_and_unattached_use()
     {
         var time = new VirtualActorTimeProvider();
@@ -192,7 +192,7 @@ public sealed class ActorTestRuntimeTests
         Assert.Throws<ArgumentOutOfRangeException>(() => time.ScheduleTimer("Testing", ActorId.Create("bad"), "Timer", TimeSpan.FromTicks(-1)));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task State_snapshot_exposes_state_machine_placeholders()
     {
         _ = typeof(CalculatorActor);
@@ -207,7 +207,7 @@ public sealed class ActorTestRuntimeTests
         Assert.Null(runtime.StateOf(actor).Data<string>());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Structural_analysis_defect_assertion_reports_defects()
     {
         var analysis = new ActorStateMachineAnalysis(typeof(TestingActor), [], ["defect"]);

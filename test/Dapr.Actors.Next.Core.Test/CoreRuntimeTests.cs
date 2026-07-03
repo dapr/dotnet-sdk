@@ -22,7 +22,7 @@ namespace Dapr.Actors.Next.Core.Test;
 
 public sealed class CoreRuntimeTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Stream_advertises_registered_actors_and_reconnects()
     {
         var harness = new InMemoryTransportHarness();
@@ -43,7 +43,7 @@ public sealed class CoreRuntimeTests
         Assert.Equal(SubscribeActorEventsFrameKind.RegisteredActors, secondAdvertisement.Kind);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Stream_manager_opens_one_stream_per_type_and_closes_dynamic_type()
     {
         var harness = new InMemoryTransportHarness();
@@ -86,7 +86,7 @@ public sealed class CoreRuntimeTests
         Assert.DoesNotContain("DynamicCounter", registry.ActorTypes);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Stream_demultiplexes_callbacks_and_correlates_responses()
     {
         var harness = new InMemoryTransportHarness();
@@ -107,7 +107,7 @@ public sealed class CoreRuntimeTests
         Assert.Null(response.FailureMessage);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Runtime_orders_turns_and_allows_same_chain_reentrancy()
     {
         await using var provider = CreateProvider(null, out _);
@@ -141,7 +141,7 @@ public sealed class CoreRuntimeTests
         Assert.Equal("14", System.Text.Encoding.UTF8.GetString(reentrantX!.AsSpan()));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Production_scheduler_runs_idle_turn_inline_on_the_caller()
     {
         await using var provider = CreateBlockingProvider();
@@ -164,7 +164,7 @@ public sealed class CoreRuntimeTests
         await releaser;
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Activation_deactivation_disposes_actor_scope_and_instance()
     {
         await using var provider = CreateProvider(null, out var created);
@@ -179,7 +179,7 @@ public sealed class CoreRuntimeTests
         Assert.Contains("deactivate", actor.Events);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task State_cache_flushes_envelope_and_reloads_on_activation()
     {
         await using var provider = CreateProvider(null, out _);
@@ -198,7 +198,7 @@ public sealed class CoreRuntimeTests
         Assert.Equal("5", System.Text.Encoding.UTF8.GetString(read!.AsSpan()));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Serializer_adapter_owns_utf8_transcode()
     {
         var serializer = new ActorWireSerializer(new Dapr.Common.Serialization.JsonDaprSerializer());
@@ -213,7 +213,7 @@ public sealed class CoreRuntimeTests
         Assert.Equal("""{"x":1}""", json);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Dynamic_client_routes_through_runtime()
     {
         await using var provider = CreateProvider(null, out _);
@@ -224,7 +224,7 @@ public sealed class CoreRuntimeTests
         Assert.Equal("4", result);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Actor_proxy_uses_generated_factory_seam()
     {
         var expected = new TestProxy();
@@ -235,7 +235,7 @@ public sealed class CoreRuntimeTests
         Assert.Same(expected, proxy);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Filter_pipeline_and_lifecycle_hooks_run_in_order()
     {
         var log = new List<string>();
@@ -247,7 +247,7 @@ public sealed class CoreRuntimeTests
         Assert.Equal(new[] { "activate", "filter-before", "pre", "method", "filter-after", "post" }, log);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Actor_request_context_snapshots_and_restores_activity_baggage()
     {
         using var source = new ActivitySource("test");
@@ -267,7 +267,7 @@ public sealed class CoreRuntimeTests
         }
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Reminder_turn_adds_span_link_from_origin_traceparent()
     {
         using var listener = new RecordingActivityListener("Dapr.Actors.Next.Core");

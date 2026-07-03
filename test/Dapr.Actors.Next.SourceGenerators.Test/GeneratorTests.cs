@@ -15,7 +15,7 @@ namespace Dapr.Actors.Next.SourceGenerators.Test;
 
 public sealed class GeneratorTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Generated_output_contains_proxy_dispatcher_registry_and_generic_serializer_calls()
     {
         var source = """
@@ -65,7 +65,7 @@ public sealed class GeneratorTests
         Assert.Contains("JsonSerializable(typeof(global::SnapshotSample.CartItem))", generated);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Cross_assembly_discovery_is_gated_by_scan_property()
     {
         var library = CreateCompilation("ExternalActors", """
@@ -108,7 +108,7 @@ public sealed class GeneratorTests
         Assert.Contains("ActorTypeDescriptor(actorType", on);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Generator_handles_edge_shapes_without_emitting_invalid_code()
     {
         var source = """
@@ -181,7 +181,7 @@ public sealed class GeneratorTests
         Assert.DoesNotContain("Ignored()", generated);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Generator_emits_distinct_actor_type_registrations_for_shared_interfaces()
     {
         var source = """
@@ -244,7 +244,7 @@ public sealed class GeneratorTests
         Assert.Contains("IActorStateUpcaster<global::SharedInterfaceSample.SharedStateV1, global::SharedInterfaceSample.SharedStateV2>", generated);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Sample_generated_registration_dispatcher_factory_and_proxy_run_end_to_end()
     {
         _ = typeof(CalculatorActor);
@@ -278,7 +278,7 @@ public sealed class GeneratorTests
         Assert.NotNull(weakResult);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Explicit_actor_name_overrides_auto_registered_name_once()
     {
         _ = typeof(CalculatorActor);
@@ -300,7 +300,7 @@ public sealed class GeneratorTests
         Assert.NotNull(weakResult);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Auto_registration_flags_gate_hosted_actors_and_upcasters_independently()
     {
         _ = typeof(CalculatorActor);
@@ -325,7 +325,7 @@ public sealed class GeneratorTests
         Assert.NotNull(weakResult);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Auto_actor_registration_off_still_installs_runtime_services()
     {
         _ = typeof(CalculatorActor);

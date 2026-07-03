@@ -2,7 +2,7 @@ namespace Dapr.Actors.Next.Abstractions.Test;
 
 public sealed class ActorIdTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Create_StoresValueAndFormatsAsValue()
     {
         var id = ActorId.Create("cart-1");
@@ -11,27 +11,26 @@ public sealed class ActorIdTests
         Assert.Equal("cart-1", id.ToString());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Parse_ReturnsEquivalentActorId()
     {
         Assert.Equal(new ActorId("cart-1"), ActorId.Parse("cart-1"));
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData(" ")]
-    public void Constructor_RejectsInvalidValues(string value)
+    [MinimumDaprRuntimeFact("1.18")]
+    public void Constructor_RejectsInvalidValues()
     {
-        Assert.Throws<ArgumentException>(() => new ActorId(value));
+        Assert.Throws<ArgumentException>(() => new ActorId(""));
+        Assert.Throws<ArgumentException>(() => new ActorId(" "));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Constructor_RejectsNull()
     {
         Assert.Throws<ArgumentException>(() => new ActorId(null!));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void TryParse_ReturnsTrueForValidValue()
     {
         var parsed = ActorId.TryParse("actor-7", out var id);
@@ -40,19 +39,20 @@ public sealed class ActorIdTests
         Assert.Equal("actor-7", id.Value);
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData(" ")]
-    public void TryParse_ReturnsFalseForInvalidValue(string? value)
+    [MinimumDaprRuntimeFact("1.18")]
+    public void TryParse_ReturnsFalseForInvalidValue()
     {
-        var parsed = ActorId.TryParse(value, out var id);
+        Assert.False(ActorId.TryParse(null, out var nullId));
+        Assert.Equal(default, nullId);
 
-        Assert.False(parsed);
-        Assert.Equal(default, id);
+        Assert.False(ActorId.TryParse("", out var emptyId));
+        Assert.Equal(default, emptyId);
+
+        Assert.False(ActorId.TryParse(" ", out var whitespaceId));
+        Assert.Equal(default, whitespaceId);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Equality_UsesValue()
     {
         Assert.Equal(ActorId.Create("same"), ActorId.Parse("same"));

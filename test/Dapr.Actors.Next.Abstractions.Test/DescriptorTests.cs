@@ -5,7 +5,7 @@ namespace Dapr.Actors.Next.Abstractions.Test;
 
 public sealed class DescriptorTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ActorDescriptors_UseRecordEquality()
     {
         var parameters = new[]

@@ -7,7 +7,7 @@ namespace Dapr.Actors.Next.Abstractions.Test;
 
 public sealed class OptionsTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Validator_AcceptsDefaultOptions()
     {
         var result = new DaprActorsOptionsValidator().Validate(null, new DaprActorsOptions());
@@ -15,7 +15,7 @@ public sealed class OptionsTests
         Assert.True(result.Succeeded);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Validator_ReturnsEveryFailure()
     {
         var options = new DaprActorsOptions
@@ -37,7 +37,7 @@ public sealed class OptionsTests
         Assert.Contains("MaxReentrantDepth must be greater than zero.", failures);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void AddDaprActors_BindsOptionsAndValidatorWithoutLifetimeOverload()
     {
         var services = new ServiceCollection();
@@ -69,13 +69,13 @@ public sealed class OptionsTests
         Assert.DoesNotContain(parameters, parameter => parameter.ParameterType.FullName == "Microsoft.Extensions.DependencyInjection.ServiceLifetime");
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void AddDaprActors_RejectsNullArguments()
     {
         Assert.Throws<ArgumentNullException>(() => DaprActorsServiceCollectionExtensions.AddDaprActors(null!, _ => { }));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void AddDaprActors_AllowsNullConfigureAndUsesDefaults()
     {
         var services = new ServiceCollection();

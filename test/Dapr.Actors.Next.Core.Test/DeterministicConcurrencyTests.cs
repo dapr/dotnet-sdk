@@ -9,7 +9,7 @@ namespace Dapr.Actors.Next.Core.Test;
 
 public sealed class DeterministicConcurrencyTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Reentrant_call_chain_does_not_deadlock_or_double_apply()
     {
         await using var runtime = CreateRuntime(new SeededRandomActorScheduler(12));
@@ -24,7 +24,7 @@ public sealed class DeterministicConcurrencyTests
         Assert.Equal(["StartReentrant"], runtime.Transcript.Select(entry => entry.OperationName).ToArray());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Timer_racing_inbound_message_loses_neither_update()
     {
         await using var runtime = CreateRuntime(new PriorityActorScheduler(24));
@@ -43,7 +43,7 @@ public sealed class DeterministicConcurrencyTests
         Assert.Equal(12, int.Parse(System.Text.Encoding.UTF8.GetString((await read)!)));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Same_actor_id_non_reentrant_turns_do_not_overlap()
     {
         var probe = new TurnSerializationProbe();
@@ -67,7 +67,7 @@ public sealed class DeterministicConcurrencyTests
         Assert.Equal(["Hold", "ApplyOnce"], runtime.Transcript.Select(entry => entry.OperationName).ToArray());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Reminder_due_during_method_turn_waits_until_method_turn_commits()
     {
         var probe = new TurnSerializationProbe();
@@ -96,7 +96,7 @@ public sealed class DeterministicConcurrencyTests
         Assert.Equal(["HoldAndApply", "Reminder", "ReadApplied"], runtime.Transcript.Select(entry => entry.OperationName).ToArray());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Fault_mid_state_write_recovers_without_double_apply()
     {
         await using var runtime = CreateRuntime(new SeededRandomActorScheduler(33));

@@ -12,7 +12,7 @@ namespace Dapr.Actors.Next.StateMachine.Test;
 
 public sealed class StateMachineTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Auction_runs_end_to_end_and_queries_bypass_machine()
     {
         await using var runtime = CreateRuntime();
@@ -28,7 +28,7 @@ public sealed class StateMachineTests
         Assert.Equal(1, data.OpenEntries);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Run_to_completion_processes_internal_timer_stability_before_next_turn()
     {
         await using var runtime = CreateRuntime(new SeededRandomActorScheduler(2));
@@ -43,7 +43,7 @@ public sealed class StateMachineTests
         Assert.Equal(["entry-open", "bid:alice"], data.Log);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Rehydration_restores_state_without_entry_actions()
     {
         await using var runtime = CreateRuntime();
@@ -58,7 +58,7 @@ public sealed class StateMachineTests
         Assert.Equal(1, (await Invoke<AuctionData>(runtime, id, "ReadData")).OpenEntries);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Durable_defer_round_trips_through_state_and_replays_after_transition()
     {
         await using var runtime = CreateRuntime();
@@ -72,7 +72,7 @@ public sealed class StateMachineTests
         Assert.Equal("alice", data.HighBidder);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Hierarchy_bubbles_child_unhandled_event_to_parent()
     {
         await using var runtime = CreateRuntime();
@@ -87,7 +87,7 @@ public sealed class StateMachineTests
         Assert.Equal(AuctionState.Expired, await Invoke<AuctionState>(runtime, id, "ReadState"));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Ignore_differs_from_unhandled()
     {
         await using var runtime = CreateRuntime();
@@ -102,7 +102,7 @@ public sealed class StateMachineTests
         Assert.Contains("Unhandled", ex.Message);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Declarative_timeout_uses_virtual_time()
     {
         await using var runtime = CreateRuntime();
@@ -117,7 +117,7 @@ public sealed class StateMachineTests
         Assert.Equal(AuctionState.Sold, await Invoke<AuctionState>(runtime, id, "ReadState"));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Last_second_bid_extends_soft_close_and_original_timer_is_not_lost()
     {
         await using var runtime = CreateRuntime(new PriorityActorScheduler(7));
@@ -135,7 +135,7 @@ public sealed class StateMachineTests
         Assert.Equal("bob", (await Invoke<AuctionData>(runtime, id, "ReadData")).HighBidder);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Structural_analysis_reports_broken_machine_defects()
     {
         ActorStateMachine.Analyze<AuctionActor>().AssertNoStructuralDefects();

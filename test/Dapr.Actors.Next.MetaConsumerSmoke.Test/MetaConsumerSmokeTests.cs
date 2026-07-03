@@ -7,7 +7,7 @@ public sealed class MetaConsumerSmokeTests
 {
     private const string PackageConfiguration = "Release";
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Generator_flows_through_meta_package()
     {
         var root = FindRepoRoot();
@@ -55,7 +55,7 @@ public sealed class MetaConsumerSmokeTests
         }
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Analyzer_flows_through_meta_package()
     {
         var root = FindRepoRoot();

@@ -6,7 +6,7 @@ namespace Dapr.Actors.Next.Abstractions.Test;
 
 public sealed class ValueContractTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void DispatchRecords_UseRecordEquality()
     {
         var actorId = ActorId.Create("1");
@@ -22,7 +22,7 @@ public sealed class ValueContractTests
         Assert.NotEqual(response, new ActorDispatchResponse(null));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void TurnRecords_UseRecordEquality()
     {
         var actorId = ActorId.Create("1");
@@ -36,7 +36,7 @@ public sealed class ValueContractTests
         Assert.Equal(context, new ActorTurnContext("CartActor", actorId, "Add", ActorTurnKind.Invoke, headers, requestContext, CancellationToken.None));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void CapabilityContext_UsesRecordEquality()
     {
         var actorId = ActorId.Create("1");

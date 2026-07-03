@@ -13,7 +13,7 @@ public sealed class InterpretedTests
 {
     private static readonly ActorId Id = ActorId.Create("machine-1");
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Table_execution_matches_compiled_equivalent()
     {
         var registry = new TestCapabilityRegistry();
@@ -29,7 +29,7 @@ public sealed class InterpretedTests
         Assert.Equal(CompiledEquivalent([7], close: true), second.RootElement.GetProperty("State").GetString());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Verifier_rejects_unknown_capability_names()
     {
         var result = new InterpretedMachineVerifier(new TestCapabilityRegistry()).Verify(
@@ -39,7 +39,7 @@ public sealed class InterpretedTests
         Assert.Contains(result.Defects, item => item.Contains("missing-effect", StringComparison.Ordinal));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Verifier_reports_structural_and_behavioral_defects()
     {
         var verifier = new InterpretedMachineVerifier(new TestCapabilityRegistry());
@@ -96,7 +96,7 @@ public sealed class InterpretedTests
         Assert.Contains(unreachable.Defects, item => item.Contains("unreachable", StringComparison.Ordinal));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Verify_before_activate_rejects_defective_machine()
     {
         var registry = new TestCapabilityRegistry();
@@ -108,7 +108,7 @@ public sealed class InterpretedTests
         Assert.Contains("verification failed", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Dynamic_state_round_trips_after_deactivation()
     {
         var registry = new TestCapabilityRegistry();
@@ -130,7 +130,7 @@ public sealed class InterpretedTests
         Assert.Equal(2, count);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Guard_fallthrough_returns_rejected_without_running_effect()
     {
         var registry = new TestCapabilityRegistry();
@@ -145,7 +145,7 @@ public sealed class InterpretedTests
         Assert.False(result.RootElement.GetProperty("Data").GetProperty("Values").TryGetProperty("count", out _));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Missing_transition_and_no_matching_branch_are_rejected()
     {
         var registry = new TestCapabilityRegistry();
@@ -163,7 +163,7 @@ public sealed class InterpretedTests
         Assert.Contains("No branch matched", noBranch.Message, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Runtime_rejects_capabilities_removed_after_verification()
     {
         var registry = new TestCapabilityRegistry();
@@ -183,7 +183,7 @@ public sealed class InterpretedTests
         Assert.Contains("Effect 'second'", missingEffect.Message, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Deployer_applies_generate_verify_deploy_guard()
     {
         var registry = new TestCapabilityRegistry();
@@ -196,7 +196,7 @@ public sealed class InterpretedTests
         Assert.NotNull(await store.GetAsync("Machine", Id));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Dispatcher_rejects_unknown_operation_and_bad_payload()
     {
         var dispatcher = new InterpretedStateMachineDispatcher();
@@ -210,7 +210,7 @@ public sealed class InterpretedTests
         await Assert.ThrowsAsync<JsonException>(() => dispatcher.DispatchAsync(actor, new Dapr.Actors.Next.Abstractions.Dispatching.ActorDispatchRequest("Machine", Id, "Raise", System.Text.Encoding.UTF8.GetBytes("{"), new Dictionary<string, string>(), new ActorRequestContext(null, null, new Dictionary<string, string>())), default).AsTask());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Dynamic_state_bag_returns_default_for_missing_values_and_default_registry_rejects_all()
     {
         var bag = new DynamicStateBag();

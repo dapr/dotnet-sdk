@@ -4,7 +4,7 @@ namespace Dapr.Actors.Next.Analyzers.Test;
 
 public sealed class ActorsNextAnalyzerTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Actor_turn_escape_blocking_time_and_random_sources_are_reported()
     {
         const string source = """
@@ -42,7 +42,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Attribute_only_actor_implementation_is_checked()
     {
         const string source = """
@@ -62,7 +62,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Non_actor_code_is_ignored_for_turn_determinism_rules()
     {
         const string source = """
@@ -83,7 +83,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Actor_interface_return_types_are_validated()
     {
         const string source = """
@@ -105,7 +105,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Duplicate_actor_type_names_for_shared_interface_are_reported()
     {
         const string source = """
@@ -153,7 +153,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Shared_interface_with_distinct_actor_attribute_names_is_silent()
     {
         const string source = """
@@ -190,7 +190,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Explicit_registration_alias_disambiguates_shared_interface_actor_names()
     {
         const string source = """
@@ -250,7 +250,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Mutable_actor_fields_are_reported_with_injected_client_allowlist()
     {
         const string source = """
@@ -278,7 +278,7 @@ public sealed class ActorsNextAnalyzerTests
             AnalyzerTest.Diagnostic("DAPR1419").WithSpan(11, 26, 11, 31));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Mutable_fields_outside_actor_implementations_are_ignored()
     {
         const string source = """
@@ -293,7 +293,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Business_logic_inside_turn_filter_is_reported()
     {
         const string source = """
@@ -318,7 +318,7 @@ public sealed class ActorsNextAnalyzerTests
             AnalyzerTest.Info("DAPR1416").WithSpan(9, 9, 9, 21));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Expression_bodied_turn_filter_is_ignored()
     {
         const string source = """
@@ -334,7 +334,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Upcaster_version_gap_is_reported()
     {
         const string source = """
@@ -363,7 +363,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Complete_upcaster_chain_is_silent()
     {
         const string source = """
@@ -391,7 +391,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Non_versioned_upcaster_types_are_ignored()
     {
         const string source = """
@@ -411,7 +411,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task State_baseline_reports_breaking_change_but_allows_additive_change()
     {
         const string source = """
@@ -432,7 +432,7 @@ public sealed class ActorsNextAnalyzerTests
             AnalyzerTest.Diagnostic("DAPR1410").WithSpan(3, 21, 3, 30));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Missing_state_baseline_is_silent()
     {
         const string source = """
@@ -447,7 +447,7 @@ public sealed class ActorsNextAnalyzerTests
         return AnalyzerTest.VerifyAnalyzerAsync(source);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Wire_baseline_reports_in_place_break()
     {
         const string source = """
@@ -471,7 +471,7 @@ public sealed class ActorsNextAnalyzerTests
             AnalyzerTest.Diagnostic("DAPR1418").WithSpan(8, 18, 8, 28));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Wire_baseline_is_silent_when_contract_version_is_bumped_after_other_attributes()
     {
         const string source = """

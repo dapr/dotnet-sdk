@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -23,6 +24,7 @@ using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Containers;
 using Dapr.Testcontainers.Containers.Dapr;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Google.Protobuf;
 using Grpc.Core;
 using Grpc.Net.Client;
@@ -207,7 +209,7 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
     /// <summary>
     /// Verifies real actor invoke serialization and request metadata over the sidecar stream.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Invoke_round_trips_payload_content_type_and_metadata()
     {
         using var cts = new CancellationTokenSource(Timeout);
@@ -229,7 +231,7 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
     /// <summary>
     /// Verifies scheduler-backed reminder callbacks and sidecar-backed timer callbacks.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Reminder_and_timer_callbacks_fire_through_real_sidecar()
     {
         using var cts = new CancellationTokenSource(Timeout);
@@ -257,7 +259,7 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
     /// <summary>
     /// Verifies idle deactivation is delivered over the real app-callback stream.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Idle_deactivation_is_delivered()
     {
         using var cts = new CancellationTokenSource(Timeout);
@@ -271,7 +273,7 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
     /// <summary>
     /// Verifies actor state persisted in an older envelope is upcasted on a later activation.
     /// </summary>
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Legacy_state_envelope_is_upcasted_on_activation()
     {
         using var cts = new CancellationTokenSource(Timeout);

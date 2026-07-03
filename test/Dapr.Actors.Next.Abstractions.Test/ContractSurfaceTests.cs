@@ -5,7 +5,7 @@ namespace Dapr.Actors.Next.Abstractions.Test;
 
 public sealed class ContractSurfaceTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ActorLifecycleHooks_AreVirtualNoOps()
     {
         var actor = new TestActor();
@@ -17,7 +17,7 @@ public sealed class ContractSurfaceTests
         Assert.True(actor.Post(context).IsCompletedSuccessfully);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void Upcaster_GenericParameterOrderIsFromThenTo()
     {
         var parameters = typeof(IActorStateUpcaster<,>).GetGenericArguments();
@@ -26,7 +26,7 @@ public sealed class ContractSurfaceTests
         Assert.Equal("TToType", parameters[1].Name);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void DispatcherContract_DoesNotExposeTypeBasedSerializerInputs()
     {
         var requestProperties = typeof(ActorDispatchRequest).GetProperties();
@@ -37,7 +37,7 @@ public sealed class ContractSurfaceTests
         Assert.DoesNotContain(method!.GetParameters(), parameter => parameter.ParameterType == typeof(Type));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void StateEnvelope_UsesRecordValueEquality()
     {
         Assert.Equal(new ActorStateEnvelope<string>(1, "value"), new ActorStateEnvelope<string>(1, "value"));
