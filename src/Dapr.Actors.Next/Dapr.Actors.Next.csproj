@@ -17,16 +17,21 @@
 
     <ItemGroup>
         <None Include="buildTransitive\Dapr.Actors.Next.props" Pack="true" PackagePath="buildTransitive\Dapr.Actors.Next.props" />
-        <None Include="$(RepoRoot)bin\$(Configuration)\prod\Dapr.Actors.Next.SourceGenerators\netstandard2.0\Dapr.Actors.Next.SourceGenerators.dll"
-              Pack="true"
-              PackagePath="analyzers\dotnet\cs\"
-              Visible="false"
-              Condition="Exists('$(RepoRoot)bin\$(Configuration)\prod\Dapr.Actors.Next.SourceGenerators\netstandard2.0\Dapr.Actors.Next.SourceGenerators.dll')" />
-        <None Include="$(RepoRoot)bin\$(Configuration)\prod\Dapr.Actors.Next.Analyzers\netstandard2.0\Dapr.Actors.Next.Analyzers.dll"
-              Pack="true"
-              PackagePath="analyzers\dotnet\cs\"
-              Visible="false"
-              Condition="Exists('$(RepoRoot)bin\$(Configuration)\prod\Dapr.Actors.Next.Analyzers\netstandard2.0\Dapr.Actors.Next.Analyzers.dll')" />
     </ItemGroup>
+
+    <Target Name="IncludeDaprActorsNextAnalyzerAssets"
+            BeforeTargets="_GetPackageFiles">
+        <MSBuild Projects="../Dapr.Actors.Next.SourceGenerators/Dapr.Actors.Next.SourceGenerators.csproj;../Dapr.Actors.Next.Analyzers/Dapr.Actors.Next.Analyzers.csproj"
+                 Targets="GetTargetPath"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0">
+            <Output TaskParameter="TargetOutputs" ItemName="_DaprActorsNextAnalyzerAsset" />
+        </MSBuild>
+        <ItemGroup>
+            <None Include="@(_DaprActorsNextAnalyzerAsset)"
+                  Pack="true"
+                  PackagePath="analyzers/dotnet/cs"
+                  Visible="false" />
+        </ItemGroup>
+    </Target>
 
 </Project>
