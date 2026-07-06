@@ -41,7 +41,11 @@ public sealed class SidecarAdapterTests
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Sidecar_adapters_add_dapr_api_token_to_call_options()
     {
-        var client = new RecordingDaprClient { InvokeActorResponse = new P.InvokeActorResponse() };
+        var client = new RecordingDaprClient
+        {
+            InvokeActorResponse = new P.InvokeActorResponse(),
+            GetActorReminderResponse = new P.GetActorReminderResponse { ActorType = "Counter", ActorId = "one" },
+        };
         var invocation = new DaprActorInvocationClient(client, "test-token");
         var store = new DaprSidecarActorStateStore(client, "actors", "test-token");
         var scheduler = new DaprSidecarActorTimerScheduler(client, new ActorWireSerializer(new JsonDaprSerializer()), "test-token");
@@ -52,11 +56,17 @@ public sealed class SidecarAdapterTests
         await store.ReadAsync("Counter", actorId.Value, "state");
         await scheduler.ScheduleAsync("Counter", actorId, "tick", TimeSpan.Zero, "Tick", "0");
         await reminders.ScheduleAsync("Counter", actorId, "wake", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0");
+        await reminders.GetAsync("Counter", actorId, "wake");
+        await reminders.ListAsync("Counter", actorId);
+        await reminders.CancelAllAsync("Counter", actorId);
 
         AssertToken(client.InvokeActorOptions);
         AssertToken(client.GetStateOptions);
         AssertToken(client.RegisterActorTimerOptions);
         AssertToken(client.RegisterActorReminderOptions);
+        AssertToken(client.GetActorReminderOptions);
+        AssertToken(client.ListActorRemindersOptions);
+        AssertToken(client.UnregisterActorRemindersByTypeOptions);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -135,7 +145,37 @@ public sealed class SidecarAdapterTests
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Reminder_scheduler_maps_sidecar_reminder_requests()
     {
-        var client = new RecordingDaprClient();
+        var client = new RecordingDaprClient
+        {
+            GetActorReminderResponse = new P.GetActorReminderResponse
+            {
+                ActorType = "Counter",
+                ActorId = "reminder",
+                DueTime = "250ms",
+                Period = "@every 5s",
+                Data = new Any { Value = ByteString.CopyFromUtf8("""{"x":2}""") },
+                Ttl = "60000ms",
+            },
+            ListActorRemindersResponse = new P.ListActorRemindersResponse
+            {
+                Reminders =
+                {
+                    new P.NamedActorReminder
+                    {
+                        Name = "wake",
+                        Reminder = new P.ActorReminder
+                        {
+                            ActorType = "Counter",
+                            ActorId = "reminder",
+                            DueTime = "250ms",
+                            Period = "@every 5s",
+                            Data = new Any { Value = new BytesValue { Value = ByteString.CopyFromUtf8("\"eyJ4IjozfQ==\"") }.ToByteString() },
+                            Ttl = "60000ms",
+                        },
+                    },
+                },
+            },
+        };
         var scheduler = new DaprSidecarActorReminderScheduler(client, new ActorWireSerializer(new JsonDaprSerializer()));
         var actorId = ActorId.Create("reminder");
 
@@ -148,7 +188,10 @@ public sealed class SidecarAdapterTests
             """{"x":1}""",
             TimeSpan.FromMinutes(1),
             overwrite: false);
+        var fetched = await scheduler.GetAsync("Counter", actorId, "wake");
+        var listed = await scheduler.ListAsync("Counter", actorId);
         await scheduler.CancelAsync("Counter", actorId, "wake");
+        await scheduler.CancelAllAsync("Counter", actorId);
 
         Assert.Equal("Counter", client.RegisterActorReminderRequest!.ActorType);
         Assert.Equal("reminder", client.RegisterActorReminderRequest.ActorId);
@@ -159,7 +202,24 @@ public sealed class SidecarAdapterTests
         Assert.Equal("60000ms", client.RegisterActorReminderRequest.Ttl);
         Assert.True(client.RegisterActorReminderRequest.HasOverwrite);
         Assert.False(client.RegisterActorReminderRequest.Overwrite);
+        Assert.Equal("Counter", client.GetActorReminderRequest!.ActorType);
+        Assert.Equal("reminder", client.GetActorReminderRequest.ActorId);
+        Assert.Equal("wake", client.GetActorReminderRequest.Name);
+        Assert.Equal(TimeSpan.FromMilliseconds(250), fetched!.DueTime);
+        Assert.Equal(TimeSpan.FromSeconds(5), fetched.Period);
+        Assert.Equal("""{"x":2}""", fetched.ArgumentsJson);
+        Assert.Equal(TimeSpan.FromMinutes(1), fetched.Ttl);
+        Assert.Equal("Counter", client.ListActorRemindersRequest!.ActorType);
+        Assert.True(client.ListActorRemindersRequest.HasActorId);
+        Assert.Equal("reminder", client.ListActorRemindersRequest.ActorId);
+        Assert.Single(listed);
+        Assert.Equal("wake", listed[0].Name);
+        Assert.Equal("""{"x":3}""", listed[0].Reminder.ArgumentsJson);
         Assert.Equal("wake", client.UnregisterActorReminderRequest!.Name);
+        Assert.Equal("Counter", client.UnregisterActorRemindersByTypeRequest!.ActorType);
+        Assert.Equal("reminder", client.UnregisterActorRemindersByTypeRequest.ActorId);
+        client.GetActorReminderNotFound = true;
+        Assert.Null(await scheduler.GetAsync("Counter", actorId, "missing"));
         await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.ScheduleAsync("", actorId, "wake", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0"));
         await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0"));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-due", TimeSpan.FromMilliseconds(-1), TimeSpan.FromSeconds(1), "0"));
@@ -206,6 +266,24 @@ public sealed class SidecarAdapterTests
         public P.UnregisterActorReminderRequest? UnregisterActorReminderRequest { get; private set; }
 
         public CallOptions UnregisterActorReminderOptions { get; private set; }
+
+        public P.GetActorReminderRequest? GetActorReminderRequest { get; private set; }
+
+        public CallOptions GetActorReminderOptions { get; private set; }
+
+        public P.GetActorReminderResponse GetActorReminderResponse { get; set; } = new();
+
+        public bool GetActorReminderNotFound { get; set; }
+
+        public P.ListActorRemindersRequest? ListActorRemindersRequest { get; private set; }
+
+        public CallOptions ListActorRemindersOptions { get; private set; }
+
+        public P.ListActorRemindersResponse ListActorRemindersResponse { get; set; } = new();
+
+        public P.UnregisterActorRemindersByTypeRequest? UnregisterActorRemindersByTypeRequest { get; private set; }
+
+        public CallOptions UnregisterActorRemindersByTypeOptions { get; private set; }
 
         public override AsyncUnaryCall<P.InvokeActorResponse> InvokeActorAsync(P.InvokeActorRequest request, CallOptions options)
         {
@@ -263,6 +341,29 @@ public sealed class SidecarAdapterTests
             UnregisterActorReminderRequest = request;
             UnregisterActorReminderOptions = options;
             return Unary(new Empty());
+        }
+
+        public override AsyncUnaryCall<P.GetActorReminderResponse> GetActorReminderAsync(P.GetActorReminderRequest request, CallOptions options)
+        {
+            GetActorReminderRequest = request;
+            GetActorReminderOptions = options;
+            return GetActorReminderNotFound
+                ? UnaryFailed<P.GetActorReminderResponse>(new RpcException(new Status(StatusCode.NotFound, "missing")))
+                : Unary(GetActorReminderResponse);
+        }
+
+        public override AsyncUnaryCall<P.ListActorRemindersResponse> ListActorRemindersAsync(P.ListActorRemindersRequest request, CallOptions options)
+        {
+            ListActorRemindersRequest = request;
+            ListActorRemindersOptions = options;
+            return Unary(ListActorRemindersResponse);
+        }
+
+        public override AsyncUnaryCall<P.UnregisterActorRemindersByTypeResponse> UnregisterActorRemindersByTypeAsync(P.UnregisterActorRemindersByTypeRequest request, CallOptions options)
+        {
+            UnregisterActorRemindersByTypeRequest = request;
+            UnregisterActorRemindersByTypeOptions = options;
+            return Unary(new P.UnregisterActorRemindersByTypeResponse());
         }
 
         private static AsyncUnaryCall<T> Unary<T>(T response) =>

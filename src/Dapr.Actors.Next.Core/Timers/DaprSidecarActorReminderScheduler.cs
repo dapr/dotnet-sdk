@@ -2,6 +2,8 @@ using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.Transport;
 using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
 namespace Dapr.Actors.Next.Core.Timers;
@@ -90,6 +92,53 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
     }
 
     /// <inheritdoc />
+    public async ValueTask<ActorReminderInfo?> GetAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        try
+        {
+            var response = await client.Value.GetActorReminderAsync(
+                new P.GetActorReminderRequest { ActorType = actorType, ActorId = actorId.Value, Name = name },
+                DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+
+            return ToInfo(response);
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<IReadOnlyList<NamedActorReminderInfo>> ListAsync(
+        string actorType,
+        ActorId? actorId = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+
+        var request = new P.ListActorRemindersRequest { ActorType = actorType };
+        if (actorId.HasValue)
+        {
+            request.ActorId = actorId.Value.Value;
+        }
+
+        var response = await client.Value.ListActorRemindersAsync(
+            request,
+            DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+
+        return response.Reminders
+            .Select(static reminder => new NamedActorReminderInfo(reminder.Name, ToInfo(reminder.Reminder)))
+            .ToArray();
+    }
+
+    /// <inheritdoc />
     public async ValueTask CancelAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
@@ -100,9 +149,102 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    public async ValueTask CancelAllAsync(string actorType, ActorId? actorId = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+
+        var request = new P.UnregisterActorRemindersByTypeRequest { ActorType = actorType };
+        if (actorId.HasValue)
+        {
+            request.ActorId = actorId.Value.Value;
+        }
+
+        await client.Value.UnregisterActorRemindersByTypeAsync(
+            request,
+            DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+    }
+
     private static Lazy<P.Dapr.DaprClient> CreateEagerAccessor(P.Dapr.DaprClient client)
     {
         ArgumentNullException.ThrowIfNull(client);
         return new Lazy<P.Dapr.DaprClient>(() => client);
+    }
+
+    private static ActorReminderInfo ToInfo(P.GetActorReminderResponse response) =>
+        new(
+            response.ActorType,
+            ActorId.Create(response.ActorId),
+            ActorScheduleDurationParser.ParseOptional(response.HasDueTime ? response.DueTime : null),
+            ActorScheduleDurationParser.ParseOptional(response.HasPeriod ? response.Period : null),
+            DecodeJson(response.Data),
+            ActorScheduleDurationParser.ParseOptional(response.HasTtl ? response.Ttl : null));
+
+    private static ActorReminderInfo ToInfo(P.ActorReminder reminder) =>
+        new(
+            reminder.ActorType,
+            ActorId.Create(reminder.ActorId),
+            ActorScheduleDurationParser.ParseOptional(reminder.HasDueTime ? reminder.DueTime : null),
+            ActorScheduleDurationParser.ParseOptional(reminder.HasPeriod ? reminder.Period : null),
+            DecodeJson(reminder.Data),
+            ActorScheduleDurationParser.ParseOptional(reminder.HasTtl ? reminder.Ttl : null));
+
+    private static string? DecodeJson(Any? data)
+    {
+        if (data?.Value is not { Length: > 0 } bytes)
+        {
+            return null;
+        }
+
+        if (TryDecodeBytesValue(bytes, out var nestedBytes))
+        {
+            return DecodePayload(nestedBytes, unwrapJsonBase64String: true);
+        }
+
+        return DecodePayload(bytes, unwrapJsonBase64String: false);
+    }
+
+    private static bool TryDecodeBytesValue(ByteString bytes, out ByteString nestedBytes)
+    {
+        try
+        {
+            nestedBytes = BytesValue.Parser.ParseFrom(bytes).Value;
+            return nestedBytes.Length > 0;
+        }
+        catch (InvalidProtocolBufferException)
+        {
+            nestedBytes = ByteString.Empty;
+            return false;
+        }
+    }
+
+    private static string? DecodePayload(ByteString bytes, bool unwrapJsonBase64String)
+    {
+        if (bytes.Length == 0)
+        {
+            return null;
+        }
+
+        var text = System.Text.Encoding.UTF8.GetString(bytes.Span);
+        if (!unwrapJsonBase64String)
+        {
+            return text;
+        }
+
+        try
+        {
+            var encoded = System.Text.Json.JsonSerializer.Deserialize<string>(text);
+            if (string.IsNullOrEmpty(encoded))
+            {
+                return text;
+            }
+
+            var decoded = Convert.FromBase64String(encoded);
+            return System.Text.Encoding.UTF8.GetString(decoded);
+        }
+        catch (Exception ex) when (ex is FormatException or System.Text.Json.JsonException)
+        {
+            return text;
+        }
     }
 }

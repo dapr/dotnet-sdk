@@ -4,6 +4,7 @@ using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.DependencyInjection;
+using Dapr.Actors.Next.Core.Timers;
 using Dapr.Actors.Next.Core.State.Versioning;
 using Dapr.Actors.Next.SourceGenerators.Sample;
 using Microsoft.Extensions.DependencyInjection;
@@ -97,6 +98,47 @@ public sealed class ActorTestRuntimeTests
         await runtime.RunToIdle();
         Assert.Equal(100, int.Parse(System.Text.Encoding.UTF8.GetString((await read)!)));
         Assert.Contains(runtime.Transcript, entry => entry.OperationName == "Reminder");
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Virtual_reminder_scheduler_gets_lists_fires_periodic_and_cancels_all()
+    {
+        await using var runtime = CreateTestingRuntime(new PriorityActorScheduler(4));
+        var id = ActorId.Create("virtual-reminder");
+        var otherId = ActorId.Create("other-reminder");
+        var reminders = (IActorReminderScheduler)runtime.Time;
+
+        await reminders.ScheduleAsync(
+            "Testing",
+            id,
+            "Reminder",
+            TimeSpan.FromSeconds(1),
+            TimeSpan.FromSeconds(1),
+            """{"payload":true}""",
+            ttl: TimeSpan.FromSeconds(2),
+            overwrite: true);
+        await reminders.ScheduleAsync("Testing", otherId, "Reminder", TimeSpan.FromSeconds(10), TimeSpan.Zero, string.Empty);
+        var fetched = await reminders.GetAsync("Testing", id, "Reminder");
+        var listedForActor = await reminders.ListAsync("Testing", id);
+
+        Assert.NotNull(fetched);
+        Assert.Equal(TimeSpan.FromSeconds(1), fetched.DueTime);
+        Assert.Equal(TimeSpan.FromSeconds(1), fetched.Period);
+        Assert.Equal("""{"payload":true}""", fetched.ArgumentsJson);
+        Assert.Equal(TimeSpan.FromSeconds(2), fetched.Ttl);
+        Assert.Single(listedForActor);
+        Assert.Equal(2, (await reminders.ListAsync("Testing")).Count);
+
+        runtime.Time.Advance(TimeSpan.FromSeconds(3));
+        await runtime.RunToIdle();
+
+        Assert.Equal(2, runtime.Transcript.Count(entry => entry.ActorId == id.Value && entry.OperationName == "Reminder"));
+
+        await reminders.CancelAllAsync("Testing", id);
+        Assert.Null(await reminders.GetAsync("Testing", id, "Reminder"));
+        Assert.Single(await reminders.ListAsync("Testing"));
+        await reminders.CancelAllAsync("Testing");
+        Assert.Empty(await reminders.ListAsync("Testing"));
     }
 
     [MinimumDaprRuntimeFact("1.18")]

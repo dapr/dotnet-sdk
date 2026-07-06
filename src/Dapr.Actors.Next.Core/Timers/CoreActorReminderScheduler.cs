@@ -11,7 +11,7 @@ namespace Dapr.Actors.Next.Core.Timers;
 /// </summary>
 public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWireSerializer serializer, TimeProvider timeProvider) : IActorReminderScheduler, IDisposable
 {
-    private readonly ConcurrentDictionary<ReminderKey, ITimer> reminders = [];
+    private readonly ConcurrentDictionary<ReminderKey, ReminderRegistration> reminders = [];
 
     /// <inheritdoc />
     public ValueTask ScheduleAsync(
@@ -44,6 +44,7 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
         }
 
         var key = new ReminderKey(actorType, actorId.Value, name);
+        var info = new ActorReminderInfo(actorType, actorId, dueTime, period, argumentsJson, ttl);
         var timer = timeProvider.CreateTimer(
             static state =>
             {
@@ -71,19 +72,64 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
                 throw new InvalidOperationException($"Reminder '{name}' is already scheduled for actor '{actorType}/{actorId.Value}'.");
             }
 
-            existing.Dispose();
+            existing.Timer.Dispose();
         }
 
-        reminders[key] = timer;
+        reminders[key] = new ReminderRegistration(timer, info);
         return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public ValueTask<ActorReminderInfo?> GetAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        return ValueTask.FromResult(
+            reminders.TryGetValue(new ReminderKey(actorType, actorId.Value, name), out var registration)
+                ? registration.Info
+                : null);
+    }
+
+    /// <inheritdoc />
+    public ValueTask<IReadOnlyList<NamedActorReminderInfo>> ListAsync(string actorType, ActorId? actorId = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+
+        var result = reminders
+            .Where(pair =>
+                string.Equals(pair.Key.ActorType, actorType, StringComparison.Ordinal)
+                && (!actorId.HasValue || string.Equals(pair.Key.ActorId, actorId.Value.Value, StringComparison.Ordinal)))
+            .Select(static pair => new NamedActorReminderInfo(pair.Key.Name, pair.Value.Info))
+            .ToArray();
+
+        return ValueTask.FromResult<IReadOnlyList<NamedActorReminderInfo>>(result);
     }
 
     /// <inheritdoc />
     public ValueTask CancelAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default)
     {
-        if (reminders.TryRemove(new ReminderKey(actorType, actorId.Value, name), out var timer))
+        if (reminders.TryRemove(new ReminderKey(actorType, actorId.Value, name), out var registration))
         {
-            timer.Dispose();
+            registration.Timer.Dispose();
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public ValueTask CancelAllAsync(string actorType, ActorId? actorId = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+
+        foreach (var pair in reminders.ToArray())
+        {
+            if (string.Equals(pair.Key.ActorType, actorType, StringComparison.Ordinal)
+                && (!actorId.HasValue || string.Equals(pair.Key.ActorId, actorId.Value.Value, StringComparison.Ordinal))
+                && reminders.TryRemove(pair.Key, out var registration))
+            {
+                registration.Timer.Dispose();
+            }
         }
 
         return ValueTask.CompletedTask;
@@ -94,7 +140,7 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
     {
         foreach (var reminder in reminders.Values)
         {
-            reminder.Dispose();
+            reminder.Timer.Dispose();
         }
 
         reminders.Clear();
@@ -107,6 +153,8 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
         ActorId ActorId,
         string Name,
         string ArgumentsJson);
+
+    private sealed record ReminderRegistration(ITimer Timer, ActorReminderInfo Info);
 
     private readonly record struct ReminderKey(string ActorType, string ActorId, string Name);
 }

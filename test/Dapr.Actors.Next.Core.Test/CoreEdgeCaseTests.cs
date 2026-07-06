@@ -412,10 +412,28 @@ public sealed class CoreEdgeCaseTests
 
         await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "1");
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "2", overwrite: false));
-        await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "3");
+        await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(2), "3", TimeSpan.FromMinutes(5));
+        await scheduler.ScheduleAsync("Counter", ActorId.Create("other"), "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "other");
+        var fetched = await scheduler.GetAsync("Counter", actorId, "name");
+        var listedForActor = await scheduler.ListAsync("Counter", actorId);
+
+        Assert.NotNull(fetched);
+        Assert.Equal(TimeSpan.FromMinutes(1), fetched.DueTime);
+        Assert.Equal(TimeSpan.FromMinutes(2), fetched.Period);
+        Assert.Equal("3", fetched.ArgumentsJson);
+        Assert.Equal(TimeSpan.FromMinutes(5), fetched.Ttl);
+        Assert.Single(listedForActor);
+        Assert.Equal("name", listedForActor[0].Name);
+        Assert.Equal(2, (await scheduler.ListAsync("Counter")).Count);
         await scheduler.CancelAsync("Counter", actorId, "missing");
         await scheduler.CancelAsync("Counter", actorId, "name");
+        Assert.Null(await scheduler.GetAsync("Counter", actorId, "name"));
+        Assert.Single(await scheduler.ListAsync("Counter"));
+        await scheduler.CancelAllAsync("Counter");
+        Assert.Empty(await scheduler.ListAsync("Counter"));
         await scheduler.ScheduleAsync("Counter", actorId, "other", TimeSpan.FromMinutes(1), TimeSpan.Zero, "4");
+        await scheduler.CancelAllAsync("Counter", actorId);
+        Assert.Empty(await scheduler.ListAsync("Counter"));
 
         scheduler.Dispose();
         scheduler.Dispose();
