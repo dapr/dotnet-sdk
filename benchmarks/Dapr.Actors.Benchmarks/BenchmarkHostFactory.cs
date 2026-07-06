@@ -79,6 +79,7 @@ internal static class BenchmarkHostFactory
         services.AddDaprActors(options =>
         {
             options.EnableAutoActorRegistration = false;
+            options.DisableStateMigration = true;
             options.Actors.RegisterActor<NextBenchmarkActor01>(ActorType);
         });
 
@@ -98,6 +99,7 @@ internal static class BenchmarkHostFactory
         services.AddDaprActors(options =>
         {
             options.EnableAutoActorRegistration = false;
+            options.DisableStateMigration = true;
             RegisterNextActors(options, actorTypes);
         });
 

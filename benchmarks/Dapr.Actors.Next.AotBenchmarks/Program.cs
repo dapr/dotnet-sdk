@@ -80,6 +80,7 @@ static ServiceProvider CreateServiceProvider()
     services.AddDaprActors(options =>
     {
         options.EnableAutoActorRegistration = false;
+        options.DisableStateMigration = true;
         options.Actors.RegisterActor<AotBenchmarkActor>("AotBenchmarkActor");
     });
 
