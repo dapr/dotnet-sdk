@@ -31,6 +31,7 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         ActorAnalyzerDiagnostics.WireContractChanged,
         ActorAnalyzerDiagnostics.MutableActorField,
         ActorAnalyzerDiagnostics.DuplicateActorTypeName,
+        ActorAnalyzerDiagnostics.MissingGeneratedActorClient,
         ActorAnalyzerDiagnostics.UnconnectedStateFamilyMember,
         ActorAnalyzerDiagnostics.UpcasterChainGap,
         ActorAnalyzerDiagnostics.NonAdditiveMigrationStep,
@@ -213,9 +214,41 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         AnalyzeStateBaseline(context, baseline, type);
         AnalyzeMigrationFingerprintBaseline(context, baseline, type);
         AnalyzeFilter(context, type);
+        AnalyzeGeneratedActorClientContract(context, type);
         CollectActorImplementation(type, actorImplementations);
         CollectStateType(type, stateTypes);
         CollectUpcaster(type, upcasters);
+    }
+
+    private static void AnalyzeGeneratedActorClientContract(SymbolAnalysisContext context, INamedTypeSymbol type)
+    {
+        if (type.IsAbstract || !type.HasAttribute("Dapr.Actors.Next.Abstractions.Attributes.DaprActorAttribute"))
+        {
+            return;
+        }
+
+        if (type.AllInterfaces.Any(static actorInterface =>
+            IsConcreteActorInterface(actorInterface) &&
+            actorInterface.HasAttribute("Dapr.Actors.Next.Abstractions.Attributes.GenerateActorClientAttribute")))
+        {
+            return;
+        }
+
+        var actorInterface = type.AllInterfaces
+            .Where(IsConcreteActorInterface)
+            .OrderBy(static actorInterface => actorInterface.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), StringComparer.Ordinal)
+            .FirstOrDefault();
+        var properties = ImmutableDictionary<string, string?>.Empty;
+        if (actorInterface is not null)
+        {
+            properties = properties.Add("actor.interface", actorInterface.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat));
+        }
+
+        context.ReportDiagnostic(Diagnostic.Create(
+            ActorAnalyzerDiagnostics.MissingGeneratedActorClient,
+            type.Locations.FirstOrDefault(),
+            properties,
+            type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)));
     }
 
     private static void CollectActorImplementation(INamedTypeSymbol type, ConcurrentBag<ActorImplementationInfo> actorImplementations)

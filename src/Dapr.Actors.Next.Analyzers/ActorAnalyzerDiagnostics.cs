@@ -137,6 +137,17 @@ public static class ActorAnalyzerDiagnostics
         customTags: [WellKnownDiagnosticTags.CompilationEnd]);
 
     /// <summary>
+    /// Diagnostic raised when a Dapr actor implementation has no generated actor client contract.
+    /// </summary>
+    public static readonly DiagnosticDescriptor MissingGeneratedActorClient = new(
+        "DAPR1421",
+        "Actor implementation must expose a generated client contract",
+        "Actor '{0}' must implement an interface decorated with GenerateActorClientAttribute",
+        "Usage",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
     /// Diagnostic raised when a state type looks like part of a migration family but is not connected.
     /// </summary>
     public static readonly DiagnosticDescriptor UnconnectedStateFamilyMember = new(

@@ -9,6 +9,92 @@ namespace Dapr.Actors.Next.Analyzers.Test;
 public sealed class ActorsNextCodeFixTests
 {
     [MinimumDaprRuntimeFact("1.18")]
+    public async Task Scaffolds_generated_actor_client_contract_when_actor_has_no_interface()
+    {
+        const string source = """
+            using System;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+
+            namespace Sample;
+
+            [DaprActor]
+            public sealed class {|DAPR1421:CartActor|} : Actor
+            {
+                protected override ActorId Id => ActorId.Create("a");
+                protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+            }
+            """;
+        const string expected = """
+            using System;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+
+            namespace Sample;
+
+            [DaprActor]
+            public sealed class CartActor : Actor, ICartActor
+            {
+                protected override ActorId Id => ActorId.Create("a");
+                protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+            }
+            [GenerateActorClient]
+            public interface ICartActor : IActor
+            {
+            }
+
+            """;
+
+        var fixedText = await ApplyMarkedCodeFixAsync(source, ActorAnalyzerDiagnostics.MissingGeneratedActorClient, codeActionIndex: 0);
+
+        Assert.Equal(NormalizeLineEndings(expected), NormalizeLineEndings(fixedText));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public Task Decorates_existing_actor_interface_with_generate_actor_client()
+    {
+        const string source = """
+            using System;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+
+            namespace Sample;
+
+            public interface ICartActor : IActor
+            {
+            }
+
+            [DaprActor]
+            public sealed class {|DAPR1421:CartActor|} : Actor, ICartActor
+            {
+                protected override ActorId Id => ActorId.Create("a");
+                protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+            }
+            """;
+        const string fixedSource = """
+            using System;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+
+            namespace Sample;
+
+            [GenerateActorClient]
+            public interface ICartActor : IActor
+            {
+            }
+
+            [DaprActor]
+            public sealed class CartActor : Actor, ICartActor
+            {
+                protected override ActorId Id => ActorId.Create("a");
+                protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+            }
+            """;
+
+        return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1421");
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Inlines_task_run_lambda()
     {
         const string source = """
@@ -17,8 +103,15 @@ public sealed class ActorsNextCodeFixTests
             using Dapr.Actors.Next.Abstractions;
             using Dapr.Actors.Next.Abstractions.Attributes;
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
@@ -35,8 +128,15 @@ public sealed class ActorsNextCodeFixTests
             using Dapr.Actors.Next.Abstractions;
             using Dapr.Actors.Next.Abstractions.Attributes;
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
@@ -60,8 +160,15 @@ public sealed class ActorsNextCodeFixTests
             using Dapr.Actors.Next.Abstractions;
             using Dapr.Actors.Next.Abstractions.Attributes;
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
@@ -78,8 +185,15 @@ public sealed class ActorsNextCodeFixTests
             using Dapr.Actors.Next.Abstractions;
             using Dapr.Actors.Next.Abstractions.Attributes;
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
@@ -264,8 +378,15 @@ public sealed class ActorsNextCodeFixTests
             public sealed class CartStateV3 { public string Name { get; set; } = ""; public int Count { get; set; } }
             public sealed class ShoppingCartV4 { public string Name { get; set; } = ""; public int Quantity { get; set; } }
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override IActorStateAccessor State => throw new NotImplementedException();
@@ -289,8 +410,15 @@ public sealed class ActorsNextCodeFixTests
             public sealed class CartStateV3 { public string Name { get; set; } = ""; public int Count { get; set; } }
             public sealed class ShoppingCartV4 { public string Name { get; set; } = ""; public int Quantity { get; set; } }
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override IActorStateAccessor State => throw new NotImplementedException();
@@ -620,8 +748,15 @@ public sealed class ActorsNextCodeFixTests
         using Dapr.Actors.Next.Abstractions;
         using Dapr.Actors.Next.Abstractions.Attributes;
 
+        [GenerateActorClient]
+
+        public interface ICartActor : IActor
+
+        {
+
+        }
         [DaprActor]
-        public sealed class CartActor : Actor
+        public sealed class CartActor : Actor, ICartActor
         {
             protected override ActorId Id => ActorId.Create("a");
             protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
@@ -635,7 +770,7 @@ public sealed class ActorsNextCodeFixTests
         """;
 
     private static string ActorSource(string statement, string extraUsing = "") =>
-        (string.IsNullOrWhiteSpace(extraUsing) ? ActorTemplateStart : ActorTemplateStart.Replace("using System.Threading.Tasks;\n", "using System.Threading.Tasks;\n" + extraUsing + "\n", StringComparison.Ordinal)) +
+        (string.IsNullOrWhiteSpace(extraUsing) ? ActorTemplateStart : ActorTemplateStart.Replace("using System.Threading.Tasks;\r\n", "using System.Threading.Tasks;\r\n" + extraUsing + "\r\n", StringComparison.Ordinal).Replace("using System.Threading.Tasks;\n", "using System.Threading.Tasks;\n" + extraUsing + "\n", StringComparison.Ordinal)) +
         "\n        " + statement + "\n" + ActorTemplateEnd;
 
     private static Task<string> ApplyMarkedCodeFixAsync(string markedSource, DiagnosticDescriptor descriptor, int codeActionIndex)
@@ -653,6 +788,8 @@ public sealed class ActorsNextCodeFixTests
             .WithMetadataReferences(new[]
             {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Dapr.Actors.Next.Abstractions.IActor).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Dapr.Actors.Next.Abstractions.Attributes.DaprActorAttribute).Assembly.Location),
             });
         var document = project.AddDocument("Test0.cs", SourceText.From(source));
         var actions = new List<CodeAction>();
@@ -695,4 +832,7 @@ public sealed class ActorsNextCodeFixTests
         span = TextSpan.FromBounds(before.Length, before.Length + marked.Length);
         return before + marked + after;
     }
+
+    private static string NormalizeLineEndings(string text) =>
+        text.Replace("\r\n", "\n", StringComparison.Ordinal);
 }

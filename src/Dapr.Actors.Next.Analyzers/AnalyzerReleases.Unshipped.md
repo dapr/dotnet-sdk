@@ -16,6 +16,7 @@ DAPR1417 | Usage | Warning | Actor interface method must return an asynchronous 
 DAPR1418 | Compatibility | Warning | Actor interface change breaks shipped wire contract
 DAPR1419 | Concurrency | Warning | Actor field should not hold mutable shared state
 DAPR1420 | Usage | Warning | Actor type name must disambiguate shared actor contracts
+DAPR1421 | Usage | Warning | Actor implementation must expose a generated client contract
 DAPR1423 | Compatibility | Warning | Actor state type is not connected to its migration family
 DAPR1424 | Compatibility | Warning | Actor state migration chain has a gap
 DAPR1425 | Compatibility | Warning | Actor state migration step requires an upcaster

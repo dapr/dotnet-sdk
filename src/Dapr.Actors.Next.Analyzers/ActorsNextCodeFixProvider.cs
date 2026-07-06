@@ -29,6 +29,7 @@ public sealed class ActorsNextCodeFixProvider : CodeFixProvider
         "DAPR1415",
         "DAPR1416",
         "DAPR1418",
+        "DAPR1421",
         "DAPR1423",
         "DAPR1425");
 
@@ -71,6 +72,9 @@ public sealed class ActorsNextCodeFixProvider : CodeFixProvider
                 case "DAPR1418":
                     RegisterDocumentFix(context, diagnostic, "Bump actor contract version", BumpContractVersionAsync);
                     RegisterSolutionFix(context, diagnostic, "Promote current wire baseline", PromoteBaselineAsync);
+                    break;
+                case "DAPR1421":
+                    RegisterDocumentFix(context, diagnostic, "Add generated actor client contract", AddGeneratedActorClientContractAsync);
                     break;
                 case "DAPR1423":
                     RegisterDocumentFix(context, diagnostic, "Scaffold state family mapping", ScaffoldMissingUpcasterAsync);
@@ -302,6 +306,141 @@ public sealed class {SimpleName(stateName)}Upcaster : Dapr.Actors.Next.Abstracti
         return document.WithSyntaxRoot(root.ReplaceNode(actorAttribute, newAttribute));
     }
 
+    private static async Task<Document> AddGeneratedActorClientContractAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
+    {
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null || semanticModel is null)
+        {
+            return document;
+        }
+
+        var node = root.FindNode(diagnostic.Location.SourceSpan);
+        var classDeclaration = node.AncestorsAndSelf().OfType<ClassDeclarationSyntax>().FirstOrDefault();
+        if (classDeclaration is null ||
+            semanticModel.GetDeclaredSymbol(classDeclaration, cancellationToken) is not { } actorType)
+        {
+            return document;
+        }
+
+        var actorInterface = actorType.AllInterfaces
+            .Where(static candidate => candidate.ToDisplayString() != "Dapr.Actors.Next.Abstractions.IActor" &&
+                                       candidate.Implements("Dapr.Actors.Next.Abstractions.IActor"))
+            .OrderBy(static candidate => candidate.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (actorInterface is not null)
+        {
+            return DecorateActorInterface(document, root, semanticModel, actorInterface, cancellationToken);
+        }
+
+        var interfaceName = SuggestedActorInterfaceName(actorType.Name);
+        var updatedClass = AddBaseType(classDeclaration, interfaceName);
+        var annotation = new SyntaxAnnotation();
+        updatedClass = updatedClass.WithAdditionalAnnotations(annotation);
+
+        var replacedRoot = root.ReplaceNode(classDeclaration, updatedClass);
+        var insertedAfter = replacedRoot.GetAnnotatedNodes(annotation).OfType<ClassDeclarationSyntax>().SingleOrDefault();
+        if (insertedAfter is null)
+        {
+            return WithRootPreservingNewLines(document, root, replacedRoot);
+        }
+
+        var interfaceDeclaration = SyntaxFactory.ParseMemberDeclaration($@"
+[{GenerateActorClientAttributeName(root)}]
+public interface {interfaceName} : {ActorInterfaceName(root)}
+{{
+}}
+")!;
+
+        return WithRootPreservingNewLines(document, root, replacedRoot.InsertNodesAfter(insertedAfter, [interfaceDeclaration]));
+    }
+
+    private static Document DecorateActorInterface(
+        Document document,
+        SyntaxNode root,
+        SemanticModel semanticModel,
+        INamedTypeSymbol actorInterface,
+        CancellationToken cancellationToken)
+    {
+        foreach (var interfaceDeclaration in root.DescendantNodes().OfType<InterfaceDeclarationSyntax>())
+        {
+            if (semanticModel.GetDeclaredSymbol(interfaceDeclaration, cancellationToken) is not { } declared ||
+                !SymbolEqualityComparer.Default.Equals(declared.OriginalDefinition, actorInterface.OriginalDefinition))
+            {
+                continue;
+            }
+
+            var attributeList = SyntaxFactory.AttributeList(
+                SyntaxFactory.SingletonSeparatedList(
+                    SyntaxFactory.Attribute(SyntaxFactory.ParseName(GenerateActorClientAttributeName(root)))))
+                .WithLeadingTrivia(interfaceDeclaration.GetLeadingTrivia())
+                .WithTrailingTrivia(NewLineTrivia(root));
+            var newInterface = interfaceDeclaration
+                .WithLeadingTrivia()
+                .AddAttributeLists(attributeList);
+            return WithRootPreservingNewLines(document, root, root.ReplaceNode(interfaceDeclaration, newInterface));
+        }
+
+        return document;
+    }
+
+    private static Document WithRootPreservingNewLines(Document document, SyntaxNode oldRoot, SyntaxNode newRoot)
+    {
+        var newText = newRoot.ToFullString();
+        var withoutCrLf = newText.Replace("\r\n", string.Empty);
+        return newText.Contains("\r\n", StringComparison.Ordinal) &&
+            withoutCrLf.Contains('\n')
+            ? document.WithText(SourceText.From(newText.Replace("\r\n", "\n")))
+            : document.WithSyntaxRoot(newRoot);
+    }
+
+    private static ClassDeclarationSyntax AddBaseType(ClassDeclarationSyntax classDeclaration, string interfaceName)
+    {
+        var baseType = SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(interfaceName));
+        return classDeclaration.BaseList is null
+            ? classDeclaration.WithBaseList(SyntaxFactory.BaseList(
+                SyntaxFactory.Token(SyntaxKind.ColonToken).WithTrailingTrivia(SyntaxFactory.Space),
+                SyntaxFactory.SingletonSeparatedList<BaseTypeSyntax>(baseType)))
+            : classDeclaration.WithBaseList(classDeclaration.BaseList.WithTypes(AppendBaseType(classDeclaration.BaseList.Types, baseType)));
+    }
+
+    private static SeparatedSyntaxList<BaseTypeSyntax> AppendBaseType(SeparatedSyntaxList<BaseTypeSyntax> types, BaseTypeSyntax baseType)
+    {
+        var nodesAndTokens = new List<SyntaxNodeOrToken>();
+        nodesAndTokens.AddRange(types.GetWithSeparators());
+        nodesAndTokens.Add(SyntaxFactory.Token(SyntaxKind.CommaToken).WithTrailingTrivia(SyntaxFactory.Space));
+        nodesAndTokens.Add(baseType);
+        return SyntaxFactory.SeparatedList<BaseTypeSyntax>(nodesAndTokens);
+    }
+
+    private static string GenerateActorClientAttributeName(SyntaxNode root) =>
+        HasUsing(root, "Dapr.Actors.Next.Abstractions.Attributes")
+            ? "GenerateActorClient"
+            : "Dapr.Actors.Next.Abstractions.Attributes.GenerateActorClient";
+
+    private static string ActorInterfaceName(SyntaxNode root) =>
+        HasUsing(root, "Dapr.Actors.Next.Abstractions")
+            ? "IActor"
+            : "Dapr.Actors.Next.Abstractions.IActor";
+
+    private static bool HasUsing(SyntaxNode root, string namespaceName) =>
+        root.DescendantNodes().OfType<UsingDirectiveSyntax>().Any(usingDirective =>
+            StringComparer.Ordinal.Equals(usingDirective.Name?.ToString(), namespaceName));
+
+    private static SyntaxTrivia NewLineTrivia(SyntaxNode root)
+    {
+        var text = root.SyntaxTree.GetText().ToString();
+        return SyntaxFactory.EndOfLine(text.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n");
+    }
+
+    private static string SuggestedActorInterfaceName(string actorTypeName)
+    {
+        var contractName = actorTypeName.EndsWith("Actor", StringComparison.Ordinal) && actorTypeName.Length > "Actor".Length
+            ? actorTypeName.Substring(0, actorTypeName.Length - "Actor".Length) + "Actor"
+            : actorTypeName;
+        return contractName.StartsWith("I", StringComparison.Ordinal) ? contractName : "I" + contractName;
+    }
+
     private static async Task<Solution> PromoteBaselineAsync(Solution solution, Diagnostic diagnostic, CancellationToken cancellationToken)
     {
         if (!diagnostic.Properties.TryGetValue("baseline.current", out var currentLine) || string.IsNullOrWhiteSpace(currentLine) ||
@@ -348,7 +487,9 @@ public sealed class {SimpleName(stateName)}Upcaster : Dapr.Actors.Next.Abstracti
     private static async Task<Document> AppendTextAsync(Document document, string text)
     {
         var sourceText = await document.GetTextAsync().ConfigureAwait(false);
-        var newText = sourceText.ToString() + text;
+        var source = sourceText.ToString();
+        var newline = source.Contains("\r\n", StringComparison.Ordinal) ? "\r\n" : "\n";
+        var newText = source + text.Replace("\n", newline);
         return document.WithText(SourceText.From(newText));
     }
 

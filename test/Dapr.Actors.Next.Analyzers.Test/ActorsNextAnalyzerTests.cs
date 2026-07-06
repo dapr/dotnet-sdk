@@ -15,8 +15,15 @@ public sealed class ActorsNextAnalyzerTests
             using Dapr.Actors.Next.Abstractions;
             using Dapr.Actors.Next.Abstractions.Attributes;
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
@@ -59,7 +66,9 @@ public sealed class ActorsNextAnalyzerTests
             }
             """;
 
-        return AnalyzerTest.VerifyAnalyzerAsync(source);
+        return AnalyzerTest.VerifyAnalyzerAsync(
+            source,
+            AnalyzerTest.Diagnostic("DAPR1421").WithSpan(5, 21, 5, 30));
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -261,8 +270,15 @@ public sealed class ActorsNextAnalyzerTests
 
             public sealed class PaymentClient { }
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 private List<string> items = new();
                 private PaymentClient client = new();
@@ -275,7 +291,7 @@ public sealed class ActorsNextAnalyzerTests
 
         return AnalyzerTest.VerifyAnalyzerAsync(
             source,
-            AnalyzerTest.Diagnostic("DAPR1419").WithSpan(11, 26, 11, 31));
+            AnalyzerTest.Diagnostic("DAPR1419").WithSpan(18, 26, 18, 31));
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -350,8 +366,15 @@ public sealed class ActorsNextAnalyzerTests
             public sealed class CartStateV3 { public string Name { get; set; } = ""; public int Count { get; set; } }
             public sealed class ShoppingCartV4 { public string Name { get; set; } = ""; public int Quantity { get; set; } }
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override IActorStateAccessor State => throw new NotImplementedException();
@@ -382,8 +405,15 @@ public sealed class ActorsNextAnalyzerTests
             public sealed class CartState { public int Count { get; set; } }
             public sealed class {|DAPR1425:CartStateV2|} { public int Quantity { get; set; } }
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override IActorStateAccessor State => throw new NotImplementedException();
@@ -443,8 +473,15 @@ public sealed class ActorsNextAnalyzerTests
             public sealed class CartState { public int Count { get; set; } }
             public sealed class {|DAPR1425:CartStateV2|} { public int Quantity { get; set; } }
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override IActorStateAccessor State => throw new NotImplementedException();
@@ -542,8 +579,15 @@ public sealed class ActorsNextAnalyzerTests
             public sealed class CartStateV1 { public int Count { get; set; } }
             public sealed class CartStateV2 { public int Count { get; set; } public string Name { get; set; } = ""; }
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override IActorStateAccessor State => throw new NotImplementedException();
@@ -579,8 +623,15 @@ public sealed class ActorsNextAnalyzerTests
                 public ValueTask<CartStateV2> UpcastAsync(CartStateV1 state, CancellationToken cancellationToken = default) => new(new CartStateV2());
             }
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override IActorStateAccessor State => throw new NotImplementedException();
@@ -611,8 +662,15 @@ public sealed class ActorsNextAnalyzerTests
             public sealed class CartStateV1 { public int Count { get; set; } }
             public sealed class CartStateV2 { public int Count { get; set; } public string Name { get; set; } = ""; }
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override IActorStateAccessor State => throw new NotImplementedException();
@@ -704,8 +762,15 @@ public sealed class ActorsNextAnalyzerTests
             public sealed class CartState { }
             public sealed class OrderState { }
 
+            [GenerateActorClient]
+
+            public interface ICartActor : IActor
+
+            {
+
+            }
             [DaprActor]
-            public sealed class CartActor : Actor
+            public sealed class CartActor : Actor, ICartActor
             {
                 protected override ActorId Id => ActorId.Create("a");
                 protected override IActorStateAccessor State => throw new NotImplementedException();
