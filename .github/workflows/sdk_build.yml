@@ -162,18 +162,18 @@ jobs:
       run: |
         dotnet nuget push "./packages/Dapr*.nupkg" --skip-duplicate --api-key ${{ secrets.NUGETORG_DAPR_API_KEY }} --source https://api.nuget.org/v3/index.json
 
-  # Opens (or comments on) a tracking issue when a tagged release fails
-  # anywhere in the build/test/publish chain.
+  # Opens (or comments on) a tracking issue only when the publish job (NuGet +
+  # GitHub Release) fails. A build failure skips publish, so failure() stays
+  # false and CI flakes don't open issues. Prerelease tags (-rc/-dev/-prerelease)
+  # are excluded to match the publish job.
   notify-on-failure:
-    needs: [build, test, publish]
-    if: failure() && startswith(github.ref, 'refs/tags/v')
+    needs: [publish]
+    if: failure() && startswith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease'))
     permissions:
       issues: write
       actions: read
     uses: dapr/.github/.github/workflows/open-issue-on-failure.yml@main
     with:
-      title: "Release publish failed: ${{ github.workflow }} (${{ github.ref_name }})"
-      labels: "release,ci/publish-failure"
+      title: "Release workflow failed: ${{ github.workflow }} (${{ github.ref_name }})"
+      labels: "release,ci/release-failure"
       mention: "@dapr/maintainers-dotnet-sdk @dapr/approvers-dotnet-sdk"
-    secrets:
-      dapr_bot_token: ${{ secrets.DAPR_BOT_TOKEN }}
