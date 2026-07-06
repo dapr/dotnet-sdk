@@ -13,47 +13,46 @@
 
 using System.Collections.Generic;
 
-namespace Dapr.AspNetCore
+namespace Dapr.AspNetCore;
+
+/// <summary>
+/// Represents a bulk of messages received from the message bus.
+/// </summary>
+/// <typeparam name="TValue">The type of value contained in the data.</typeparam>
+public class BulkSubscribeMessage<TValue>
 {
     /// <summary>
-    /// Represents a bulk of messages received from the message bus.
+    /// Initializes a new instance of the <see cref="BulkSubscribeMessage{TValue}"/> class.
     /// </summary>
-    /// <typeparam name="TValue">The type of value contained in the data.</typeparam>
-    public class BulkSubscribeMessage<TValue>
+    public BulkSubscribeMessage()
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BulkSubscribeMessage{TValue}"/> class.
-        /// </summary>
-        public BulkSubscribeMessage()
-        {
-        }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BulkSubscribeMessage{TValue}"/> class.
-        /// </summary>
-        /// <param name="entries">A list of entries representing the event and other metadata.</param>
-        /// <param name="topic">The name of the pubsub topic.</param>
-        /// <param name="metadata">Metadata for the bulk message.</param>
-        public BulkSubscribeMessage(List<BulkSubscribeMessageEntry<TValue>> entries, string topic, Dictionary<string, string> metadata)
-        {
-            this.Entries = entries;
-            this.Topic = topic;
-            this.Metadata = metadata;
-        }
-
-        /// <summary>
-        /// A list of entries representing the event and other metadata.
-        /// </summary>
-        public List<BulkSubscribeMessageEntry<TValue>> Entries { get; set; }
-        
-        /// <summary>
-        /// The name of the pubsub topic.
-        /// </summary>
-        public string Topic { get; set; }
-        
-        /// <summary>
-        /// Metadata for the bulk message.
-        /// </summary>
-        public Dictionary<string, string> Metadata { get; set; }
     }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BulkSubscribeMessage{TValue}"/> class.
+    /// </summary>
+    /// <param name="entries">A list of entries representing the event and other metadata.</param>
+    /// <param name="topic">The name of the pubsub topic.</param>
+    /// <param name="metadata">Metadata for the bulk message.</param>
+    public BulkSubscribeMessage(List<BulkSubscribeMessageEntry<TValue>> entries, string topic, Dictionary<string, string> metadata)
+    {
+        this.Entries = entries;
+        this.Topic = topic;
+        this.Metadata = metadata;
+    }
+
+    /// <summary>
+    /// A list of entries representing the event and other metadata.
+    /// </summary>
+    public List<BulkSubscribeMessageEntry<TValue>> Entries { get; set; }
+        
+    /// <summary>
+    /// The name of the pubsub topic.
+    /// </summary>
+    public string Topic { get; set; }
+        
+    /// <summary>
+    /// Metadata for the bulk message.
+    /// </summary>
+    public Dictionary<string, string> Metadata { get; set; }
 }

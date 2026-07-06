@@ -11,186 +11,185 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AspNetCore.Test
+namespace Dapr.AspNetCore.Test;
+
+using System;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Dapr.Client;
+using Dapr.Client.Autogen.Grpc.v1;
+using Shouldly;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
+
+public class StateEntryModelBinderTest
 {
-    using System;
-    using System.Text.Json;
-    using System.Threading.Tasks;
-    using Dapr.Client;
-    using Dapr.Client.Autogen.Grpc.v1;
-    using Shouldly;
-    using Microsoft.AspNetCore.Http;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.AspNetCore.Mvc.ModelBinding;
-    using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
-    using Microsoft.Extensions.DependencyInjection;
-    using Xunit;
-
-    public class StateEntryModelBinderTest
+    [Fact]
+    public async Task BindAsync_WithoutMatchingRouteValue_ReportsError()
     {
-        [Fact]
-        public async Task BindAsync_WithoutMatchingRouteValue_ReportsError()
+        await using var client = TestClient.CreateForDaprClient();
+
+        var binder = new StateEntryModelBinder("testStore", "test", isStateEntry: false, typeof(Widget));
+        var context = CreateContext(CreateServices(client.InnerClient));
+
+        await binder.BindModelAsync(context);
+
+        context.Result.IsModelSet.ShouldBeFalse();
+        context.ModelState.ErrorCount.ShouldBe(1);
+        context.ModelState["testParameter"].Errors.Count.ShouldBe(1);
+
+        // No request to state store, validated by disposing client
+    }
+
+    [Fact]
+    public async Task BindAsync_CanBindValue()
+    {
+        await using var client = TestClient.CreateForDaprClient();
+
+        var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: false, typeof(Widget));
+
+        // Configure Client
+        var context = CreateContext(CreateServices(client.InnerClient));
+        context.HttpContext.Request.RouteValues["id"] = "test";
+
+        var request = await client.CaptureGrpcRequestAsync(async _ =>
         {
-            await using var client = TestClient.CreateForDaprClient();
-
-            var binder = new StateEntryModelBinder("testStore", "test", isStateEntry: false, typeof(Widget));
-            var context = CreateContext(CreateServices(client.InnerClient));
-
             await binder.BindModelAsync(context);
+        });
 
-            context.Result.IsModelSet.ShouldBeFalse();
-            context.ModelState.ErrorCount.ShouldBe(1);
-            context.ModelState["testParameter"].Errors.Count.ShouldBe(1);
+        // Create Response & Respond
+        var state = new Widget() { Size = "small", Color = "yellow", };
+        await SendResponseWithState(state, request);
 
-            // No request to state store, validated by disposing client
-        }
+        // Get response and validate
+        context.Result.IsModelSet.ShouldBeTrue();
+        ((Widget)context.Result.Model).Size.ShouldBe("small");
+        ((Widget)context.Result.Model).Color.ShouldBe("yellow");
 
-        [Fact]
-        public async Task BindAsync_CanBindValue()
+        context.ValidationState.Count.ShouldBe(1);
+        context.ValidationState[context.Result.Model].SuppressValidation.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task BindAsync_CanBindStateEntry()
+    {
+        await using var client = TestClient.CreateForDaprClient();
+
+        var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: true, typeof(Widget));
+
+        // Configure Client
+        var context = CreateContext(CreateServices(client.InnerClient));
+        context.HttpContext.Request.RouteValues["id"] = "test";
+
+        var request = await client.CaptureGrpcRequestAsync(async _ =>
         {
-            await using var client = TestClient.CreateForDaprClient();
+            await binder.BindModelAsync(context);
+        });
 
-            var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: false, typeof(Widget));
+        // Create Response & Respond
+        var state = new Widget() { Size = "small", Color = "yellow", };
+        await SendResponseWithState(state, request);
 
-            // Configure Client
-            var context = CreateContext(CreateServices(client.InnerClient));
-            context.HttpContext.Request.RouteValues["id"] = "test";
+        // Get response and validate
+        context.Result.IsModelSet.ShouldBeTrue();
+        ((StateEntry<Widget>)context.Result.Model).Key.ShouldBe("test");
+        ((StateEntry<Widget>)context.Result.Model).Value.Size.ShouldBe("small");
+        ((StateEntry<Widget>)context.Result.Model).Value.Color.ShouldBe("yellow");
 
-            var request = await client.CaptureGrpcRequestAsync(async _ =>
-            {
-                await binder.BindModelAsync(context);
-            });
+        context.ValidationState.Count.ShouldBe(1);
+        context.ValidationState[context.Result.Model].SuppressValidation.ShouldBeTrue();
+    }
 
-            // Create Response & Respond
-            var state = new Widget() { Size = "small", Color = "yellow", };
-            await SendResponseWithState(state, request);
+    [Fact]
+    public async Task BindAsync_ReturnsNullForNonExistentStateEntry()
+    {
+        await using var client = TestClient.CreateForDaprClient();
 
-            // Get response and validate
-            context.Result.IsModelSet.ShouldBeTrue();
-            ((Widget)context.Result.Model).Size.ShouldBe("small");
-            ((Widget)context.Result.Model).Color.ShouldBe("yellow");
+        var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: false, typeof(Widget));
 
-            context.ValidationState.Count.ShouldBe(1);
-            context.ValidationState[context.Result.Model].SuppressValidation.ShouldBeTrue();
-        }
+        // Configure Client
+        var context = CreateContext(CreateServices(client.InnerClient));
+        context.HttpContext.Request.RouteValues["id"] = "test";
 
-        [Fact]
-        public async Task BindAsync_CanBindStateEntry()
+        var request = await client.CaptureGrpcRequestAsync(async _ =>
         {
-            await using var client = TestClient.CreateForDaprClient();
+            await binder.BindModelAsync(context);
+        });
 
-            var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: true, typeof(Widget));
+        await SendResponseWithState<string>(null, request);
 
-            // Configure Client
-            var context = CreateContext(CreateServices(client.InnerClient));
-            context.HttpContext.Request.RouteValues["id"] = "test";
+        context.ModelState.IsValid.ShouldBeTrue();
+        context.Result.IsModelSet.ShouldBeFalse();
+        context.Result.ShouldBe(ModelBindingResult.Failed());
+    }
 
-            var request = await client.CaptureGrpcRequestAsync(async _ =>
-            {
-                await binder.BindModelAsync(context);
-            });
+    [Fact]
+    public async Task BindAsync_WithStateEntry_ForNonExistentStateEntry()
+    {
+        await using var client = TestClient.CreateForDaprClient();
 
-            // Create Response & Respond
-            var state = new Widget() { Size = "small", Color = "yellow", };
-            await SendResponseWithState(state, request);
+        var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: true, typeof(Widget));
 
-            // Get response and validate
-            context.Result.IsModelSet.ShouldBeTrue();
-            ((StateEntry<Widget>)context.Result.Model).Key.ShouldBe("test");
-            ((StateEntry<Widget>)context.Result.Model).Value.Size.ShouldBe("small");
-            ((StateEntry<Widget>)context.Result.Model).Value.Color.ShouldBe("yellow");
+        // Configure Client
+        var context = CreateContext(CreateServices(client.InnerClient));
+        context.HttpContext.Request.RouteValues["id"] = "test";
 
-            context.ValidationState.Count.ShouldBe(1);
-            context.ValidationState[context.Result.Model].SuppressValidation.ShouldBeTrue();
-        }
-
-        [Fact]
-        public async Task BindAsync_ReturnsNullForNonExistentStateEntry()
+        var request = await client.CaptureGrpcRequestAsync(async _ =>
         {
-            await using var client = TestClient.CreateForDaprClient();
+            await binder.BindModelAsync(context);
+        });
 
-            var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: false, typeof(Widget));
+        await SendResponseWithState<string>(null, request);
 
-            // Configure Client
-            var context = CreateContext(CreateServices(client.InnerClient));
-            context.HttpContext.Request.RouteValues["id"] = "test";
+        context.ModelState.IsValid.ShouldBeTrue();
+        context.Result.IsModelSet.ShouldBeTrue();
+        ((StateEntry<Widget>)context.Result.Model).Value.ShouldBeNull();
+    }
 
-            var request = await client.CaptureGrpcRequestAsync(async _ =>
-            {
-                await binder.BindModelAsync(context);
-            });
-
-            await SendResponseWithState<string>(null, request);
-
-            context.ModelState.IsValid.ShouldBeTrue();
-            context.Result.IsModelSet.ShouldBeFalse();
-            context.Result.ShouldBe(ModelBindingResult.Failed());
-        }
-
-        [Fact]
-        public async Task BindAsync_WithStateEntry_ForNonExistentStateEntry()
+    private static ModelBindingContext CreateContext(IServiceProvider services)
+    {
+        return new DefaultModelBindingContext()
         {
-            await using var client = TestClient.CreateForDaprClient();
-
-            var binder = new StateEntryModelBinder("testStore", "id", isStateEntry: true, typeof(Widget));
-
-            // Configure Client
-            var context = CreateContext(CreateServices(client.InnerClient));
-            context.HttpContext.Request.RouteValues["id"] = "test";
-
-            var request = await client.CaptureGrpcRequestAsync(async _ =>
+            ActionContext = new ActionContext()
             {
-                await binder.BindModelAsync(context);
-            });
-
-            await SendResponseWithState<string>(null, request);
-
-            context.ModelState.IsValid.ShouldBeTrue();
-            context.Result.IsModelSet.ShouldBeTrue();
-            ((StateEntry<Widget>)context.Result.Model).Value.ShouldBeNull();
-        }
-
-        private static ModelBindingContext CreateContext(IServiceProvider services)
-        {
-            return new DefaultModelBindingContext()
-            {
-                ActionContext = new ActionContext()
+                HttpContext = new DefaultHttpContext()
                 {
-                    HttpContext = new DefaultHttpContext()
-                    {
-                        RequestServices = services,
-                    },
+                    RequestServices = services,
                 },
-                ModelState = new ModelStateDictionary(),
-                ModelName = "testParameter",
-                ValidationState = new ValidationStateDictionary(),
-            };
-        }
+            },
+            ModelState = new ModelStateDictionary(),
+            ModelName = "testParameter",
+            ValidationState = new ValidationStateDictionary(),
+        };
+    }
 
-        private async Task SendResponseWithState<T>(T state, TestClient<DaprClient>.TestGrpcRequest request)
+    private async Task SendResponseWithState<T>(T state, TestClient<DaprClient>.TestGrpcRequest request)
+    {
+        var stateData = TypeConverters.ToJsonByteString(state, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var stateResponse = new GetStateResponse()
         {
-            var stateData = TypeConverters.ToJsonByteString(state, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-            var stateResponse = new GetStateResponse()
-            {
-                Data = stateData,
-                Etag = "test",
-            };
+            Data = stateData,
+            Etag = "test",
+        };
 
-            await request.CompleteWithMessageAsync(stateResponse);
-        }
+        await request.CompleteWithMessageAsync(stateResponse);
+    }
 
-        private static IServiceProvider CreateServices(DaprClient daprClient)
-        {
-            var services = new ServiceCollection();
-            services.AddSingleton(daprClient);
-            return services.BuildServiceProvider();
-        }
+    private static IServiceProvider CreateServices(DaprClient daprClient)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(daprClient);
+        return services.BuildServiceProvider();
+    }
 
-        private class Widget
-        {
-            public string Size { get; set; }
+    private class Widget
+    {
+        public string Size { get; set; }
 
-            public string Color { get; set; }
-        }
+        public string Color { get; set; }
     }
 }

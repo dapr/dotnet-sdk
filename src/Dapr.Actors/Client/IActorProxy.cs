@@ -11,23 +11,22 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Client
+namespace Dapr.Actors.Client;
+
+/// <summary>
+/// Provides the interface for implementation of proxy access for actor service.
+/// </summary>
+public interface IActorProxy
 {
     /// <summary>
-    /// Provides the interface for implementation of proxy access for actor service.
+    /// Gets <see cref="Dapr.Actors.ActorId"/> associated with the proxy object.
     /// </summary>
-    public interface IActorProxy
-    {
-        /// <summary>
-        /// Gets <see cref="Dapr.Actors.ActorId"/> associated with the proxy object.
-        /// </summary>
-        /// <value><see cref="Dapr.Actors.ActorId"/> associated with the proxy object.</value>
-        ActorId ActorId { get; }
+    /// <value><see cref="Dapr.Actors.ActorId"/> associated with the proxy object.</value>
+    ActorId ActorId { get; }
 
-        /// <summary>
-        /// Gets actor implementation type of the actor associated with the proxy object.
-        /// </summary>
-        /// <value>Actor implementation type of the actor associated with the proxy object.</value>
-        string ActorType { get; }
-    }
+    /// <summary>
+    /// Gets actor implementation type of the actor associated with the proxy object.
+    /// </summary>
+    /// <value>Actor implementation type of the actor associated with the proxy object.</value>
+    string ActorType { get; }
 }

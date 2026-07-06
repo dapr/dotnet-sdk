@@ -1,0 +1,634 @@
+﻿// ------------------------------------------------------------------------
+// Copyright 2025 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
+
+using System.Collections.ObjectModel;
+using Dapr.Workflow.Client;
+using Grpc.Core;
+
+namespace Dapr.Workflow.Test;
+
+public class DaprWorkflowClientTests
+{
+    [Fact]
+    public void Constructor_ShouldThrowArgumentNullException_WhenInnerClientIsNull()
+    {
+        Assert.Throws<ArgumentNullException>(() => new DaprWorkflowClient(null!));
+    }
+
+    [Fact]
+    public async Task ScheduleNewWorkflowAsync_ShouldThrowArgumentException_WhenNameIsNullOrEmpty()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.ScheduleNewWorkflowAsync(""));
+    }
+
+    [Fact]
+    public async Task ScheduleNewWorkflowAsync_ShouldForwardToInnerClient_WithStartOptionsAndCancellationToken()
+    {
+        var inner = new CapturingWorkflowClient { ScheduleNewWorkflowResult = "returned-id" };
+        var client = new DaprWorkflowClient(inner);
+
+        using var cts = new CancellationTokenSource();
+        var startAt = new DateTimeOffset(2025, 01, 02, 03, 04, 05, TimeSpan.Zero);
+
+        var instanceId = await client.ScheduleNewWorkflowAsync(
+            name: "MyWorkflow",
+            instanceId: "instance-123",
+            input: new { A = 1 },
+            startTime: startAt,
+            cancellation: cts.Token);
+
+        Assert.Equal("returned-id", instanceId);
+
+        Assert.Equal("MyWorkflow", inner.LastScheduleName);
+        Assert.NotNull(inner.LastScheduleOptions);
+        Assert.Equal("instance-123", inner.LastScheduleOptions!.InstanceId);
+        Assert.Equal(startAt, inner.LastScheduleOptions.StartAt);
+        Assert.Equal(cts.Token, inner.LastScheduleCancellationToken);
+        Assert.NotNull(inner.LastScheduleInput);
+    }
+
+    [Fact]
+    public async Task ScheduleNewWorkflowAsync_DateTimeOverload_ShouldConvertToDateTimeOffset_WhenStartTimeProvided()
+    {
+        var inner = new CapturingWorkflowClient { ScheduleNewWorkflowResult = "id" };
+        var client = new DaprWorkflowClient(inner);
+
+        var start = new DateTime(2025, 07, 10, 1, 2, 3, DateTimeKind.Utc);
+
+        await client.ScheduleNewWorkflowAsync("wf", "i", input: null, startTime: start);
+
+        Assert.NotNull(inner.LastScheduleOptions);
+        Assert.NotNull(inner.LastScheduleOptions!.StartAt);
+        Assert.Equal(new DateTimeOffset(start), inner.LastScheduleOptions.StartAt);
+    }
+
+    [Fact]
+    public async Task GetWorkflowStateAsync_ShouldThrowArgumentException_WhenInstanceIdIsNullOrEmpty()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetWorkflowStateAsync("", cancellation: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task GetWorkflowStateAsync_ShouldReflectNotExists_WhenInnerReturnsNullMetadata()
+    {
+        var inner = new CapturingWorkflowClient { GetWorkflowMetadataResult = null };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.GetWorkflowStateAsync("missing", cancellation: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(state);
+        Assert.False(state.Exists);
+        Assert.Equal("missing", inner.LastGetMetadataInstanceId);
+        Assert.True(inner.LastGetMetadataGetInputsAndOutputs);
+    }
+
+    [Fact]
+    public async Task GetWorkflowStateAsync_ShouldReflectNotExists_WhenInnerThrowsRpcException()
+    {
+        var inner = new CapturingWorkflowClient
+        {
+            GetWorkflowMetadataException = new RpcException(new Status(StatusCode.NotFound, "not found"))
+        };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(state);
+        Assert.False(state.Exists);
+    }
+
+    [Fact]
+    public async Task GetWorkflowStateAsync_ShouldReturnWorkflowState_WhenInnerReturnsMetadata()
+    {
+        var metadata = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Running,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: new Common.Serialization.JsonDaprSerializer());
+
+        var inner = new CapturingWorkflowClient { GetWorkflowMetadataResult = metadata };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(state);
+        Assert.True(state.Exists);
+        Assert.True(state.IsWorkflowRunning);
+        Assert.Equal(WorkflowRuntimeStatus.Running, state.RuntimeStatus);
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowStartAsync_ShouldThrowArgumentException_WhenInstanceIdIsNullOrEmpty()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.WaitForWorkflowStartAsync("", cancellation: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowStartAsync_ShouldWrapMetadataIntoWorkflowState()
+    {
+        var metadata = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Running,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: new Common.Serialization.JsonDaprSerializer());
+
+        var inner = new CapturingWorkflowClient { WaitForStartResult = metadata };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.WaitForWorkflowStartAsync("i", getInputsAndOutputs: false, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.True(state.Exists);
+        Assert.Equal(WorkflowRuntimeStatus.Running, state.RuntimeStatus);
+        Assert.Equal("i", inner.LastWaitForStartInstanceId);
+        Assert.False(inner.LastWaitForStartGetInputsAndOutputs);
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowCompletionAsync_ShouldThrowArgumentException_WhenInstanceIdIsNullOrEmpty()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.WaitForWorkflowCompletionAsync("", cancellation: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowCompletionAsync_ShouldFetchInputsAndOutputs_WhenRequested()
+    {
+        var completionMetadata = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Completed,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: new Common.Serialization.JsonDaprSerializer());
+
+        var metadataWithInputs = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Completed,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: new Common.Serialization.JsonDaprSerializer());
+
+        var inner = new CapturingWorkflowClient
+        {
+            WaitForCompletionResult = completionMetadata,
+            GetWorkflowMetadataResult = metadataWithInputs
+        };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: true, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.True(state.Exists);
+        Assert.Equal("i", inner.LastWaitForCompletionInstanceId);
+        Assert.False(inner.LastWaitForCompletionGetInputsAndOutputs);
+        Assert.Equal("i", inner.LastGetMetadataInstanceId);
+        Assert.True(inner.LastGetMetadataGetInputsAndOutputs);
+    }
+
+    [Fact]
+    public async Task WaitForWorkflowCompletionAsync_ShouldNotFetchInputsAndOutputs_WhenNotRequested()
+    {
+        var completionMetadata = new WorkflowMetadata(
+            InstanceId: "i",
+            Name: "wf",
+            RuntimeStatus: WorkflowRuntimeStatus.Completed,
+            CreatedAt: DateTime.MinValue,
+            LastUpdatedAt: DateTime.MinValue,
+            Serializer: new Common.Serialization.JsonDaprSerializer());
+
+        var inner = new CapturingWorkflowClient { WaitForCompletionResult = completionMetadata };
+        var client = new DaprWorkflowClient(inner);
+
+        var state = await client.WaitForWorkflowCompletionAsync("i", getInputsAndOutputs: false, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.True(state.Exists);
+        Assert.Equal("i", inner.LastWaitForCompletionInstanceId);
+        Assert.False(inner.LastWaitForCompletionGetInputsAndOutputs);
+        Assert.Null(inner.LastGetMetadataInstanceId);
+    }
+
+    [Fact]
+    public async Task RaiseEventAsync_ShouldValidateParameters_AndForwardToInner()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseEventAsync("", "evt", cancellation: TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseEventAsync("i", "", cancellation: TestContext.Current.CancellationToken));
+
+        await client.RaiseEventAsync("i", "evt", new { P = 1 }, TestContext.Current.CancellationToken);
+
+        Assert.Equal("i", inner.LastRaiseEventInstanceId);
+        Assert.Equal("evt", inner.LastRaiseEventName);
+        Assert.NotNull(inner.LastRaiseEventPayload);
+    }
+
+    [Fact]
+    public async Task TerminateSuspendResumePurge_ShouldValidateInstanceId_AndForwardToInner()
+    {
+        var inner = new CapturingWorkflowClient { PurgeResult = true };
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.TerminateWorkflowAsync("", cancellation: TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.SuspendWorkflowAsync("", cancellation: TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.ResumeWorkflowAsync("", cancellation: TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.PurgeInstanceAsync("", TestContext.Current.CancellationToken));
+
+        await client.TerminateWorkflowAsync("i", output: "o", cancellation: TestContext.Current.CancellationToken);
+        await client.SuspendWorkflowAsync("i", reason: "r1", cancellation: TestContext.Current.CancellationToken);
+        await client.ResumeWorkflowAsync("i", reason: "r2", cancellation: TestContext.Current.CancellationToken);
+        var purged = await client.PurgeInstanceAsync("i", TestContext.Current.CancellationToken);
+
+        Assert.Equal("i", inner.LastTerminateInstanceId);
+        Assert.Equal("i", inner.LastSuspendInstanceId);
+        Assert.Equal("i", inner.LastResumeInstanceId);
+        Assert.Equal("i", inner.LastPurgeInstanceId);
+        Assert.True(purged);
+    }
+
+    [Fact]
+    public async Task DisposeAsync_ShouldForwardToInner()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await client.DisposeAsync();
+
+        Assert.True(inner.DisposeCalled);
+    }
+
+    [Fact]
+    public async Task ListInstanceIdsAsync_ShouldForwardToInnerClient()
+    {
+        var expectedPage = new WorkflowInstancePage(
+            new ReadOnlyCollection<string>(new[] { "id1", "id2" }),
+            "next-token");
+        var inner = new CapturingWorkflowClient { ListInstanceIdsResult = expectedPage };
+        var client = new DaprWorkflowClient(inner);
+
+        var result = await client.ListInstanceIdsAsync(continuationToken: "token", pageSize: 10, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.Equal(expectedPage, result);
+        Assert.Equal("token", inner.LastListContinuationToken);
+        Assert.Equal(10, inner.LastListPageSize);
+    }
+
+    [Fact]
+    public async Task GetInstanceHistoryAsync_ShouldThrowArgumentException_WhenInstanceIdIsNullOrEmpty()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.GetInstanceHistoryAsync("", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task GetInstanceHistoryAsync_ShouldForwardToInnerClient()
+    {
+        var events = new ReadOnlyCollection<WorkflowHistoryEvent>(new[]
+        {
+            new WorkflowHistoryEvent(1, WorkflowHistoryEventType.ExecutionStarted, DateTime.MinValue)
+        });
+        var inner = new CapturingWorkflowClient { GetInstanceHistoryResult = events };
+        var client = new DaprWorkflowClient(inner);
+
+        var result = await client.GetInstanceHistoryAsync("i", TestContext.Current.CancellationToken);
+
+        Assert.Single(result);
+        Assert.Equal("i", inner.LastGetHistoryInstanceId);
+    }
+
+    [Fact]
+    public async Task RerunWorkflowFromEventAsync_ShouldThrowArgumentException_WhenSourceInstanceIdIsNullOrEmpty()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RerunWorkflowFromEventAsync("", 1, cancellation: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task RerunWorkflowFromEventAsync_ShouldForwardToInnerClient()
+    {
+        var inner = new CapturingWorkflowClient { RerunWorkflowFromEventResult = "new-id" };
+        var client = new DaprWorkflowClient(inner);
+
+        var options = new RerunWorkflowFromEventOptions { NewInstanceId = "custom-id" };
+        var result = await client.RerunWorkflowFromEventAsync("source-id", 42, options, TestContext.Current.CancellationToken);
+
+        Assert.Equal("new-id", result);
+        Assert.Equal("source-id", inner.LastRerunSourceInstanceId);
+        Assert.Equal(42u, inner.LastRerunEventId);
+        Assert.Equal(options, inner.LastRerunOptions);
+    }
+
+    private sealed class CapturingWorkflowClient : WorkflowClient
+    {
+        public string? LastScheduleName { get; private set; }
+        public object? LastScheduleInput { get; private set; }
+        public StartWorkflowOptions? LastScheduleOptions { get; private set; }
+        public CancellationToken LastScheduleCancellationToken { get; private set; }
+        public string ScheduleNewWorkflowResult { get; set; } = "id";
+
+        public string? LastGetMetadataInstanceId { get; private set; }
+        public bool LastGetMetadataGetInputsAndOutputs { get; private set; }
+        public WorkflowMetadata? GetWorkflowMetadataResult { get; set; }
+        public Exception? GetWorkflowMetadataException { get; set; }
+
+        public string? LastWaitForStartInstanceId { get; private set; }
+        public bool LastWaitForStartGetInputsAndOutputs { get; private set; }
+        public WorkflowMetadata WaitForStartResult { get; set; } =
+            new("i", "wf", WorkflowRuntimeStatus.Running, DateTime.MinValue, DateTime.MinValue, new Common.Serialization.JsonDaprSerializer());
+
+        public string? LastWaitForCompletionInstanceId { get; private set; }
+        public bool LastWaitForCompletionGetInputsAndOutputs { get; private set; }
+        public CancellationToken LastWaitForCompletionCancellationToken { get; private set; }
+        public WorkflowMetadata WaitForCompletionResult { get; set; } =
+            new("i", "wf", WorkflowRuntimeStatus.Completed, DateTime.MinValue, DateTime.MinValue, new Common.Serialization.JsonDaprSerializer());
+
+        public string? LastRaiseEventInstanceId { get; private set; }
+        public string? LastRaiseEventName { get; private set; }
+        public object? LastRaiseEventPayload { get; private set; }
+
+        public string? LastTerminateInstanceId { get; private set; }
+        public object? LastTerminateOutput { get; private set; }
+
+        public string? LastSuspendInstanceId { get; private set; }
+        public string? LastSuspendReason { get; private set; }
+
+        public string? LastResumeInstanceId { get; private set; }
+        public string? LastResumeReason { get; private set; }
+
+        public string? LastPurgeInstanceId { get; private set; }
+        public bool PurgeResult { get; set; }
+
+        public string? LastListContinuationToken { get; private set; }
+        public int? LastListPageSize { get; private set; }
+        public WorkflowInstancePage ListInstanceIdsResult { get; set; } =
+            new(new ReadOnlyCollection<string>(Array.Empty<string>()), null);
+
+        public string? LastGetHistoryInstanceId { get; private set; }
+        public IReadOnlyList<WorkflowHistoryEvent> GetInstanceHistoryResult { get; set; } =
+            new ReadOnlyCollection<WorkflowHistoryEvent>(Array.Empty<WorkflowHistoryEvent>());
+
+        public string? LastRerunSourceInstanceId { get; private set; }
+        public uint LastRerunEventId { get; private set; }
+        public RerunWorkflowFromEventOptions? LastRerunOptions { get; private set; }
+        public string RerunWorkflowFromEventResult { get; set; } = "new-id";
+
+        public bool DisposeCalled { get; private set; }
+
+        public override Task<string> ScheduleNewWorkflowAsync(
+            string workflowName,
+            object? input = null,
+            StartWorkflowOptions? options = null,
+            CancellationToken cancellation = default)
+        {
+            LastScheduleName = workflowName;
+            LastScheduleInput = input;
+            LastScheduleOptions = options;
+            LastScheduleCancellationToken = cancellation;
+            return Task.FromResult(ScheduleNewWorkflowResult);
+        }
+
+        public override Task<WorkflowMetadata?> GetWorkflowMetadataAsync(
+            string instanceId,
+            bool getInputsAndOutputs = true,
+            CancellationToken cancellationToken = default)
+        {
+            LastGetMetadataInstanceId = instanceId;
+            LastGetMetadataGetInputsAndOutputs = getInputsAndOutputs;
+            if (GetWorkflowMetadataException is not null)
+                return Task.FromException<WorkflowMetadata?>(GetWorkflowMetadataException);
+            return Task.FromResult(GetWorkflowMetadataResult);
+        }
+
+        public override Task<WorkflowMetadata> WaitForWorkflowStartAsync(
+            string instanceId,
+            bool getInputsAndOutputs = true,
+            CancellationToken cancellationToken = default)
+        {
+            LastWaitForStartInstanceId = instanceId;
+            LastWaitForStartGetInputsAndOutputs = getInputsAndOutputs;
+            return Task.FromResult(WaitForStartResult);
+        }
+
+        public override Task<WorkflowMetadata> WaitForWorkflowCompletionAsync(
+            string instanceId,
+            bool getInputsAndOutputs = true,
+            CancellationToken cancellationToken = default)
+        {
+            LastWaitForCompletionInstanceId = instanceId;
+            LastWaitForCompletionGetInputsAndOutputs = getInputsAndOutputs;
+            LastWaitForCompletionCancellationToken = cancellationToken;
+            return Task.FromResult(WaitForCompletionResult);
+        }
+
+        public override Task RaiseEventAsync(
+            string instanceId,
+            string eventName,
+            object? eventPayload = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastRaiseEventInstanceId = instanceId;
+            LastRaiseEventName = eventName;
+            LastRaiseEventPayload = eventPayload;
+            return Task.CompletedTask;
+        }
+
+        public override Task TerminateWorkflowAsync(
+            string instanceId,
+            object? output = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastTerminateInstanceId = instanceId;
+            LastTerminateOutput = output;
+            return Task.CompletedTask;
+        }
+
+        public override Task SuspendWorkflowAsync(
+            string instanceId,
+            string? reason = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastSuspendInstanceId = instanceId;
+            LastSuspendReason = reason;
+            return Task.CompletedTask;
+        }
+
+        public override Task ResumeWorkflowAsync(
+            string instanceId,
+            string? reason = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastResumeInstanceId = instanceId;
+            LastResumeReason = reason;
+            return Task.CompletedTask;
+        }
+
+        public override Task<bool> PurgeInstanceAsync(string instanceId, CancellationToken cancellationToken = default)
+        {
+            LastPurgeInstanceId = instanceId;
+            return Task.FromResult(PurgeResult);
+        }
+
+        public override Task<WorkflowInstancePage> ListInstanceIdsAsync(
+            string? continuationToken = null,
+            int? pageSize = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastListContinuationToken = continuationToken;
+            LastListPageSize = pageSize;
+            return Task.FromResult(ListInstanceIdsResult);
+        }
+
+        public override Task<IReadOnlyList<WorkflowHistoryEvent>> GetInstanceHistoryAsync(
+            string instanceId,
+            CancellationToken cancellationToken = default)
+        {
+            LastGetHistoryInstanceId = instanceId;
+            return Task.FromResult(GetInstanceHistoryResult);
+        }
+
+        public override Task<string> RerunWorkflowFromEventAsync(
+            string sourceInstanceId,
+            uint eventId,
+            RerunWorkflowFromEventOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastRerunSourceInstanceId = sourceInstanceId;
+            LastRerunEventId = eventId;
+            LastRerunOptions = options;
+            return Task.FromResult(RerunWorkflowFromEventResult);
+        }
+
+        public override ValueTask DisposeAsync()
+        {
+            DisposeCalled = true;
+            return ValueTask.CompletedTask;
+        }
+    }
+    
+    
+//     [Fact]
+//     public async Task ScheduleNewWorkflowAsync_DateTimeKindUnspecified_AssumesLocalTime()
+//     {
+//         var innerClient = new Mock<GrpcDurableTaskClientWrapper>();
+//
+//         var name = "test-workflow";
+//         var instanceId = "test-instance-id";
+//         var input = "test-input";
+//         var startTime = new DateTime(2025, 07, 10);
+//
+//         Assert.Equal(DateTimeKind.Unspecified, startTime.Kind);
+//
+//         innerClient.Setup(c => c.ScheduleNewOrchestrationInstanceAsync(
+//             It.IsAny<TaskName>(),
+//             It.IsAny<object?>(),
+//             It.IsAny<StartOrchestrationOptions?>(),
+//             It.IsAny<CancellationToken>()))
+//             .Callback((TaskName n, object? i, StartOrchestrationOptions? o, CancellationToken ct) =>
+//             {
+//                 Assert.Equal(name, n);
+//                 Assert.Equal(input, i);
+//                 Assert.NotNull(o);
+//                 Assert.NotNull(o.StartAt);
+//                 // options configured with local time
+//                 Assert.Equal(new DateTimeOffset(startTime, TimeZoneInfo.Local.GetUtcOffset(DateTime.Now)), o.StartAt.Value);
+//             })
+//             .ReturnsAsync("instance-id");
+//
+//         var client = new DaprWorkflowClient(innerClient.Object);
+//
+//         await client.ScheduleNewWorkflowAsync(name, instanceId, input, startTime);
+//     }
+//
+//     [Fact]
+//     public async Task ScheduleNewWorkflowAsync_DateTimeKindUtc_PreservedAsUtc()
+//     {
+//         var innerClient = new Mock<GrpcDurableTaskClientWrapper>();
+//
+//         var name = "test-workflow";
+//         var instanceId = "test-instance-id";
+//         var input = "test-input";
+//         var startTime = new DateTime(2025, 07, 10, 1, 30, 30, DateTimeKind.Utc);
+//
+//         Assert.Equal(DateTimeKind.Utc, startTime.Kind);
+//
+//         innerClient.Setup(c => c.ScheduleNewOrchestrationInstanceAsync(
+//             It.IsAny<TaskName>(),
+//             It.IsAny<object?>(),
+//             It.IsAny<StartOrchestrationOptions?>(),
+//             It.IsAny<CancellationToken>()))
+//             .Callback((TaskName n, object? i, StartOrchestrationOptions? o, CancellationToken ct) =>
+//             {
+//                 Assert.Equal(name, n);
+//                 Assert.Equal(input, i);
+//                 Assert.NotNull(o);
+//                 Assert.NotNull(o.StartAt);
+//                 // options configured with UTC time
+//                 Assert.Equal(new DateTimeOffset(startTime, TimeSpan.Zero), o.StartAt.Value);
+//             })
+//             .ReturnsAsync("instance-id");
+//
+//         var client = new DaprWorkflowClient(innerClient.Object);
+//
+//         await client.ScheduleNewWorkflowAsync(name, instanceId, input, startTime);
+//     }
+//
+//     [Fact]
+//     public async Task ScheduleNewWorkflowAsync_DateTimeOffset_SetsStartAt()
+//     {
+//         var innerClient = new Mock<GrpcDurableTaskClientWrapper>();
+//
+//         var name = "test-workflow";
+//         var instanceId = "test-instance-id";
+//         var input = "test-input";
+//         var startTime = new DateTimeOffset(2025, 07, 10, 1, 30, 30, TimeSpan.FromHours(3));
+//
+//         innerClient.Setup(c => c.ScheduleNewOrchestrationInstanceAsync(
+//             It.IsAny<TaskName>(),
+//             It.IsAny<object?>(),
+//             It.IsAny<StartOrchestrationOptions?>(),
+//             It.IsAny<CancellationToken>()))
+//             .Callback((TaskName n, object? i, StartOrchestrationOptions? o, CancellationToken ct) =>
+//             {
+//                 Assert.Equal(name, n);
+//                 Assert.Equal(input, i);
+//                 Assert.NotNull(o);
+//                 Assert.NotNull(o.StartAt);
+//                 // options configured with specified offset
+//                 Assert.Equal(startTime, o.StartAt.Value);
+//             })
+//             .ReturnsAsync("instance-id");
+//
+//         var client = new DaprWorkflowClient(innerClient.Object);
+//
+//         await client.ScheduleNewWorkflowAsync(name, instanceId, input, startTime);
+//     }
+}

@@ -1,0 +1,292 @@
+/*
+Copyright 2026 The Dapr Authors
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+option csharp_namespace = "Dapr.DurableTask.Protobuf";
+option java_package = "io.dapr.durabletask.implementation.protobuf";
+option go_package = "/api/protos";
+
+// ============================================================================
+// Cross-workflow completion attestations
+// ============================================================================
+//
+// An attestation is a compact, portable proof that a child workflow or
+// activity task executed a specific invocation, was executed by a specific
+// SPIFFE identity, reached a specific terminal state, and produced a
+// specific (input, output) pair. Attestations let sibling or downstream
+// workflows verify these claims without trusting the parent that forwarded
+// them.
+//
+// Each attestation is a (payload, signature) wrapper. The payload is a
+// deterministically serialized protobuf encoding of the inner ...Payload
+// message (same approach as HistorySignature in backend_service.proto),
+// produced once by the signer and thereafter treated as opaque bytes.
+// Receivers, storage layers, and verifiers never re-marshal the payload;
+// signatures are validated against the exact bytes the signer produced.
+// Cross-language interoperability does not depend on protobuf having a
+// universal canonical encoding (it does not): the bytes that get signed
+// are the bytes that get verified, and they are never reconstructed by
+// any peer. This makes the inner payload proto safely evolvable: old
+// attestations with older field sets remain verifiable because their
+// stored bytes are preserved.
+//
+// The signature covers sha256(payload). Algorithm is determined by the
+// signer certificate's key type (Ed25519, ECDSA, RSA), same rules as
+// HistorySignature.signature in backend_service.proto.
+
+// ============================================================================
+// Canonical byte serialization for ioDigest
+// ============================================================================
+//
+// ioDigest fields commit to an invocation's input and output. To stay stable
+// across protobuf versions, implementations, and languages, the bytes fed
+// into the digest are defined directly in terms of user-visible data — the
+// protobuf marshaler's output is never used.
+//
+// The digest is:
+//     sha256( u64be(len(inputBytes))  || inputBytes ||
+//             u64be(len(outputBytes)) || outputBytes )
+// where inputBytes and outputBytes come from the rules below. Length
+// prefixes are big-endian uint64 to prevent concatenation ambiguity (same
+// pattern as HistorySignature.eventsDigest).
+//
+// --- String normalization ---
+// All UTF-8 string bytes used below are first normalized to Unicode
+// Normalization Form C (NFC). Different-language SDKs (Go, .NET, Python,
+// Java, JS) may default to different Unicode normalization forms; NFC is
+// the web-standard canonical form and ensures that semantically equal
+// strings produce identical bytes regardless of which SDK emitted them.
+// Verifiers MUST NFC-normalize before hashing to compare against a
+// signer-produced digest.
+//
+// --- Input bytes (child workflows and activities) ---
+// Inputs are carried as google.protobuf.StringValue in the source event.
+// Canonical bytes:
+//     wrapper unset:  zero-length
+//     wrapper set:    nfc_utf8(string_value.value)
+// The StringValue envelope is not included — only the NFC-normalized
+// UTF-8 content of the value field.
+//
+// --- Output bytes, COMPLETED (child and activity) ---
+// Same rule as input: NFC-normalized UTF-8 bytes of the result
+// StringValue's value field, or zero-length if unset.
+//
+// --- Output bytes, FAILED (child and activity) ---
+// Spec-defined canonical serialization of TaskFailureDetails, independent
+// of protobuf wire format:
+//
+//     u32be(len(errorType))     || nfc_utf8(errorType)
+//     u32be(len(errorMessage))  || nfc_utf8(errorMessage)
+//     u32be(len(stackTrace))    || nfc_utf8(stackTrace)  // StringValue.value,
+//                                                         // zero-length if unset
+//     u8(0 if innerFailure is unset, 1 if set)
+//     if innerFailure is set:
+//         <recursive serialization of innerFailure using these same rules>
+//
+// Fields appear in this fixed order regardless of proto field numbers.
+// Unset string fields serialize as zero-length. No protobuf tags, varints,
+// or envelopes are emitted. The TaskFailureDetails.isNonRetriable field is
+// intentionally excluded — it is a framework retry-policy hint, not a
+// description of the failure, and committing to it would couple attestation
+// verification to retry-semantics evolution with no security benefit.
+//
+// The innerFailure recursion depth is capped (implementation-defined, at
+// least 32 levels). Chains exceeding the cap are treated as malformed:
+// the signer refuses to produce an attestation and the verifier refuses
+// to verify one. This bounds the work performed on attacker-controlled
+// input.
+//
+// --- Versioning ---
+// The canonicalSpecVersion field on each payload identifies which revision
+// of the rules above produced the attestation's ioDigest. Verifiers that
+// don't recognize the value reject the attestation rather than risk a
+// silent digest mismatch. Current value: 1. When TaskFailureDetails or
+// another canonicalized input grows an attestation-relevant field, the
+// spec is revised and canonicalSpecVersion is incremented — the rules
+// above are never silently changed.
+//
+// --- Certificate validity ---
+// Verifiers check that the signer certificate is valid at a specific
+// point in time. The correct choice of time depends on whether the
+// attestation is being verified at ingestion or from stored history:
+//
+//   * Ingestion (parent absorbs an inbound attestation from a child/
+//     activity): use a trusted wallclock (time.Now()). The enclosing
+//     HistoryEvent.timestamp is set by the sender and is not yet covered
+//     by a signature at this point, so it cannot be trusted. Wallclock
+//     gives "is the cert still valid right now" which is the right
+//     freshness guarantee at the trust boundary.
+//
+//   * Stored / propagated history (re-verification after the enclosing
+//     event has been signed): use the enclosing HistoryEvent.timestamp.
+//     Once the event is covered by a HistorySignature, the timestamp is
+//     tamper-evident and provides a stable historical point-in-time for
+//     cert validity — the cert was valid at signing time, even if it has
+//     since expired. This mirrors how HistorySignature itself is checked
+//     against the last event in its signed range.
+
+// Terminal state of a child workflow at the moment of attestation.
+enum TerminalStatus {
+  TERMINAL_STATUS_UNSPECIFIED = 0;
+  TERMINAL_STATUS_COMPLETED   = 1;
+  TERMINAL_STATUS_FAILED      = 2;
+}
+
+// Terminal state of an activity task at the moment of attestation.
+// Activities have no "terminate" operation, so the space is smaller than
+// TerminalStatus.
+enum ActivityTerminalStatus {
+  ACTIVITY_TERMINAL_STATUS_UNSPECIFIED = 0;
+  ACTIVITY_TERMINAL_STATUS_COMPLETED   = 1;
+  ACTIVITY_TERMINAL_STATUS_FAILED      = 2;
+}
+
+// Inner signed payload for a child workflow completion attestation. The
+// deterministically serialized form of this message is what the signer
+// signs over and what receivers verify against; the bytes are produced
+// once and never re-marshaled.
+message ChildCompletionAttestationPayload {
+  // Parent workflow instance ID. Binds the attestation to a single parent
+  // run, preventing replay by other instances of the same parent workflow
+  // that share a signing key.
+  string parentInstanceId = 1;
+
+  // taskScheduledId from the parent's ChildWorkflowInstanceCreatedEvent.
+  // Unique within the parent instance; distinguishes multiple invocations
+  // of the same child workflow.
+  int32 parentTaskScheduledId = 2;
+
+  // sha256 commitment to this invocation's input and output. The bytes
+  // fed into the digest are produced by the canonical byte serialization
+  // spec at the top of this file — not by any protobuf marshaler — so
+  // the digest is stable across proto versions, implementations, and
+  // languages. Use terminalStatus to select the output serialization rule
+  // (COMPLETED or FAILED).
+  bytes ioDigest = 3;
+
+  // sha256 of the DER-encoded X.509 certificate chain bytes of the
+  // signer (leaf first, intermediates concatenated; same byte format
+  // as the `certificate` field of SigningCertificate). Computed directly
+  // over the DER bytes rather than any protobuf envelope, so the digest
+  // is stable across protobuf version changes. The certificate itself
+  // is carried as a companion field on the enclosing event on first
+  // delivery and stored once in the receiver's external certificate
+  // table (ext-sigcert-NNNNNN), looked up by this digest.
+  bytes signerCertDigest = 4;
+
+  // Terminal state of the child workflow at the moment of attestation.
+  // Signed so that a verifier reading the attestation from propagated
+  // history can tell whether the child succeeded without relying on the
+  // enclosing event type (Completed vs Failed), which may not be
+  // visible or trustworthy when the attestation is inspected in
+  // isolation.
+  TerminalStatus terminalStatus = 5;
+
+  // Version of the canonical byte serialization spec used to compute
+  // ioDigest. See the "Versioning" section of the spec block at the top
+  // of this file. Verifiers that don't recognize the value reject the
+  // attestation rather than risk a silent digest mismatch. Current
+  // value: 1.
+  uint32 canonicalSpecVersion = 6;
+}
+
+// Signed wrapper around ChildCompletionAttestationPayload.
+message ChildCompletionAttestation {
+  // Deterministically serialized form of ChildCompletionAttestationPayload
+  // produced once by the signer. Opaque bytes thereafter; receivers,
+  // storage layers, and verifiers never re-marshal.
+  bytes payload = 1;
+
+  // Cryptographic signature over sha256(payload) using the private key
+  // corresponding to the certificate whose digest is in the payload's
+  // signerCertDigest field. Signature format follows the same rules as
+  // HistorySignature.signature.
+  bytes signature = 2;
+}
+
+// Inner signed payload for an activity completion attestation. Activities
+// have no signed history chain of their own (unlike child workflows), so
+// there is no finalSignatureDigest field. Activity identity is the hosting
+// app's SPIFFE identity; a compromised app can attest only to activities
+// it hosts, not to activities hosted on other apps.
+message ActivityCompletionAttestationPayload {
+  // Parent workflow instance ID that scheduled the activity.
+  string parentInstanceId = 1;
+
+  // taskScheduledId from the parent's TaskScheduledEvent. Unique within
+  // the parent instance.
+  int32 parentTaskScheduledId = 2;
+
+  // Activity name from the parent's TaskScheduledEvent. Explicit because
+  // no separate creation event binds it in the parent's history the way
+  // ChildWorkflowInstanceCreatedEvent does for child workflows.
+  string activityName = 3;
+
+  // sha256 commitment to this invocation's input and output. See the
+  // canonical byte serialization spec at the top of this file. Use
+  // terminalStatus (ACTIVITY_TERMINAL_STATUS_COMPLETED or _FAILED) to
+  // select the output serialization rule.
+  bytes ioDigest = 4;
+
+  // sha256 of the DER-encoded X.509 certificate chain bytes of the
+  // activity executor's signer. Same semantics and storage behavior as
+  // ChildCompletionAttestationPayload.signerCertDigest.
+  bytes signerCertDigest = 5;
+
+  // Terminal state of the activity at the moment of attestation.
+  ActivityTerminalStatus terminalStatus = 6;
+
+  // Version of the canonical byte serialization spec used to compute
+  // ioDigest. See the "Versioning" section of the spec block at the top
+  // of this file. Verifiers that don't recognize the value reject the
+  // attestation rather than risk a silent digest mismatch. Current
+  // value: 1.
+  uint32 canonicalSpecVersion = 7;
+}
+
+// Signed wrapper around ActivityCompletionAttestationPayload.
+message ActivityCompletionAttestation {
+  // Deterministically serialized form of
+  // ActivityCompletionAttestationPayload produced once by the signer.
+  // Opaque bytes thereafter; receivers, storage layers, and verifiers
+  // never re-marshal.
+  bytes payload = 1;
+
+  // Cryptographic signature over sha256(payload).
+  bytes signature = 2;
+}
+
+// A foreign signer's X.509 certificate; one belonging to another workflow
+// instance or activity executor whose attestations this workflow has
+// received. Stored once per unique digest and referenced by digest from
+// any attestation embedded in history. Stored as individual actor state
+// keys: ext-sigcert-000000, ext-sigcert-000001, etc.
+//
+// Lifecycle mirrors SigningCertificate (monotonically appended within a
+// run, cleared on ContinueAsNew and instance purge, tracked by
+// BackendWorkflowStateMetadata.externalSigningCertificateLength). Dedup
+// within a run is performed by in-memory digest→index lookup built at
+// load time.
+message ExternalSigningCertificate {
+  // sha256 of the DER-encoded X.509 certificate chain bytes (the value
+  // in `certificate` below). Also the primary lookup key used by
+  // attestations' signerCertDigest fields. Stored explicitly so
+  // load-time index construction and post-load integrity checks do not
+  // have to re-hash every entry.
+  bytes digest = 1;
+
+  // Same byte format as SigningCertificate.certificate: DER-encoded
+  // X.509 chain, leaf first, intermediates concatenated.
+  bytes certificate = 2;
+}

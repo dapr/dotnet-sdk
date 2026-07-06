@@ -11,16 +11,15 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Builder
+namespace Dapr.Actors.Builder;
+
+using System;
+
+internal class MethodBodyTypes
 {
-    using System;
+    public Type RequestBodyType { get; set; }
 
-    internal class MethodBodyTypes
-    {
-        public Type RequestBodyType { get; set; }
+    public Type ResponseBodyType { get; set; }
 
-        public Type ResponseBodyType { get; set; }
-
-        public bool HasCancellationTokenArgument { get; set; }
-    }
+    public bool HasCancellationTokenArgument { get; set; }
 }

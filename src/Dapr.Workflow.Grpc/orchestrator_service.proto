@@ -1,0 +1,306 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+syntax = "proto3";
+
+option csharp_namespace = "Dapr.DurableTask.Protobuf";
+option java_package = "io.dapr.durabletask.implementation.protobuf";
+option go_package = "/api/protos";
+
+import "orchestration.proto";
+import "history_events.proto";
+import "orchestrator_actions.proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/empty.proto";
+
+message ActivityRequest {
+  string name = 1;
+  google.protobuf.StringValue version = 2;
+  google.protobuf.StringValue input = 3;
+  WorkflowInstance workflowInstance = 4;
+  int32 taskId = 5;
+  TraceContext parentTraceContext = 6;
+  string taskExecutionId = 7;
+
+  // Propagated history from the calling workflow.
+  // Delivered via the work item stream to the SDK, so that the
+  // activity function can access it via ctx.
+  optional PropagatedHistory propagatedHistory = 8;
+}
+
+message ActivityResponse {
+  string instanceId = 1;
+  int32 taskId = 2;
+  google.protobuf.StringValue result = 3;
+  TaskFailureDetails failureDetails = 4;
+  string completionToken = 5;
+}
+
+message WorkflowRequest {
+  string instanceId = 1;
+  google.protobuf.StringValue executionId = 2;
+  repeated HistoryEvent pastEvents = 3;
+  repeated HistoryEvent newEvents = 4;
+  reserved 5;
+  bool requiresHistoryStreaming = 6;
+  optional TaskRouter router = 7;
+
+  // Propagated history from a parent workflow.
+  // Delivered via the work item stream to the SDK, so that the
+  // workflow function can access it via ctx.
+  optional PropagatedHistory propagatedHistory = 8;
+}
+
+message WorkflowResponse {
+  string instanceId = 1;
+  repeated WorkflowAction actions = 2;
+  google.protobuf.StringValue customStatus = 3;
+  string completionToken = 4;
+
+  // The number of work item events that were processed by the workflow.
+  // This field is optional. If not set, the service should assume that the workflow processed all events.
+  google.protobuf.Int32Value numEventsProcessed = 5;
+
+  optional WorkflowVersion version = 6;
+}
+
+message CreateInstanceRequest {
+  string instanceId = 1;
+  string name = 2;
+  google.protobuf.StringValue version = 3;
+  google.protobuf.StringValue input = 4;
+  google.protobuf.Timestamp scheduledStartTimestamp = 5;
+  reserved 6;
+  reserved "orchestrationIdReusePolicy";
+  google.protobuf.StringValue executionId = 7;
+  map<string, string> tags = 8;
+  TraceContext parentTraceContext = 9;
+}
+
+message CreateInstanceResponse {
+  string instanceId = 1;
+}
+
+message GetInstanceRequest {
+  string instanceId = 1;
+  bool getInputsAndOutputs = 2;
+}
+
+message GetInstanceResponse {
+  bool exists = 1;
+  WorkflowState workflowState = 2;
+}
+
+message RaiseEventRequest {
+  string instanceId = 1;
+  string name = 2;
+  google.protobuf.StringValue input = 3;
+}
+
+message RaiseEventResponse {
+  // No payload
+}
+
+message TerminateRequest {
+  string instanceId = 1;
+  google.protobuf.StringValue output = 2;
+  bool recursive = 3;
+}
+
+message TerminateResponse {
+  // No payload
+}
+
+message SuspendRequest {
+  string instanceId = 1;
+  google.protobuf.StringValue reason = 2;
+}
+
+message SuspendResponse {
+  // No payload
+}
+
+message ResumeRequest {
+  string instanceId = 1;
+  google.protobuf.StringValue reason = 2;
+}
+
+message ResumeResponse {
+  // No payload
+}
+
+message PurgeInstancesRequest {
+  oneof request {
+    string instanceId = 1;
+    PurgeInstanceFilter purgeInstanceFilter = 2;
+  }
+  bool recursive = 3;
+
+  // force will force a purge of a workflow, regardless of its current
+  // runtime state, or whether an active worker can process it, the backend
+  // will attempt to delete it anyway. This neccessarily means the purging is
+  // executed out side of the workflow state machine, and therefore, can lead
+  // to corrupt state or broken workflow execution. Usage of this should
+  // _only_ be used when the client knows the workflow is not being currently
+  // processed. It is highly recommended to avoid using this flag unless
+  // absolutely necessary.
+  // Defaults to false.
+  optional bool force = 4;
+}
+
+message PurgeInstanceFilter {
+  google.protobuf.Timestamp createdTimeFrom = 1;
+  google.protobuf.Timestamp createdTimeTo = 2;
+  repeated OrchestrationStatus runtimeStatus = 3;
+}
+
+message PurgeInstancesResponse {
+  int32 deletedInstanceCount = 1;
+  google.protobuf.BoolValue isComplete = 2;
+}
+
+message GetWorkItemsRequest {
+  reserved 1, 2, 3, 10;
+}
+
+enum WorkerCapability {
+  WORKER_CAPABILITY_UNSPECIFIED = 0;
+
+  // Indicates that the worker is capable of streaming instance history as a more optimized
+  // alternative to receiving the full history embedded in the workflow work-item.
+  // When set, the service may return work items without any history events as an optimization.
+  // It is strongly recommended that all SDKs support this capability.
+  WORKER_CAPABILITY_HISTORY_STREAMING = 1;
+}
+
+message WorkItem {
+  oneof request {
+    WorkflowRequest workflowRequest = 1;
+    ActivityRequest activityRequest = 2;
+  }
+  reserved 3, 4, 5;
+  string completionToken = 10;
+}
+
+message CompleteTaskResponse {
+  // No payload
+}
+
+// RerunWorkflowFromEventRequest is used to rerun a workflow instance from a
+// specific event ID.
+message RerunWorkflowFromEventRequest {
+  // sourceInstanceID is the workflow instance ID to rerun. Can be a top
+  // level instance, or child workflow instance.
+  string sourceInstanceID = 1;
+
+  // the event id to start the new workflow instance from.
+  uint32 eventID = 2;
+
+  // newInstanceID is the new instance ID to use for the new workflow instance.
+  // If not given, a random instance ID will be given.
+  optional string newInstanceID = 3;
+
+  // input can optionally given to give the new instance a different input to
+  // the next Activity event.
+  google.protobuf.StringValue input = 4;
+
+  // overwrite_input signals that the input to the rerun activity should be
+  // written with input. This is required because of the incorrect typing of
+  // inputs being `StringValue` which cannot be optional, and therefore no nil
+  // value can be signalled or overwritten.
+  bool overwriteInput = 5;
+
+  // newChildWorkflowInstanceID is an optional instance ID to use when
+  // rerunning from a child workflow. Only accepted if the event ID given is
+  // targeting a child workflow creation event.
+  optional string newChildWorkflowInstanceID = 6;
+}
+
+// RerunWorkflowFromEventResponse is the response to executing
+// RerunWorkflowFromEvent.
+message RerunWorkflowFromEventResponse {
+  string newInstanceID = 1;
+}
+
+// ListInstanceIDsRequest is used to list all workflow instances.
+message ListInstanceIDsRequest {
+  // continuationToken is the continuation token to use for pagination. This
+  // is the token which the next page should start from. If not given, the
+  // first page will be returned.
+  optional string continuationToken = 1;
+
+  // pageSize is the maximum number of instances to return for this page. If
+  // not given, all instances will be attempted to be returned.
+  optional uint32 pageSize = 2;
+}
+
+// ListInstanceIDsResponse is the response to executing ListInstanceIDs.
+message ListInstanceIDsResponse {
+  // instanceIds is the list of instance IDs returned.
+  repeated string instanceIds = 1;
+
+  // continuationToken is the continuation token to use for pagination. If
+  // there are no more pages, this will be null.
+  optional string continuationToken = 2;
+}
+
+// GetInstanceHistoryRequest is used to get the full history of a
+// workflow instance.
+message GetInstanceHistoryRequest {
+  string instanceId = 1;
+}
+
+// GetInstanceHistoryResponse is the response to executing GetInstanceHistory.
+message GetInstanceHistoryResponse {
+  repeated HistoryEvent events = 1;
+}
+
+service TaskHubSidecarService {
+  // Sends a hello request to the sidecar service.
+  rpc Hello(google.protobuf.Empty) returns (google.protobuf.Empty);
+
+  // Starts a new workflow instance.
+  rpc StartInstance(CreateInstanceRequest) returns (CreateInstanceResponse);
+
+  // Gets the status of an existing workflow instance.
+  rpc GetInstance(GetInstanceRequest) returns (GetInstanceResponse);
+
+  // Waits for a workflow instance to reach a running or completion state.
+  rpc WaitForInstanceStart(GetInstanceRequest) returns (GetInstanceResponse);
+
+  // Waits for a workflow instance to reach a completion state (completed, failed, terminated, etc.).
+  rpc WaitForInstanceCompletion(GetInstanceRequest) returns (GetInstanceResponse);
+
+  // Raises an event to a running workflow instance.
+  rpc RaiseEvent(RaiseEventRequest) returns (RaiseEventResponse);
+
+  // Terminates a running workflow instance.
+  rpc TerminateInstance(TerminateRequest) returns (TerminateResponse);
+
+  // Suspends a running workflow instance.
+  rpc SuspendInstance(SuspendRequest) returns (SuspendResponse);
+
+  // Resumes a suspended workflow instance.
+  rpc ResumeInstance(ResumeRequest) returns (ResumeResponse);
+
+  rpc PurgeInstances(PurgeInstancesRequest) returns (PurgeInstancesResponse);
+
+  rpc GetWorkItems(GetWorkItemsRequest) returns (stream WorkItem);
+  rpc CompleteActivityTask(ActivityResponse) returns (CompleteTaskResponse);
+
+  // Deprecated: Use CompleteWorkflowTask instead.
+  rpc CompleteOrchestratorTask(WorkflowResponse) returns (CompleteTaskResponse) {
+    option deprecated = true;
+  }
+
+  // Completes a workflow work item.
+  rpc CompleteWorkflowTask(WorkflowResponse) returns (CompleteTaskResponse);
+
+  // Rerun a Workflow from a specific event ID of a workflow instance.
+  rpc RerunWorkflowFromEvent(RerunWorkflowFromEventRequest) returns (RerunWorkflowFromEventResponse);
+
+  rpc ListInstanceIDs (ListInstanceIDsRequest) returns (ListInstanceIDsResponse);
+  rpc GetInstanceHistory (GetInstanceHistoryRequest) returns (GetInstanceHistoryResponse);
+}

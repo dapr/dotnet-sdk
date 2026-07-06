@@ -1,0 +1,1534 @@
+﻿// ------------------------------------------------------------------------
+// Copyright 2025 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//  ------------------------------------------------------------------------
+
+using System.Text.Json;
+using Dapr.DurableTask.Protobuf;
+using Dapr.Common.Serialization;
+using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Versioning;
+using Dapr.Workflow.Worker.Internal;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using JsonException = System.Text.Json.JsonException;
+
+namespace Dapr.Workflow.Test.Worker.Internal;
+
+public class WorkflowOrchestrationContextTests
+{
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldComplete_WhenCompletionCorrelationIdMatchesParentTaskId()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var childTask = context.CallChildWorkflowAsync<int>("ChildWf");
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventId = 0,
+                ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent { Name = "ChildWf" }
+            },
+            new HistoryEvent
+            {
+                ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent
+                {
+                    TaskScheduledId = 0,
+                    Result = "42"
+                }
+            }
+        };
+
+        context.ProcessEvents(history, isReplaying: true);
+
+        Assert.Equal(42, await childTask);
+        Assert.Empty(context.PendingActions);
+    }
+    
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldComplete_WhenRuntimeUsesCreatedEventIdAsCompletionCorrelationId()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        // Force a known child instance id so we can correlate created.InstanceId -> parent task id
+        const string childInstanceId = "child-xyz";
+
+        var childTask = context.CallChildWorkflowAsync<int>(
+            workflowName: "ChildWf",
+            input: 7,
+            options: new ChildWorkflowTaskOptions(InstanceId: childInstanceId));
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventId = 100,
+                ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent
+                {
+                    Name = "ChildWf",
+                    InstanceId = childInstanceId
+                }
+            },
+            new HistoryEvent
+            {
+                ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent
+                {
+                    TaskScheduledId = 100,
+                    Result = "21"
+                }
+            }
+        };
+
+        context.ProcessEvents(history, isReplaying: true);
+
+        var result = await childTask.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+        Assert.Equal(21, result);
+        Assert.Empty(context.PendingActions);
+    }
+    
+    [Fact]
+    public void CallChildWorkflowAsync_ShouldPutRouterOnCreateChildWorkflowAction_WhenAppIdProvided()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        const string sourceAppId = "workflow-app-1";
+        const string targetAppId = "remote-app";
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker,
+            appId: sourceAppId);
+
+        _ = context.CallChildWorkflowAsync<int>(
+            workflowName: "ChildWf",
+            input: 1,
+            options: new ChildWorkflowTaskOptions(InstanceId: "child-1", TargetAppId: targetAppId));
+
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.CreateChildWorkflow);
+
+        Assert.NotNull(action.CreateChildWorkflow.Router);
+        Assert.Equal(targetAppId, action.CreateChildWorkflow.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.CreateChildWorkflow.Router.SourceAppID);
+
+        // wrapper router may exist too (compat), but inner is the important one
+        Assert.NotNull(action.Router);
+        Assert.Equal(targetAppId, action.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.Router.SourceAppID);
+    }
+    
+    [Fact]
+    public void CallActivityAsync_ShouldNotSetRouter_WhenAppIdNotProvided()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        _ = context.CallActivityAsync<int>(name: "MyActivity", input: 2);
+
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.ScheduleTask);
+
+        Assert.Null(action.ScheduleTask.Router);
+        Assert.Null(action.Router);
+    }
+    
+    [Fact]
+    public async Task CallActivityAsync_ShouldComplete_WhenCompletionArrivesBeforeCall()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        // Completion arrives first (this is what can happen on replay)
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    TaskCompleted = new TaskCompletedEvent
+                    {
+                        TaskScheduledId = 0,
+                        Result = "42"
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        // Now the workflow schedules/awaits the activity with taskId 0
+        var task = context.CallActivityAsync<int>("MyActivity", input: 1);
+
+        var value = await task;
+        Assert.Equal(42, value);
+    }
+
+    [Fact]
+    public void CallActivityAsync_ShouldPutRouterOnScheduleTaskAction_WhenAppIdProvided()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        const string sourceAppId = "workflow-app-1";
+        const string targetAppId = "remote-app";
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker,
+            appId: sourceAppId);
+
+        _ = context.CallActivityAsync<int>(
+            name: "MyActivity",
+            input: 2,
+            options: new WorkflowTaskOptions(TargetAppId: targetAppId));
+
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.ScheduleTask);
+
+        Assert.NotNull(action.ScheduleTask.Router);
+        Assert.Equal(targetAppId, action.ScheduleTask.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.ScheduleTask.Router.SourceAppID);
+
+        Assert.NotNull(action.Router);
+        Assert.Equal(targetAppId, action.Router.TargetAppID);
+        Assert.Equal(sourceAppId, action.Router.SourceAppID);
+    }
+    
+    [Fact]
+    public void CallActivityAsync_ShouldScheduleTaskAction_WhenNotReplaying()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.CallActivityAsync<string>("DoWork", input: new { Value = 3 });
+
+        Assert.NotNull(task);
+        Assert.Single(context.PendingActions);
+
+        var action = context.PendingActions.First();
+        Assert.NotNull(action.ScheduleTask);
+        Assert.Equal("DoWork", action.ScheduleTask.Name);
+        Assert.Contains("\"value\":3", action.ScheduleTask.Input);
+    }
+
+    [Fact]
+    public async Task CallActivityAsync_ShouldReturnCompletedResult_FromHistoryTaskCompleted()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TaskScheduled = new TaskScheduledEvent
+                {
+                    Name = "Any",
+                }
+            },
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { Result = "\"hello\"" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.CallActivityAsync<string>("Any");
+        context.ProcessEvents(history, true);
+
+        var result = await task;
+        Assert.Equal("hello", result);
+        Assert.Empty(context.PendingActions);
+    }
+
+    [Fact]
+    public async Task CallActivityAsync_ShouldMatchCompletion_WhenTaskScheduledIdDoesNotMatch()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            new([]));
+
+        var task = context.CallActivityAsync<string>("Any");
+        var action = Assert.Single(context.PendingActions);
+        Assert.NotNull(action.ScheduleTask);
+        Assert.False(string.IsNullOrWhiteSpace(action.ScheduleTask.TaskExecutionId));
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent
+                {
+                    TaskScheduledId = 123,
+                    TaskExecutionId = action.ScheduleTask.TaskExecutionId,
+                    Result = "\"ok\""
+                }
+            }
+        };
+
+        context.ProcessEvents(history, true);
+
+        var result = await task;
+        Assert.Equal("ok", result);
+    }
+
+    [Fact]
+    public async Task CallActivityAsync_ShouldReturnCompletedResult_FromCallFooTaskCompletedFirst()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventId = 0,
+                TaskScheduled = new TaskScheduledEvent
+                {
+                    Name = "CallFoo",
+                }
+            },
+            new HistoryEvent
+            {
+                EventId = 1,
+                TaskScheduled = new TaskScheduledEvent
+                {
+                    Name = "CallBar",
+                }
+            },
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 0, Result = "\"foo\"" }
+            },
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 1, Result = "\"bar\"" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var fooTask = context.CallActivityAsync<string>("CallFoo");
+        var barTask = context.CallActivityAsync<string>("CallBar");
+        var task = Task.WhenAny(fooTask, barTask);
+        context.ProcessEvents(history, true);
+
+        Task winner = await task;
+        Assert.Equal(fooTask, winner);
+
+        var value = await fooTask;
+        Assert.Equal("foo", value);
+        Assert.True(barTask.IsCompleted);
+        Assert.Empty(context.PendingActions);
+
+        value = await barTask;
+        Assert.Equal("bar", value);
+    }
+
+    [Fact]
+    public async Task CallActivityAsync_ShouldReturnCompletedResult_FromCallBarTaskCompletedFirst()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventId = 0,
+                TaskScheduled = new TaskScheduledEvent
+                {
+                    Name = "CallFoo",
+                }
+            },
+            new HistoryEvent
+            {
+                EventId = 1,
+                TaskScheduled = new TaskScheduledEvent
+                {
+                    Name = "CallBar",
+                }
+            },
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 1, Result = "\"bar\"" }
+            },
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { TaskScheduledId = 0, Result = "\"foo\"" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var fooTask = context.CallActivityAsync<string>("CallFoo");
+        var barTask = context.CallActivityAsync<string>("CallBar");
+        var task = Task.WhenAny(fooTask, barTask);
+        context.ProcessEvents(history, true);
+
+        Task winner = await task;
+        Assert.Equal(barTask, winner);
+
+        var value = await barTask;
+        Assert.Equal("bar", value);
+        Assert.True(fooTask.IsCompleted);
+        Assert.Empty(context.PendingActions);
+
+        value = await fooTask;
+        Assert.Equal("foo", value);
+    }
+
+    [Fact]
+    public async Task CallActivityAsync_ShouldThrowWorkflowTaskFailedException_FromHistoryTaskFailed()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TaskScheduled = new TaskScheduledEvent
+                {
+                    Name = "Any",
+                }
+            },
+            new HistoryEvent
+            {
+                TaskFailed = new TaskFailedEvent
+                {
+                    FailureDetails = new TaskFailureDetails
+                    {
+                        ErrorType = "MyError",
+                        ErrorMessage = "Boom",
+                        StackTrace = "trace"
+                    }
+                }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.CallActivityAsync<string>("Any");
+        context.ProcessEvents(history, true);
+
+        await Assert.ThrowsAsync<WorkflowTaskFailedException>(() => task);
+        Assert.Empty(context.PendingActions);
+    }
+
+    [Fact]
+    public async Task CallActivityAsync_ShouldRetry_WhenRetryPolicyProvided()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var options = new WorkflowTaskOptions
+        {
+            RetryPolicy = new WorkflowRetryPolicy(
+                maxNumberOfAttempts: 2,
+                firstRetryInterval: TimeSpan.FromSeconds(1))
+        };
+
+        var task = context.CallActivityAsync<string>("DoWork", options: options);
+
+        var firstAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(firstAction.ScheduleTask);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = firstAction.Id,
+                    TaskScheduled = new TaskScheduledEvent { Name = "DoWork" }
+                },
+                new HistoryEvent
+                {
+                    TaskFailed = new TaskFailedEvent
+                    {
+                        TaskScheduledId = firstAction.Id,
+                        FailureDetails = new TaskFailureDetails
+                        {
+                            ErrorType = "Failure",
+                            ErrorMessage = "boom"
+                        }
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var timerAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(timerAction.CreateTimer);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = timerAction.Id,
+                    TimerCreated = new TimerCreatedEvent()
+                },
+                new HistoryEvent
+                {
+                    TimerFired = new TimerFiredEvent { TimerId = timerAction.Id }
+                }
+            ],
+            isReplaying: true);
+
+        var retryAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(retryAction.ScheduleTask);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = retryAction.Id,
+                    TaskScheduled = new TaskScheduledEvent { Name = "DoWork" }
+                },
+                new HistoryEvent
+                {
+                    TaskCompleted = new TaskCompletedEvent
+                    {
+                        TaskScheduledId = retryAction.Id,
+                        Result = "\"ok\""
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var result = await task;
+        Assert.Equal("ok", result);
+        Assert.Empty(context.PendingActions);
+    }
+
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldRetry_WhenRetryPolicyProvided()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var options = new ChildWorkflowTaskOptions
+        {
+            RetryPolicy = new WorkflowRetryPolicy(
+                maxNumberOfAttempts: 2,
+                firstRetryInterval: TimeSpan.FromSeconds(1))
+        };
+
+        var task = context.CallChildWorkflowAsync<string>("ChildWf", options: options);
+
+        var firstAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(firstAction.CreateChildWorkflow);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = firstAction.Id,
+                    ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent { Name = "ChildWf" }
+                },
+                new HistoryEvent
+                {
+                    ChildWorkflowInstanceFailed = new ChildWorkflowInstanceFailedEvent
+                    {
+                        TaskScheduledId = firstAction.Id,
+                        FailureDetails = new TaskFailureDetails
+                        {
+                            ErrorType = "Failure",
+                            ErrorMessage = "boom"
+                        }
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var timerAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(timerAction.CreateTimer);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = timerAction.Id,
+                    TimerCreated = new TimerCreatedEvent()
+                },
+                new HistoryEvent
+                {
+                    TimerFired = new TimerFiredEvent { TimerId = timerAction.Id }
+                }
+            ],
+            isReplaying: true);
+
+        var retryAction = Assert.Single(context.PendingActions);
+        Assert.NotNull(retryAction.CreateChildWorkflow);
+
+        context.ProcessEvents(
+            [
+                new HistoryEvent
+                {
+                    EventId = retryAction.Id,
+                    ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent { Name = "ChildWf" }
+                },
+                new HistoryEvent
+                {
+                    ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent
+                    {
+                        TaskScheduledId = retryAction.Id,
+                        Result = "\"ok\""
+                    }
+                }
+            ],
+            isReplaying: true);
+
+        var result = await task;
+        Assert.Equal("ok", result);
+        Assert.Empty(context.PendingActions);
+    }
+
+    [Fact]
+    public async Task WaitForExternalEventAsync_ShouldReturnDeserializedValue_WhenEventInHistory_IgnoringCase()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent { Name = "MyEvent", Input = "123" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.WaitForExternalEventAsync<int>("myevent", TestContext.Current.CancellationToken);
+        context.ProcessEvents(history, true);
+
+        var value = await task;
+        Assert.Equal(123, value);
+    }
+
+    [Fact]
+    public async Task WaitForExternalEventAsync_ShouldReturnCompletedTask_WhenEventInHistory()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent { Name = "MyEvent", Input = "123" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(25));
+        var task = context.WaitForExternalEventAsync<int>("myevent", cts.Token);
+        context.ProcessEvents(history, true);
+
+        Assert.True(task.IsCompleted);
+
+        var value = await task;
+        Assert.Equal(123, value);
+    }
+
+    [Fact]
+    public async Task WaitForExternalEventAsync_ShouldReturnUncompletedTask_WhenEventNotInHistory()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(25));
+        var task = context.WaitForExternalEventAsync<int>("missing-event", cts.Token);
+
+        Assert.False(task.IsCompleted);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
+    }
+
+    [Fact]
+    public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldReturnCompletedTask_WhenEventReceived()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent { Name = "MyEvent", Input = "123" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.WaitForExternalEventAsync<int>("myevent", TimeSpan.FromMilliseconds(25));
+        context.ProcessEvents(history, true);
+
+        Assert.True(task.IsCompleted);
+
+        var value = await task;
+        Assert.Equal(123, value);
+    }
+
+    [Fact]
+    public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldCancel_WhenEventNotReceived()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TimerFired = new TimerFiredEvent()
+            },
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent { Name = "MyEvent", Input = "123" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.WaitForExternalEventAsync<int>("missing-event", TimeSpan.FromMilliseconds(25));
+        context.ProcessEvents(history, true);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task);
+    }
+
+    [Fact]
+    public void SetCustomStatus_ShouldUpdateCustomStatusProperty()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        Assert.Null(context.CustomStatus);
+
+        var status = new { Step = 2, Message = "working" };
+        context.SetCustomStatus(status);
+
+        Assert.Same(status, context.CustomStatus);
+
+        context.SetCustomStatus(null);
+
+        Assert.Null(context.CustomStatus);
+    }
+
+    [Fact]
+    public void IsReplaying_ShouldBeTrue_WhenHistoryHasUnconsumedEvents_AndFalseAfterConsumption()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { Result = "\"ok\"" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+
+        _ = context.CallActivityAsync<string>("Any");
+        context.ProcessEvents(history, true);
+        Assert.True(context.IsReplaying);
+
+        context.ProcessEvents([], false);
+        Assert.False(context.IsReplaying);
+    }
+
+    [Fact]
+    public async Task CreateTimer_ShouldReturnCompletedTask_WhenTimerFiredInHistory()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TimerCreated = new TimerCreatedEvent()
+            },
+            new HistoryEvent
+            {
+                TimerFired = new TimerFiredEvent()
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.CreateTimer(DateTime.UtcNow.AddMinutes(1), CancellationToken.None);
+        context.ProcessEvents(history, true);
+
+        await task;
+
+        Assert.Empty(context.PendingActions);
+    }
+
+    [Fact]
+    public void SendEvent_ShouldAddSendEventAction_WithSerializedPayload()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        context.SendEvent("child-1", "evt", new { A = 1 });
+
+        Assert.Single(context.PendingActions);
+        var action = context.PendingActions.First();
+
+        Assert.NotNull(action.SendEvent);
+        Assert.Equal("evt", action.SendEvent.Name);
+        Assert.Equal("child-1", action.SendEvent.Instance.InstanceId);
+        Assert.Contains("\"a\":1", action.SendEvent.Data);
+    }
+
+    [Fact]
+    public void CreateReplaySafeLogger_ShouldReturnLoggerThatIsDisabledDuringReplay()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { Result = "\"ok\"" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: new AlwaysEnabledLoggerFactory(),
+            tracker);
+
+        var logger = context.CreateReplaySafeLogger("cat");
+
+        _ = context.CallActivityAsync<string>("Any"); // consumes 1 history event
+        context.ProcessEvents(history, true);
+        Assert.True(context.IsReplaying);
+        Assert.False(logger.IsEnabled(LogLevel.Information));
+
+        context.ProcessEvents([], false);
+        Assert.False(context.IsReplaying);
+        Assert.True(logger.IsEnabled(LogLevel.Information));
+    }
+    
+    [Fact]
+    public void CreateReplaySafeLogger_StringOverload_ShouldReturnReplaySafeLogger()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            versionTracker: tracker);
+        
+        const string categoryName = "test";
+        var logger = context.CreateReplaySafeLogger(categoryName);
+
+        Assert.NotNull(logger);
+        Assert.IsType<ReplaySafeLogger>(logger);
+        
+        // Unfortunately, this is as far as we can take this since this creates a NullLogger and it doesn't expose the
+        // category name
+    }
+
+    [Fact]
+    public void CreateReplaySafeLogger_TypeOverload_ShouldReturnReplaySafeLogger()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+        var recordingFactory = new RecordingLoggerFactory();
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: recordingFactory,
+            versionTracker: tracker);
+        
+        var logger = context.CreateReplaySafeLogger(typeof(MyExampleType));
+
+        Assert.NotNull(logger);
+
+        var replaySafeLogger = Assert.IsType<ReplaySafeLogger>(logger);
+
+        // The inner logger's category name must match the type passed to CreateReplaySafeLogger
+        var innerLogger = Assert.IsType<RecordingLogger>(replaySafeLogger._innerLogger);
+        var expectedCategoryName = typeof(MyExampleType).FullName!.Replace('+', '.');
+        Assert.Equal(expectedCategoryName, innerLogger.CategoryName);
+    }
+
+    [Fact]
+    public void CreateReplaySafeLogger_GenericOverload_ShouldReturnReplaySafeLogger()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+        var recordingFactory = new RecordingLoggerFactory();
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            versionTracker: tracker);
+
+        var logger = context.CreateReplaySafeLogger<MyExampleType>();
+
+        Assert.NotNull(logger);
+
+        var replaySafeLogger = Assert.IsType<ReplaySafeLogger>(logger);
+
+        // CreateLogger<T>() returns a Logger<T> wrapper — verify the generic type argument is correct
+        var innerLoggerType = replaySafeLogger._innerLogger.GetType();
+        Assert.True(innerLoggerType.IsGenericType, "Inner logger should be a generic type");
+        Assert.Equal(typeof(MyExampleType), innerLoggerType.GetGenericArguments()[0]);
+    }
+
+    [Fact]
+    public void ContinueAsNew_ShouldAddCompleteWorkflowAction_WithCarryoverEvents_WhenPreserveUnprocessedEventsIsTrue()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent { EventRaised = new EventRaisedEvent { Name = "e1", Input = "\"x\"" } },
+            new HistoryEvent { EventRaised = new EventRaisedEvent { Name = "e2", Input = "\"y\"" } }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        context.ProcessEvents(history, true);
+        context.ContinueAsNew(newInput: new { V = 9 }, preserveUnprocessedEvents: true);
+        // FinalizeCarryoverEvents must be called after all ProcessEvents calls are done;
+        // CarryoverEvents is populated here rather than inside ContinueAsNew so that events
+        // arriving later in the same NewEvents batch are not missed.
+        context.FinalizeCarryoverEvents();
+
+        Assert.Single(context.PendingActions);
+        var action = context.PendingActions.First();
+
+        Assert.NotNull(action.CompleteWorkflow);
+        Assert.Equal(OrchestrationStatus.ContinuedAsNew, action.CompleteWorkflow.WorkflowStatus);
+        Assert.Contains("\"v\":9", action.CompleteWorkflow.Result);
+        Assert.Equal(2, action.CompleteWorkflow.CarryoverEvents.Count);
+    }
+
+    [Fact]
+    public void ContinueAsNew_ShouldNotCarryOverEvents_WhenPreserveUnprocessedEventsIsFalse()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent { EventRaised = new EventRaisedEvent { Name = "e1", Input = "\"x\"" } },
+            new HistoryEvent { EventRaised = new EventRaisedEvent { Name = "e2", Input = "\"y\"" } }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        context.ProcessEvents(history, true);
+        context.ContinueAsNew(newInput: null, preserveUnprocessedEvents: false);
+
+        Assert.Single(context.PendingActions);
+        var action = context.PendingActions.First();
+
+        Assert.NotNull(action.CompleteWorkflow);
+        Assert.Equal(OrchestrationStatus.ContinuedAsNew, action.CompleteWorkflow.WorkflowStatus);
+        Assert.Empty(action.CompleteWorkflow.CarryoverEvents);
+    }
+
+    [Fact]
+    public void NewGuid_ShouldBeDeterministic_ForSameInstanceIdAndTimestamp()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var now = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
+        var tracker = new WorkflowVersionTracker([]);
+
+        var c1 = new WorkflowOrchestrationContext("wf", "00000000-0000-0000-0000-000000000001",
+            now, serializer, NullLoggerFactory.Instance, tracker);
+
+        var c2 = new WorkflowOrchestrationContext("wf", "00000000-0000-0000-0000-000000000001",
+            now, serializer, NullLoggerFactory.Instance, tracker);
+
+        var g1 = c1.NewGuid();
+        var g2 = c2.NewGuid();
+
+        Assert.Equal(g1, g2);
+    }
+
+    [Fact]
+    public void NewGuid_ShouldVary_ForDifferentExecutionIds()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var c1 = new WorkflowOrchestrationContext("wf", "same-instance",
+            new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, tracker, executionId: "exec-1");
+
+        var c2 = new WorkflowOrchestrationContext("wf", "same-instance",
+            new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, tracker, executionId: "exec-2");
+
+        var g1 = c1.NewGuid();
+        var g2 = c2.NewGuid();
+
+        Assert.NotEqual(g1, g2);
+    }
+
+    [Fact]
+    public void NewGuid_ShouldBeDeterministic_ForNonGuidInstanceId()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var now = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
+        var tracker = new WorkflowVersionTracker([]);
+
+        var c1 = new WorkflowOrchestrationContext("wf", "order-123",
+            now, serializer, NullLoggerFactory.Instance, tracker);
+
+        var c2 = new WorkflowOrchestrationContext("wf", "order-123",
+            now, serializer, NullLoggerFactory.Instance, tracker);
+
+        var g1 = c1.NewGuid();
+        var g2 = c2.NewGuid();
+
+        Assert.Equal(g1, g2);
+    }
+
+    [Fact]
+    public async Task CallActivityAsync_ShouldThrowArgumentException_WhenNameIsNullOrWhitespace()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance, tracker);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => context.CallActivityAsync<int>(""));
+        await Assert.ThrowsAsync<ArgumentException>(() => context.CallActivityAsync<int>("   "));
+    }
+
+    [Fact]
+    public async Task CallActivityAsync_ShouldThrowInvalidOperationException_WhenHistoryEventIsUnexpectedType()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TimerFired = new TimerFiredEvent()
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.CallActivityAsync<int>("Act");
+        context.ProcessEvents(history, true);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => task);
+        Assert.Contains("Unexpected history event type", ex.Message);
+    }
+
+    [Fact]
+    public async Task WaitForExternalEventAsync_ShouldReturnDefault_WhenEventInHistoryHasNullInput()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent { Name = "MyEvent", Input = null }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance, 
+            tracker);
+
+        var task = context.WaitForExternalEventAsync<int>("MyEvent", TestContext.Current.CancellationToken);
+        context.ProcessEvents(history, true);
+        var value = await task;
+
+        Assert.Equal(default, value);
+    }
+
+    [Fact]
+    public async Task WaitForExternalEventAsync_WithTimeoutOverload_ShouldReturnResult_WhenEventIsInHistory()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent { Name = "MyEvent", Input = "456" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.WaitForExternalEventAsync<int>("MyEvent", TimeSpan.FromSeconds(10));
+        context.ProcessEvents(history, true);
+        var value = await task;
+
+        Assert.Equal(456, value);
+    }
+
+    [Fact]
+    public void CallChildWorkflowAsync_ShouldScheduleChildWorkflow_WhenNotReplaying_AndUseProvidedInstanceId()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.CallChildWorkflowAsync<int>(
+            workflowName: "ChildWf",
+            input: new { V = 1 },
+            options: new ChildWorkflowTaskOptions { InstanceId = "child-123" });
+
+        Assert.False(task.IsCompleted);
+
+        Assert.Single(context.PendingActions);
+        var action = context.PendingActions.First();
+
+        Assert.NotNull(action.CreateChildWorkflow);
+        Assert.Equal("ChildWf", action.CreateChildWorkflow.Name);
+        Assert.Equal("child-123", action.CreateChildWorkflow.InstanceId);
+        Assert.Contains("\"v\":1", action.CreateChildWorkflow.Input);
+    }
+
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldReturnCompletedResult_FromHistoryChildWorkflowCompleted()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent { Name = "ChildWf" }
+            },
+            new HistoryEvent
+            {
+                ChildWorkflowInstanceCompleted = new ChildWorkflowInstanceCompletedEvent { Result = "42" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.CallChildWorkflowAsync<int>("ChildWf");
+        context.ProcessEvents(history, true);
+        var value = await task;
+
+        Assert.Equal(42, value);
+        Assert.Empty(context.PendingActions);
+    }
+
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldThrowWorkflowTaskFailedException_FromHistoryChildWorkflowFailed()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                ChildWorkflowInstanceCreated = new ChildWorkflowInstanceCreatedEvent { Name = "ChildWf" }
+            },
+            new HistoryEvent
+            {
+                ChildWorkflowInstanceFailed = new ChildWorkflowInstanceFailedEvent
+                {
+                    FailureDetails = new TaskFailureDetails
+                    {
+                        ErrorType = "ChildError",
+                        ErrorMessage = "boom",
+                        StackTrace = "trace"
+                    }
+                }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.CallChildWorkflowAsync<int>("ChildWf");
+        context.ProcessEvents(history, true);
+
+        var ex = await Assert.ThrowsAsync<WorkflowTaskFailedException>(() => task);
+        Assert.Contains("Child workflow 'ChildWf' failed", ex.Message);
+        Assert.Equal("ChildError", ex.FailureDetails.ErrorType);
+        Assert.Equal("boom", ex.FailureDetails.ErrorMessage);
+        Assert.Equal("trace", ex.FailureDetails.StackTrace);
+    }
+
+    [Fact]
+    public async Task CallChildWorkflowAsync_ShouldThrowJsonDeserializationException_WhenHistoryEventIsUnexpectedType()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { Result = "\"not-child\"" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "parent",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: NullLoggerFactory.Instance,
+            tracker);
+
+        var task = context.CallChildWorkflowAsync<int>("ChildWf");
+        context.ProcessEvents(history, true);
+
+        var ex = await Assert.ThrowsAsync<JsonException>(() => task);
+        Assert.Contains("The JSON value could not be converted to ", ex.Message);
+    }
+
+    [Fact]
+    public void CreateReplaySafeLogger_TypeAndGenericOverloads_ShouldBehaveLikeCategoryOverload()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var tracker = new WorkflowVersionTracker([]);
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent { Result = "\"ok\"" }
+            }
+        };
+
+        var context = new WorkflowOrchestrationContext(
+            name: "wf",
+            instanceId: "i",
+            currentUtcDateTime: new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            workflowSerializer: serializer,
+            loggerFactory: new AlwaysEnabledLoggerFactory(),
+            tracker);
+
+        var typeLogger = context.CreateReplaySafeLogger(typeof(WorkflowOrchestrationContextTests));
+        var genericLogger = context.CreateReplaySafeLogger<WorkflowOrchestrationContextTests>();
+
+        _ = context.CallActivityAsync<string>("Any"); // consumes 1 history event
+        context.ProcessEvents(history, true);
+        Assert.True(context.IsReplaying);
+        Assert.False(typeLogger.IsEnabled(LogLevel.Information));
+        Assert.False(genericLogger.IsEnabled(LogLevel.Information));
+
+        context.ProcessEvents([], false);
+        Assert.False(context.IsReplaying);
+        Assert.True(typeLogger.IsEnabled(LogLevel.Information));
+        Assert.True(genericLogger.IsEnabled(LogLevel.Information));
+    }
+
+    private sealed class MyExampleType
+    {
+    }
+    
+    private sealed class RecordingLoggerFactory : ILoggerFactory
+    {
+        public string? LastCategoryName { get; private set; }
+        public ILogger? LastCreatedLogger { get; private set; }
+
+        public void AddProvider(ILoggerProvider provider) { }
+        
+        public void Reset()
+        {
+            LastCategoryName = null;
+            LastCreatedLogger = null;
+        }
+
+        public ILogger CreateLogger(string categoryName)
+        {
+            LastCategoryName = categoryName;
+            LastCreatedLogger = new RecordingLogger(categoryName);
+            return LastCreatedLogger;
+        }
+
+        public void Dispose() { }
+    }
+
+    private sealed class RecordingLogger(string categoryName) : ILogger
+    {
+        public string CategoryName { get; } = categoryName;
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+            public void Dispose() { }
+        }
+    }
+
+    private sealed class AlwaysEnabledLoggerFactory : ILoggerFactory
+    {
+        public void AddProvider(ILoggerProvider provider) { }
+        public ILogger CreateLogger(string categoryName) => new AlwaysEnabledLogger();
+        public void Dispose() { }
+    }
+
+    private sealed class AlwaysEnabledLogger : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+        }
+    }
+}

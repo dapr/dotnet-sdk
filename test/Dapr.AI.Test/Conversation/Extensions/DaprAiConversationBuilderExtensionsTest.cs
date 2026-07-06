@@ -47,18 +47,16 @@ public class DaprAiConversationBuilderExtensionsTest
     }
     
     [Fact]
-    public void AddDaprConversationClient_RegistersDaprClientOnlyOnce()
+    public void AddDaprConversationClient_RegistersDaprClient_UsesMostRecentRegistration()
     {
         var services = new ServiceCollection();
 
-        var clientBuilder = new Action<IServiceProvider, DaprConversationClientBuilder>((sp, builder) =>
+        services.AddDaprConversationClient((_, builder) =>
         {
-            builder.UseDaprApiToken("abc");
-        });
-
+            builder.UseDaprApiToken("abc123");
+        }); //Sets the API token value
         services.AddDaprConversationClient(); //Sets a default API token value of an empty string
-        services.AddDaprConversationClient(clientBuilder); //Sets the API token value
-
+        
         var serviceProvider = services.BuildServiceProvider();
         var daprConversationClient = serviceProvider.GetService<DaprConversationClient>();
         

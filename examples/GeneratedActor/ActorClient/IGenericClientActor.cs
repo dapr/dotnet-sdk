@@ -13,15 +13,14 @@
 
 using Dapr.Actors.Generators;
 
-namespace GeneratedActor
-{
-    [GenerateActorClient]
-    internal interface IGenericClientActor<TGenericType1, TGenericType2>
-    {
-        [ActorMethod(Name = "GetState")]
-        Task<TGenericType1> GetStateAsync(CancellationToken cancellationToken = default);
+namespace GeneratedActor;
 
-        [ActorMethod(Name = "SetState")]
-        Task SetStateAsync(TGenericType2 state, CancellationToken cancellationToken = default);
-    }
+[GenerateActorClient]
+internal interface IGenericClientActor<TGenericType1, TGenericType2>
+{
+    [ActorMethod(Name = "GetState")]
+    Task<TGenericType1> GetStateAsync(CancellationToken cancellationToken = default);
+
+    [ActorMethod(Name = "SetState")]
+    Task SetStateAsync(TGenericType2 state, CancellationToken cancellationToken = default);
 }

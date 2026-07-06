@@ -11,10 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.E2E.Test.Actors.Reminders
+namespace Dapr.E2E.Test.Actors.Reminders;
+
+public class StartReminderOptions
 {
-    public class StartReminderOptions
-    {
-        public int Total { get; set; }
-    }
+    public int Total { get; set; }
 }

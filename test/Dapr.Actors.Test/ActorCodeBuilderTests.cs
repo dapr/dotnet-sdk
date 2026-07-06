@@ -46,7 +46,7 @@ public class ActorCodeBuilderTests
         var request = new ActorRequestMessageBody(0);
         var response = new WrappedRequestMessageFactory();
 
-        var body = (WrappedMessage)await dispatcher.DispatchAsync(impl, methodId, request, response, default);
+        var body = (WrappedMessage)await dispatcher.DispatchAsync(impl, methodId, request, response, TestContext.Current.CancellationToken);
         dynamic bodyValue = body.Value;
         Assert.Equal(5, (int)bodyValue.retVal);
     }

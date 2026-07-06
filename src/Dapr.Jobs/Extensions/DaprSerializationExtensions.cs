@@ -25,7 +25,7 @@ public static class DaprJobsSerializationExtensions
     /// <summary>
     /// Default JSON serializer options.
     /// </summary>
-    private static readonly JsonSerializerOptions defaultOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions DefaultOptions = new(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// Schedules a job with Dapr.
@@ -38,19 +38,23 @@ public static class DaprJobsSerializationExtensions
     /// <param name="repeats">The optional number of times the job should be triggered.</param>
     /// <param name="jsonSerializerOptions">Optional JSON serialization options.</param>
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
+    /// <param name="overwrite">A flag indicating whether the job should be overwritten when submitted (true); otherwise false to require that an existing job with the same name be deleted first.</param>
+    /// <param name="failurePolicyOptions">The characteristics of the policy to apply when a job fails to trigger.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public static async Task ScheduleJobWithPayloadAsync(this DaprJobsClient client, string jobName, DaprJobSchedule schedule,
-        object payload, DateTime? startingFrom = null, int? repeats = null, JsonSerializerOptions? jsonSerializerOptions = null, DateTimeOffset? ttl = null,
+        object payload, DateTime? startingFrom = null, int? repeats = null, 
+        JsonSerializerOptions? jsonSerializerOptions = null, DateTimeOffset? ttl = null, 
+        bool overwrite = false, IJobFailurePolicyOptions? failurePolicyOptions = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(payload, nameof(payload));
 
-        var serializerOptions = jsonSerializerOptions ?? defaultOptions;
+        var serializerOptions = jsonSerializerOptions ?? DefaultOptions;
         var payloadBytes =
             JsonSerializer.SerializeToUtf8Bytes(payload, serializerOptions);
 
-        await client.ScheduleJobAsync(jobName, schedule, payloadBytes, startingFrom, repeats, ttl, cancellationToken);
+        await client.ScheduleJobAsync(jobName, schedule, payloadBytes, startingFrom, repeats, ttl, overwrite,
+            failurePolicyOptions, cancellationToken);
     }
 
     /// <summary>
@@ -63,16 +67,19 @@ public static class DaprJobsSerializationExtensions
     /// <param name="startingFrom">The optional point-in-time from which the job schedule should start.</param>
     /// <param name="repeats">The optional number of times the job should be triggered.</param>
     /// <param name="ttl">Represents when the job should expire. If both this and DueTime are set, TTL needs to represent a later point in time.</param>
+    /// <param name="overwrite">A flag indicating whether the job should be overwritten when submitted (true); otherwise false to require that an existing job with the same name be deleted first.</param>
+    /// <param name="failurePolicyOptions">The characteristics of the policy to apply when a job fails to trigger.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    [Obsolete("The API is currently not stable as it is in the Alpha stage. This attribute will be removed once it is stable.")]
     public static async Task ScheduleJobWithPayloadAsync(this DaprJobsClient client, string jobName, DaprJobSchedule schedule,
         string payload, DateTime? startingFrom = null, int? repeats = null, DateTimeOffset? ttl = null,
+        bool overwrite = false, IJobFailurePolicyOptions? failurePolicyOptions = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(payload, nameof(payload));
 
         var payloadBytes = Encoding.UTF8.GetBytes(payload);
 
-        await client.ScheduleJobAsync(jobName, schedule, payloadBytes, startingFrom, repeats, ttl, cancellationToken);
+        await client.ScheduleJobAsync(jobName, schedule, payloadBytes, startingFrom, repeats, ttl, overwrite,
+            failurePolicyOptions, cancellationToken);
     }
 }

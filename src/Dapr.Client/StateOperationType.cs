@@ -11,21 +11,20 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Operation type for state operations with Dapr.
+/// </summary>
+public enum StateOperationType
 {
     /// <summary>
-    /// Operation type for state operations with Dapr.
+    /// Upsert a new or existing state
     /// </summary>
-    public enum StateOperationType
-    {
-        /// <summary>
-        /// Upsert a new or existing state
-        /// </summary>
-        Upsert,
+    Upsert,
 
-        /// <summary>
-        /// Delete a state
-        /// </summary>
-        Delete,
-    }
+    /// <summary>
+    /// Delete a state
+    /// </summary>
+    Delete,
 }

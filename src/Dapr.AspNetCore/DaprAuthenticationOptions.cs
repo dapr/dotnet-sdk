@@ -13,21 +13,20 @@
 
 using Microsoft.AspNetCore.Authentication;
 
-namespace Dapr.AspNetCore
-{
-    /// <summary>
-    /// Options class provides information needed to control Dapr Authentication handler behavior.
-    /// See https://docs.dapr.io/operations/security/app-api-token/ for more information about App API token authentication in Dapr.
-    /// </summary>
-    public class DaprAuthenticationOptions : AuthenticationSchemeOptions
-    {
-        internal const string DefaultScheme = "Dapr";
-        internal string Scheme { get; } = DefaultScheme;
+namespace Dapr.AspNetCore;
 
-        /// <summary>
-        /// Gets or sets the App API token.
-        /// By default, the token will be read from the APP_API_TOKEN environment variable.
-        /// </summary>
-        public string Token { get; set; } = DaprDefaults.GetDefaultAppApiToken(null);
-    }
+/// <summary>
+/// Options class provides information needed to control Dapr Authentication handler behavior.
+/// See https://docs.dapr.io/operations/security/app-api-token/ for more information about App API token authentication in Dapr.
+/// </summary>
+public class DaprAuthenticationOptions : AuthenticationSchemeOptions
+{
+    internal const string DefaultScheme = "Dapr";
+    internal string Scheme { get; } = DefaultScheme;
+
+    /// <summary>
+    /// Gets or sets the App API token.
+    /// By default, the token will be read from the APP_API_TOKEN environment variable.
+    /// </summary>
+    public string Token { get; set; } = DaprDefaults.GetDefaultAppApiToken(null);
 }

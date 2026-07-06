@@ -1,0 +1,81 @@
+@page "/"
+@using Common
+@using Dapr.Client
+@rendermode InteractiveServer
+@inject DaprClient _daprClient
+@inject IHttpClientFactory _httpFactory
+
+<div>
+    <h1>Service Invocation Demonstrations</h1>
+    <p>Various patterns for invoking backend services using Dapr capability hosted in Aspire</p>
+    
+    <Demo Title="Simple GET Request (JSON)"
+          Description="Basic service invocation returning a JSON value to deserialize"
+          ExecuteAsync="@SimpleGetJsonResponseAsync"/>
+    <Demo Title="Simple GET Request (string)"
+          Description="Basic service invocation returning an HttpRequestMessage to deserialize yourself"
+          ExecuteAsync="@SimpleGetStringResponseAsync"/>
+    <Demo Title="GET Request with Query Parameters"
+          Description="Service invocation with query string parameters"
+          ExecuteAsync="@GetWithQueryParametersAsync"/>
+    <Demo Title="Service Invocation using HttpClient via header"
+          Description="Using HttpClient specifying app in header"
+          ExecuteAsync="@ServiceInvocationUsingHttpClientFactoryHeader"/>
+    <Demo Title="Service Invocation using provisioned HttpClient"
+          Description="Using provisioned HttpClient by Dapr SDK"
+          ExecuteAsync="@ServiceInvocationUsingDaprHttpClient"/>
+</div>
+
+
+@code {
+
+    private const string BackendAppName = "be";
+
+    private async Task<string> SimpleGetJsonResponseAsync()
+    {
+        var response = await _daprClient.InvokeMethodAsync<Fruit>(BackendAppName, "api/simpleJsonGet");
+        return $"{response}";
+    }
+
+    private async Task<string> SimpleGetStringResponseAsync()
+    {
+        var request = _daprClient.CreateInvokeMethodRequest(HttpMethod.Get, BackendAppName, "api/simpleStringGet");
+        var response = await _daprClient.InvokeMethodWithResponseAsync(request);
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    private async Task<string> GetWithQueryParametersAsync()
+    {
+        var parameters = new List<KeyValuePair<string, string>>
+        {
+            new("name", "Orange"),
+            new("color", "Orange")
+        };
+        var request = _daprClient.CreateInvokeMethodRequest(HttpMethod.Get,BackendAppName, "api/queryString", parameters);
+        var response = await _daprClient.InvokeMethodWithResponseAsync(request);
+        return await response.Content.ReadAsStringAsync();
+    }
+    
+    private async Task<string> ServiceInvocationUsingHttpClientFactoryHeader()
+    {
+        // Start with a new HttpClient 
+        var httpClient = _httpFactory.CreateClient();
+        
+        // Specify the name of the app to connect to in a header and send directly to this app's Dapr sidecar (specified in AppHost.cs)
+        var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost:50000/api/simpleStringGet");
+        request.Headers.Add("dapr-app-id", BackendAppName);
+
+        // Send and return the response
+        var response = await httpClient.SendAsync(request);
+        return await response.Content.ReadAsStringAsync();
+    }
+
+    private async Task<string> ServiceInvocationUsingDaprHttpClient()
+    {
+        // Use the HttpClient provided by the Dapr .NET SDK and indicate the app to send the request to
+        var httpClient = _daprClient.CreateInvokableHttpClient(BackendAppName);
+
+        var response = await httpClient.GetAsync("api/simpleStringGet");
+        return await response.Content.ReadAsStringAsync();
+    }
+}

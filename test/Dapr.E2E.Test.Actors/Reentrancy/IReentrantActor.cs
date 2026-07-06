@@ -14,12 +14,11 @@
 using System.Threading.Tasks;
 using Dapr.Actors;
 
-namespace Dapr.E2E.Test.Actors.Reentrancy
-{
-    public interface IReentrantActor : IPingActor, IActor
-    {
-        Task ReentrantCall(ReentrantCallOptions callOptions);
+namespace Dapr.E2E.Test.Actors.Reentrancy;
 
-        Task<State> GetState(int callNumber);
-    }
+public interface IReentrantActor : IPingActor, IActor
+{
+    Task ReentrantCall(ReentrantCallOptions callOptions);
+
+    Task<State> GetState(int callNumber);
 }

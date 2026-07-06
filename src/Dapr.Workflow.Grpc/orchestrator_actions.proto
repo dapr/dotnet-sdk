@@ -1,0 +1,118 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+syntax = "proto3";
+
+option csharp_namespace = "Dapr.DurableTask.Protobuf";
+option java_package = "io.dapr.durabletask.implementation.protobuf";
+option go_package = "/api/protos";
+
+import "orchestration.proto";
+import "history_events.proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+message ScheduleTaskAction {
+  string name = 1;
+  google.protobuf.StringValue version = 2;
+  google.protobuf.StringValue input = 3;
+  optional TaskRouter router = 4;
+  string taskExecutionId = 5;
+
+  // History propagation scope. Absent/SCOPE_NONE = no propagation.
+  optional HistoryPropagationScope historyPropagationScope = 6;
+}
+
+message CreateChildWorkflowAction {
+  string instanceId = 1;
+  string name = 2;
+  google.protobuf.StringValue version = 3;
+  google.protobuf.StringValue input = 4;
+  optional TaskRouter router = 5;
+
+  // History propagation scope. Absent/SCOPE_NONE = no propagation.
+  optional HistoryPropagationScope historyPropagationScope = 6;
+}
+
+// CreateDetachedWorkflowAction creates a new, detached workflow instance from
+// a running workflow. Mirrors the fields of CreateInstanceRequest (the client
+// scheduling API) so the runtime has all the information needed to schedule
+// the new instance directly from this action. The spawned workflow is fully
+// decoupled from the caller: no parent pointer is recorded on the new
+// workflow, no completion is awaited, and no failure propagation flows back.
+// The creation is recorded once in the caller's history as a
+// DetachedWorkflowInstanceCreatedEvent referencing the new instance ID.
+message CreateDetachedWorkflowAction {
+  // instanceId is the ID assigned to the new workflow. It is mandatory:
+  // implementors must set a stable, deterministic ID so that on replay the
+  // call resolves to the same DetachedWorkflowInstanceCreatedEvent in
+  // history.
+  string instanceId = 1;
+  // name of the workflow to schedule. Mandatory.
+  string name = 2;
+
+  // The remaining fields mirror the optional inputs of
+  // CreateInstanceRequest. Wrapper types (StringValue) carry presence via
+  // the wrapper; bare message fields are explicitly marked optional.
+  google.protobuf.StringValue version = 3;
+  google.protobuf.StringValue input = 4;
+  optional google.protobuf.Timestamp scheduledStartTimestamp = 5;
+  google.protobuf.StringValue executionId = 6;
+  map<string, string> tags = 7;
+  optional TraceContext parentTraceContext = 8;
+  optional TaskRouter router = 9;
+}
+
+message CreateTimerAction {
+  google.protobuf.Timestamp fireAt = 1;
+  optional string name = 2;
+
+  // If set, provides additional context attached to this timer.
+  oneof origin {
+    TimerOriginCreateTimer createTimer = 3;
+    TimerOriginExternalEvent externalEvent = 4;
+    TimerOriginActivityRetry activityRetry = 5;
+    TimerOriginChildWorkflowRetry childWorkflowRetry = 6;
+  }
+}
+
+message SendEventAction {
+  WorkflowInstance instance = 1;
+  string name = 2;
+  google.protobuf.StringValue data = 3;
+}
+
+message CompleteWorkflowAction {
+  OrchestrationStatus workflowStatus = 1;
+  google.protobuf.StringValue result = 2;
+  google.protobuf.StringValue details = 3;
+  google.protobuf.StringValue newVersion = 4;
+  repeated HistoryEvent carryoverEvents = 5;
+  TaskFailureDetails failureDetails = 6;
+}
+
+message TerminateWorkflowAction {
+  string instanceId = 1;
+  google.protobuf.StringValue reason = 2;
+  bool recurse = 3;
+}
+
+message WorkflowVersionNotAvailableAction {
+}
+
+message WorkflowAction {
+  int32 id = 1;
+  oneof workflowActionType {
+    ScheduleTaskAction scheduleTask = 2;
+    CreateChildWorkflowAction createChildWorkflow = 3;
+    CreateTimerAction createTimer = 4;
+    SendEventAction sendEvent = 5;
+    CompleteWorkflowAction completeWorkflow = 6;
+    TerminateWorkflowAction terminateWorkflow = 7;
+    WorkflowVersionNotAvailableAction workflowVersionNotAvailable = 10;
+    CreateDetachedWorkflowAction createDetachedWorkflow = 11;
+  }
+  reserved 8;
+  optional TaskRouter router = 9;
+}

@@ -14,12 +14,11 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Samples.Client
-{
-    public abstract class Example
-    {
-        public abstract string DisplayName { get; }
+namespace Samples.Client;
 
-        public abstract Task RunAsync(CancellationToken cancellationToken);
-    }
+public abstract class Example
+{
+    public abstract string DisplayName { get; }
+
+    public abstract Task RunAsync(CancellationToken cancellationToken);
 }

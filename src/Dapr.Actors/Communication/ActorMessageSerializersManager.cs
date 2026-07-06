@@ -11,105 +11,104 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Communication
+namespace Dapr.Actors.Communication;
+
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using Dapr.Actors.Builder;
+
+internal class ActorMessageSerializersManager
 {
-    using System;
-    using System.Collections.Concurrent;
-    using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Linq;
-    using Dapr.Actors.Builder;
+    private readonly ConcurrentDictionary<(int, string), CacheEntry> cachedBodySerializers;
+    private readonly IActorMessageHeaderSerializer headerSerializer;
+    private readonly IActorMessageBodySerializationProvider serializationProvider;
 
-    internal class ActorMessageSerializersManager
+    public ActorMessageSerializersManager(
+        IActorMessageBodySerializationProvider serializationProvider,
+        IActorMessageHeaderSerializer headerSerializer)
     {
-        private readonly ConcurrentDictionary<(int, string), CacheEntry> cachedBodySerializers;
-        private readonly IActorMessageHeaderSerializer headerSerializer;
-        private readonly IActorMessageBodySerializationProvider serializationProvider;
-
-        public ActorMessageSerializersManager(
-            IActorMessageBodySerializationProvider serializationProvider,
-            IActorMessageHeaderSerializer headerSerializer)
+        if (serializationProvider == null)
         {
-            if (serializationProvider == null)
-            {
-                serializationProvider = new ActorMessageBodyDataContractSerializationProvider();
+            serializationProvider = new ActorMessageBodyDataContractSerializationProvider();
+        }
+
+        if (headerSerializer == null)
+        {
+            headerSerializer = new ActorMessageHeaderSerializer();
+        }
+
+        this.serializationProvider = serializationProvider;
+        this.cachedBodySerializers = new ConcurrentDictionary<(int, string), CacheEntry>();
+        this.headerSerializer = headerSerializer;
+    }
+
+    public IActorMessageBodySerializationProvider GetSerializationProvider()
+    {
+        return this.serializationProvider;
+    }
+
+    public IActorMessageHeaderSerializer GetHeaderSerializer()
+    {
+        return this.headerSerializer;
+    }
+
+    public IActorRequestMessageBodySerializer GetRequestMessageBodySerializer(int interfaceId, [AllowNull] string methodName = null)
+    {
+        return this.cachedBodySerializers.GetOrAdd((interfaceId, methodName), this.CreateSerializers).RequestMessageBodySerializer;
+    }
+
+    public IActorResponseMessageBodySerializer GetResponseMessageBodySerializer(int interfaceId, [AllowNull] string methodName = null)
+    {
+        return this.cachedBodySerializers.GetOrAdd((interfaceId, methodName), this.CreateSerializers).ResponseMessageBodySerializer;
+    }
+
+    internal CacheEntry CreateSerializers((int interfaceId, string methodName) data)
+    {
+        var interfaceDetails = this.GetInterfaceDetails(data.interfaceId);
+
+        // get the service interface type from the code gen layer
+        var serviceInterfaceType = interfaceDetails.ServiceInterfaceType;
+
+        // get the known types from the codegen layer
+        var requestBodyTypes = interfaceDetails.RequestKnownTypes;
+
+        // get the known types from the codegen layer
+        var responseBodyTypes = interfaceDetails.ResponseKnownTypes;
+        if (data.methodName is null)
+        {
+            // Path is mainly used for XML serialization
+            return new CacheEntry(
+                this.serializationProvider.CreateRequestMessageBodySerializer(serviceInterfaceType, requestBodyTypes, interfaceDetails.RequestWrappedKnownTypes),
+                this.serializationProvider.CreateResponseMessageBodySerializer(serviceInterfaceType, responseBodyTypes, interfaceDetails.ResponseWrappedKnownTypes));
+        }
+        else
+        {
+            // This path should be used for JSON serialization
+            var requestWrapperTypeAsList = interfaceDetails.RequestWrappedKnownTypes.Where(r => r.Name == $"{data.methodName}ReqBody").ToList();
+            if(requestWrapperTypeAsList.Count > 1){
+                throw new NotSupportedException($"More then one wrappertype was found for {data.methodName}");
             }
-
-            if (headerSerializer == null)
-            {
-                headerSerializer = new ActorMessageHeaderSerializer();
+            var responseWrapperTypeAsList = interfaceDetails.ResponseWrappedKnownTypes.Where(r => r.Name == $"{data.methodName}RespBody").ToList();
+            if(responseWrapperTypeAsList.Count > 1){
+                throw new NotSupportedException($"More then one wrappertype was found for {data.methodName}");
             }
-
-            this.serializationProvider = serializationProvider;
-            this.cachedBodySerializers = new ConcurrentDictionary<(int, string), CacheEntry>();
-            this.headerSerializer = headerSerializer;
+            return new CacheEntry(
+                this.serializationProvider.CreateRequestMessageBodySerializer(serviceInterfaceType, requestBodyTypes, requestWrapperTypeAsList),
+                this.serializationProvider.CreateResponseMessageBodySerializer(serviceInterfaceType, responseBodyTypes, responseWrapperTypeAsList));
         }
 
-        public IActorMessageBodySerializationProvider GetSerializationProvider()
+    }
+
+    internal InterfaceDetails GetInterfaceDetails(int interfaceId)
+    {
+        if (!ActorCodeBuilder.TryGetKnownTypes(interfaceId, out var interfaceDetails))
         {
-            return this.serializationProvider;
+            throw new ArgumentException("No interface found with this Id  " + interfaceId);
         }
 
-        public IActorMessageHeaderSerializer GetHeaderSerializer()
-        {
-            return this.headerSerializer;
-        }
-
-        public IActorRequestMessageBodySerializer GetRequestMessageBodySerializer(int interfaceId, [AllowNull] string methodName = null)
-        {
-            return this.cachedBodySerializers.GetOrAdd((interfaceId, methodName), this.CreateSerializers).RequestMessageBodySerializer;
-        }
-
-        public IActorResponseMessageBodySerializer GetResponseMessageBodySerializer(int interfaceId, [AllowNull] string methodName = null)
-        {
-            return this.cachedBodySerializers.GetOrAdd((interfaceId, methodName), this.CreateSerializers).ResponseMessageBodySerializer;
-        }
-
-        internal CacheEntry CreateSerializers((int interfaceId, string methodName) data)
-        {
-            var interfaceDetails = this.GetInterfaceDetails(data.interfaceId);
-
-            // get the service interface type from the code gen layer
-            var serviceInterfaceType = interfaceDetails.ServiceInterfaceType;
-
-            // get the known types from the codegen layer
-            var requestBodyTypes = interfaceDetails.RequestKnownTypes;
-
-            // get the known types from the codegen layer
-            var responseBodyTypes = interfaceDetails.ResponseKnownTypes;
-            if (data.methodName is null)
-            {
-                // Path is mainly used for XML serialization
-                return new CacheEntry(
-                    this.serializationProvider.CreateRequestMessageBodySerializer(serviceInterfaceType, requestBodyTypes, interfaceDetails.RequestWrappedKnownTypes),
-                    this.serializationProvider.CreateResponseMessageBodySerializer(serviceInterfaceType, responseBodyTypes, interfaceDetails.ResponseWrappedKnownTypes));
-            }
-            else
-            {
-                // This path should be used for JSON serialization
-                var requestWrapperTypeAsList = interfaceDetails.RequestWrappedKnownTypes.Where(r => r.Name == $"{data.methodName}ReqBody").ToList();
-                if(requestWrapperTypeAsList.Count > 1){
-                    throw new NotSupportedException($"More then one wrappertype was found for {data.methodName}");
-                }
-                var responseWrapperTypeAsList = interfaceDetails.ResponseWrappedKnownTypes.Where(r => r.Name == $"{data.methodName}RespBody").ToList();
-                    if(responseWrapperTypeAsList.Count > 1){
-                    throw new NotSupportedException($"More then one wrappertype was found for {data.methodName}");
-                }
-                return new CacheEntry(
-                    this.serializationProvider.CreateRequestMessageBodySerializer(serviceInterfaceType, requestBodyTypes, requestWrapperTypeAsList),
-                    this.serializationProvider.CreateResponseMessageBodySerializer(serviceInterfaceType, responseBodyTypes, responseWrapperTypeAsList));
-            }
-
-        }
-
-        internal InterfaceDetails GetInterfaceDetails(int interfaceId)
-        {
-            if (!ActorCodeBuilder.TryGetKnownTypes(interfaceId, out var interfaceDetails))
-            {
-                throw new ArgumentException("No interface found with this Id  " + interfaceId);
-            }
-
-            return interfaceDetails;
-        }
+        return interfaceDetails;
     }
 }

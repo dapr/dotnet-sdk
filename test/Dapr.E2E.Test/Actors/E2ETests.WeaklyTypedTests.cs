@@ -10,59 +10,41 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ------------------------------------------------------------------------
-namespace Dapr.E2E.Test
+namespace Dapr.E2E.Test;
+
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Actors;
+using Dapr.E2E.Test.Actors.WeaklyTypedTesting;
+using Shouldly;
+using Xunit;
+
+public partial class E2ETests
 {
-    using System;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using Dapr.Actors;
-    using Dapr.E2E.Test.Actors.WeaklyTypedTesting;
-    using Shouldly;
-    using Xunit;
-
-    public partial class E2ETests : IAsyncLifetime
+    [Fact]
+    public async Task WeaklyTypedActorCanReturnPolymorphicResponse()
     {
-#if NET8_0_OR_GREATER
-        [Fact]
-        public async Task WeaklyTypedActorCanReturnPolymorphicResponse()
-        {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-            var pingProxy = this.ProxyFactory.CreateActorProxy<IWeaklyTypedTestingActor>(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
-            var proxy = this.ProxyFactory.Create(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
+        var pingProxy = this.ProxyFactory.CreateActorProxy<IWeaklyTypedTestingActor>(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
+        var proxy = this.ProxyFactory.Create(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
 
-            await WaitForActorRuntimeAsync(pingProxy, cts.Token);
+        await WaitForActorRuntimeAsync(pingProxy, TestContext.Current.CancellationToken);
 
-            var result = await proxy.InvokeMethodAsync<ResponseBase>(nameof(IWeaklyTypedTestingActor.GetPolymorphicResponse));
+        var result = await proxy.InvokeMethodAsync<ResponseBase>(nameof(IWeaklyTypedTestingActor.GetPolymorphicResponse), TestContext.Current.CancellationToken);
 
-            result.ShouldBeOfType<DerivedResponse>().DerivedProperty.ShouldNotBeNullOrWhiteSpace();
-        }
-#else
-        [Fact]
-        public async Task WeaklyTypedActorCanReturnDerivedResponse()
-        {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-            var pingProxy = this.ProxyFactory.CreateActorProxy<IWeaklyTypedTestingActor>(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
-            var proxy = this.ProxyFactory.Create(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
+        result.ShouldBeOfType<DerivedResponse>().DerivedProperty.ShouldNotBeNullOrWhiteSpace();
+    }
 
-            await WaitForActorRuntimeAsync(pingProxy, cts.Token);
+    [Fact]
+    public async Task WeaklyTypedActorCanReturnNullResponse()
+    {
+        var pingProxy = this.ProxyFactory.CreateActorProxy<IWeaklyTypedTestingActor>(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
+        var proxy = this.ProxyFactory.Create(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
 
-            var result = await proxy.InvokeMethodAsync<DerivedResponse>(nameof(IWeaklyTypedTestingActor.GetPolymorphicResponse));
+        await WaitForActorRuntimeAsync(pingProxy, TestContext.Current.CancellationToken);
 
-            result.ShouldBeOfType<DerivedResponse>().DerivedProperty.ShouldNotBeNullOrWhiteSpace();
-        }
-#endif
-        [Fact]
-        public async Task WeaklyTypedActorCanReturnNullResponse()
-        {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-            var pingProxy = this.ProxyFactory.CreateActorProxy<IWeaklyTypedTestingActor>(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
-            var proxy = this.ProxyFactory.Create(ActorId.CreateRandom(), "WeaklyTypedTestingActor");
+        var result = await proxy.InvokeMethodAsync<ResponseBase>(nameof(IWeaklyTypedTestingActor.GetNullResponse), TestContext.Current.CancellationToken);
 
-            await WaitForActorRuntimeAsync(pingProxy, cts.Token);
-
-            var result = await proxy.InvokeMethodAsync<ResponseBase>(nameof(IWeaklyTypedTestingActor.GetNullResponse));
-
-            result.ShouldBeNull();
-        }
+        result.ShouldBeNull();
     }
 }

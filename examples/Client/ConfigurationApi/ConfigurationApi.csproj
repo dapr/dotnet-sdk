@@ -1,10 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
-  <PropertyGroup>
-    <TargetFramework>net6</TargetFramework>
-  </PropertyGroup>
-
-
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
     <ProjectReference Include="..\..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />

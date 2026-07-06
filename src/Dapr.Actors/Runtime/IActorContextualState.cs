@@ -13,15 +13,14 @@
 
 using System.Threading.Tasks;
 
-namespace Dapr.Actors.Runtime
+namespace Dapr.Actors.Runtime;
+
+/// <summary>
+///
+/// </summary>
+internal interface IActorContextualState
 {
     /// <summary>
-    ///
     /// </summary>
-    internal interface IActorContextualState
-    {
-        /// <summary>
-        /// </summary>
-        Task SetStateContext(string stateContext);
-    }
+    Task SetStateContext(string stateContext);
 }

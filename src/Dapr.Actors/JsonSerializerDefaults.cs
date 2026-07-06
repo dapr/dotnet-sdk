@@ -13,20 +13,19 @@
 
 using System.Text.Json;
 
-namespace Dapr.Actors
+namespace Dapr.Actors;
+
+/// <summary>
+/// A helper used to standardize the <see cref="JsonSerializerOptions"/> defaults
+/// </summary>
+internal static class JsonSerializerDefaults
 {
     /// <summary>
-    /// A helper used to standardize the <see cref="JsonSerializerOptions"/> defaults
+    /// <see cref="JsonSerializerOptions"/> defaults with Camel Casing and case insensitive properties
     /// </summary>
-    internal static class JsonSerializerDefaults
+    internal static JsonSerializerOptions Web => new JsonSerializerOptions
     {
-        /// <summary>
-        /// <see cref="JsonSerializerOptions"/> defaults with Camel Casing and case insensitive properties
-        /// </summary>
-        internal static JsonSerializerOptions Web => new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            PropertyNameCaseInsensitive = true
-        };
-    }
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
 }

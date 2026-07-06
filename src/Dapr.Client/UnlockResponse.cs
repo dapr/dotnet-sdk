@@ -11,47 +11,46 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Enum representing the response from a Unlock API call.
+/// </summary>
+public enum LockStatus
 {
     /// <summary>
-    /// Enum representing the response from a Unlock API call.
+    /// Succes stating the lock is released.
     /// </summary>
-    public enum LockStatus
-    {
-        /// <summary>
-        /// Succes stating the lock is released.
-        /// </summary>
-        Success,
-        /// <summary>
-        /// LockDoesNotExist stating the lock does not exist.
-        /// </summary>
-        LockDoesNotExist,
-        /// <summary>
-        /// LockBelongsToOthers stating the lock is acquired by a different process.
-        /// </summary>
-        LockBelongsToOthers,
-        /// <summary>
-        /// InternalError statign an error in unlocking.
-        /// </summary>
-        InternalError,
-    }
+    Success,
+    /// <summary>
+    /// LockDoesNotExist stating the lock does not exist.
+    /// </summary>
+    LockDoesNotExist,
+    /// <summary>
+    /// LockBelongsToOthers stating the lock is acquired by a different process.
+    /// </summary>
+    LockBelongsToOthers,
+    /// <summary>
+    /// InternalError statign an error in unlocking.
+    /// </summary>
+    InternalError,
+}
+
+/// <summary>
+/// Class representing the response from a Unlock API call.
+/// </summary>
+public class UnlockResponse
+{
+    /// <summary>
+    /// The status of unlock API call
+    /// </summary>
+    public LockStatus status { set; get; }
 
     /// <summary>
-    /// Class representing the response from a Unlock API call.
+    /// Constructor for a UnlockResponse.
     /// </summary>
-    public class UnlockResponse
-    {
-        /// <summary>
-        /// The status of unlock API call
-        /// </summary>
-        public LockStatus status { set; get; }
-
-        /// <summary>
-        /// Constructor for a UnlockResponse.
-        /// </summary>
-        /// <param name="status">The status value that is returned in the UnLock call.</param>
-        public UnlockResponse(LockStatus status) {
-            this.status = status;
-        }
+    /// <param name="status">The status value that is returned in the UnLock call.</param>
+    public UnlockResponse(LockStatus status) {
+        this.status = status;
     }
 }

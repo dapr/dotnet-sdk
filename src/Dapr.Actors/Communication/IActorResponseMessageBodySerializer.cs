@@ -11,28 +11,27 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Communication
+namespace Dapr.Actors.Communication;
+
+using System.IO;
+using System.Threading.Tasks;
+
+/// <summary>
+/// Defines the interface that must be implemented to provide a serializer/deserializer for actor response message body.
+/// </summary>
+internal interface IActorResponseMessageBodySerializer
 {
-    using System.IO;
-    using System.Threading.Tasks;
+    /// <summary>
+    /// Serialize the actor response body object to a message body that can be sent over the wire.
+    /// </summary>
+    /// <param name="actorResponseMessageBody">Actor request message body object.</param>
+    /// <returns>Serialized message body.</returns>
+    byte[] Serialize(IActorResponseMessageBody actorResponseMessageBody);
 
     /// <summary>
-    /// Defines the interface that must be implemented to provide a serializer/deserializer for actor response message body.
+    /// Deserializes an incoming message body to remoting response body object.
     /// </summary>
-    internal interface IActorResponseMessageBodySerializer
-    {
-        /// <summary>
-        /// Serialize the actor response body object to a message body that can be sent over the wire.
-        /// </summary>
-        /// <param name="actorResponseMessageBody">Actor request message body object.</param>
-        /// <returns>Serialized message body.</returns>
-        byte[] Serialize(IActorResponseMessageBody actorResponseMessageBody);
-
-        /// <summary>
-        /// Deserializes an incoming message body to remoting response body object.
-        /// </summary>
-        /// <param name="messageBody">Serialized message body.</param>
-        /// <returns>Deserialized actor response message body object.</returns>
-        ValueTask<IActorResponseMessageBody> DeserializeAsync(Stream messageBody);
-    }
+    /// <param name="messageBody">Serialized message body.</param>
+    /// <returns>Deserialized actor response message body object.</returns>
+    ValueTask<IActorResponseMessageBody> DeserializeAsync(Stream messageBody);
 }

@@ -15,29 +15,28 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.E2E.Test.Actors;
-using Xunit.Abstractions;
+using Xunit;
 
-namespace Dapr.E2E.Test
+namespace Dapr.E2E.Test;
+
+public static class ActorRuntimeChecker
 {
-    public static class ActorRuntimeChecker
+    public static async Task WaitForActorRuntimeAsync(string appId, ITestOutputHelper output, IPingActor proxy, CancellationToken cancellationToken)
     {
-        public static async Task WaitForActorRuntimeAsync(string appId, ITestOutputHelper output, IPingActor proxy, CancellationToken cancellationToken)
+        while (true)
         {
-            while (true)
-            {
-                output.WriteLine($"Waiting for actor to be ready in: {appId}");
-                cancellationToken.ThrowIfCancellationRequested();
+            output.WriteLine($"Waiting for actor to be ready in: {appId}");
+            cancellationToken.ThrowIfCancellationRequested();
 
-                try
-                {
-                    await proxy.Ping();
-                    output.WriteLine($"Found actor in: {appId}");
-                    break;
-                }
-                catch (DaprApiException)
-                {
-                    await Task.Delay(TimeSpan.FromMilliseconds(250));
-                }
+            try
+            {
+                await proxy.Ping();
+                output.WriteLine($"Found actor in: {appId}");
+                break;
+            }
+            catch (DaprApiException)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
             }
         }
     }

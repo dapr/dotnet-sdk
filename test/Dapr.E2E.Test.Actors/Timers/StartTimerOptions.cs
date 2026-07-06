@@ -11,10 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.E2E.Test.Actors.Timers
+namespace Dapr.E2E.Test.Actors.Timers;
+
+public class StartTimerOptions
 {
-    public class StartTimerOptions
-    {
-        public int Total { get; set; }
-    }
+    public int Total { get; set; }
 }

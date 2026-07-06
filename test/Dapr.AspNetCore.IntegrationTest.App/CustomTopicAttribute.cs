@@ -11,24 +11,23 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AspNetCore.IntegrationTest.App
+namespace Dapr.AspNetCore.IntegrationTest.App;
+
+using System;
+
+public class CustomTopicAttribute : Attribute, ITopicMetadata
 {
-    using System;
-
-    public class CustomTopicAttribute : Attribute, ITopicMetadata
+    public CustomTopicAttribute(string pubsubName, string name)
     {
-        public CustomTopicAttribute(string pubsubName, string name)
-        {
-            this.Name = "custom-" + name;
-            this.PubsubName = "custom-" + pubsubName;
-        }
-
-        public string Name { get; }
-
-        public string PubsubName { get; }
-
-        public new string Match { get; }
-
-        public int Priority { get; }
+        this.Name = "custom-" + name;
+        this.PubsubName = "custom-" + pubsubName;
     }
+
+    public string Name { get; }
+
+    public string PubsubName { get; }
+
+    public new string Match { get; }
+
+    public int Priority { get; }
 }

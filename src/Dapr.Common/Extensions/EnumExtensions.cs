@@ -37,4 +37,46 @@ internal static class EnumExtensions
         var attributes = memberInfo[0].GetCustomAttributes(typeof(EnumMemberAttribute), false);
         return (attributes.Length > 0 ? ((EnumMemberAttribute)attributes[0]).Value : value.ToString()) ?? value.ToString();
     }
+
+    /// <summary>
+    /// Attempts to parse a string value into its Enum member equivalent.
+    /// </summary>
+    /// <param name="value">The value to parse.</param>
+    /// <param name="result">If this method returns true, this contains the value of the matching enum member.</param>
+    /// <typeparam name="TEnum">The type of enum to source the values from.</typeparam>
+    /// <returns>True fi the value was successfully parsed; otherwise false.</returns>
+    public static bool TryParseEnumMember<TEnum>(this string? value, out TEnum result)
+    where TEnum: struct, Enum
+    {
+        result = default;
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+        
+        // Try EnumMember(Value=...) first
+        foreach (var name in Enum.GetNames(typeof(TEnum)))
+        {
+            var field = typeof(TEnum).GetField(name, BindingFlags.Public | BindingFlags.Static);
+            var em = field?.GetCustomAttribute<EnumMemberAttribute>();
+            if (em?.Value != null && string.Equals(em.Value, value, StringComparison.OrdinalIgnoreCase))
+            {
+                result = (TEnum)Enum.Parse(typeof(TEnum), name);
+                return true;
+            }
+        }
+        
+        // Fallback: match to the enum identifier itself
+        return Enum.TryParse(value, ignoreCase: true, out result);
+    }
+
+    /// <summary>
+    /// Attempts to parse a string value into its Enum member equivalent.
+    /// </summary>
+    /// <param name="value">The value to parse.</param>
+    /// <typeparam name="TEnum">The type of enum to source the values from.</typeparam>
+    /// <returns>The value of the matching enum member.</returns>
+    public static TEnum ParseEnumMember<TEnum>(string value)
+        where TEnum : struct, Enum => TryParseEnumMember<TEnum>(value, out var r)
+        ? r
+        : throw new ArgumentException($"Cannot map '{value}' to {typeof(TEnum).Name} via EnumMember or name.",
+            nameof(value));
 }

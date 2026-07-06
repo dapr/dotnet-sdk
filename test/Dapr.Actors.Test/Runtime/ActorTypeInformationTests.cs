@@ -11,72 +11,71 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Test
+namespace Dapr.Actors.Test;
+
+using System;
+using System.Reflection;
+using Dapr.Actors;
+using Dapr.Actors.Runtime;
+using Xunit;
+
+public sealed class ActorTypeInformationTests
 {
-    using System;
-    using System.Reflection;
-    using Dapr.Actors;
-    using Dapr.Actors.Runtime;
-    using Xunit;
+    private const string RenamedActorTypeName = "MyRenamedActor";
+    private const string ParamActorTypeName = "AnotherRenamedActor";
 
-    public sealed class ActorTypeInformationTests
+    private interface ITestActor : IActor
     {
-        private const string RenamedActorTypeName = "MyRenamedActor";
-        private const string ParamActorTypeName = "AnotherRenamedActor";
+    }
 
-        private interface ITestActor : IActor
+    [Fact]
+    public void TestInferredActorType()
+    {
+        var actorType = typeof(TestActor);
+        var actorTypeInformation = ActorTypeInformation.Get(actorType, actorTypeName: null);
+
+        Assert.Equal(actorType.Name, actorTypeInformation.ActorTypeName);
+    }
+
+    [Fact]
+    public void TestExplicitActorType()
+    {
+        var actorType = typeof(RenamedActor);
+
+        Assert.NotEqual(RenamedActorTypeName, actorType.Name);
+
+        var actorTypeInformation = ActorTypeInformation.Get(actorType, actorTypeName: null);
+
+        Assert.Equal(RenamedActorTypeName, actorTypeInformation.ActorTypeName);
+    }
+
+    [Theory]
+    [InlineData(typeof(TestActor))]
+    [InlineData(typeof(RenamedActor))]
+    public void TestExplicitActorTypeAsParam(Type actorType)
+    {
+        Assert.NotEqual(ParamActorTypeName, actorType.Name);
+        Assert.NotEqual(ParamActorTypeName, actorType.GetCustomAttribute<ActorAttribute>()?.TypeName);
+
+        var actorTypeInformation = ActorTypeInformation.Get(actorType, ParamActorTypeName);
+
+        Assert.Equal(ParamActorTypeName, actorTypeInformation.ActorTypeName);
+    }
+
+    private sealed class TestActor : Actor, ITestActor
+    {
+        public TestActor(ActorHost host)
+            : base(host)
         {
         }
+    }
 
-        [Fact]
-        public void TestInferredActorType()
+    [Actor(TypeName = RenamedActorTypeName)]
+    private sealed class RenamedActor : Actor, ITestActor
+    {
+        public RenamedActor(ActorHost host)
+            : base(host)
         {
-            var actorType = typeof(TestActor);
-            var actorTypeInformation = ActorTypeInformation.Get(actorType, actorTypeName: null);
-
-            Assert.Equal(actorType.Name, actorTypeInformation.ActorTypeName);
-        }
-
-        [Fact]
-        public void TestExplicitActorType()
-        {
-            var actorType = typeof(RenamedActor);
-
-            Assert.NotEqual(RenamedActorTypeName, actorType.Name);
-
-            var actorTypeInformation = ActorTypeInformation.Get(actorType, actorTypeName: null);
-
-            Assert.Equal(RenamedActorTypeName, actorTypeInformation.ActorTypeName);
-        }
-
-        [Theory]
-        [InlineData(typeof(TestActor))]
-        [InlineData(typeof(RenamedActor))]
-        public void TestExplicitActorTypeAsParam(Type actorType)
-        {
-            Assert.NotEqual(ParamActorTypeName, actorType.Name);
-            Assert.NotEqual(ParamActorTypeName, actorType.GetCustomAttribute<ActorAttribute>()?.TypeName);
-
-            var actorTypeInformation = ActorTypeInformation.Get(actorType, ParamActorTypeName);
-
-            Assert.Equal(ParamActorTypeName, actorTypeInformation.ActorTypeName);
-        }
-
-        private sealed class TestActor : Actor, ITestActor
-        {
-            public TestActor(ActorHost host)
-                : base(host)
-            {
-            }
-        }
-
-        [Actor(TypeName = RenamedActorTypeName)]
-        private sealed class RenamedActor : Actor, ITestActor
-        {
-            public RenamedActor(ActorHost host)
-                : base(host)
-            {
-            }
         }
     }
 }

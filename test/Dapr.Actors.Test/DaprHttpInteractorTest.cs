@@ -11,421 +11,420 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Test
+namespace Dapr.Actors.Test;
+
+using System;
+using System.Globalization;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Security.Authentication;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Shouldly;
+using Xunit;
+
+/// <summary>
+/// Contains tests for DaprHttpInteractor.
+/// </summary>
+public class DaprHttpInteractorTest
 {
-    using System;
-    using System.Globalization;
-    using System.Linq;
-    using System.Net;
-    using System.Net.Http;
-    using System.Security.Authentication;
-    using System.Text.Json;
-    using System.Threading.Tasks;
-    using Shouldly;
-    using Xunit;
-
-    /// <summary>
-    /// Contains tests for DaprHttpInteractor.
-    /// </summary>
-    public class DaprHttpInteractorTest
+    [Fact]
+    public async Task GetState_ValidateRequest()
     {
-        [Fact]
-        public async Task GetState_ValidateRequest()
+        await using var client = TestClient.CreateForDaprHttpInterator();
+
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string keyName = "StateKey_Test";
+
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await httpInteractor.GetStateAsync(actorType, actorId, keyName);
+        });
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string keyName = "StateKey_Test";
+        request.Dismiss();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.GetStateAsync(actorType, actorId, keyName);
-            });
+        var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
+        var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
 
-            request.Dismiss();
+        actualPath.ShouldBe(expectedPath);
+        request.Request.Method.ShouldBe(HttpMethod.Get);
+    }
 
-            var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
-            var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateKeyRelativeUrlFormat, actorType, actorId, keyName);
+    [Fact]
+    public async Task SaveStateTransactionally_ValidateRequest()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
 
-            actualPath.ShouldBe(expectedPath);
-            request.Request.Method.ShouldBe(HttpMethod.Get);
-        }
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string data = "StateData";
 
-        [Fact]
-        public async Task SaveStateTransactionally_ValidateRequest()
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await httpInteractor.SaveStateTransactionallyAsync(actorType, actorId, data);
+        });
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string data = "StateData";
+        request.Dismiss();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.SaveStateTransactionallyAsync(actorType, actorId, data);
-            });
+        var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
+        var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId);
 
-            request.Dismiss();
+        actualPath.ShouldBe(expectedPath);
+        request.Request.Method.ShouldBe(HttpMethod.Put);
+    }
 
-            var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
-            var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId);
+    [Fact]
+    public async Task InvokeActorMethodWithoutRemoting_ValidateRequest()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
 
-            actualPath.ShouldBe(expectedPath);
-            request.Request.Method.ShouldBe(HttpMethod.Put);
-        }
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string methodName = "MethodName";
+        const string payload = "JsonData";
 
-        [Fact]
-        public async Task InvokeActorMethodWithoutRemoting_ValidateRequest()
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await httpInteractor.InvokeActorMethodWithoutRemotingAsync(actorType, actorId, methodName, payload);
+        });
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string methodName = "MethodName";
-            const string payload = "JsonData";
+        request.Dismiss();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.InvokeActorMethodWithoutRemotingAsync(actorType, actorId, methodName, payload);
-            });
+        var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
+        var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
 
-            request.Dismiss();
+        actualPath.ShouldBe(expectedPath);
+        request.Request.Method.ShouldBe(HttpMethod.Put);
+    }
 
-            var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
-            var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
+    [Fact]
+    public async Task RegisterReminder_ValidateRequest()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
 
-            actualPath.ShouldBe(expectedPath);
-            request.Request.Method.ShouldBe(HttpMethod.Put);
-        }
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string reminderName = "ReminderName";
+        const string payload = "JsonData";
 
-        [Fact]
-        public async Task RegisterReminder_ValidateRequest()
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await httpInteractor.RegisterReminderAsync(actorType, actorId, reminderName, payload);
+        });
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string reminderName = "ReminderName";
-            const string payload = "JsonData";
+        request.Dismiss();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.RegisterReminderAsync(actorType, actorId, reminderName, payload);
-            });
+        var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
+        var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
 
-            request.Dismiss();
+        actualPath.ShouldBe(expectedPath);
+        request.Request.Method.ShouldBe(HttpMethod.Put);
+    }
 
-            var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
-            var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
+    [Fact]
+    public async Task UnregisterReminder_ValidateRequest()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
 
-            actualPath.ShouldBe(expectedPath);
-            request.Request.Method.ShouldBe(HttpMethod.Put);
-        }
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string reminderName = "ReminderName";
 
-        [Fact]
-        public async Task UnregisterReminder_ValidateRequest()
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await httpInteractor.UnregisterReminderAsync(actorType, actorId, reminderName);
+        });
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string reminderName = "ReminderName";
+        request.Dismiss();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.UnregisterReminderAsync(actorType, actorId, reminderName);
-            });
+        var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
+        var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
 
-            request.Dismiss();
+        actualPath.ShouldBe(expectedPath);
+        request.Request.Method.ShouldBe(HttpMethod.Delete);
+    }
 
-            var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
-            var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
-
-            actualPath.ShouldBe(expectedPath);
-            request.Request.Method.ShouldBe(HttpMethod.Delete);
-        }
-
-        [Fact]
-        public async Task GetReminder_ValidateRequest()
-        {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+    [Fact]
+    public async Task GetReminder_ValidateRequest()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
             
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string reminderName = "ReminderName";
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string reminderName = "ReminderName";
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.GetReminderAsync(actorType, actorId, reminderName);
-            });
-
-            request.Dismiss();
-
-            var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
-            var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat,
-                actorType, actorId, reminderName);
-
-            actualPath.ShouldBe(expectedPath);
-            request.Request.Method.ShouldBe(HttpMethod.Get);
-        }
-
-        [Fact]
-        public async Task RegisterTimer_ValidateRequest()
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await httpInteractor.GetReminderAsync(actorType, actorId, reminderName);
+        });
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string timerName = "TimerName";
-            const string payload = "JsonData";
+        request.Dismiss();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.RegisterTimerAsync(actorType, actorId, timerName, payload);
-            });
+        var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
+        var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat,
+            actorType, actorId, reminderName);
 
-            request.Dismiss();
+        actualPath.ShouldBe(expectedPath);
+        request.Request.Method.ShouldBe(HttpMethod.Get);
+    }
 
-            var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
-            var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
+    [Fact]
+    public async Task RegisterTimer_ValidateRequest()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
 
-            actualPath.ShouldBe(expectedPath);
-            request.Request.Method.ShouldBe(HttpMethod.Put);
-        }
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string timerName = "TimerName";
+        const string payload = "JsonData";
 
-        [Fact]
-        public async Task UnregisterTimer_ValidateRequest()
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await httpInteractor.RegisterTimerAsync(actorType, actorId, timerName, payload);
+        });
 
-            var actorType = "ActorType_Test";
-            var actorId = "ActorId_Test";
-            var timerName = "TimerName";
+        request.Dismiss();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
-            });
+        var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
+        var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
 
-            request.Dismiss();
+        actualPath.ShouldBe(expectedPath);
+        request.Request.Method.ShouldBe(HttpMethod.Put);
+    }
 
-            var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
-            var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
+    [Fact]
+    public async Task UnregisterTimer_ValidateRequest()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
 
-            actualPath.ShouldBe(expectedPath);
-            request.Request.Method.ShouldBe(HttpMethod.Delete);
-        }
+        var actorType = "ActorType_Test";
+        var actorId = "ActorId_Test";
+        var timerName = "TimerName";
 
-        [Fact]
-        public async Task Call_WithApiTokenSet()
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator(apiToken: "test_token");
+            await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
+        });
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string timerName = "TimerName";
+        request.Dismiss();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
-            });
+        var actualPath = request.Request.RequestUri.LocalPath.TrimStart('/');
+        var expectedPath = string.Format(CultureInfo.InvariantCulture, Constants.ActorTimerRelativeUrlFormat, actorType, actorId, timerName);
 
-            request.Dismiss();
+        actualPath.ShouldBe(expectedPath);
+        request.Request.Method.ShouldBe(HttpMethod.Delete);
+    }
 
-            request.Request.Headers.TryGetValues("dapr-api-token", out var headerValues);
-            headerValues.Count().ShouldBe(1);
-            headerValues.First().ShouldBe("test_token");
-        }
+    [Fact]
+    public async Task Call_WithApiTokenSet()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator(apiToken: "test_token");
 
-        [Fact]
-        public async Task Call_WithoutApiToken()
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string timerName = "TimerName";
+
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
+        });
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string timerName = "TimerName";
+        request.Dismiss();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
-            });
+        request.Request.Headers.TryGetValues("dapr-api-token", out var headerValues);
+        headerValues.Count().ShouldBe(1);
+        headerValues.First().ShouldBe("test_token");
+    }
 
-            request.Dismiss();
+    [Fact]
+    public async Task Call_WithoutApiToken()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
 
-            request.Request.Headers.TryGetValues("dapr-api-token", out var headerValues);
-            headerValues.ShouldBeNull();
-        }
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string timerName = "TimerName";
 
-        [Fact]
-        public async Task Call_ValidateUnsuccessfulResponse()
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
+        });
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string timerName = "TimerName";
+        request.Dismiss();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
-            });
+        request.Request.Headers.TryGetValues("dapr-api-token", out var headerValues);
+        headerValues.ShouldBeNull();
+    }
 
-            request.Dismiss();
+    [Fact]
+    public async Task Call_ValidateUnsuccessfulResponse()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var error = new DaprError()
-            {
-                ErrorCode = "ERR_STATE_STORE",
-                Message = "State Store Error"
-            };
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string timerName = "TimerName";
 
-            var message = new HttpResponseMessage(HttpStatusCode.InternalServerError)
-            {
-                Content = new StringContent(JsonSerializer.Serialize(error))
-            };
-
-            await Assert.ThrowsAsync<DaprApiException>(async () =>
-            {
-                await request.CompleteAsync(message);
-            });
-        }
-
-        [Fact]
-        public async Task Call_ValidateUnsuccessful404Response()
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
+        });
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string timerName = "TimerName";
+        request.Dismiss();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
-            });
-
-            var message = new HttpResponseMessage(HttpStatusCode.NotFound);
-
-            await Assert.ThrowsAsync<DaprApiException>(async () =>
-            {
-                await request.CompleteAsync(message);
-            });
-        }
-
-        [Fact]
-        public async Task Call_ValidateUnauthorizedResponse()
+        var error = new DaprError()
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            ErrorCode = "ERR_STATE_STORE",
+            Message = "State Store Error"
+        };
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string timerName = "TimerName";
-
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
-            });
-
-            var message = new HttpResponseMessage(HttpStatusCode.Unauthorized);
-
-            await Assert.ThrowsAsync<AuthenticationException>(async () =>
-            {
-                await request.CompleteAsync(message);
-            });
-        }
-
-        [Fact]
-        public async Task InvokeActorMethodAddsReentrancyIdIfSet_ValidateHeaders()
+        var message = new HttpResponseMessage(HttpStatusCode.InternalServerError)
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            Content = new StringContent(JsonSerializer.Serialize(error))
+        };
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string methodName = "MethodName";
-            const string payload = "JsonData";
-
-            ActorReentrancyContextAccessor.ReentrancyContext = "1";
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.InvokeActorMethodWithoutRemotingAsync(actorType, actorId, methodName, payload);
-            });
-
-            request.Dismiss();
-            Assert.True(request.Request.Headers.Contains(Constants.ReentrancyRequestHeaderName));
-            Assert.Contains("1", request.Request.Headers.GetValues(Constants.ReentrancyRequestHeaderName));
-        }
-
-        [Fact]
-        public async Task InvokeActorMethodOmitsReentrancyIdIfNotSet_ValidateHeaders()
+        await Assert.ThrowsAsync<DaprApiException>(async () =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await request.CompleteAsync(message);
+        });
+    }
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string methodName = "MethodName";
-            const string payload = "JsonData";
+    [Fact]
+    public async Task Call_ValidateUnsuccessful404Response()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                await httpInteractor.InvokeActorMethodWithoutRemotingAsync(actorType, actorId, methodName, payload);
-            });
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string timerName = "TimerName";
 
-            request.Dismiss();
-            Assert.False(request.Request.Headers.Contains(Constants.ReentrancyRequestHeaderName));
-        }
-
-        [Fact]
-        public async Task GetState_TTLExpireTimeExists()
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
+        });
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string keyName = "StateKey_Test";
+        var message = new HttpResponseMessage(HttpStatusCode.NotFound);
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
-            {
-                return await httpInteractor.GetStateAsync(actorType, actorId, keyName);
-            });
-
-            var message = new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("test"),
-                Headers =
-                {
-                    { "Metadata.ttlExpireTime", "2023-04-05T23:22:21Z" },
-                },
-            };
-
-            var actual = await request.CompleteAsync(message);
-            Assert.Equal("test", actual.Value);
-            var expTTL = new DateTimeOffset(2023, 04, 05, 23, 22, 21, 0, new GregorianCalendar(), new TimeSpan(0, 0, 0));
-            Assert.Equal(expTTL, actual.TTLExpireTime);
-        }
-
-        [Fact]
-        public async Task GetState_TTLExpireTimeNotExists()
+        await Assert.ThrowsAsync<DaprApiException>(async () =>
         {
-            await using var client = TestClient.CreateForDaprHttpInterator();
+            await request.CompleteAsync(message);
+        });
+    }
 
-            const string actorType = "ActorType_Test";
-            const string actorId = "ActorId_Test";
-            const string keyName = "StateKey_Test";
+    [Fact]
+    public async Task Call_ValidateUnauthorizedResponse()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
 
-            var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string timerName = "TimerName";
+
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
+        {
+            await httpInteractor.UnregisterTimerAsync(actorType, actorId, timerName);
+        });
+
+        var message = new HttpResponseMessage(HttpStatusCode.Unauthorized);
+
+        await Assert.ThrowsAsync<AuthenticationException>(async () =>
+        {
+            await request.CompleteAsync(message);
+        });
+    }
+
+    [Fact]
+    public async Task InvokeActorMethodAddsReentrancyIdIfSet_ValidateHeaders()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
+
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string methodName = "MethodName";
+        const string payload = "JsonData";
+
+        ActorReentrancyContextAccessor.ReentrancyContext = "1";
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
+        {
+            await httpInteractor.InvokeActorMethodWithoutRemotingAsync(actorType, actorId, methodName, payload);
+        });
+
+        request.Dismiss();
+        Assert.True(request.Request.Headers.Contains(Constants.ReentrancyRequestHeaderName));
+        Assert.Contains("1", request.Request.Headers.GetValues(Constants.ReentrancyRequestHeaderName));
+    }
+
+    [Fact]
+    public async Task InvokeActorMethodOmitsReentrancyIdIfNotSet_ValidateHeaders()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
+
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string methodName = "MethodName";
+        const string payload = "JsonData";
+
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
+        {
+            await httpInteractor.InvokeActorMethodWithoutRemotingAsync(actorType, actorId, methodName, payload);
+        });
+
+        request.Dismiss();
+        Assert.False(request.Request.Headers.Contains(Constants.ReentrancyRequestHeaderName));
+    }
+
+    [Fact]
+    public async Task GetState_TTLExpireTimeExists()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
+
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string keyName = "StateKey_Test";
+
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
+        {
+            return await httpInteractor.GetStateAsync(actorType, actorId, keyName);
+        });
+
+        var message = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("test"),
+            Headers =
             {
-                return await httpInteractor.GetStateAsync(actorType, actorId, keyName);
-            });
+                { "Metadata.ttlExpireTime", "2023-04-05T23:22:21Z" },
+            },
+        };
 
-            var message = new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent("test"),
-            };
+        var actual = await request.CompleteAsync(message);
+        Assert.Equal("test", actual.Value);
+        var expTTL = new DateTimeOffset(2023, 04, 05, 23, 22, 21, 0, new GregorianCalendar(), new TimeSpan(0, 0, 0));
+        Assert.Equal(expTTL, actual.TTLExpireTime);
+    }
 
-            var actual = await request.CompleteAsync(message);
-            Assert.Equal("test", actual.Value);
-            Assert.False(actual.TTLExpireTime.HasValue);
-        }
+    [Fact]
+    public async Task GetState_TTLExpireTimeNotExists()
+    {
+        await using var client = TestClient.CreateForDaprHttpInterator();
+
+        const string actorType = "ActorType_Test";
+        const string actorId = "ActorId_Test";
+        const string keyName = "StateKey_Test";
+
+        var request = await client.CaptureHttpRequestAsync(async httpInteractor =>
+        {
+            return await httpInteractor.GetStateAsync(actorType, actorId, keyName);
+        });
+
+        var message = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("test"),
+        };
+
+        var actual = await request.CompleteAsync(message);
+        Assert.Equal("test", actual.Value);
+        Assert.False(actual.TTLExpireTime.HasValue);
     }
 }

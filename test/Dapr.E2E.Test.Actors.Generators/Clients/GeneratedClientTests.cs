@@ -13,7 +13,6 @@
 
 using Dapr.Actors;
 using Dapr.Actors.Client;
-using Xunit.Abstractions;
 
 namespace Dapr.E2E.Test.Actors.Generators.Clients;
 

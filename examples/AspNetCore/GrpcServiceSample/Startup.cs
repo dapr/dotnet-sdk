@@ -19,47 +19,46 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace GrpcServiceSample
+namespace GrpcServiceSample;
+
+/// <summary>
+/// Startup class.
+/// </summary>
+public class Startup
 {
     /// <summary>
-    /// Startup class.
+    /// Configure Services
     /// </summary>
-    public class Startup
+    /// <param name="services"></param>
+    public void ConfigureServices(IServiceCollection services)
     {
-        /// <summary>
-        /// Configure Services
-        /// </summary>
-        /// <param name="services"></param>
-        public void ConfigureServices(IServiceCollection services)
-        {
-            services.AddGrpc();
+        services.AddGrpc();
 
-            services.AddDaprClient();
+        services.AddDaprClient();
+    }
+
+    /// <summary>
+    /// Configure app
+    /// </summary>
+    /// <param name="app"></param>
+    /// <param name="env"></param>
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment())
+        {
+            app.UseDeveloperExceptionPage();
         }
 
-        /// <summary>
-        /// Configure app
-        /// </summary>
-        /// <param name="app"></param>
-        /// <param name="env"></param>
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        app.UseRouting();
+
+        app.UseEndpoints(endpoints =>
         {
-            if (env.IsDevelopment())
+            endpoints.MapGrpcService<BankingService>();
+
+            endpoints.MapGet("/", async context =>
             {
-                app.UseDeveloperExceptionPage();
-            }
-
-            app.UseRouting();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapGrpcService<BankingService>();
-
-                endpoints.MapGet("/", async context =>
-                {
-                    await context.Response.WriteAsync("Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
-                });
+                await context.Response.WriteAsync("Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
             });
-        }
+        });
     }
 }

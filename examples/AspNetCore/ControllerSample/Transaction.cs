@@ -11,24 +11,23 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace ControllerSample
+namespace ControllerSample;
+
+using System.ComponentModel.DataAnnotations;
+
+/// <summary>
+/// Represents a transaction used by sample code.
+/// </summary>
+public class Transaction
 {
-    using System.ComponentModel.DataAnnotations;
+    /// <summary>
+    /// Gets or sets account id for the transaction.
+    /// </summary>
+    [Required]
+    public string Id { get; set; }
 
     /// <summary>
-    /// Represents a transaction used by sample code.
-    /// </summary>
-    public class Transaction
-    {
-        /// <summary>
-        /// Gets or sets account id for the transaction.
-        /// </summary>
-        [Required]
-        public string Id { get; set; }
-
-        /// <summary>
-        /// Gets or sets amount for the transaction.
-        /// </summary
-        public decimal Amount { get; set; }
-    }
+    /// Gets or sets amount for the transaction.
+    /// </summary
+    public decimal Amount { get; set; }
 }

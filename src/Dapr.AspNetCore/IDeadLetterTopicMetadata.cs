@@ -11,17 +11,15 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr
+namespace Dapr;
+
+/// <summary>
+/// IDeadLetterTopicMetadata that describes the metadata of a dead letter topic.
+/// </summary>
+public interface IDeadLetterTopicMetadata
 {
     /// <summary>
-    /// IDeadLetterTopicMetadata that describes the metadata of a dead letter topic.
+    /// Gets the dead letter topic name
     /// </summary>
-    public interface IDeadLetterTopicMetadata
-    {
-        /// <summary>
-        /// Gets the dead letter topic name
-        /// </summary>
-        public string DeadLetterTopic { get; }
-    }
+    public string DeadLetterTopic { get; }
 }
-

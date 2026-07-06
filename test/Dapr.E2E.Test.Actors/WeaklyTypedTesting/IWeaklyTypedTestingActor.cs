@@ -14,12 +14,11 @@
 using System.Threading.Tasks;
 using Dapr.Actors;
 
-namespace Dapr.E2E.Test.Actors.WeaklyTypedTesting
-{
-    public interface IWeaklyTypedTestingActor : IPingActor, IActor
-    {
-        Task<ResponseBase> GetPolymorphicResponse();
+namespace Dapr.E2E.Test.Actors.WeaklyTypedTesting;
 
-        Task<ResponseBase> GetNullResponse();
-    }
+public interface IWeaklyTypedTestingActor : IPingActor, IActor
+{
+    Task<ResponseBase> GetPolymorphicResponse();
+
+    Task<ResponseBase> GetNullResponse();
 }

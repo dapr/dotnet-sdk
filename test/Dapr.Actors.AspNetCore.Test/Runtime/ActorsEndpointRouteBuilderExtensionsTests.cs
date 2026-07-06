@@ -21,82 +21,147 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Xunit;
 
-namespace Dapr.Actors.Runtime
+namespace Dapr.Actors.Runtime;
+
+public class ActorsEndpointRouteBuilderExtensionsTests
 {
-    public class ActorsEndpointRouteBuilderExtensionsTests
+    [Fact]
+    public async Task MapActorsHandlers_MapDaprConfigEndpoint()
     {
-        [Fact]
-        public async Task MapActorsHandlers_MapDaprConfigEndpoint()
+        using var host = CreateHost<ActorsStartup>(options =>
         {
-            using var host = CreateHost<ActorsStartup>(options =>
+            options.Actors.RegisterActor<TestActor>();
+        });
+        var server = host.GetTestServer();
+
+        var httpClient = server.CreateClient();
+        var response = await httpClient.GetAsync("/dapr/config", TestContext.Current.CancellationToken);
+
+        var text = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(@"{""entities"":[""TestActor""],""reentrancy"":{""enabled"":false}}", text);
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_HealthzEndpointResponds()
+    {
+        using var host = CreateHost<ActorsStartup>(options =>
+        {
+            options.Actors.RegisterActor<TestActor>();
+        });
+        var server = host.GetTestServer();
+        var httpClient = server.CreateClient();
+
+        var response = await httpClient.GetAsync("/healthz", TestContext.Current.CancellationToken);
+        Assert.True(response.IsSuccessStatusCode, $"Expected 2xx but got {response.StatusCode}");
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_InvokeMethodRouteReturnsForRegisteredActor()
+    {
+        using var host = CreateHost<ActorsStartup>(options =>
+        {
+            options.Actors.RegisterActor<RealMethodActor>();
+        });
+        var server = host.GetTestServer();
+        var httpClient = server.CreateClient();
+
+        // PUT /actors/{actorTypeName}/{actorId}/method/{methodName}
+        var request = new System.Net.Http.HttpRequestMessage(
+            System.Net.Http.HttpMethod.Put,
+            $"/actors/RealMethodActor/actor1/method/{nameof(IRealMethodActor.PingAsync)}");
+        var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
+
+        // Not a 404 — route was matched and the method was invoked.
+        Assert.NotEqual(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+        Assert.True(response.IsSuccessStatusCode, $"Expected 2xx but got {response.StatusCode}");
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_UnregisteredActorType_ThrowsInvalidOperationException()
+    {
+        using var host = CreateHost<ActorsStartup>(options =>
+        {
+            options.Actors.RegisterActor<TestActor>();
+        });
+        var server = host.GetTestServer();
+        var httpClient = server.CreateClient();
+
+        // PUT /actors/{unknownType}/{id}/method/{method} — should throw because the type is not registered.
+        var request = new System.Net.Http.HttpRequestMessage(
+            System.Net.Http.HttpMethod.Put,
+            "/actors/DoesNotExist/id1/method/Foo");
+
+        // The TestServer propagates the unhandled exception from the route handler.
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => httpClient.SendAsync(request, TestContext.Current.CancellationToken));
+    }
+
+    private static IHost CreateHost<TStartup>(Action<ActorRuntimeOptions> configure) where TStartup : class
+    {
+        var builder = Host
+            .CreateDefaultBuilder()
+            .ConfigureLogging(b =>
             {
-                options.Actors.RegisterActor<TestActor>();
+                // shhhh
+                b.SetMinimumLevel(LogLevel.None);
+            })
+            .ConfigureWebHostDefaults(webBuilder =>
+            {
+                webBuilder.UseStartup<TStartup>();
+                webBuilder.UseTestServer();
+            })
+            .ConfigureServices(services =>
+            {
+                services.AddActors(configure);
             });
-            var server = host.GetTestServer();
-
-            var httpClient = server.CreateClient();
-            var response = await httpClient.GetAsync("/dapr/config");
-
-            var text = await response.Content.ReadAsStringAsync();
-            Assert.Equal(@"{""entities"":[""TestActor""],""reentrancy"":{""enabled"":false}}", text);
-        }
-
-        private static IHost CreateHost<TStartup>(Action<ActorRuntimeOptions> configure) where TStartup : class
+        var host = builder.Build();
+        try
         {
-            var builder = Host
-                .CreateDefaultBuilder()
-                .ConfigureLogging(b =>
-                {
-                    // shhhh
-                    b.SetMinimumLevel(LogLevel.None);
-                })
-                .ConfigureWebHostDefaults(webBuilder =>
-                {
-                    webBuilder.UseStartup<TStartup>();
-                    webBuilder.UseTestServer();
-                })
-                .ConfigureServices(services =>
-                {
-                    services.AddActors(configure);
-                });
-            var host = builder.Build();
-            try
-            {
-                host.Start();
-            }
-            catch
-            {
-                host.Dispose();
-                throw;
-            }
-
-            return host;
+            host.Start();
         }
-
-        private class ActorsStartup
+        catch
         {
-            public void ConfigureServices(IServiceCollection services)
-            {
-                services.AddActors(default);
-            }
-
-            public void Configure(IApplicationBuilder app)
-            {
-                app.UseRouting();
-                app.UseEndpoints(endpoints =>
-                {
-                    endpoints.MapActorsHandlers();
-                });
-            }
+            host.Dispose();
+            throw;
         }
 
-        private interface ITestActor : IActor
+        return host;
+    }
+
+    private class ActorsStartup
+    {
+        public void ConfigureServices(IServiceCollection services)
         {
+            services.AddActors(default);
         }
 
-        private class TestActor : Actor, ITestActor
+        public void Configure(IApplicationBuilder app)
         {
-            public TestActor(ActorHost host) : base(host) { }
+            app.UseRouting();
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapActorsHandlers();
+            });
         }
+    }
+
+    private interface ITestActor : IActor
+    {
+    }
+
+    private class TestActor : Actor, ITestActor
+    {
+        public TestActor(ActorHost host) : base(host) { }
+    }
+
+    private interface IRealMethodActor : IActor
+    {
+        Task PingAsync();
+    }
+
+    private class RealMethodActor : Actor, IRealMethodActor
+    {
+        public RealMethodActor(ActorHost host) : base(host) { }
+        public Task PingAsync() => Task.CompletedTask;
     }
 }

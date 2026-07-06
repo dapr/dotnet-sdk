@@ -11,47 +11,46 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors
+namespace Dapr.Actors;
+
+using System.IO;
+using System.Runtime.Serialization;
+using System.Xml;
+
+[DataContract(Name = "ActorInvokeExceptionData", Namespace = Constants.Namespace)]
+internal class ActorInvokeExceptionData
 {
-    using System.IO;
-    using System.Runtime.Serialization;
-    using System.Xml;
+    private static readonly DataContractSerializer ActorInvokeExceptionDataSerializer = new DataContractSerializer(typeof(ActorInvokeExceptionData));
 
-    [DataContract(Name = "ActorInvokeExceptionData", Namespace = Constants.Namespace)]
-    internal class ActorInvokeExceptionData
+    public ActorInvokeExceptionData(string type, string message)
     {
-        private static readonly DataContractSerializer ActorInvokeExceptionDataSerializer = new DataContractSerializer(typeof(ActorInvokeExceptionData));
+        this.Type = type;
+        this.Message = message;
+    }
 
-        public ActorInvokeExceptionData(string type, string message)
+    [DataMember]
+    public string Type { get; private set; }
+
+    [DataMember]
+    public string Message { get; private set; }
+
+    internal static ActorInvokeExceptionData Deserialize(Stream stream)
+    {
+        if ((stream == null) || (stream.Length == 0))
         {
-            this.Type = type;
-            this.Message = message;
+            return null;
         }
 
-        [DataMember]
-        public string Type { get; private set; }
+        using var reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
+        return (ActorInvokeExceptionData)ActorInvokeExceptionDataSerializer.ReadObject(reader);
+    }
 
-        [DataMember]
-        public string Message { get; private set; }
-
-        internal static ActorInvokeExceptionData Deserialize(Stream stream)
-        {
-            if ((stream == null) || (stream.Length == 0))
-            {
-                return null;
-            }
-
-            using var reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
-            return (ActorInvokeExceptionData)ActorInvokeExceptionDataSerializer.ReadObject(reader);
-        }
-
-        internal byte[] Serialize()
-        {
-            using var stream = new MemoryStream();
-            using var writer = XmlDictionaryWriter.CreateBinaryWriter(stream);
-            ActorInvokeExceptionDataSerializer.WriteObject(writer, this);
-            writer.Flush();
-            return stream.ToArray();
-        }
+    internal byte[] Serialize()
+    {
+        using var stream = new MemoryStream();
+        using var writer = XmlDictionaryWriter.CreateBinaryWriter(stream);
+        ActorInvokeExceptionDataSerializer.WriteObject(writer, this);
+        writer.Flush();
+        return stream.ToArray();
     }
 }

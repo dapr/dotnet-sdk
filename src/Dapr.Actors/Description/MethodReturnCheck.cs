@@ -11,11 +11,10 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Description
+namespace Dapr.Actors.Description;
+
+internal enum MethodReturnCheck
 {
-    internal enum MethodReturnCheck
-    {
-        EnsureReturnsTask,
-        EnsureReturnsVoid,
-    }
+    EnsureReturnsTask,
+    EnsureReturnsVoid,
 }

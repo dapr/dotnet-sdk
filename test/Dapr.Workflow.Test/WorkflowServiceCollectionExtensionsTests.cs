@@ -1,58 +1,796 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Text.Json;
+using Dapr.Common.Serialization;
+using Dapr.DurableTask.Protobuf;
+using Dapr.Workflow.Abstractions;
+using Dapr.Workflow.Client;
+using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Versioning;
+using Dapr.Workflow.Worker;
+using Grpc.Core;
+using Grpc.Net.Client;
+using Grpc.Net.ClientFactory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Moq;
 
 namespace Dapr.Workflow.Test;
 
 public class WorkflowServiceCollectionExtensionsTests
 {
     [Fact]
-    public void RegisterWorkflowClient_ShouldRegisterSingleton_WhenLifetimeIsSingleton()
+    public void AddDaprWorkflow_Parameterless_ShouldThrowArgumentNullException_WhenServiceCollectionIsNull()
     {
-        var services = new ServiceCollection();
-
-        services.AddDaprWorkflow(options => { }, ServiceLifetime.Singleton);
-        var serviceProvider = services.BuildServiceProvider();
-
-        var daprWorkflowClient1 = serviceProvider.GetService<DaprWorkflowClient>();
-        var daprWorkflowClient2 = serviceProvider.GetService<DaprWorkflowClient>();
-
-        Assert.NotNull(daprWorkflowClient1);
-        Assert.NotNull(daprWorkflowClient2);
-        
-        Assert.Same(daprWorkflowClient1, daprWorkflowClient2);
+        IServiceCollection services = null!;
+        Assert.Throws<ArgumentNullException>(services.AddDaprWorkflow);
     }
 
     [Fact]
-    public async Task RegisterWorkflowClient_ShouldRegisterScoped_WhenLifetimeIsScoped()
+    public void AddDaprWorkflow_ShouldThrowArgumentNullException_WhenServiceCollectionIsNull()
     {
-        var services = new ServiceCollection();
-
-        services.AddDaprWorkflow(options => { }, ServiceLifetime.Scoped);
-        var serviceProvider = services.BuildServiceProvider();
-
-        await using var scope1 = serviceProvider.CreateAsyncScope();
-        var daprWorkflowClient1 = scope1.ServiceProvider.GetService<DaprWorkflowClient>();
-
-        await using var scope2 = serviceProvider.CreateAsyncScope();
-        var daprWorkflowClient2 = scope2.ServiceProvider.GetService<DaprWorkflowClient>();
-                
-        Assert.NotNull(daprWorkflowClient1);
-        Assert.NotNull(daprWorkflowClient2);
-        Assert.NotSame(daprWorkflowClient1, daprWorkflowClient2);
+        IServiceCollection services = null!;
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflow(_ => { }));
     }
 
     [Fact]
-    public void RegisterWorkflowClient_ShouldRegisterTransient_WhenLifetimeIsTransient()
+    public void AddDaprWorkflow_ShouldThrowArgumentNullException_WhenConfigureIsNull()
     {
         var services = new ServiceCollection();
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflow(null!));
+    }
 
-        services.AddDaprWorkflow(options => { }, ServiceLifetime.Transient);
-        var serviceProvider = services.BuildServiceProvider();
+    [Fact]
+    public void AddDaprWorkflow_ShouldThrowArgumentOutOfRangeException_WhenLifetimeIsInvalid()
+    {
+        var services = new ServiceCollection();
+        Assert.Throws<ArgumentOutOfRangeException>(() => services.AddDaprWorkflow(_ => { }, (ServiceLifetime)999));
+    }
 
-        var daprWorkflowClient1 = serviceProvider.GetService<DaprWorkflowClient>();
-        var daprWorkflowClient2 = serviceProvider.GetService<DaprWorkflowClient>();
+    [Fact]
+    public void AddDaprWorkflowBuilder_ShouldThrowArgumentNullException_WhenServiceCollectionIsNull()
+    {
+        IServiceCollection services = null!;
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflowBuilder(null));
+    }
 
-        Assert.NotNull(daprWorkflowClient1);
-        Assert.NotNull(daprWorkflowClient2);
-        Assert.NotSame(daprWorkflowClient1, daprWorkflowClient2);
+    [Fact]
+    public void WithSerializer_InstanceOverload_ShouldThrowArgumentNullException_WhenSerializerIsNull()
+    {
+        var services = new ServiceCollection();
+        var builder = services.AddDaprWorkflowBuilder(null);
+
+        Assert.Throws<ArgumentNullException>(() => builder.WithSerializer((IDaprSerializer)null!));
+    }
+
+    [Fact]
+    public void WithSerializer_FactoryOverload_ShouldThrowArgumentNullException_WhenFactoryIsNull()
+    {
+        var services = new ServiceCollection();
+        var builder = services.AddDaprWorkflowBuilder(null);
+
+        Assert.Throws<ArgumentNullException>(() => builder.WithSerializer((Func<IServiceProvider, IWorkflowSerializer>)null!));
+    }
+
+    [Fact]
+    public void WithJsonSerializer_ShouldThrowArgumentNullException_WhenJsonOptionsIsNull()
+    {
+        var services = new ServiceCollection();
+        var builder = services.AddDaprWorkflowBuilder(null);
+
+        Assert.Throws<ArgumentNullException>(() => builder.WithJsonSerializer(null!));
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldNotOverrideCustomSerializer_WhenUserRegistersIDaprSerializerBeforeCallingAddDaprWorkflow()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services.AddSingleton<IDaprSerializer>(MockSerializer.Instance);
+        services.AddDaprWorkflow(_ => { });
+
+        var sp = services.BuildServiceProvider();
+        var serializer = sp.GetRequiredService<IDaprSerializer>();
+
+        Assert.Same(MockSerializer.Instance, serializer);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldForwardLegacyIWorkflowSerializer_WhenRegisteredInDI()
+    {
+        // Backward compat: consumers who registered IWorkflowSerializer directly in DI
+        // (rather than via WithSerializer) should have it honored via the forwarding factory.
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+#pragma warning disable CS0618
+        services.AddSingleton<IWorkflowSerializer>(MockSerializer.Instance);
+#pragma warning restore CS0618
+        services.AddDaprWorkflow(_ => { });
+
+        var sp = services.BuildServiceProvider();
+        var serializer = sp.GetRequiredService<IDaprSerializer>();
+
+        Assert.Same(MockSerializer.Instance, serializer);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldUseDefaultJsonDaprSerializer_WhenNoSerializerRegistered()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDaprWorkflow(_ => { });
+
+        var sp = services.BuildServiceProvider();
+        var serializer = sp.GetRequiredService<IDaprSerializer>();
+
+        Assert.IsType<JsonDaprSerializer>(serializer);
+    }
+
+    [Fact]
+    public void AddDaprWorkflowBuilder_WithJsonSerializer_ShouldReplaceDefaultSerializer()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services
+            .AddDaprWorkflowBuilder(_ => { })
+            .WithJsonSerializer(new JsonSerializerOptions { PropertyNamingPolicy = null });
+
+        var sp = services.BuildServiceProvider();
+        var serializer = sp.GetRequiredService<IDaprSerializer>();
+
+        Assert.IsType<JsonDaprSerializer>(serializer);
+    }
+
+    [Fact]
+    public void AddDaprWorkflowBuilder_WithSerializerInstance_ShouldReplaceDefaultSerializer()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        var serializer = new MockSerializer();
+
+        services
+            .AddDaprWorkflowBuilder(_ => { })
+            .WithSerializer(serializer);
+
+        var sp = services.BuildServiceProvider();
+        var resolved = sp.GetRequiredService<IDaprSerializer>();
+
+        Assert.Same(serializer, resolved);
+    }
+
+    [Fact]
+    public void AddDaprWorkflowBuilder_WithSerializerFactory_ShouldResolveDependenciesFromServiceProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddSingleton(new SerializerDependency("dep-1"));
+
+        services
+            .AddDaprWorkflowBuilder(_ => { })
+            .WithSerializer(sp =>
+            {
+                var dep = sp.GetRequiredService<SerializerDependency>();
+                return new DependencyBasedSerializer(dep);
+            });
+
+        var sp = services.BuildServiceProvider();
+        var serializer = sp.GetRequiredService<IDaprSerializer>();
+
+        var typed = Assert.IsType<DependencyBasedSerializer>(serializer);
+        Assert.Equal("dep-1", typed.Dep.Value);
+    }
+    
+    [Fact]
+    public void AddDaprWorkflow_ShouldApplyGrpcChannelOptionsIntoGrpcClientFactoryOptions()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services.AddDaprWorkflow(options =>
+        {
+            options.UseGrpcChannelOptions(new GrpcChannelOptions
+            {
+                MaxReceiveMessageSize = 1234,
+                MaxSendMessageSize = 5678
+            });
+        });
+
+        var sp = services.BuildServiceProvider();
+
+        var monitor = sp.GetRequiredService<IOptionsMonitor<GrpcClientFactoryOptions>>();
+
+        var clientType = typeof(TaskHubSidecarService.TaskHubSidecarServiceClient);
+
+        var grpcOptions =
+            monitor.Get(clientType.FullName!);
+
+        if (grpcOptions.ChannelOptionsActions.Count == 0)
+        {
+            grpcOptions = monitor.Get(clientType.Name);
+        }
+
+        Assert.NotNull(grpcOptions);
+        Assert.NotEmpty(grpcOptions.ChannelOptionsActions);
+
+        var channelOptions = new GrpcChannelOptions();
+        foreach (var action in grpcOptions.ChannelOptionsActions)
+        {
+            action(channelOptions);
+        }
+
+        Assert.Equal(1234, channelOptions.MaxReceiveMessageSize);
+        Assert.Equal(5678, channelOptions.MaxSendMessageSize);
+    }
+
+    [Fact]
+    public async Task AddDaprWorkflow_ShouldCreateWorkflowsFactory_AndApplyRegistrationsFromOptions()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddDaprWorkflow(options =>
+        {
+            options.RegisterWorkflow<int, int>("wf", (_, x) => Task.FromResult(x + 1));
+            options.RegisterActivity<int, int>("act", (_, x) => Task.FromResult(x + 2));
+        });
+
+        var sp = services.BuildServiceProvider();
+
+        var factory = sp.GetRequiredService<IWorkflowsFactory>();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier("wf"), sp, out var wf, out _));
+        Assert.NotNull(wf);
+
+        var wfResult = await wf.RunAsync(new FakeWorkflowContext(), 10);
+        Assert.Equal(11, wfResult);
+
+        Assert.True(factory.TryCreateActivity(new TaskIdentifier("act"), sp, out var act, out _));
+        Assert.NotNull(act);
+
+        var actResult = await act.RunAsync(new FakeActivityContext(), 10);
+        Assert.Equal(12, actResult);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldRegisterWorkflowClientImplementation_AsWorkflowGrpcClient()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        // Provide a concrete proto client so the WorkflowClient factory can be executed.
+        var callInvoker = new Mock<CallInvoker>(MockBehavior.Loose);
+        services.AddSingleton(new TaskHubSidecarService.TaskHubSidecarServiceClient(callInvoker.Object));
+
+        services.AddDaprWorkflow(_ => { });
+
+        var sp = services.BuildServiceProvider();
+
+        var workflowClient = sp.GetRequiredService<WorkflowClient>();
+
+        Assert.NotNull(workflowClient);
+        Assert.IsType<WorkflowGrpcClient>(workflowClient);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldRegisterWorkflowWorker_AsHostedService()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        // These are required for the hosted service construction to be possible.
+        var callInvoker = new Mock<CallInvoker>(MockBehavior.Loose);
+        services.AddSingleton(new TaskHubSidecarService.TaskHubSidecarServiceClient(callInvoker.Object));
+
+        services.AddDaprWorkflow(_ => { });
+
+        var hostedDescriptors = services
+            .Where(d => d.ServiceType == typeof(IHostedService))
+            .ToList();
+
+        Assert.Contains(hostedDescriptors, d => d.ImplementationType == typeof(WorkflowWorker));
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldAutoRegisterDiscoveredWorkflowSimpleNames()
+    {
+        WorkflowAutoRegistry.Register(options =>
+        {
+            options.RegisterWorkflow<PlainAutoRegisteredWorkflow>();
+        });
+
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddDaprWorkflow(_ => { });
+
+        using var sp = services.BuildServiceProvider();
+        var factory = sp.GetRequiredService<IWorkflowsFactory>();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier(nameof(PlainAutoRegisteredWorkflow)), sp, out var workflow, out _));
+        Assert.NotNull(workflow);
+        Assert.IsType<PlainAutoRegisteredWorkflow>(workflow);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_WithVersioning_ShouldRouteCanonicalNameToLatestNumericSuffixWorkflow()
+    {
+        WorkflowAutoRegistry.Register(options =>
+        {
+            options.RegisterWorkflow<NumericRoutingWorkflow>();
+            options.RegisterWorkflow<NumericRoutingWorkflowV2>();
+            options.RegisterWorkflow<NumericRoutingWorkflowV3>();
+        });
+
+        WorkflowVersioningRegistry.Register((options, _) =>
+        {
+            options.RegisterWorkflow<NumericRoutingWorkflowV3>(nameof(NumericRoutingWorkflow));
+            options.RegisterWorkflow<NumericRoutingWorkflow>(nameof(NumericRoutingWorkflow));
+            options.RegisterWorkflow<NumericRoutingWorkflowV2>(nameof(NumericRoutingWorkflowV2));
+            options.RegisterWorkflow<NumericRoutingWorkflowV3>(nameof(NumericRoutingWorkflowV3));
+        });
+
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddDaprWorkflow(_ => { });
+        services.AddDaprWorkflowVersioning();
+
+        using var sp = services.BuildServiceProvider();
+        _ = sp.GetServices<IHostedService>().ToArray();
+        var factory = sp.GetRequiredService<IWorkflowsFactory>();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier(nameof(NumericRoutingWorkflow)), sp, out var workflow, out _));
+        Assert.NotNull(workflow);
+        Assert.IsType<NumericRoutingWorkflowV3>(workflow);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_WithVersioning_ShouldSelectV3ForUnsuffixedCanonicalBaseWorkflowName()
+    {
+        WorkflowAutoRegistry.Register(options =>
+        {
+            options.RegisterWorkflow<DiagnosticsWorkflow>();
+            options.RegisterWorkflow<DiagnosticsWorkflowV2>();
+            options.RegisterWorkflow<DiagnosticsWorkflowV3>();
+        });
+
+        WorkflowVersioningRegistry.Register((options, _) =>
+        {
+            options.RegisterWorkflow<DiagnosticsWorkflowV3>(nameof(DiagnosticsWorkflow));
+            options.RegisterWorkflow<DiagnosticsWorkflow>(nameof(DiagnosticsWorkflow));
+            options.RegisterWorkflow<DiagnosticsWorkflowV2>(nameof(DiagnosticsWorkflowV2));
+            options.RegisterWorkflow<DiagnosticsWorkflowV3>(nameof(DiagnosticsWorkflowV3));
+        });
+
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddDaprWorkflow(_ => { });
+        services.AddDaprWorkflowVersioning();
+
+        using var sp = services.BuildServiceProvider();
+        _ = sp.GetServices<IHostedService>().ToArray();
+        var factory = sp.GetRequiredService<IWorkflowsFactory>();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier(nameof(DiagnosticsWorkflow)), sp, out var workflow, out _));
+        Assert.NotNull(workflow);
+        Assert.IsType<DiagnosticsWorkflowV3>(workflow);
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_WithVersioning_ShouldPreserveExplicitWorkflowRegistrationPrecedence()
+    {
+        WorkflowAutoRegistry.Register(options =>
+        {
+            options.RegisterWorkflow<ExplicitAliasWorkflow>();
+            options.RegisterWorkflow<ExplicitAliasWorkflowV2>();
+            options.RegisterWorkflow<ExplicitAliasWorkflowV3>();
+        });
+
+        WorkflowVersioningRegistry.Register((options, _) =>
+        {
+            options.RegisterWorkflow<ExplicitAliasWorkflowV3>(nameof(ExplicitAliasWorkflow));
+            options.RegisterWorkflow<ExplicitAliasWorkflow>(nameof(ExplicitAliasWorkflow));
+            options.RegisterWorkflow<ExplicitAliasWorkflowV2>(nameof(ExplicitAliasWorkflowV2));
+            options.RegisterWorkflow<ExplicitAliasWorkflowV3>(nameof(ExplicitAliasWorkflowV3));
+        });
+
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddDaprWorkflow(options =>
+        {
+            options.RegisterWorkflow<ExplicitAliasOverrideWorkflow>(nameof(ExplicitAliasWorkflow));
+        });
+        services.AddDaprWorkflowVersioning();
+
+        using var sp = services.BuildServiceProvider();
+        _ = sp.GetServices<IHostedService>().ToArray();
+        var factory = sp.GetRequiredService<IWorkflowsFactory>();
+
+        Assert.True(factory.TryCreateWorkflow(new TaskIdentifier(nameof(ExplicitAliasWorkflow)), sp, out var workflow, out _));
+        Assert.NotNull(workflow);
+        Assert.IsType<ExplicitAliasOverrideWorkflow>(workflow);
+    }
+    
+    [Fact]
+    public void AddDaprWorkflowClient_WithGrpcMessageSizeLimits_ShouldApplyIntoGrpcClientFactoryOptions()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services
+            .AddDaprWorkflowClient()
+            .WithGrpcMessageSizeLimits(maxReceiveMessageSize: 4321, maxSendMessageSize: 8765);
+
+        var sp = services.BuildServiceProvider();
+
+        var monitor = sp.GetRequiredService<IOptionsMonitor<GrpcClientFactoryOptions>>();
+        var clientType = typeof(TaskHubSidecarService.TaskHubSidecarServiceClient);
+
+        var grpcOptions =
+            monitor.Get(clientType.FullName!);
+
+        if (grpcOptions.ChannelOptionsActions.Count == 0)
+        {
+            grpcOptions = monitor.Get(clientType.Name);
+        }
+
+        Assert.NotNull(grpcOptions);
+        Assert.NotEmpty(grpcOptions.ChannelOptionsActions);
+
+        var channelOptions = new GrpcChannelOptions();
+        foreach (var action in grpcOptions.ChannelOptionsActions)
+        {
+            action(channelOptions);
+        }
+
+        Assert.Equal(4321, channelOptions.MaxReceiveMessageSize);
+        Assert.Equal(8765, channelOptions.MaxSendMessageSize);
+    }
+
+    [Fact]
+    public void WithGrpcMessageSizeLimits_ShouldNotModifyOptions_WhenNoValuesProvided()
+    {
+        var baselineServices = new ServiceCollection();
+        baselineServices.AddLogging();
+        baselineServices.AddDaprWorkflowClient();
+
+        using var baselineProvider = baselineServices.BuildServiceProvider();
+        var baselineCount = GetGrpcChannelOptionsActionCount(baselineProvider);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services
+            .AddDaprWorkflowClient()
+            .WithGrpcMessageSizeLimits();
+
+        using var provider = services.BuildServiceProvider();
+        var count = GetGrpcChannelOptionsActionCount(provider);
+
+        Assert.Equal(baselineCount, count);
+    }
+
+    [Fact]
+    public void WithGrpcMessageSizeLimits_ShouldApplyOnlyReceiveLimit_WhenSendIsNull()
+    {
+        var baselineServices = new ServiceCollection();
+        baselineServices.AddLogging();
+        baselineServices.AddDaprWorkflowClient();
+
+        using var baselineProvider = baselineServices.BuildServiceProvider();
+        var baseline = ApplyGrpcOptions(baselineProvider);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services
+            .AddDaprWorkflowClient()
+            .WithGrpcMessageSizeLimits(maxReceiveMessageSize: 1111);
+
+        using var provider = services.BuildServiceProvider();
+        var channelOptions = ApplyGrpcOptions(provider);
+
+        Assert.Equal(1111, channelOptions.MaxReceiveMessageSize);
+        Assert.Equal(baseline.MaxSendMessageSize, channelOptions.MaxSendMessageSize);
+    }
+
+    [Fact]
+    public void WithGrpcMessageSizeLimits_ShouldApplyOnlySendLimit_WhenReceiveIsNull()
+    {
+        var baselineServices = new ServiceCollection();
+        baselineServices.AddLogging();
+        baselineServices.AddDaprWorkflowClient();
+
+        using var baselineProvider = baselineServices.BuildServiceProvider();
+        var baseline = ApplyGrpcOptions(baselineProvider);
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services
+            .AddDaprWorkflowClient()
+            .WithGrpcMessageSizeLimits(maxSendMessageSize: 2222);
+
+        using var provider = services.BuildServiceProvider();
+        var channelOptions = ApplyGrpcOptions(provider);
+
+        Assert.Equal(baseline.MaxReceiveMessageSize, channelOptions.MaxReceiveMessageSize);
+        Assert.Equal(2222, channelOptions.MaxSendMessageSize);
+    }
+
+    [Theory]
+    [InlineData(0, 1024)]
+    [InlineData(1024, 0)]
+    [InlineData(-1, 1024)]
+    [InlineData(1024, -1)]
+    public void WithGrpcMessageSizeLimits_ShouldThrowArgumentOutOfRangeException_ForNonPositiveValues(int receive, int send)
+    {
+        var services = new ServiceCollection();
+        services.AddDaprWorkflowClient();
+
+        var builder = new WorkflowServiceCollectionExtensions.DaprWorkflowBuilder(services);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => builder.WithGrpcMessageSizeLimits(receive, send));
+    }
+    
+    [Theory]
+    [InlineData(ServiceLifetime.Singleton)]
+    [InlineData(ServiceLifetime.Scoped)]
+    [InlineData(ServiceLifetime.Transient)]
+    public void AddDaprWorkflow_ShouldRegisterDaprWorkflowClient_WithConfiguredLifetime(ServiceLifetime lifetime)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        services.AddDaprWorkflow(_ => { }, lifetime);
+
+        var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DaprWorkflowClient));
+        Assert.NotNull(descriptor);
+        Assert.Equal(lifetime, descriptor.Lifetime);
+    }
+    
+    [Fact]
+    public void AddDaprWorkflowClient_ShouldResolve_GrpcTypedClient()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+
+        services.AddDaprWorkflowClient();
+
+        var sp = services.BuildServiceProvider();
+        var grpcClient = sp.GetService<TaskHubSidecarService.TaskHubSidecarServiceClient>();
+
+        Assert.NotNull(grpcClient);
+    }
+
+    [Fact]
+    public void AddDaprWorkflowBuilder_ShouldApplyDaprApiToken_FromConfiguration()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DAPR_API_TOKEN"] = "workflow-test-token"
+            })
+            .Build();
+
+        services.AddSingleton<IConfiguration>(configuration);
+
+        string? observedToken = null;
+        services.AddDaprWorkflowBuilder(_ => { }, (_, builder) =>
+        {
+            observedToken = builder.DaprApiToken;
+        });
+
+        var sp = services.BuildServiceProvider();
+        _ = sp.GetRequiredService<DaprWorkflowClient>();
+
+        Assert.Equal("workflow-test-token", observedToken);
+    }
+
+    [Fact]
+    public void AddDaprWorkflowBuilder_ShouldApplyDaprApiToken_FromEnvironmentVariable()
+    {
+        var originalToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "workflow-env-token");
+
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+            string? observedToken = null;
+            services.AddDaprWorkflowBuilder(_ => { }, (_, builder) =>
+            {
+                observedToken = builder.DaprApiToken;
+            });
+
+            var sp = services.BuildServiceProvider();
+            _ = sp.GetRequiredService<DaprWorkflowClient>();
+
+            Assert.Equal("workflow-env-token", observedToken);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", originalToken);
+        }
+    }
+
+    [Fact]
+    public void AddDaprWorkflow_ShouldApplyDaprApiToken_FromEnvironmentVariable()
+    {
+        var originalToken = Environment.GetEnvironmentVariable("DAPR_API_TOKEN");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", "workflow-env-token");
+
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.AddProvider(NullLoggerProvider.Instance));
+
+            services.AddDaprWorkflow(_ => { });
+
+            var sp = services.BuildServiceProvider();
+            var client = sp.GetRequiredService<DaprWorkflowClient>();
+
+            Assert.Equal("workflow-env-token", client.DaprApiToken);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DAPR_API_TOKEN", originalToken);
+        }
+    }
+    
+    private sealed record SerializerDependency(string Value);
+
+    private sealed class PlainAutoRegisteredWorkflow : TestWorkflow
+    {
+    }
+
+    private sealed class NumericRoutingWorkflow : TestWorkflow
+    {
+    }
+
+    private sealed class NumericRoutingWorkflowV2 : TestWorkflow
+    {
+    }
+
+    private sealed class NumericRoutingWorkflowV3 : TestWorkflow
+    {
+    }
+
+    private sealed class DiagnosticsWorkflow : TestWorkflow
+    {
+    }
+
+    private sealed class DiagnosticsWorkflowV2 : TestWorkflow
+    {
+    }
+
+    private sealed class DiagnosticsWorkflowV3 : TestWorkflow
+    {
+    }
+
+    private sealed class ExplicitAliasWorkflow : TestWorkflow
+    {
+    }
+
+    private sealed class ExplicitAliasWorkflowV2 : TestWorkflow
+    {
+    }
+
+    private sealed class ExplicitAliasWorkflowV3 : TestWorkflow
+    {
+    }
+
+    private sealed class ExplicitAliasOverrideWorkflow : TestWorkflow
+    {
+    }
+
+    private abstract class TestWorkflow : IWorkflow
+    {
+        public Type InputType => typeof(object);
+        public Type OutputType => typeof(object);
+        public Task<object?> RunAsync(WorkflowContext context, object? input) => Task.FromResult<object?>(null);
+    }
+
+    private sealed class DependencyBasedSerializer(SerializerDependency dep) : IWorkflowSerializer
+    {
+        public SerializerDependency Dep { get; } = dep;
+
+        public string Serialize<T>(T value) => "x";
+        public string Serialize(object? value, Type? inputType = null) => "x";
+        public T? Deserialize<T>(string? data) => default;
+        public object? Deserialize(string? data, Type returnType) => null;
+    }
+    
+    private sealed class FakeWorkflowContext : WorkflowContext
+    {
+        public override string Name => "wf";
+        public override string InstanceId => "i";
+        public override DateTime CurrentUtcDateTime => DateTime.UtcNow;
+        public override bool IsReplaying => false;
+        public override bool IsPatched(string patchName) => true;
+
+        public override Task<T> CallActivityAsync<T>(string name, object? input = null, WorkflowTaskOptions? options = null) => throw new NotSupportedException();
+        public override Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public override Task<T> WaitForExternalEventAsync<T>(string eventName, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public override Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout) => throw new NotSupportedException();
+        public override void SendEvent(string instanceId, string eventName, object payload) => throw new NotSupportedException();
+        public override void SetCustomStatus(object? customStatus) => throw new NotSupportedException();
+        public override Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null, ChildWorkflowTaskOptions? options = null) => throw new NotSupportedException();
+        public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true) => throw new NotSupportedException();
+        public override Guid NewGuid() => Guid.NewGuid();
+
+        public override PropagatedHistory? GetPropagatedHistory() => null;
+        public override ILogger CreateReplaySafeLogger(string categoryName) => throw new NotSupportedException();
+        public override ILogger CreateReplaySafeLogger(Type type) => throw new NotSupportedException();
+        public override ILogger CreateReplaySafeLogger<T>() => throw new NotSupportedException();
+    }
+
+    private sealed class FakeActivityContext : WorkflowActivityContext
+    {
+        public override TaskIdentifier Identifier => new("act");
+        public override string TaskExecutionKey => "test-key";
+        public override string InstanceId => "i";
+    }
+
+    private sealed class MockSerializer : IWorkflowSerializer
+    {
+        public static MockSerializer Instance { get; } = new();
+
+        public string Serialize<T>(T value) => "mock";
+        public string Serialize(object? value, Type? inputType = null) => "mock";
+        public T? Deserialize<T>(string? data) => default;
+        public object? Deserialize(string? data, Type returnType) => null;
+    }
+
+    private static int GetGrpcChannelOptionsActionCount(ServiceProvider provider)
+        => GetGrpcOptionsCandidates(provider).Sum(options => options.ChannelOptionsActions.Count);
+
+    private static GrpcChannelOptions ApplyGrpcOptions(ServiceProvider provider)
+    {
+        var channelOptions = new GrpcChannelOptions();
+
+        foreach (var grpcOptions in GetGrpcOptionsCandidates(provider))
+        {
+            foreach (var action in grpcOptions.ChannelOptionsActions)
+            {
+                action(channelOptions);
+            }
+        }
+
+        return channelOptions;
+    }
+
+    private static IEnumerable<GrpcClientFactoryOptions> GetGrpcOptionsCandidates(ServiceProvider provider)
+    {
+        var monitor = provider.GetRequiredService<IOptionsMonitor<GrpcClientFactoryOptions>>();
+        var clientType = typeof(TaskHubSidecarService.TaskHubSidecarServiceClient);
+
+        var fullNameOptions = monitor.Get(clientType.FullName!);
+        var nameOptions = monitor.Get(clientType.Name);
+
+        if (fullNameOptions is not null)
+        {
+            yield return fullNameOptions;
+        }
+
+        if (nameOptions is not null && !ReferenceEquals(nameOptions, fullNameOptions))
+        {
+            yield return nameOptions;
+        }
     }
 }

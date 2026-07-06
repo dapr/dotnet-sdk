@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <PackageId>Dapr.Workflow.Abstractions</PackageId>
+        <Title>Dapr Workflow Abstractions</Title>
+        <Description>Provides abstractions for the Dapr Workflow SDK implementation.</Description>
+        <!-- This assembly ships bundled inside the Dapr.Workflow NuGet package; it is not published as a standalone package. -->
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Grpc.Net.Client" />
+      <PackageReference Include="Microsoft.Extensions.Logging" />
+    </ItemGroup>
+
+</Project>

@@ -11,53 +11,52 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Communication
+namespace Dapr.Actors.Communication;
+
+using System;
+using System.Runtime.Serialization;
+
+internal class ActorDataContractSurrogate : ISerializationSurrogateProvider
 {
-    using System;
-    using System.Runtime.Serialization;
+    public static readonly ISerializationSurrogateProvider Instance = new ActorDataContractSurrogate();
 
-    internal class ActorDataContractSurrogate : ISerializationSurrogateProvider
+    public Type GetSurrogateType(Type type)
     {
-        public static readonly ISerializationSurrogateProvider Instance = new ActorDataContractSurrogate();
-
-        public Type GetSurrogateType(Type type)
+        if (typeof(IActor).IsAssignableFrom(type))
         {
-            if (typeof(IActor).IsAssignableFrom(type))
-            {
-                return typeof(ActorReference);
-            }
-
-            return type;
+            return typeof(ActorReference);
         }
 
-        public object GetObjectToSerialize(object obj, Type targetType)
-        {
-            if (obj == null)
-            {
-                return null;
-            }
-            else if (obj is IActor)
-            {
-                return ActorReference.Get(obj);
-            }
+        return type;
+    }
 
-            return obj;
+    public object GetObjectToSerialize(object obj, Type targetType)
+    {
+        if (obj == null)
+        {
+            return null;
+        }
+        else if (obj is IActor)
+        {
+            return ActorReference.Get(obj);
         }
 
-        public object GetDeserializedObject(object obj, Type targetType)
-        {
-            if (obj == null)
-            {
-                return null;
-            }
-            else if (obj is IActorReference reference && 
-                    typeof(IActor).IsAssignableFrom(targetType) &&
-                     !typeof(IActorReference).IsAssignableFrom(targetType))
-            {
-                return reference.Bind(targetType);
-            }
+        return obj;
+    }
 
-            return obj;
+    public object GetDeserializedObject(object obj, Type targetType)
+    {
+        if (obj == null)
+        {
+            return null;
         }
+        else if (obj is IActorReference reference && 
+                 typeof(IActor).IsAssignableFrom(targetType) &&
+                 !typeof(IActorReference).IsAssignableFrom(targetType))
+        {
+            return reference.Bind(targetType);
+        }
+
+        return obj;
     }
 }

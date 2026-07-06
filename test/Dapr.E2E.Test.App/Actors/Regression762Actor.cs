@@ -16,50 +16,49 @@ using System.Threading.Tasks;
 using Dapr.Actors.Runtime;
 using Dapr.E2E.Test.Actors.ErrorTesting;
 
-namespace Dapr.E2E.Test.App.ErrorTesting
+namespace Dapr.E2E.Test.App.ErrorTesting;
+
+public class Regression762Actor : Actor, IRegression762Actor
 {
-    public class Regression762Actor : Actor, IRegression762Actor
+    public Regression762Actor(ActorHost host) : base(host)
     {
-        public Regression762Actor(ActorHost host) : base(host)
+    }
+
+    public Task Ping()
+    {
+        return Task.CompletedTask;
+    }
+
+    public async Task<string> GetState(string id)
+    {
+        var data = await this.StateManager.TryGetStateAsync<string>(id);
+
+        if (data.HasValue)
         {
+            return data.Value;
         }
+        return string.Empty;
+    }        
 
-        public Task Ping()
+    public async Task RemoveState(string id)
+    {
+        await this.StateManager.TryRemoveStateAsync(id);
+    }
+
+    public async Task SaveState(StateCall call)
+    {
+        if (call.Operation == "ThrowException")
         {
-            return Task.CompletedTask;
+            await this.StateManager.SetStateAsync<string>(call.Key, call.Value);
+            throw new NotImplementedException();
         }
-
-        public async Task<string> GetState(string id)
+        else if (call.Operation == "SetState")
         {
-            var data = await this.StateManager.TryGetStateAsync<string>(id);
-
-            if (data.HasValue)
-            {
-                return data.Value;
-            }
-            return string.Empty;
-        }        
-
-        public async Task RemoveState(string id)
-        {
-            await this.StateManager.TryRemoveStateAsync(id);
+            await this.StateManager.SetStateAsync<string>(call.Key, call.Value);
         }
-
-        public async Task SaveState(StateCall call)
+        else if (call.Operation == "SaveState")
         {
-            if (call.Operation == "ThrowException")
-            {
-                await this.StateManager.SetStateAsync<string>(call.Key, call.Value);
-                throw new NotImplementedException();
-            }
-            else if (call.Operation == "SetState")
-            {
-                await this.StateManager.SetStateAsync<string>(call.Key, call.Value);
-            }
-            else if (call.Operation == "SaveState")
-            {
-                await this.StateManager.SaveStateAsync();
-            }
+            await this.StateManager.SaveStateAsync();
         }
     }
 }

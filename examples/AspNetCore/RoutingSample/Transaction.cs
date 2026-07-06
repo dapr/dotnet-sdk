@@ -11,21 +11,20 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace RoutingSample
+namespace RoutingSample;
+
+/// <summary>
+/// Represents a transaction used by sample code.
+/// </summary>
+public class Transaction
 {
     /// <summary>
-    /// Represents a transaction used by sample code.
+    /// Gets or sets account id for the transaction.
     /// </summary>
-    public class Transaction
-    {
-        /// <summary>
-        /// Gets or sets account id for the transaction.
-        /// </summary>
-        public string Id { get; set; }
+    public string Id { get; set; }
 
-        /// <summary>
-        /// Gets or sets amount for the transaction.
-        /// </summary>
-        public decimal Amount { get; set; }
-    }
+    /// <summary>
+    /// Gets or sets amount for the transaction.
+    /// </summary>
+    public decimal Amount { get; set; }
 }

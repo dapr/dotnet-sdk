@@ -16,110 +16,232 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Client;
+using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 
-namespace Dapr.Extensions.Configuration
+namespace Dapr.Extensions.Configuration;
+
+/// <summary>
+/// A configuration provider that utilizes the Dapr Configuration API. It can either be a single, constant
+/// call or a streaming call.
+/// </summary>
+internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposable
 {
+    private static readonly TimeSpan DisposeWaitTimeout = TimeSpan.FromSeconds(1);
+
+    private readonly string store;
+    private readonly IReadOnlyList<string> keys;
+    private readonly DaprClient daprClient;
+    private readonly TimeSpan sidecarWaitTimeout;
+    private readonly bool isStreaming;
+    private readonly bool isOptional;
+    private readonly IReadOnlyDictionary<string, string>? metadata;
+    private readonly CancellationTokenSource cts;
+    private Task loadTask = Task.CompletedTask;
+    private Task subscribeTask = Task.CompletedTask;
+    private int disposed;
+
     /// <summary>
-    /// A configuration provider that utilizes the Dapr Configuration API. It can either be a single, constant
-    /// call or a streaming call.
+    /// Constructor.
     /// </summary>
-    internal class DaprConfigurationStoreProvider : ConfigurationProvider, IDisposable
+    /// <param name="store">The configuration store to query.</param>
+    /// <param name="keys">The keys, if any, to request. If empty, returns all configuration items.</param>
+    /// <param name="daprClient">The <see cref="DaprClient"/> used for the request.</param>
+    /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
+    /// <param name="isStreaming">Determines if the source is streaming or not.</param>
+    /// <param name="metadata">Optional metadata sent to the configuration store.</param>
+    /// <param name="isOptional">When true, does not block startup waiting for the sidecar.</param>
+    public DaprConfigurationStoreProvider(
+        string store,
+        IReadOnlyList<string> keys,
+        DaprClient daprClient,
+        TimeSpan sidecarWaitTimeout,
+        bool isStreaming = false,
+        IReadOnlyDictionary<string, string>? metadata = default,
+        bool isOptional = false)
     {
-        private string store;
-        private IReadOnlyList<string> keys;
-        private DaprClient daprClient;
-        private TimeSpan sidecarWaitTimeout;
-        private bool isStreaming;
-        private IReadOnlyDictionary<string, string>? metadata;
-        private CancellationTokenSource cts;
-        private Task subscribeTask = Task.CompletedTask;
+        this.store = store;
+        this.keys = keys;
+        this.daprClient = daprClient;
+        this.sidecarWaitTimeout = sidecarWaitTimeout;
+        this.isStreaming = isStreaming;
+        this.isOptional = isOptional;
+        this.metadata = metadata ?? new Dictionary<string, string>();
+        this.cts = new CancellationTokenSource();
+    }
 
-        /// <summary>
-        /// Constructor.
-        /// </summary>
-        /// <param name="store">The configuration store to query.</param>
-        /// <param name="keys">The keys, if any, to request. If empty, returns all configuration items.</param>
-        /// <param name="daprClient">The <see cref="DaprClient"/> used for the request.</param>
-        /// <param name="sidecarWaitTimeout">The <see cref="TimeSpan"/> used to configure the timeout waiting for Dapr.</param>
-        /// <param name="isStreaming">Determines if the source is streaming or not.</param>
-        /// <param name="metadata">Optional metadata sent to the configuration store.</param>
-        public DaprConfigurationStoreProvider(
-            string store,
-            IReadOnlyList<string> keys,
-            DaprClient daprClient,
-            TimeSpan sidecarWaitTimeout,
-            bool isStreaming = false,
-            IReadOnlyDictionary<string, string>? metadata = default)
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref disposed, 1) != 0)
         {
-            this.store = store;
-            this.keys = keys;
-            this.daprClient = daprClient;
-            this.sidecarWaitTimeout = sidecarWaitTimeout;
-            this.isStreaming = isStreaming;
-            this.metadata = metadata ?? new Dictionary<string, string>();
-            this.cts = new CancellationTokenSource();
+            return;
         }
 
-        public void Dispose()
+        cts.Cancel();
+
+        var loadTaskCompleted = WaitForBackgroundTask(loadTask);
+        var subscribeTaskCompleted = WaitForBackgroundTask(subscribeTask);
+        if (loadTaskCompleted && subscribeTaskCompleted)
         {
-            cts.Cancel();
+            // Only dispose the CTS after tracked tasks have stopped using cts.Token.
+            cts.Dispose();
         }
+    }
 
-        /// <inheritdoc/>
-        public override void Load() => LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-
-        private async Task LoadAsync()
+    /// <inheritdoc/>
+    public override void Load()
+    {
+        if (isOptional)
         {
-            // Wait for the sidecar to become available.
-            using (var tokenSource = new CancellationTokenSource(sidecarWaitTimeout))
+            Data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            loadTask = Task.Run(() => LoadInBackgroundAsync());
+        }
+        else
+        {
+            LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+    }
+
+    private static bool WaitForBackgroundTask(Task task)
+    {
+        try
+        {
+            return task.Wait(DisposeWaitTimeout);
+        }
+        catch
+        {
+            // Observe background task exceptions during disposal.
+            return true;
+        }
+    }
+
+    private async Task LoadInBackgroundAsync()
+    {
+        while (!cts.Token.IsCancellationRequested)
+        {
+            try
             {
-                await daprClient.WaitForSidecarAsync(tokenSource.Token);
+                using var tokenSource = new CancellationTokenSource(sidecarWaitTimeout);
+                using var linked = CancellationTokenSource.CreateLinkedTokenSource(tokenSource.Token, cts.Token);
+                await daprClient.WaitForSidecarAsync(linked.Token);
+
+                await FetchDataAsync();
+                OnReload();
+                return;
+            }
+            catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                // Sidecar wait timed out — retry after delay.
+            }
+            catch (DaprException)
+            {
+                // Transient Dapr error — retry after delay.
             }
 
-            if (isStreaming)
+            try
             {
-                subscribeTask = Task.Run(async () =>
+                await Task.Delay(sidecarWaitTimeout, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        // Wait for the sidecar to become available.
+        using (var tokenSource = new CancellationTokenSource(sidecarWaitTimeout))
+        {
+            await daprClient.WaitForSidecarAsync(tokenSource.Token);
+        }
+
+        await FetchDataAsync();
+    }
+
+    private async Task FetchDataAsync()
+    {
+        if (isStreaming)
+        {
+            subscribeTask = Task.Run(async () =>
+            {
+                while (!cts.Token.IsCancellationRequested)
                 {
-                    while (!cts.Token.IsCancellationRequested)
+                    var id = string.Empty;
+                    try
                     {
-                        var id = string.Empty;
-                        try
+                        var subscribeConfigurationResponse = await daprClient.SubscribeConfiguration(store, keys, metadata, cts.Token);
+                        await foreach (var items in subscribeConfigurationResponse.Source.WithCancellation(cts.Token))
                         {
-                            var subscribeConfigurationResponse = await daprClient.SubscribeConfiguration(store, keys, metadata, cts.Token);
-                            await foreach (var items in subscribeConfigurationResponse.Source.WithCancellation(cts.Token))
+                            var data = new Dictionary<string, string?>(Data, StringComparer.OrdinalIgnoreCase);
+                            foreach (var item in items)
                             {
-                                var data = new Dictionary<string, string>(Data, StringComparer.OrdinalIgnoreCase);
-                                foreach (var item in items)
-                                {
-                                    id = subscribeConfigurationResponse.Id;
-                                    data[item.Key] = item.Value.Value;
-                                }
-                                Data = data;
-                                // Whenever we get an update, make sure to update the reloadToken.
-                                OnReload();
+                                id = subscribeConfigurationResponse.Id;
+                                data[item.Key] = item.Value.Value;
                             }
-                        }
-                        catch (Exception)
-                        {
-                            // If we catch an exception, try and cancel the subscription so we can connect again.
-                            if (!string.IsNullOrEmpty(id))
-                            {
-                                await daprClient.UnsubscribeConfiguration(store, id);
-                            }
+                            Data = data;
+                            // Whenever we get an update, make sure to update the reloadToken.
+                            OnReload();
                         }
                     }
-                });
-            }
-            else
-            {
-                // We don't need to worry about ReloadTokens here because it is a constant response.
-                var getConfigurationResponse = await daprClient.GetConfiguration(store, keys, metadata, cts.Token);
-                foreach (var item in getConfigurationResponse.Items)
-                {
-                    Set(item.Key, item.Value.Value);
+                    catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    catch (RpcException ex) when (cts.Token.IsCancellationRequested && ex.StatusCode == StatusCode.Cancelled)
+                    {
+                        return;
+                    }
+                    catch (Exception ex) when (ex is DaprException or RpcException)
+                    {
+                        if (!string.IsNullOrEmpty(id))
+                        {
+                            try
+                            {
+                                await daprClient.UnsubscribeConfiguration(store, id, cts.Token);
+                            }
+                            catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+                            {
+                                return;
+                            }
+                            catch (RpcException unsubscribeException) when (cts.Token.IsCancellationRequested && unsubscribeException.StatusCode == StatusCode.Cancelled)
+                            {
+                                return;
+                            }
+                            catch (Exception unsubscribeException) when (unsubscribeException is DaprException or RpcException)
+                            {
+                                // Ignore transient unsubscribe failures and reconnect after the retry delay.
+                            }
+                        }
+
+                        try
+                        {
+                            await Task.Delay(sidecarWaitTimeout, cts.Token);
+                        }
+                        catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+                        {
+                            return;
+                        }
+                    }
                 }
+            });
+        }
+        else
+        {
+            // We don't need to worry about ReloadTokens here because it is a constant response.
+            var getConfigurationResponse = await daprClient.GetConfiguration(store, keys, metadata, cts.Token);
+            var data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in getConfigurationResponse.Items)
+            {
+                data[item.Key] = item.Value.Value;
             }
+
+            Data = data;
         }
     }
 }

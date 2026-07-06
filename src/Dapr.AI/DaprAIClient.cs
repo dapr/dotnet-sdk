@@ -11,24 +11,32 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.AI.Conversation;
+using Dapr.Common;
 
 namespace Dapr.AI;
 
 /// <summary>
 /// The base implementation of a Dapr AI client.
 /// </summary>
-public abstract class DaprAIClient
+public abstract class DaprAIClient : IDaprClient
 {
+    private bool disposed;
+    
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (!this.disposed)
+        {
+            Dispose(disposing: true);
+            this.disposed = true;
+        }
+    }
+
     /// <summary>
-    /// Sends various inputs to the large language model via the Conversational building block on the Dapr sidecar.
+    /// Disposes the resources associated with the object.
     /// </summary>
-    /// <param name="daprConversationComponentName">The name of the Dapr conversation component.</param>
-    /// <param name="inputs">The input values to send.</param>
-    /// <param name="options">Optional options used to configure the conversation.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The response(s) provided by the LLM provider.</returns>
-    public abstract Task<DaprConversationResponse> ConverseAsync(string daprConversationComponentName,
-        IReadOnlyList<DaprConversationInput> inputs, ConversationOptions? options = null,
-        CancellationToken cancellationToken = default);
+    /// <param name="disposing"><c>true</c> if called by a call to the <c>Dispose</c> method; otherwise false.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+    }
 }

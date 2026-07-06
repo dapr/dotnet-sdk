@@ -15,15 +15,14 @@ using System;
 using System.Net.Http;
 using Dapr.Client.Autogen.Grpc.v1;
 using Dapr.Jobs.Models;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Moq;
-using Xunit;
 
 namespace Dapr.Jobs.Test;
 
 public sealed class DaprJobsGrpcClientTests
 {
-
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ScheduleJobAsync_RepeatsCannotBeLessThanZero()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -34,12 +33,12 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning disable CS0618 // Type or member is obsolete
         var result = Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
         {
-            await client.ScheduleJobAsync("MyJob", DaprJobSchedule.Daily, null, null, -5, null, default);
+            await client.ScheduleJobAsync("MyJob", DaprJobSchedule.Daily, null, null, -5, null, default, cancellationToken: TestContext.Current.CancellationToken);
         });
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ScheduleJobAsync_JobNameCannotBeNull()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -50,12 +49,12 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning disable CS0618 // Type or member is obsolete
         var result = Assert.ThrowsAsync<ArgumentNullException>(async () =>
         {
-            await client.ScheduleJobAsync(null, DaprJobSchedule.Daily, null, null, -5, null, default);
+            await client.ScheduleJobAsync(null, DaprJobSchedule.Daily, null, null, -5, null, default, cancellationToken: TestContext.Current.CancellationToken);
         });
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ScheduleJobAsync_JobNameCannotBeEmpty()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -66,12 +65,12 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning disable CS0618 // Type or member is obsolete
         var result = Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            await client.ScheduleJobAsync(string.Empty, DaprJobSchedule.Daily, null, null, -5, null, default);
+            await client.ScheduleJobAsync(string.Empty, DaprJobSchedule.Daily, null, null, -5, null, default, cancellationToken: TestContext.Current.CancellationToken);
         });
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ScheduleJobAsync_ScheduleCannotBeEmpty()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -82,12 +81,12 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning disable CS0618 // Type or member is obsolete
         var result = Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            await client.ScheduleJobAsync("MyJob", new DaprJobSchedule(string.Empty), null, null, -5, null, default);
+            await client.ScheduleJobAsync("MyJob", new DaprJobSchedule(string.Empty), null, null, -5, null, default, cancellationToken: TestContext.Current.CancellationToken);
         });
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void ScheduleJobAsync_TtlCannotBeEarlierThanStartingFrom()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -100,12 +99,12 @@ public sealed class DaprJobsGrpcClientTests
         {
             var date = DateTime.UtcNow.AddDays(10);
             var earlierDate = date.AddDays(-2);
-            await client.ScheduleJobAsync("MyJob", DaprJobSchedule.Daily, null, date, null, earlierDate, default);
+            await client.ScheduleJobAsync("MyJob", DaprJobSchedule.Daily, null, date, null, earlierDate, default, cancellationToken: TestContext.Current.CancellationToken);
         });
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void GetJobAsync_NameCannotBeNull()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -116,12 +115,12 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning disable CS0618 // Type or member is obsolete
         var result = Assert.ThrowsAsync<ArgumentNullException>(async () =>
         {
-            await client.GetJobAsync(null, default);
+            await client.GetJobAsync(null, TestContext.Current.CancellationToken);
         });
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void GetJobAsync_NameCannotBeEmpty()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -132,12 +131,12 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning disable CS0618 // Type or member is obsolete
         var result = Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            await client.GetJobAsync(string.Empty, default);
+            await client.GetJobAsync(string.Empty, TestContext.Current.CancellationToken);
         });
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void DeleteJobAsync_NameCannotBeNull()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -148,12 +147,12 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning disable CS0618 // Type or member is obsolete
         var result = Assert.ThrowsAsync<ArgumentNullException>(async () =>
         {
-            await client.DeleteJobAsync(null, default);
+            await client.DeleteJobAsync(null, TestContext.Current.CancellationToken);
         });
 #pragma warning restore CS0618 // Type or member is obsolete
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.18")]
     public void DeleteJobAsync_NameCannotBeEmpty()
     {
         var mockClient = Mock.Of<Client.Autogen.Grpc.v1.Dapr.DaprClient>();
@@ -164,7 +163,7 @@ public sealed class DaprJobsGrpcClientTests
 #pragma warning disable CS0618 // Type or member is obsolete
         var result = Assert.ThrowsAsync<ArgumentException>(async () =>
         {
-            await client.DeleteJobAsync(string.Empty, default);
+            await client.DeleteJobAsync(string.Empty, TestContext.Current.CancellationToken);
         });
 #pragma warning restore CS0618 // Type or member is obsolete
     }
@@ -183,6 +182,4 @@ public sealed class DaprJobsGrpcClientTests
         Assert.Null(jobDetails.DueTime);
         Assert.Equal(jobDetails.Schedule.ExpressionValue, schedule.ExpressionValue);
     }
-
-    private sealed record TestPayload(string Name, string Color);
 }

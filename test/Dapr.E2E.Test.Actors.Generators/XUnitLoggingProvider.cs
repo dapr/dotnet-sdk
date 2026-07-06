@@ -11,8 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Xunit.Abstractions;
-
 namespace Dapr.E2E.Test.Actors.Generators;
 
 internal sealed class XUnitLoggingProvider : ILoggerProvider

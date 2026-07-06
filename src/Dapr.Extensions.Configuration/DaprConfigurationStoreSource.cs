@@ -16,47 +16,53 @@ using System.Collections.Generic;
 using Dapr.Client;
 using Microsoft.Extensions.Configuration;
 
-namespace Dapr.Extensions.Configuration
+namespace Dapr.Extensions.Configuration;
+
+/// <summary>
+/// Configuration source that provides a <see cref="DaprConfigurationStoreProvider"/>.
+/// </summary>
+public class DaprConfigurationStoreSource : IConfigurationSource
 {
     /// <summary>
-    /// Configuration source that provides a <see cref="DaprConfigurationStoreProvider"/>.
+    /// The Configuration Store to query.
     /// </summary>
-    public class DaprConfigurationStoreSource : IConfigurationSource
+    public string Store { get; set; } = default!;
+
+    /// <summary>
+    /// The list of keys to request from the configuration. If empty, request all keys.
+    /// </summary>
+    public IReadOnlyList<string> Keys { get; set; } = default!;
+
+    /// <summary>
+    /// The <see cref="DaprClient"/> used to query the configuration.
+    /// </summary>
+    public DaprClient Client { get; set; } = default!;
+
+    /// <summary>
+    /// Boolean stating if this is a streaming call or not.
+    /// </summary>
+    public bool IsStreaming { get; set; } = false;
+
+    /// <summary>
+    /// Gets or sets the <see cref="TimeSpan"/> that is used to control the timeout waiting for the Dapr sidecar to become healthly.
+    /// </summary>
+    public TimeSpan SidecarWaitTimeout { get; set; }
+
+    /// <summary>
+    /// The optional metadata to be sent to the configuration store.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Metadata { get; set; } = default;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this configuration source is optional.
+    /// When <c>true</c>, the provider will not block startup waiting for the Dapr sidecar and will
+    /// instead load configuration in the background once the sidecar becomes available.
+    /// </summary>
+    public bool IsOptional { get; set; }
+
+    /// <inheritdoc/>
+    public IConfigurationProvider Build(IConfigurationBuilder builder)
     {
-        /// <summary>
-        /// The Configuration Store to query.
-        /// </summary>
-        public string Store { get; set; } = default!;
-
-        /// <summary>
-        /// The list of keys to request from the configuration. If empty, request all keys.
-        /// </summary>
-        public IReadOnlyList<string> Keys { get; set; } = default!;
-
-        /// <summary>
-        /// The <see cref="DaprClient"/> used to query the configuration.
-        /// </summary>
-        public DaprClient Client { get; set; } = default!;
-
-        /// <summary>
-        /// Boolean stating if this is a streaming call or not.
-        /// </summary>
-        public bool IsStreaming { get; set; } = false;
-
-        /// <summary>
-        /// Gets or sets the <see cref="TimeSpan"/> that is used to control the timeout waiting for the Dapr sidecar to become healthly.
-        /// </summary>
-        public TimeSpan SidecarWaitTimeout { get; set; }
-
-        /// <summary>
-        /// The optional metadata to be sent to the configuration store.
-        /// </summary>
-        public IReadOnlyDictionary<string, string>? Metadata { get; set; } = default;
-
-        /// <inheritdoc/>
-        public IConfigurationProvider Build(IConfigurationBuilder builder)
-        {
-            return new DaprConfigurationStoreProvider(Store, Keys, Client, SidecarWaitTimeout, IsStreaming, Metadata);
-        }
+        return new DaprConfigurationStoreProvider(Store, Keys, Client, SidecarWaitTimeout, IsStreaming, Metadata, IsOptional);
     }
 }

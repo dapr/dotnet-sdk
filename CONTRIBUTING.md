@@ -54,13 +54,13 @@ This section describes the guidelines for contributing code / docs to Dapr.
 All contributions come through pull requests. To submit a proposed change, we recommend following this workflow:
 
 1. Make sure there's an issue (bug or proposal) raised, which sets the expectations for the contribution you are about to make.
-1. Fork the relevant repo and create a new branch
-1. Create your change
+2. Fork the relevant repo and create a new branch
+3. Create your change
     - Code changes require tests
-1. Update relevant documentation for the change
-1. Commit and open a PR
-1. Wait for the CI process to finish and make sure all checks are green
-1. A maintainer of the project will be assigned, and you can expect a review within a few days
+4. Update relevant documentation for the change
+5. Commit and open a PR
+6. Wait for the CI process to finish and make sure all checks are green
+7. A maintainer of the project will be assigned, and you can expect a review within a few days
 
 #### Use work-in-progress PRs for early feedback
 

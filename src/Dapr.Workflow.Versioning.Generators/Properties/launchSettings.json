@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "DebugRoslynSourceGenerator": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "../Dapr.Workflow.Versioning.Generators.Sample/Dapr.Workflow.Versioning.Generators.Sample.csproj"
+    }
+  }
+}

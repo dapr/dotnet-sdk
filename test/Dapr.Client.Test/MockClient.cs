@@ -11,132 +11,144 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+using System;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Common;
+using Grpc.Core;
+using Grpc.Net.Client;
+using Moq;
+
+public class MockClient
 {
-    using System;
-    using System.Net.Http;
-    using System.Text.Json;
-    using System.Threading.Tasks;
-    using Grpc.Core;
-    using Grpc.Net.Client;
-    using Moq;
-
-    public class MockClient
+    public MockClient()
     {
-        public MockClient()
-        {
-            Mock = new Mock<Autogen.Grpc.v1.Dapr.DaprClient>(MockBehavior.Strict);
-            DaprClient = new DaprClientGrpc(GrpcChannel.ForAddress("http://localhost"), Mock.Object, new HttpClient(), new Uri("http://localhost:3500"), new JsonSerializerOptions(), default);
-        }
+        Mock = new Mock<Autogen.Grpc.v1.Dapr.DaprClient>(MockBehavior.Strict);
+        DaprClient = new DaprClientGrpc(GrpcChannel.ForAddress("http://localhost"), Mock.Object, new HttpClient(), new Uri("http://localhost:3500"), new JsonSerializerOptions(), default, new AlwaysAvailableCapabilities());
+    }
 
-        public Mock<Autogen.Grpc.v1.Dapr.DaprClient> Mock { get; }
+    // Reports every gRPC method as available so tests that mock the DaprClient directly
+    // are not required to handle the gRPC reflection round-trip.
+    private sealed class AlwaysAvailableCapabilities : IDaprRuntimeCapabilities
+    {
+        public Task<bool> SupportsMethodAsync(string fullyQualifiedMethodName, CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
 
-        public DaprClient DaprClient { get; }
+        public Task<bool> SupportsServiceAsync(string serviceName, CancellationToken cancellationToken = default)
+            => Task.FromResult(true);
+    }
 
-        public InvokeApiCallBuilder<TResponse> Call<TResponse>()
-        {
-            return new InvokeApiCallBuilder<TResponse>();
-        }
+    public Mock<Autogen.Grpc.v1.Dapr.DaprClient> Mock { get; }
 
-        public StateApiCallBuilder<TResponse> CallStateApi<TResponse>()
-        {
-            return new StateApiCallBuilder<TResponse>();
-        }
+    public DaprClient DaprClient { get; }
+
+    public InvokeApiCallBuilder<TResponse> Call<TResponse>()
+    {
+        return new InvokeApiCallBuilder<TResponse>();
+    }
+
+    public StateApiCallBuilder<TResponse> CallStateApi<TResponse>()
+    {
+        return new StateApiCallBuilder<TResponse>();
+    }
         
-        public class InvokeApiCallBuilder<TResponse>
+    public class InvokeApiCallBuilder<TResponse>
+    {
+        private TResponse response;
+        private readonly Metadata headers;
+        private Status status;
+        private readonly Metadata trailers;
+
+        public InvokeApiCallBuilder()
         {
-            private TResponse response;
-            private readonly Metadata headers;
-            private Status status;
-            private readonly Metadata trailers;
-
-            public InvokeApiCallBuilder()
-            {
-                headers = new Metadata();
-                trailers = new Metadata();
-            }
-
-            public AsyncUnaryCall<TResponse> Build()
-            {
-                return new AsyncUnaryCall<TResponse>(
-                    Task.FromResult(response),
-                    Task.FromResult(headers),
-                    () => status,
-                    () => trailers,
-                    () => { });
-            }
-
-            public InvokeApiCallBuilder<TResponse> SetResponse(TResponse response)
-            {
-                this.response = response;
-                return this;
-            }
-
-            public InvokeApiCallBuilder<TResponse> SetStatus(Status status)
-            {
-                this.status = status;
-                return this;
-            }
-
-            public InvokeApiCallBuilder<TResponse> AddHeader(string key, string value)
-            {
-                this.headers.Add(key, value);
-                return this;
-            }
-
-            public InvokeApiCallBuilder<TResponse> AddTrailer(string key, string value)
-            {
-                this.trailers.Add(key, value);
-                return this;
-            }
+            headers = new Metadata();
+            trailers = new Metadata();
         }
 
-        public class StateApiCallBuilder<TResponse>
+        public AsyncUnaryCall<TResponse> Build()
         {
-            private TResponse response;
-            private readonly Metadata headers;
-            private Status status;
-            private readonly Metadata trailers;
+            return new AsyncUnaryCall<TResponse>(
+                Task.FromResult(response),
+                Task.FromResult(headers),
+                () => status,
+                () => trailers,
+                () => { });
+        }
 
-            public StateApiCallBuilder()
-            {
-                headers = new Metadata();
-                trailers = new Metadata();
-            }
+        public InvokeApiCallBuilder<TResponse> SetResponse(TResponse response)
+        {
+            this.response = response;
+            return this;
+        }
 
-            public AsyncUnaryCall<TResponse> Build()
-            {
-                return new AsyncUnaryCall<TResponse>(
-                    Task.FromResult(response),
-                    Task.FromResult(headers),
-                    () => status,
-                    () => trailers,
-                    () => { });
-            }
+        public InvokeApiCallBuilder<TResponse> SetStatus(Status status)
+        {
+            this.status = status;
+            return this;
+        }
 
-            public StateApiCallBuilder<TResponse> SetResponse(TResponse response)
-            {
-                this.response = response;
-                return this;
-            }
+        public InvokeApiCallBuilder<TResponse> AddHeader(string key, string value)
+        {
+            this.headers.Add(key, value);
+            return this;
+        }
 
-            public StateApiCallBuilder<TResponse> SetStatus(Status status)
-            {
-                this.status = status;
-                return this;
-            }
+        public InvokeApiCallBuilder<TResponse> AddTrailer(string key, string value)
+        {
+            this.trailers.Add(key, value);
+            return this;
+        }
+    }
 
-            public StateApiCallBuilder<TResponse> AddHeader(string key, string value)
-            {
-                this.headers.Add(key, value);
-                return this;
-            }
+    public class StateApiCallBuilder<TResponse>
+    {
+        private TResponse response;
+        private readonly Metadata headers;
+        private Status status;
+        private readonly Metadata trailers;
 
-            public StateApiCallBuilder<TResponse> AddTrailer(string key, string value)
-            {
-                this.trailers.Add(key, value);
-                return this;
-            }
+        public StateApiCallBuilder()
+        {
+            headers = new Metadata();
+            trailers = new Metadata();
+        }
+
+        public AsyncUnaryCall<TResponse> Build()
+        {
+            return new AsyncUnaryCall<TResponse>(
+                Task.FromResult(response),
+                Task.FromResult(headers),
+                () => status,
+                () => trailers,
+                () => { });
+        }
+
+        public StateApiCallBuilder<TResponse> SetResponse(TResponse response)
+        {
+            this.response = response;
+            return this;
+        }
+
+        public StateApiCallBuilder<TResponse> SetStatus(Status status)
+        {
+            this.status = status;
+            return this;
+        }
+
+        public StateApiCallBuilder<TResponse> AddHeader(string key, string value)
+        {
+            this.headers.Add(key, value);
+            return this;
+        }
+
+        public StateApiCallBuilder<TResponse> AddTrailer(string key, string value)
+        {
+            this.trailers.Add(key, value);
+            return this;
         }
     }
 }

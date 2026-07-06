@@ -12,63 +12,107 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Net;
 using System.Net.Http;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
-using Xunit.Abstractions;
 
-namespace Dapr.E2E.Test
+namespace Dapr.E2E.Test;
+
+public class DaprTestAppLifecycle : IClassFixture<DaprTestAppFixture>, IAsyncLifetime
 {
-    public class DaprTestAppLifecycle : IClassFixture<DaprTestAppFixture>, IAsyncLifetime
+
+    private readonly ITestOutputHelper output;
+    private readonly DaprTestAppFixture fixture;
+    private DaprTestAppFixture.State state;
+
+    public DaprTestAppLifecycle(ITestOutputHelper output, DaprTestAppFixture fixture)
     {
+        this.output = output;
+        this.fixture = fixture;
+    }
 
-        private readonly ITestOutputHelper output;
-        private readonly DaprTestAppFixture fixture;
-        private DaprTestAppFixture.State state;
+    public DaprRunConfiguration Configuration { get; set; }
 
-        public DaprTestAppLifecycle(ITestOutputHelper output, DaprTestAppFixture fixture)
+    public string AppId => this.state?.App.AppId;
+
+    public string HttpEndpoint => this.state?.HttpEndpoint;
+
+    public string GrpcEndpoint => this.state?.GrpcEndpoint;
+
+    public ITestOutputHelper Output => this.output;
+
+    public async ValueTask InitializeAsync()
+    {
+        this.state = await this.fixture.StartAsync(this.output, this.Configuration);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var client = new HttpClient();
+
+        while (!cts.IsCancellationRequested)
         {
-            this.output = output;
-            this.fixture = fixture;
-        }
+            cts.Token.ThrowIfCancellationRequested();
 
-        public DaprRunConfiguration Configuration { get; set; }
-
-        public string AppId => this.state?.App.AppId;
-
-        public string HttpEndpoint => this.state?.HttpEndpoint;
-
-        public string GrpcEndpoint => this.state?.GrpcEndpoint;
-
-        public ITestOutputHelper Output => this.output;
-
-        public async Task InitializeAsync()
-        {
-            this.state = await this.fixture.StartAsync(this.output, this.Configuration);
-
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            using var client = new HttpClient();
-
-            while (!cts.IsCancellationRequested)
+            var response = await client.GetAsync($"{HttpEndpoint}/v1.0/healthz");
+            if (response.IsSuccessStatusCode)
             {
-                cts.Token.ThrowIfCancellationRequested();
-
-                var response = await client.GetAsync($"{HttpEndpoint}/v1.0/healthz");
-                if (response.IsSuccessStatusCode)
+                // For gRPC apps, also wait for the app port to accept TCP connections before
+                // returning so that the Dapr sidecar can successfully proxy gRPC requests.
+                if (this.Configuration?.UseAppPort == true
+                    && string.Equals(this.Configuration?.AppProtocol, "grpc", StringComparison.OrdinalIgnoreCase)
+                    && (this.state.App?.AppPort ?? 0) > 0)
                 {
-                    return;
+                    await WaitForAppPortAsync(this.state.App.AppPort);
                 }
 
-                await Task.Delay(TimeSpan.FromMilliseconds(250));
+                return;
             }
 
-            throw new TimeoutException("Timed out waiting for daprd health check");
+            await Task.Delay(TimeSpan.FromMilliseconds(250), cts.Token);
         }
 
-        public Task DisposeAsync()
+        throw new TimeoutException("Timed out waiting for daprd health check");
+    }
+
+    private static async Task WaitForAppPortAsync(int port)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        while (!cts.IsCancellationRequested)
         {
-            return Task.CompletedTask;
+            try
+            {
+                using (var tcpClient = new TcpClient())
+                {
+                    await tcpClient.ConnectAsync(IPAddress.Loopback, port);
+                    return;
+                }
+            }
+            catch (SocketException)
+            {
+                // Port not yet accepting connections — retry after a short delay.
+            }
+            catch (Exception)
+            {
+                // Treat any other connection error as a transient failure and retry.
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(250), cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
         }
+
+        throw new TimeoutException($"Timed out waiting for gRPC app to listen on port {port}");
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        return ValueTask.CompletedTask;
     }
 }

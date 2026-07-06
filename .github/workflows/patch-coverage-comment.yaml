@@ -1,0 +1,117 @@
+﻿name: Patch Coverage Comment
+on:
+  workflow_run:
+    workflows: ["Patch Coverage (tests only)"]   # must match the name in patch-coverage.yaml
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  comment:
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion != 'cancelled' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read               # needed to download artifacts from the run
+      pull-requests: write        # needed to post comment
+    steps:
+      - name: Download artifacts from triggering run
+        uses: actions/github-script@v7
+        id: dl
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const run_id = context.payload.workflow_run.id;
+
+            // List artifacts
+            const arts = await github.rest.actions.listWorkflowRunArtifacts({ owner, repo, run_id });
+            if (!arts.data.artifacts.length) {
+              core.setOutput('found', 'false');
+              return;
+            }
+            core.setOutput('found', 'true');
+
+            const fs = require('fs');
+            const AdmZip = require('adm-zip');
+
+            // Download and extract all artifacts
+            for (const art of arts.data.artifacts) {
+              const zip = await github.rest.actions.downloadArtifact({
+                owner, repo, artifact_id: art.id, archive_format: 'zip'
+              });
+              fs.writeFileSync(`${art.name}.zip`, Buffer.from(zip.data));
+              const z = new AdmZip(`${art.name}.zip`);
+              z.extractAllTo('./artifacts', true);
+            }
+
+      - name: Prepare message
+        if: steps.dl.outputs.found == 'true'
+        id: prep
+        run: |
+          UNIT_FILE=$(ls artifacts/**/unit/diff_coverage.txt 2>/dev/null | head -n1 || true)
+          INT_FILE=$(ls artifacts/**/integration/diff_coverage.txt 2>/dev/null | head -n1 || true)
+          ALL_FILE=$(ls artifacts/**/overall/diff_coverage.txt 2>/dev/null | head -n1 || true)
+
+          unit_text="— no unit tests detected —"
+          [ -f "$UNIT_FILE" ] && unit_text="$(cat "$UNIT_FILE")"
+
+          int_text="— no integration tests detected —"
+          [ -f "$INT_FILE" ] && int_text="$(cat "$INT_FILE")"
+
+          all_text="— n/a —"
+          [ -f "$ALL_FILE" ] && all_text="$(cat "$ALL_FILE")"
+
+          # Save a markdown comment body
+          cat > comment.md <<'EOF'
+          ## Patch coverage (informational)
+
+          <details><summary>Unit details</summary>
+
+          ```
+          UNIT_TEXT
+          ```
+
+          </details>
+
+          <details><summary>Integration details</summary>
+
+          ```
+          INT_TEXT
+          ```
+
+          </details>
+
+          <details><summary>Overall details</summary>
+
+          ```
+          ALL_TEXT
+          ```
+
+          </details>
+
+          Download the full HTML diff reports from the workflow artifacts.
+          EOF
+
+          # Replace placeholders
+          sed -i "s|UNIT_TEXT|$(printf "%s" "$unit_text" | sed 's/[&/\]/\\&/g')|g" comment.md
+          sed -i "s|INT_TEXT|$(printf "%s" "$int_text" | sed 's/[&/\]/\\&/g')|g" comment.md
+          sed -i "s|ALL_TEXT|$(printf "%s" "$all_text" | sed 's/[&/\]/\\&/g')|g" comment.md
+
+      - name: Find PR number
+        id: findpr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.payload.workflow_run.head_sha;
+            const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({ owner, repo, commit_sha: sha });
+            if (!prs.data.length) core.setFailed('No PR found for this run');
+            core.setOutput('pr', prs.data[0].number.toString());
+
+      - name: Post sticky PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: patch-coverage
+          number: ${{ steps.findpr.outputs.pr }}
+          path: comment.md

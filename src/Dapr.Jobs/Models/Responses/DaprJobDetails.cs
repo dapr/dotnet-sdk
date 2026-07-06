@@ -42,4 +42,15 @@ public sealed record DaprJobDetails(DaprJobSchedule Schedule)
     /// Stores the main payload of the job which is passed to the trigger function.
     /// </summary>
     public byte[]? Payload { get; init; } = null;
+
+    /// <summary>
+    /// True if the job should be overwritten when submitted; false to require an existing job with the same name
+    /// to be deleted first. 
+    /// </summary>
+    public bool Overwrite { get; init; } = false;
+    
+    /// <summary>
+    /// Defines the characteristics of the policy to apply when a job fails to trigger.
+    /// </summary>
+    public IFailurePolicyResponse? FailurePolicy { get; init; }
 }

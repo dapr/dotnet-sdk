@@ -1,0 +1,1150 @@
+﻿// ------------------------------------------------------------------------
+// Copyright 2025 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Common.Serialization;
+using Dapr.DurableTask.Protobuf;
+using Dapr.Workflow.Client;
+using Dapr.Workflow.Versioning;
+using Google.Protobuf;
+using Microsoft.Extensions.Logging;
+using static Dapr.Workflow.Worker.Internal.TimerOriginHelpers;
+using Timestamp = Google.Protobuf.WellKnownTypes.Timestamp;
+
+namespace Dapr.Workflow.Worker.Internal;
+
+/// <summary>
+/// Internal orchestration context that processes gRPC history events.
+/// </summary>
+/// <remarks>
+/// Here's the intended workflow execution model:
+/// First execution: Workflow runs until first `await`, returns pending actions, task doesn't complete
+/// Subsequent executions: History is replayed, tasks complete from history, workflow advances further
+/// Completion: When no more awaitable operations exist, workflow returns the final result
+/// </remarks>
+internal sealed class WorkflowOrchestrationContext : WorkflowContext
+{
+    /// <summary>
+    /// Used to track patch-based versioning semantics.
+    /// </summary>
+    private readonly WorkflowVersionTracker _versionTracker;
+    private readonly List<HistoryEvent> _externalEventBuffer = [];
+    private readonly Dictionary<string, Queue<TaskCompletionSource<HistoryEvent>>> _externalEventSources = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<int, TaskCompletionSource<HistoryEvent>> _openTasks = [];
+    private readonly Dictionary<int, string> _taskIdToExecutionId = [];
+    private readonly Dictionary<string, int> _executionIdToTaskId = new(StringComparer.Ordinal);
+    private readonly SortedDictionary<int, WorkflowAction> _pendingActions = [];
+    private readonly IDaprSerializer _workflowSerializer;
+    private readonly ILogger<WorkflowOrchestrationContext> _logger;
+    private readonly ILoggerFactory _loggerFactory;
+    // Maps runtime sub-orchestration created EventId -> parent action/task id (our local task id).
+    private readonly Dictionary<int, int> _subOrchestrationCreatedEventIdToParentTaskId = [];
+    // Maps child instance id -> parent action/task id (our local task id).
+    // Used to build the createdEventId->parentTaskId mapping when the "created" history event arrives.
+    private readonly Dictionary<string, int> _subOrchestrationInstanceIdToParentTaskId = new(StringComparer.Ordinal);
+    /// <summary>
+    /// Buffers completion events that arrive before the corresponding task is registered in _openTasks.
+    /// Key is taskedScheduledId/timerId/etc. as provided by the history event.
+    /// </summary>
+    private readonly Dictionary<int, HistoryEvent> _unmatchedCompletions = [];
+    private readonly Dictionary<string, HistoryEvent> _unmatchedCompletionsByExecutionId = new(StringComparer.Ordinal);
+
+
+    // Parse execution/instance ID as GUID or derive a deterministic namespace from the ID
+    private readonly Guid _instanceGuid;
+    private static readonly Guid InstanceIdNamespace = new("6f927a2e-9c7e-4a1d-9b8d-7a86f2e7f62f");
+
+    private readonly string? _appId;
+    private readonly PropagatedHistory? _propagatedHistory;
+    private int _sequenceNumber;
+    private int _guidCounter;
+    private object? _customStatus;
+    private DateTime _currentUtcDateTime;
+    private bool _isReplaying;
+    private bool _turnInitialized;
+    private bool _preserveUnprocessedEvents;
+
+    public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
+        IDaprSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
+        string? appId = null, string? executionId = null,
+        IReadOnlyList<HistoryEvent>? ownHistory = null,
+        IEnumerable<PropagatedHistoryChunk>? incomingPropagatedHistory = null)
+    {
+        _workflowSerializer = workflowSerializer;
+        _loggerFactory = loggerFactory;
+        _logger = loggerFactory.CreateLogger<WorkflowOrchestrationContext>() ??
+                  throw new ArgumentNullException(nameof(loggerFactory));
+        var guidSeed = !string.IsNullOrWhiteSpace(executionId) ? executionId : instanceId;
+        _instanceGuid = Guid.TryParse(guidSeed, out var guid)
+            ? guid
+            : CreateGuidFromName(InstanceIdNamespace, Encoding.UTF8.GetBytes(guidSeed));
+        Name = name;
+        InstanceId = instanceId;
+        _currentUtcDateTime = currentUtcDateTime;
+        _appId = appId; // Necessary for setting the source app ID value on the task router
+        _versionTracker = versionTracker;
+
+        var propagatedChunks = incomingPropagatedHistory?.ToList();
+        _propagatedHistory = propagatedChunks is { Count: > 0 }
+            ? new PropagatedHistory(propagatedChunks.Select(ConvertChunk).ToList())
+            : null;
+
+        _logger.LogWorkflowContextConstructorSetup(name, instanceId);
+    }
+
+    /// <inheritdoc />
+    public override string Name { get; }
+
+    /// <inheritdoc />
+    public override string InstanceId { get; }
+
+    /// <inheritdoc />
+    public override DateTime CurrentUtcDateTime => _currentUtcDateTime;
+
+    /// <inheritdoc />
+    public override bool IsReplaying => _isReplaying;
+
+    /// <inheritdoc />
+    public override bool IsPatched(string patchName) => _versionTracker.RequestPatch(patchName, isReplaying: this.IsReplaying);
+
+    /// <summary>
+    /// Gets the list of pending orchestrator actions to be sent to the Dapr sidecar.
+    /// </summary>
+    internal IReadOnlyCollection<WorkflowAction> PendingActions => _pendingActions.Values;
+
+    /// <summary>
+    /// Gets the custom status set by the workflow, if any.
+    /// </summary>
+    internal object? CustomStatus => _customStatus;
+
+    /// <inheritdoc />
+    public override async Task<T> CallActivityAsync<T>(string name, object? input = null,
+        WorkflowTaskOptions? options = null)
+    {
+        if (options?.RetryPolicy is { } retryPolicy)
+        {
+            var attemptOptions = options with { RetryPolicy = null };
+            // Generate a stable taskExecutionId for the entire retry chain.
+            // This ID is generated before any sequence number changes so it remains
+            // consistent across replays.
+            var retryTaskExecutionId = CreateTaskExecutionId(_sequenceNumber, name);
+            var interceptor = new RetryInterceptor<T>(this, retryPolicy,
+                () => CallActivityInternalAsync<T>(name, input, attemptOptions),
+                delay => CreateActivityRetryTimer(delay, retryTaskExecutionId));
+            var result = await interceptor.Invoke();
+            return result!;
+        }
+
+        return await CallActivityInternalAsync<T>(name, input, options);
+    }
+
+    private async Task<T> CallActivityInternalAsync<T>(string name, object? input, WorkflowTaskOptions? options)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var taskId = _sequenceNumber++;
+        var taskExecutionId = CreateTaskExecutionId(taskId, name);
+
+        var router = CreateRouter(options?.TargetAppId);
+        
+        // If the completion arrived before we registered the task, consume it now
+        if (_unmatchedCompletionsByExecutionId.Remove(taskExecutionId, out var earlyCompletion) ||
+            _unmatchedCompletions.Remove(taskId, out earlyCompletion))
+        {
+            _logger.LogDebug("Found early completion in buffer for task {TaskId} ({ActivityName})", taskId, name);
+            return await HandleHistoryMatch<T>(name, earlyCompletion, taskId);
+        }
+
+        var scheduleTaskAction = new ScheduleTaskAction
+        {
+            Name = name,
+            Input = _workflowSerializer.Serialize(input),
+            Router = router,
+            TaskExecutionId = taskExecutionId
+        };
+
+        var activityPropagationScope = options?.PropagationScope ?? HistoryPropagationScope.None;
+        if (activityPropagationScope != HistoryPropagationScope.None)
+        {
+            scheduleTaskAction.HistoryPropagationScope = activityPropagationScope switch
+            {
+                HistoryPropagationScope.OwnHistory => Dapr.DurableTask.Protobuf.HistoryPropagationScope.OwnHistory,
+                HistoryPropagationScope.Lineage => Dapr.DurableTask.Protobuf.HistoryPropagationScope.Lineage,
+                _ => Dapr.DurableTask.Protobuf.HistoryPropagationScope.None
+            };
+        }
+
+        _pendingActions.Add(taskId, new WorkflowAction
+        {
+            Id = taskId,
+            ScheduleTask = scheduleTaskAction,
+            Router = router
+        });
+
+        var tcs = new TaskCompletionSource<HistoryEvent>();
+        _openTasks.Add(taskId, tcs);
+        _taskIdToExecutionId[taskId] = taskExecutionId;
+        _executionIdToTaskId[taskExecutionId] = taskId;
+        
+        var historyEvent = await tcs.Task;
+        return await HandleHistoryMatch<T>(name, historyEvent, taskId);
+    }
+
+    /// <inheritdoc />
+    public override Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken)
+    {
+        return CreateTimerInternal(
+            Timestamp.FromDateTime(fireAt), new TimerOriginCreateTimer(), cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates a durable timer with the specified origin metadata.
+    /// </summary>
+    private async Task CreateTimerInternal(
+        Timestamp fireAt, IMessage origin, CancellationToken cancellationToken)
+    {
+        var taskId = _sequenceNumber++;
+
+        var createTimerAction = new CreateTimerAction { FireAt = fireAt };
+        SetTimerOrigin(createTimerAction, origin);
+
+        _pendingActions.Add(taskId, new WorkflowAction
+        {
+            Id = taskId,
+            CreateTimer = createTimerAction
+        });
+
+        var tcs = new TaskCompletionSource<HistoryEvent>();
+        _openTasks.Add(taskId, tcs);
+        
+        // If the timer fired before we registered the task, consume it now
+        if (_unmatchedCompletions.Remove(taskId, out var earlyCompletion))
+        {
+            tcs.TrySetResult(earlyCompletion);
+            _openTasks.Remove(taskId);
+        }
+
+        if (cancellationToken.CanBeCanceled)
+        {
+            cancellationToken.Register(() =>
+            {
+                if (tcs.TrySetCanceled())
+                {
+                    _openTasks.Remove(taskId);
+                }
+            });
+        }
+
+        await tcs.Task;
+    }
+
+    /// <summary>
+    /// Override that uses <see cref="TimerOriginExternalEvent"/> for the timeout timer and
+    /// supports indefinite waits (timeout &lt; 0) via a sentinel optional timer.
+    /// </summary>
+    public override async Task<T> WaitForExternalEventAsync<T>(string eventName, TimeSpan timeout)
+    {
+        if (timeout == TimeSpan.Zero)
+        {
+            // Zero timeout: return an already-canceled task, no timer emitted.
+            throw new TaskCanceledException(
+                $"WaitForExternalEvent '{eventName}' timed out immediately (zero timeout).");
+        }
+
+        var origin = new TimerOriginExternalEvent { Name = eventName };
+
+        using CancellationTokenSource timerCts = new();
+        Task timeoutTask;
+
+        if (timeout < TimeSpan.Zero)
+        {
+            // Indefinite wait: emit a synthetic optional timer with the sentinel fireAt.
+            timeoutTask = CreateTimerInternal(
+                ExternalEventIndefiniteFireAt,
+                origin,
+                timerCts.Token);
+        }
+        else
+        {
+            // Finite timeout: emit a timer with origin = ExternalEvent.
+            timeoutTask = CreateTimerInternal(
+                Timestamp.FromDateTime(CurrentUtcDateTime.Add(timeout)),
+                origin,
+                timerCts.Token);
+        }
+
+        using CancellationTokenSource eventCts = new();
+        Task<T> externalEventTask = WaitForExternalEventAsync<T>(eventName, eventCts.Token);
+
+        Task winner = await Task.WhenAny(timeoutTask, externalEventTask);
+        if (winner == externalEventTask)
+        {
+            timerCts.Cancel();
+        }
+        else
+        {
+            eventCts.Cancel();
+        }
+
+        return await externalEventTask;
+    }
+
+    /// <summary>
+    /// Creates a timer with <see cref="TimerOriginActivityRetry"/> origin.
+    /// Called by <see cref="RetryInterceptor{T}"/> for activity retries.
+    /// </summary>
+    internal Task CreateActivityRetryTimer(TimeSpan delay, string taskExecutionId)
+    {
+        var origin = new TimerOriginActivityRetry { TaskExecutionId = taskExecutionId };
+        return CreateTimerInternal(
+            Timestamp.FromDateTime(CurrentUtcDateTime.Add(delay)), origin, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Creates a timer with <see cref="TimerOriginChildWorkflowRetry"/> origin.
+    /// Called by <see cref="RetryInterceptor{T}"/> for child workflow retries.
+    /// </summary>
+    internal Task CreateChildWorkflowRetryTimer(TimeSpan delay, string instanceId)
+    {
+        var origin = new TimerOriginChildWorkflowRetry { InstanceId = instanceId };
+        return CreateTimerInternal(
+            Timestamp.FromDateTime(CurrentUtcDateTime.Add(delay)), origin, CancellationToken.None);
+    }
+
+    /// <inheritdoc />
+    public override async Task<T> WaitForExternalEventAsync<T>(string eventName, CancellationToken cancellationToken = default)
+    {
+        if (TryTakeExternalEvent(eventName, out string? eventData))
+        {
+            return DeserializeResult<T>(eventData!);
+        }
+
+        // Create a task completion source that will be set when the external event arrives.
+        TaskCompletionSource<HistoryEvent> eventSource = new();
+        if (_externalEventSources.TryGetValue(eventName, out Queue<TaskCompletionSource<HistoryEvent>>? existing))
+        {
+            existing.Enqueue(eventSource);
+        }
+        else
+        {
+            Queue<TaskCompletionSource<HistoryEvent>> eventSourceQueue = new();
+            eventSourceQueue.Enqueue(eventSource);
+            _externalEventSources.Add(eventName, eventSourceQueue);
+        }
+
+        if (cancellationToken.CanBeCanceled)
+        {
+            cancellationToken.Register(() => eventSource.TrySetCanceled(cancellationToken));
+        }
+
+        var historyEvent = await eventSource.Task;
+
+        eventData = historyEvent.EventRaised.Input ?? string.Empty;
+        return DeserializeResult<T>(eventData);
+    }
+
+    /// <summary>
+    /// Try take external event by name
+    /// </summary>
+    private bool TryTakeExternalEvent(string eventName, out string? eventData)
+    {
+        var historyEvent = _externalEventBuffer.Find(e => string.Equals(e.EventRaised.Name, eventName, StringComparison.OrdinalIgnoreCase));
+        if (historyEvent is not null)
+        {
+            _externalEventBuffer.Remove(historyEvent);
+            eventData = historyEvent.EventRaised.Input ?? string.Empty;
+            return true;
+        }
+
+        eventData = null;
+        return false;
+    }
+
+    /// <inheritdoc />
+    public override void SendEvent(string instanceId, string eventName, object payload)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
+        var taskId = _sequenceNumber++;
+
+        _pendingActions.Add(taskId, new WorkflowAction
+        {
+            Id = taskId,
+            SendEvent = new SendEventAction
+            {
+                Instance = new WorkflowInstance { InstanceId = instanceId },
+                Name = eventName,
+                Data = _workflowSerializer.Serialize(payload)
+            }
+        });
+    }
+
+    /// <inheritdoc />
+    public override void SetCustomStatus(object? customStatus) => _customStatus = customStatus;
+
+    public override async Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null,
+        ChildWorkflowTaskOptions? options = null)
+    {
+        if (options?.RetryPolicy is { } retryPolicy)
+        {
+            // First-child rule: capture the first child's instance ID for the entire retry chain.
+            var firstChildInstanceId = options.InstanceId ?? NewGuid().ToString();
+            var attemptOptions = options with { RetryPolicy = null };
+            var interceptor = new RetryInterceptor<TResult>(this, retryPolicy,
+                () => CallChildWorkflowInternalAsync<TResult>(workflowName, input, attemptOptions),
+                delay => CreateChildWorkflowRetryTimer(delay, firstChildInstanceId));
+            var result = await interceptor.Invoke();
+            return result!;
+        }
+
+        return await CallChildWorkflowInternalAsync<TResult>(workflowName, input, options);
+    }
+
+    private async Task<TResult> CallChildWorkflowInternalAsync<TResult>(
+        string workflowName,
+        object? input,
+        ChildWorkflowTaskOptions? options)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
+
+        // CRITICAL: Child instance IDs must be deterministic across replays
+        // Generate the child instance ID BEFORE incrementing sequence
+        var childInstanceId = options?.InstanceId ?? NewGuid().ToString();
+        var taskId = _sequenceNumber++;
+
+        var router = CreateRouter(options?.TargetAppId);
+
+        var createChildWorkflowAction = new CreateChildWorkflowAction
+        {
+            Name = workflowName,
+            InstanceId = childInstanceId,
+            Input = _workflowSerializer.Serialize(input),
+            Router = router
+        };
+
+        // Propagate history to the child workflow based on the requested scope
+        var propagationScope = options?.PropagationScope ?? HistoryPropagationScope.None;
+        if (propagationScope != HistoryPropagationScope.None)
+        {
+            createChildWorkflowAction.HistoryPropagationScope = propagationScope switch
+            {
+                HistoryPropagationScope.OwnHistory => Dapr.DurableTask.Protobuf.HistoryPropagationScope.OwnHistory,
+                HistoryPropagationScope.Lineage => Dapr.DurableTask.Protobuf.HistoryPropagationScope.Lineage,
+                _ => Dapr.DurableTask.Protobuf.HistoryPropagationScope.None
+            };
+        }
+
+        _pendingActions.Add(taskId, new WorkflowAction
+        {
+            Id = taskId,
+            CreateChildWorkflow = createChildWorkflowAction,
+            Router = router
+        });
+        
+        // Remember which parent task is associated with this child instance id
+        _subOrchestrationInstanceIdToParentTaskId[childInstanceId] = taskId;
+
+        var tcs = new TaskCompletionSource<HistoryEvent>();
+        _openTasks.Add(taskId, tcs);
+        
+        // If the sub-orchestration completed before we registered the task, consume it now
+        if (_unmatchedCompletions.Remove(taskId, out var earlyCompletion))
+        {
+            tcs.TrySetResult(earlyCompletion);
+            _openTasks.Remove(taskId);
+        }
+
+        var historyEvent = await tcs.Task;
+        return await HandleHistoryMatch<TResult>(workflowName, historyEvent, taskId);
+    }
+
+    /// <inheritdoc />
+    public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true)
+    {
+        var action = new WorkflowAction
+        {
+            Id = _sequenceNumber++,
+            CompleteWorkflow = new CompleteWorkflowAction
+            {
+                WorkflowStatus = OrchestrationStatus.ContinuedAsNew,
+                Result = _workflowSerializer.Serialize(newInput),
+            }
+        };
+
+        // Do NOT snapshot _externalEventBuffer here. ContinueAsNew is called from within
+        // workflow execution, which happens during ProcessEvents. Events arriving later in
+        // the same NewEvents batch will be buffered AFTER this point and would be missed.
+        // FinalizeCarryoverEvents() is called after all ProcessEvents calls are complete.
+        _preserveUnprocessedEvents = preserveUnprocessedEvents;
+        _pendingActions.Add(action.Id, action);
+    }
+
+    /// <summary>
+    /// Populates <c>CarryoverEvents</c> on any pending <c>ContinuedAsNew</c> action using the
+    /// final state of <c>_externalEventBuffer</c>. Must be called after all <c>ProcessEvents</c>
+    /// calls for the current turn are complete, so that events arriving later in the same
+    /// <c>NewEvents</c> batch are included.
+    /// </summary>
+    internal void FinalizeCarryoverEvents()
+    {
+        if (!_preserveUnprocessedEvents || _externalEventBuffer.Count == 0)
+            return;
+
+        foreach (var action in _pendingActions.Values)
+        {
+            if (action.CompleteWorkflow?.WorkflowStatus == OrchestrationStatus.ContinuedAsNew)
+            {
+                action.CompleteWorkflow.CarryoverEvents.AddRange(_externalEventBuffer);
+                return;
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public override Guid NewGuid()
+    {
+        var guidCounter = _guidCounter++;
+        var name = $"{InstanceId}_{guidCounter}"; // Stable per execution and replay
+        return CreateGuidFromName(_instanceGuid, Encoding.UTF8.GetBytes(name));
+    }
+
+    /// <inheritdoc />
+    public override PropagatedHistory? GetPropagatedHistory() => _propagatedHistory;
+
+    /// <inheritdoc />
+    public override ILogger CreateReplaySafeLogger(string categoryName) =>
+        new ReplaySafeLogger(_loggerFactory.CreateLogger(categoryName), () => IsReplaying);
+
+    /// <inheritdoc />
+    public override ILogger CreateReplaySafeLogger(Type type) =>
+        new ReplaySafeLogger(_loggerFactory.CreateLogger(type), () => IsReplaying);
+
+    /// <inheritdoc />
+    public override ILogger CreateReplaySafeLogger<T>() =>
+        new ReplaySafeLogger(_loggerFactory.CreateLogger<T>(), () => IsReplaying);
+
+    private Task<T> HandleHistoryMatch<T>(string name, HistoryEvent e, int taskId)
+    {
+        _logger.LogHandleHistoryMatch(IsReplaying ? "Replaying" : "Executing", taskId, name);
+
+        return e switch
+        {
+            { TaskCompleted: { } completed } => HandleCompletedActivityFromHistory<T>(name, completed),
+            { TaskFailed: { } failed } => HandleFailedActivityFromHistory<T>(name, failed),
+            { ChildWorkflowInstanceCompleted: { } completed } => HandleCompletedChildWorkflowFromHistory<T>(name, completed),
+            { ChildWorkflowInstanceFailed: { } failed } => HandleFailedChildWorkflowFromHistory<T>(name, failed),
+            _ => throw new InvalidOperationException($"Unexpected history event type for task ID {taskId}")
+        };
+    }
+
+    internal void ProcessEvents(IEnumerable<HistoryEvent> events, bool isReplaying)
+    {
+        _isReplaying = isReplaying;
+        
+        foreach (HistoryEvent historyEvent in events)
+        {
+            switch (historyEvent)
+            {
+                case { WorkflowStarted: { } started }:
+                    HandleOrchestratorStarted(historyEvent, started);
+                    break;
+
+                case { TaskScheduled: not null }:
+                    OnTaskScheduled(historyEvent);
+                    break;
+
+                case { TaskCompleted: { } completed }:
+                    HandleActionCompleted(historyEvent, completed.TaskScheduledId);
+                    break;
+
+                case { TaskFailed: { } failed }:
+                    HandleActionCompleted(historyEvent, failed.TaskScheduledId);
+                    break;
+
+                case { ChildWorkflowInstanceCreated: {} created }:
+                    OnSubOrchestrationCreated(historyEvent, created);
+                    break;
+
+                case { ChildWorkflowInstanceCompleted: { } completed }:
+                    HandleActionCompleted(historyEvent, completed.TaskScheduledId);
+                    break;
+
+                case { ChildWorkflowInstanceFailed: { } failed }:
+                    HandleActionCompleted(historyEvent, failed.TaskScheduledId);
+                    break;
+
+                case { TimerCreated: { } timerCreated }:
+                    OnTimerCreated(historyEvent, timerCreated);
+                    break;
+
+                case { TimerFired: { } fired }:
+                    HandleActionCompleted(historyEvent, fired.TimerId);
+                    break;
+
+                case { EventSent: not null }:
+                    HandleActionCreated(historyEvent);
+                    break;
+
+                case { EventRaised: { } raised }:
+                    HandleEventRaisedEvent(historyEvent, raised.Name);
+                    break;
+            }
+        }
+    }
+
+    private void HandleOrchestratorStarted(HistoryEvent historyEvent, WorkflowStartedEvent _)
+    {
+        InitializeNewTurn(historyEvent.Timestamp.ToDateTime());
+    }
+
+    internal void InitializeNewTurn(DateTime timestamp)
+    {
+        _currentUtcDateTime = timestamp;
+
+        if (_turnInitialized)
+            return;
+
+        _turnInitialized = true;
+
+        // Notify the tracker of the versioning data provided by the runtime for this turn
+        _versionTracker.OnOrchestratorStarted();
+    }
+
+    internal void SetReplayState(bool isReplaying)
+    {
+        _isReplaying = isReplaying;
+    }
+
+    private void HandleActionCreated(HistoryEvent historyEvent)
+    {
+        _pendingActions.Remove(historyEvent.EventId);
+    }
+
+    /// <summary>
+    /// If the pending action at <paramref name="eventId"/> is an optional external event timer,
+    /// drops it and shifts all subsequent actions/tasks down by one.
+    /// </summary>
+    /// <returns><c>true</c> if an optional timer was dropped; <c>false</c> otherwise.</returns>
+    private bool TryDropOptionalTimerAt(int eventId)
+    {
+        if (!_pendingActions.TryGetValue(eventId, out var pendingAction)
+            || pendingAction.CreateTimer == null
+            || !IsOptionalExternalEventTimerAction(pendingAction))
+            return false;
+
+        DropOptionalExternalEventTimerAt(eventId);
+        return true;
+
+    }
+
+    /// <summary>
+    /// Handles a TaskScheduled history event, dropping an optional timer if needed.
+    /// </summary>
+    private void OnTaskScheduled(HistoryEvent historyEvent)
+    {
+        var eventId = historyEvent.EventId;
+        TryDropOptionalTimerAt(eventId);
+        _pendingActions.Remove(eventId);
+    }
+
+    /// <summary>
+    /// Handles a SubOrchestrationInstanceCreated history event, dropping an optional timer if needed.
+    /// </summary>
+    private void OnSubOrchestrationCreated(HistoryEvent historyEvent,
+        ChildWorkflowInstanceCreatedEvent created)
+    {
+        TryDropOptionalTimerAt(historyEvent.EventId);
+        HandleSubOrchestrationCreated(historyEvent, created);
+    }
+    
+    private void HandleSubOrchestrationCreated(HistoryEvent historyEvent,
+        ChildWorkflowInstanceCreatedEvent created)
+    {
+        // The runtime may assign an EventId that does not match our local taskId.
+        // Try to correlate using the child instance id (which we control).
+        var createdEventId = historyEvent.EventId;
+    
+        // SubOrchestrationInstanceCreatedEvent should carry the child instance id.
+        // If it's missing/empty, we can't build a mapping.
+        if (!string.IsNullOrWhiteSpace(created.InstanceId) &&
+            _subOrchestrationInstanceIdToParentTaskId.TryGetValue(created.InstanceId, out var parentTaskId))
+        {
+            if (createdEventId != parentTaskId)
+            {
+                _subOrchestrationCreatedEventIdToParentTaskId[createdEventId] = parentTaskId;
+            }
+    
+            // The "created" history event means the schedule action is no longer pending.
+            // Remove by parentTaskId (our action id), not by createdEventId.
+            _pendingActions.Remove(parentTaskId);
+    
+            // Optional: prevent unbounded growth
+            _subOrchestrationInstanceIdToParentTaskId.Remove(created.InstanceId);
+            return;
+        }
+    
+        // Fallback to old behavior if we can't correlate
+        _pendingActions.Remove(createdEventId);
+    }
+
+    /// <summary>
+    /// Handles a TimerCreated history event with optional timer asymmetric-case handling.
+    /// </summary>
+    private void OnTimerCreated(HistoryEvent historyEvent, TimerCreatedEvent timerCreated)
+    {
+        var eventId = historyEvent.EventId;
+
+        // Asymmetric case: pending is an optional timer but incoming TimerCreated is not.
+        if (_pendingActions.TryGetValue(eventId, out var pendingAction)
+            && pendingAction.CreateTimer != null
+            && IsOptionalExternalEventTimerAction(pendingAction)
+            && !IsOptionalExternalEventTimerCreatedEvent(timerCreated))
+        {
+            DropOptionalExternalEventTimerAt(eventId);
+        }
+
+        // Normal match (both optional, neither optional, or post-shift)
+        _pendingActions.Remove(eventId);
+    }
+
+    /// <summary>
+    /// Drops the optional external event timer at the specified ID and shifts all subsequent
+    /// pending actions and tasks down by one.
+    /// </summary>
+    private void DropOptionalExternalEventTimerAt(int atId)
+    {
+        // Remove the optional timer action
+        _pendingActions.Remove(atId);
+
+        // Remove any open task (TCS) bound to this ID and cancel it
+        if (_openTasks.Remove(atId, out var tcs))
+        {
+            tcs.TrySetCanceled();
+        }
+
+        // Shift all pending actions with id > atId down by one
+        var actionsToShift = _pendingActions.Where(kvp => kvp.Key > atId).ToList();
+
+        foreach (var kvp in actionsToShift)
+        {
+            _pendingActions.Remove(kvp.Key);
+        }
+
+        foreach (var kvp in actionsToShift)
+        {
+            var newId = kvp.Key - 1;
+            kvp.Value.Id = newId;
+            _pendingActions[newId] = kvp.Value;
+        }
+
+        // Shift open tasks with id > atId down by one
+        var tasksToShift = _openTasks.Where(kvp => kvp.Key > atId).ToList();
+
+        foreach (var kvp in tasksToShift)
+        {
+            _openTasks.Remove(kvp.Key);
+        }
+
+        foreach (var kvp in tasksToShift)
+        {
+            _openTasks[kvp.Key - 1] = kvp.Value;
+        }
+
+        // Decrement the sequence number counter
+        _sequenceNumber--;
+    }
+    
+    private void HandleActionCompleted(HistoryEvent historyEvent, int taskId)
+    {
+        if (_openTasks.TryGetValue(taskId, out var tcs))
+        {
+            tcs.SetResult(historyEvent);
+            _openTasks.Remove(taskId);
+            RemoveTaskExecutionMapping(taskId);
+            return;
+        }
+
+        if (TryGetTaskExecutionId(historyEvent, out var taskExecutionId) &&
+            _executionIdToTaskId.TryGetValue(taskExecutionId, out var executionTaskId) &&
+            _openTasks.TryGetValue(executionTaskId, out var executionTcs))
+        {
+            executionTcs.SetResult(historyEvent);
+            _openTasks.Remove(executionTaskId);
+            RemoveTaskExecutionMapping(executionTaskId);
+            return;
+        }
+        
+        // Sub-orchestration completion may correlate via "created event id" rather than our local parent task id.
+        if (_subOrchestrationCreatedEventIdToParentTaskId.TryGetValue(taskId, out var parentTaskId) &&
+            _openTasks.TryGetValue(parentTaskId, out var mappedTcs))
+        {
+            mappedTcs.SetResult(historyEvent);
+            _openTasks.Remove(parentTaskId);
+            return;
+        }
+        
+        // Buffer the completion so the next replay pass can consume it when the workflow schedules/await the task.
+        // Ignore duplicates (first completion wins)
+        if (TryGetTaskExecutionId(historyEvent, out var unmatchedExecutionId))
+        {
+            if (!_unmatchedCompletionsByExecutionId.TryAdd(unmatchedExecutionId, historyEvent))
+            {
+                _logger.LogWarning(
+                    "Received completion for unknown taskId {TaskId} in instance {InstanceId}. OpenTasks=[{OpenTasks}] EventType={EventType}",
+                    taskId,
+                    InstanceId,
+                    string.Join(",", _openTasks.Keys),
+                    historyEvent.EventTypeCase);
+            }
+
+            return;
+        }
+
+        if (!_unmatchedCompletions.TryAdd(taskId, historyEvent))
+        {
+            // If we get here, the runtime delivered a completion for an unknown task id.
+            // This will otherwise manifest as "await never resumes".
+            _logger.LogWarning(
+                "Received completion for unknown taskId {TaskId} in instance {InstanceId}. OpenTasks=[{OpenTasks}] EventType={EventType}",
+                taskId,
+                InstanceId,
+                string.Join(",", _openTasks.Keys),
+                historyEvent.EventTypeCase);
+        }
+    }
+
+    private void HandleEventRaisedEvent(HistoryEvent historyEvent, string eventName)
+    {
+        if (_externalEventSources.TryGetValue(eventName, out Queue<TaskCompletionSource<HistoryEvent>>? waiters))
+        {
+            while (waiters.Count > 0)
+            {
+                var tcs = waiters.Dequeue();
+                if (tcs.TrySetResult(historyEvent))
+                {
+                    // Events are completed in FIFO order. Remove the key if the last event was delivered.
+                    if (waiters.Count is 0)
+                    {
+                        _externalEventSources.Remove(eventName);
+                    }
+
+                    return;
+                }
+            }
+
+            // All waiters were already completed/canceled. Remove and treat as unhandled.
+            _externalEventSources.Remove(eventName);
+        }
+
+        // The orchestrator isn't waiting for this event (yet?) or all waiters were canceled.
+        // Save it in case the orchestrator wants it later.
+        _externalEventBuffer.Add(historyEvent);
+    }
+
+    /// <summary>
+    /// Creates a new TaskRouter in a centralized location.
+    /// </summary>
+    /// <param name="targetAppId">The app ID containing the target workflow resource.</param>
+    /// <returns>Either a <see cref="TaskRouter"/> if the requisite values are provided or a <c>null</c>.</returns>
+    private TaskRouter? CreateRouter(string? targetAppId)
+    {
+        return !string.IsNullOrWhiteSpace(targetAppId) && !string.IsNullOrWhiteSpace(_appId)
+            ? new TaskRouter { TargetAppID = targetAppId, SourceAppID = _appId }
+            : null;
+    }
+
+    /// <summary>
+    /// Handles an activity that completed in the workflow history.
+    /// </summary>
+    private Task<T> HandleCompletedActivityFromHistory<T>(string activityName, TaskCompletedEvent completed)
+    {
+        _logger.LogActivityCompletedFromHistory(activityName, InstanceId);
+        return Task.FromResult(DeserializeResult<T>(completed.Result ?? string.Empty));
+    }
+
+    /// <summary>
+    /// Handles an activity that failed in the workflow history.
+    /// </summary>
+    private Task<T> HandleFailedActivityFromHistory<T>(string activityName, TaskFailedEvent failed)
+    {
+        _logger.LogActivityFailedFromHistory(activityName, InstanceId);
+        throw CreateTaskFailedException(failed);
+    }
+
+    private string CreateTaskExecutionId(int taskId, string name)
+    {
+        var seed = $"{InstanceId}|activity|{taskId}|{name}";
+        return CreateGuidFromName(_instanceGuid, Encoding.UTF8.GetBytes(seed)).ToString("N");
+    }
+
+    private static bool TryGetTaskExecutionId(HistoryEvent historyEvent, out string taskExecutionId)
+    {
+        taskExecutionId = historyEvent switch
+        {
+            { TaskCompleted: { } completed } => completed.TaskExecutionId,
+            { TaskFailed: { } failed } => failed.TaskExecutionId,
+            _ => string.Empty
+        };
+
+        return !string.IsNullOrWhiteSpace(taskExecutionId);
+    }
+
+    private void RemoveTaskExecutionMapping(int taskId)
+    {
+        if (_taskIdToExecutionId.Remove(taskId, out var executionId))
+        {
+            _executionIdToTaskId.Remove(executionId);
+        }
+    }
+
+    /// <summary>
+    /// Handles a child workflow that completed in the workflow history.
+    /// </summary>
+    private Task<TResult> HandleCompletedChildWorkflowFromHistory<TResult>(string workflowName,
+        ChildWorkflowInstanceCompletedEvent completed)
+    {
+        _logger.LogChildWorkflowCompletedFromHistory(workflowName, InstanceId);
+        return Task.FromResult(DeserializeResult<TResult>(completed.Result ?? string.Empty));
+    }
+
+    /// <summary>
+    /// Handles a child workflow that failed in the workflow history.
+    /// </summary>
+    private Task<TResult> HandleFailedChildWorkflowFromHistory<TResult>(string workflowName,
+        ChildWorkflowInstanceFailedEvent failed)
+    {
+        _logger.LogChildWorkflowFailedFromHistory(workflowName, InstanceId);
+        throw new WorkflowTaskFailedException($"Child workflow '{workflowName}' failed",
+            new WorkflowTaskFailureDetails(failed.FailureDetails?.ErrorType ?? "Exception",
+                failed.FailureDetails?.ErrorMessage ?? "Unknown message",
+                failed.FailureDetails?.StackTrace ?? string.Empty));
+    }
+
+    /// <summary>
+    /// Creates a deterministic GUID from a namespace and name using RFC 4122 UUID v5 (SHA-1).
+    /// </summary>
+    private static Guid CreateGuidFromName(Guid namespaceId, byte[] name)
+    {
+        // RFC 4122 §4.3 - Algorithm for Creating a Name-Based UUID (Version 5 - SHA-1)
+        var namespaceBytes = namespaceId.ToByteArray();
+        SwapByteOrder(namespaceBytes);
+
+        byte[] hash;
+        using (var sha1 = SHA1.Create())
+        {
+            sha1.TransformBlock(namespaceBytes, 0, namespaceBytes.Length, null, 0);
+            sha1.TransformFinalBlock(name, 0, name.Length);
+            hash = sha1.Hash!;
+        }
+
+        var newGuid = new byte[16];
+        Array.Copy(hash, 0, newGuid, 0, 16);
+
+        // Set version to 5 (SHA-1) and variant to RFC 4122
+        newGuid[6] = (byte)((newGuid[6] & 0x0F) | 0x50);
+        newGuid[8] = (byte)((newGuid[8] & 0x3F) | 0x80);
+
+        SwapByteOrder(newGuid);
+        return new Guid(newGuid);
+    }
+
+    /// <summary>
+    /// Swaps byte order for GUID conversion.
+    /// </summary>
+    private static void SwapByteOrder(byte[] guid)
+    {
+        SwapBytes(guid, 0, 3);
+        SwapBytes(guid, 1, 2);
+        SwapBytes(guid, 4, 5);
+        SwapBytes(guid, 6, 7);
+    }
+
+    /// <summary>
+    /// Swaps two bytes in an array.
+    /// </summary>
+    private static void SwapBytes(byte[] guid, int left, int right)
+        => (guid[left], guid[right]) = (guid[right], guid[left]);
+
+    /// <summary>
+    /// Deserializes string value to a specific type.
+    /// </summary>
+    /// <param name="value">The string value to deserialize.</param>
+    /// <typeparam name="T">The type to deserialize to.</typeparam>
+    /// <returns>The strongly typed deserialized data.</returns>
+    private T DeserializeResult<T>(string value)
+        => string.IsNullOrEmpty(value) ? default! : _workflowSerializer.Deserialize<T>(value)!;
+
+    /// <summary>
+    /// An exception that represents a task failed event.
+    /// </summary>
+    private static WorkflowTaskFailedException CreateTaskFailedException(TaskFailedEvent failedEvent)
+    {
+        var failureDetails = new WorkflowTaskFailureDetails(failedEvent.FailureDetails?.ErrorType ?? "Exception",
+            failedEvent.FailureDetails?.ErrorMessage ?? "Unknown error",
+            failedEvent.FailureDetails?.StackTrace ?? string.Empty);
+
+        return new WorkflowTaskFailedException($"Task failed: {failureDetails.ErrorMessage}", failureDetails);
+    }
+
+    /// <summary>
+    /// Converts a <see cref="PropagatedHistoryChunk"/> proto message into a public-facing
+    /// <see cref="PropagatedHistoryEvent"/> by resolving each scheduled activity and child workflow
+    /// against its matching completion/failure event.
+    /// </summary>
+    /// <remarks>
+    /// Each <see cref="PropagatedHistoryChunk.RawEvents"/> entry is the deterministic byte
+    /// representation of a single <see cref="HistoryEvent"/>; we parse the bytes here.
+    /// SDK retries reuse <c>TaskExecutionId</c>, so we match completions on
+    /// <c>TaskScheduledId</c> (the scheduling event ID) rather than execution ID.
+    /// Malformed event bytes are surfaced as exceptions — a runtime sending unparseable
+    /// proto bytes is a contract violation we should not hide.
+    /// </remarks>
+    private static PropagatedHistoryEvent ConvertChunk(PropagatedHistoryChunk chunk)
+    {
+        var events = new List<HistoryEvent>(chunk.RawEvents.Count);
+        foreach (var rawEvent in chunk.RawEvents)
+        {
+            events.Add(HistoryEvent.Parser.ParseFrom(rawEvent));
+        }
+
+        // Pre-index completion / failure events by TaskScheduledId so each scheduled
+        // activity or child workflow resolves in O(1) instead of rescanning the list.
+        var taskCompletions = new Dictionary<int, HistoryEvent>();
+        var taskFailures = new Dictionary<int, HistoryEvent>();
+        var childCompletions = new Dictionary<int, HistoryEvent>();
+        var childFailures = new Dictionary<int, HistoryEvent>();
+        foreach (var e in events)
+        {
+            switch (e.EventTypeCase)
+            {
+                case HistoryEvent.EventTypeOneofCase.TaskCompleted:
+                    taskCompletions[e.TaskCompleted.TaskScheduledId] = e;
+                    break;
+                case HistoryEvent.EventTypeOneofCase.TaskFailed:
+                    taskFailures[e.TaskFailed.TaskScheduledId] = e;
+                    break;
+                case HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCompleted:
+                    childCompletions[e.ChildWorkflowInstanceCompleted.TaskScheduledId] = e;
+                    break;
+                case HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceFailed:
+                    childFailures[e.ChildWorkflowInstanceFailed.TaskScheduledId] = e;
+                    break;
+            }
+        }
+
+        var activities = new List<PropagatedHistoryActivityResult>();
+        var childWorkflows = new List<PropagatedHistoryWorkflowResult>();
+        foreach (var historyEvent in events)
+        {
+            switch (historyEvent.EventTypeCase)
+            {
+                case HistoryEvent.EventTypeOneofCase.TaskScheduled:
+                    activities.Add(ResolveActivity(historyEvent, taskCompletions, taskFailures));
+                    break;
+                case HistoryEvent.EventTypeOneofCase.ChildWorkflowInstanceCreated:
+                    childWorkflows.Add(ResolveChildWorkflow(historyEvent, childCompletions, childFailures));
+                    break;
+            }
+        }
+
+        return new PropagatedHistoryEvent(
+            chunk.InstanceId,
+            chunk.AppId,
+            chunk.WorkflowName,
+            activities,
+            childWorkflows);
+    }
+
+    /// <summary>
+    /// Builds a <see cref="PropagatedHistoryActivityResult"/> by matching <c>TaskCompleted</c> /
+    /// <c>TaskFailed</c> against the scheduling event's <c>EventId</c>.
+    /// </summary>
+    private static PropagatedHistoryActivityResult ResolveActivity(
+        HistoryEvent scheduleEvent,
+        IReadOnlyDictionary<int, HistoryEvent> completions,
+        IReadOnlyDictionary<int, HistoryEvent> failures)
+    {
+        var scheduled = scheduleEvent.TaskScheduled;
+        var scheduleId = scheduleEvent.EventId;
+        var status = PropagatedHistoryStatus.Pending;
+        string? output = null;
+        WorkflowTaskFailureDetails? failureDetails = null;
+
+        if (completions.TryGetValue(scheduleId, out var completion))
+        {
+            status = PropagatedHistoryStatus.Completed;
+            output = completion.TaskCompleted.Result;
+        }
+
+        if (failures.TryGetValue(scheduleId, out var failure))
+        {
+            status = PropagatedHistoryStatus.Failed;
+            failureDetails = MapFailureDetails(failure.TaskFailed.FailureDetails);
+        }
+
+        return new PropagatedHistoryActivityResult(
+            Name: scheduled.Name,
+            Status: status,
+            Input: scheduled.Input,
+            Output: output,
+            FailureDetails: failureDetails);
+    }
+
+    /// <summary>
+    /// Builds a <see cref="PropagatedHistoryWorkflowResult"/> by matching the create event's
+    /// <c>EventId</c> against subsequent <c>ChildWorkflowInstanceCompleted</c> /
+    /// <c>ChildWorkflowInstanceFailed</c> events.
+    /// </summary>
+    private static PropagatedHistoryWorkflowResult ResolveChildWorkflow(
+        HistoryEvent createEvent,
+        IReadOnlyDictionary<int, HistoryEvent> completions,
+        IReadOnlyDictionary<int, HistoryEvent> failures)
+    {
+        var created = createEvent.ChildWorkflowInstanceCreated;
+        var creationId = createEvent.EventId;
+        var status = PropagatedHistoryStatus.Pending;
+        string? output = null;
+        WorkflowTaskFailureDetails? failureDetails = null;
+
+        if (completions.TryGetValue(creationId, out var completion))
+        {
+            status = PropagatedHistoryStatus.Completed;
+            output = completion.ChildWorkflowInstanceCompleted.Result;
+        }
+
+        if (failures.TryGetValue(creationId, out var failure))
+        {
+            status = PropagatedHistoryStatus.Failed;
+            failureDetails = MapFailureDetails(failure.ChildWorkflowInstanceFailed.FailureDetails);
+        }
+
+        return new PropagatedHistoryWorkflowResult(
+            Name: created.Name,
+            Status: status,
+            Output: output,
+            FailureDetails: failureDetails);
+    }
+
+    private static WorkflowTaskFailureDetails? MapFailureDetails(TaskFailureDetails? failure) =>
+        failure is null
+            ? null
+            : new WorkflowTaskFailureDetails(
+                errorType: failure.ErrorType ?? "Exception",
+                errorMessage: failure.ErrorMessage ?? string.Empty,
+                stackTrace: failure.StackTrace);
+}

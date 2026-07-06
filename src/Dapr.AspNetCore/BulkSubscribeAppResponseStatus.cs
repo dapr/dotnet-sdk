@@ -11,24 +11,22 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.AspNetCore
-{
-        /// <summary>
-        /// Status of the message handled in bulk subscribe handler.
-        /// </summary>
-        public enum BulkSubscribeAppResponseStatus {
-            /// <summary>
-            /// Success
-            /// </summary>
-            SUCCESS,
-            /// <summary>
-            /// Failure
-            /// </summary>
-            RETRY,
-            /// <summary>
-            /// Drop
-            /// </summary>
-            DROP
-        }
-    
+namespace Dapr.AspNetCore;
+
+/// <summary>
+/// Status of the message handled in bulk subscribe handler.
+/// </summary>
+public enum BulkSubscribeAppResponseStatus {
+    /// <summary>
+    /// Success
+    /// </summary>
+    SUCCESS,
+    /// <summary>
+    /// Failure
+    /// </summary>
+    RETRY,
+    /// <summary>
+    /// Drop
+    /// </summary>
+    DROP
 }

@@ -17,42 +17,41 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Dapr.E2E.Test.App.ReentrantActors
+namespace Dapr.E2E.Test.App.ReentrantActors;
+
+public class Startup
 {
-    public class Startup
+    // This method gets called by the runtime. Use this method to add services to the container.
+    // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
+    public void ConfigureServices(IServiceCollection services)
     {
-        // This method gets called by the runtime. Use this method to add services to the container.
-        // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
-        public void ConfigureServices(IServiceCollection services)
+        services.AddActors(options =>
         {
-            services.AddActors(options =>
+            // We force this to use a per-actor config as an easy way to validate that's working.
+            options.ReentrancyConfig = new() { Enabled = false };
+            options.Actors.RegisterActor<ReentrantActor>(typeOptions: new()
             {
-                // We force this to use a per-actor config as an easy way to validate that's working.
-                options.ReentrancyConfig = new() { Enabled = false };
-                options.Actors.RegisterActor<ReentrantActor>(typeOptions: new()
+                ReentrancyConfig = new()
                 {
-                    ReentrancyConfig = new()
-                    {
-                        Enabled = true,
-                    }
-                });
+                    Enabled = true,
+                }
             });
-        }
+        });
+    }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment())
         {
-            if (env.IsDevelopment())
-            {
-                app.UseDeveloperExceptionPage();
-            }
-
-            app.UseRouting();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapActorsHandlers();
-            });
+            app.UseDeveloperExceptionPage();
         }
+
+        app.UseRouting();
+
+        app.UseEndpoints(endpoints =>
+        {
+            endpoints.MapActorsHandlers();
+        });
     }
 }

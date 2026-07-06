@@ -11,48 +11,37 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+#nullable enable
 using System.Collections.Generic;
 
-namespace Dapr.Client
+namespace Dapr.Client;
+
+/// <summary>
+/// Represents a state object used for bulk delete state operation
+/// </summary>
+/// <param name="key">The state key.</param>
+/// <param name="etag">The ETag.</param>
+/// <param name="stateOptions">The stateOptions.</param>
+/// <param name="metadata">The metadata.</param>
+public readonly struct BulkDeleteStateItem(string key, string etag, StateOptions? stateOptions = null, IReadOnlyDictionary<string, string>? metadata = null)
 {
     /// <summary>
-    /// Represents a state object used for bulk delete state operation
+    /// Gets the state key.
     /// </summary>
-    public readonly struct BulkDeleteStateItem
-    {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="BulkStateItem"/> class.
-        /// </summary>
-        /// <param name="key">The state key.</param>
-        /// <param name="etag">The ETag.</param>
-        /// <param name="stateOptions">The stateOptions.</param>
-        /// <param name="metadata">The metadata.</param>
-        public BulkDeleteStateItem(string key, string etag, StateOptions stateOptions = default, IReadOnlyDictionary<string, string> metadata = default)
-        {
-            this.Key = key;
-            this.ETag = etag;
-            StateOptions = stateOptions;
-            Metadata = metadata;
-        }
+    public string Key { get; } = key;
 
-         /// <summary>
-        /// Gets the state key.
-        /// </summary>
-        public string Key { get; }
+    /// <summary>
+    /// Get the ETag.
+    /// </summary>
+    public string ETag { get; } = etag;
 
-        /// <summary>
-        /// Get the ETag.
-        /// </summary>
-        public string ETag { get; }
+    /// <summary>
+    /// Gets the StateOptions.
+    /// </summary>
+    public StateOptions? StateOptions { get; } = stateOptions;
 
-        /// <summary>
-        /// Gets the StateOptions.
-        /// </summary>
-        public StateOptions StateOptions { get; }
-
-        /// <summary>
-        /// Gets the Metadata.
-        /// </summary>
-        public IReadOnlyDictionary<string, string> Metadata { get; }
-    }
+    /// <summary>
+    /// Gets the Metadata.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Metadata { get; } = metadata;
 }

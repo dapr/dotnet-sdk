@@ -1,0 +1,11 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: localstorage
+spec:
+  type: crypto.dapr.localstorage
+  version: v1
+  metadata:
+    - name: path
+      # Path is relative to the folder where the example is located
+      value: ./keys

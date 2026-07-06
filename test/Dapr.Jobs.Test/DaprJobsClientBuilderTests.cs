@@ -14,7 +14,6 @@
 using System;
 using System.Text.Json;
 using Grpc.Net.Client;
-using Xunit;
 
 namespace Dapr.Jobs.Test;
 
@@ -60,7 +59,7 @@ public class DaprJobsClientBuilderTest
         var builder = new DaprJobsClientBuilder();
         builder.UseGrpcEndpoint("ftp://example.com");
 
-        var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
+        var ex = Assert.Throws<InvalidOperationException>(builder.Build);
         Assert.Equal("The gRPC endpoint must use http or https.", ex.Message);
     }
 
@@ -70,7 +69,7 @@ public class DaprJobsClientBuilderTest
         var builder = new DaprJobsClientBuilder();
         builder.UseHttpEndpoint("ftp://example.com");
 
-        var ex = Assert.Throws<InvalidOperationException>(() => builder.Build());
+        var ex = Assert.Throws<InvalidOperationException>(builder.Build);
         Assert.Equal("The HTTP endpoint must use http or https.", ex.Message);
     }
 

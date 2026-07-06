@@ -14,7 +14,7 @@
     <PackageReference Include="protobuf-net.Grpc.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Shouldly"/>
-    <PackageReference Include="xunit"  />
+    <PackageReference Include="xunit.v3"  />
     <PackageReference Include="xunit.runner.visualstudio">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
