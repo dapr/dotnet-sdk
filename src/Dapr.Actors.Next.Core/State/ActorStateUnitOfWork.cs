@@ -107,6 +107,28 @@ public sealed class ActorStateUnitOfWork(
         return ValueTask.CompletedTask;
     }
 
+    /// <inheritdoc />
+    public ValueTask FlushCacheAsync(CancellationToken cancellationToken = default) =>
+        FlushCacheAsync(new DaprFlushStateOptions(), cancellationToken);
+
+    /// <inheritdoc />
+    public async ValueTask FlushCacheAsync(DaprFlushStateOptions options, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        if (!options.FlushOnDirtyState)
+        {
+            foreach (var (name, entry) in entries)
+            {
+                if (entry.Dirty || (entry.TrackInPlaceMutations && await HasInPlaceMutationAsync(entry, cancellationToken).ConfigureAwait(false)))
+                {
+                    throw new InvalidOperationException($"Cannot flush actor state cache because state '{name}' has unpersisted changes.");
+                }
+            }
+        }
+
+        entries.Clear();
+    }
+
     /// <summary>
     /// Flushes dirty state entries to the store.
     /// </summary>
@@ -268,6 +290,18 @@ public sealed class ActorStateUnitOfWork(
     private bool ShouldStorePlain<T>() => disableStateMigration || migrator?.ResolveTargetNode(typeof(T)) is null;
 
     private static bool ShouldTrackInPlaceMutations<T>() => !typeof(T).IsValueType;
+
+    private ValueTask<bool> HasInPlaceMutationAsync(CacheEntry entry, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (entry.PersistedSnapshot is null)
+        {
+            return ValueTask.FromResult(entry.Dirty);
+        }
+
+        var currentSnapshot = entry.CreateSnapshot(serializer);
+        return ValueTask.FromResult(!currentSnapshot.AsSpan().SequenceEqual(entry.PersistedSnapshot));
+    }
 
     private static Func<IActorWireSerializer, byte[]> CreateSnapshot<T>(CachedActorState<T> state)
     {

@@ -117,6 +117,76 @@ public sealed class CoreEdgeCaseTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public async Task State_cache_flush_unloads_clean_entries_and_reloads_next_operation()
+    {
+        var store = new RecordingActorStateStore();
+        var serializer = new ActorWireSerializer(new JsonDaprSerializer());
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("flush-clean"), store, serializer);
+
+        await state.SetAsync("state", new CounterState { Value = 10 });
+        await state.FlushAsync();
+        Assert.Equal(10, (await state.TryGetAsync<CounterState>("state"))!.Value.Value);
+
+        await store.WriteAsync("Counter", "flush-clean", "state", Plain(serializer, new CounterState { Value = 20 }));
+        var readsBeforeFlush = store.ReadCount;
+        await state.FlushCacheAsync();
+        var reloaded = await state.TryGetAsync<CounterState>("state");
+
+        Assert.Equal(20, reloaded!.Value.Value);
+        Assert.True(store.ReadCount > readsBeforeFlush);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task State_cache_flush_rejects_dirty_entries_by_default()
+    {
+        var store = new RecordingActorStateStore();
+        var serializer = new ActorWireSerializer(new JsonDaprSerializer());
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("flush-dirty"), store, serializer);
+
+        await state.SetAsync("state", new CounterState { Value = 10 });
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await state.FlushCacheAsync());
+
+        Assert.Contains("state", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(0, store.WriteCount);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task State_cache_flush_rejects_in_place_mutations_by_default()
+    {
+        var store = new RecordingActorStateStore();
+        var serializer = new ActorWireSerializer(new JsonDaprSerializer());
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("flush-in-place"), store, serializer);
+
+        await state.SetAsync("state", new CounterState { Value = 10 });
+        await state.FlushAsync();
+        var loaded = await state.TryGetAsync<CounterState>("state");
+        loaded!.Value.Value = 11;
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await state.FlushCacheAsync());
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task State_cache_flush_can_discard_dirty_entries_without_persisting()
+    {
+        var store = new RecordingActorStateStore();
+        var serializer = new ActorWireSerializer(new JsonDaprSerializer());
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("flush-discard"), store, serializer);
+
+        await state.SetAsync("state", new CounterState { Value = 10 });
+        await state.FlushAsync();
+        var writesBeforeDiscard = store.WriteCount;
+        await state.SetAsync("state", new CounterState { Value = 99 });
+
+        await state.FlushCacheAsync(new DaprFlushStateOptions { FlushOnDirtyState = true });
+        await state.FlushAsync();
+        var reloaded = await state.TryGetAsync<CounterState>("state");
+
+        Assert.Equal(10, reloaded!.Value.Value);
+        Assert.Equal(writesBeforeDiscard, store.WriteCount);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task State_accessor_reports_null_envelope()
     {
         var store = new InMemoryActorStateStore();
@@ -369,14 +439,24 @@ public sealed class CoreEdgeCaseTests
         public T? DeserializeFromBytes<T>(ReadOnlyMemory<byte> bytes) => default;
     }
 
+    private static byte[] Plain<T>(IActorWireSerializer serializer, T value) =>
+        serializer.SerializeToBytes(new ActorStatePlainEnvelope<T>(
+            ActorStateEnvelopeHeader.Create(ActorStateFormKind.Plain, serializer.SerializerId, serializer.SerializerVersion),
+            value));
+
     private sealed class RecordingActorStateStore : IActorStateStore
     {
         private readonly InMemoryActorStateStore inner = new();
 
+        public int ReadCount { get; private set; }
+
         public int WriteCount { get; private set; }
 
-        public ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default) =>
-            inner.ReadAsync(actorType, actorId, name, cancellationToken);
+        public ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default)
+        {
+            ReadCount++;
+            return inner.ReadAsync(actorType, actorId, name, cancellationToken);
+        }
 
         public ValueTask WriteAsync(string actorType, string actorId, string name, ReadOnlyMemory<byte> value, CancellationToken cancellationToken = default)
         {

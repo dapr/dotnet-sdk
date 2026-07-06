@@ -29,4 +29,14 @@ public interface IActorStateAccessor
     /// Removes state by name.
     /// </summary>
     ValueTask RemoveAsync(string name, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Unloads cached state entries so future state operations read them from durable state again.
+    /// </summary>
+    ValueTask FlushCacheAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Unloads cached state entries so future state operations read them from durable state again.
+    /// </summary>
+    ValueTask FlushCacheAsync(DaprFlushStateOptions options, CancellationToken cancellationToken = default);
 }
