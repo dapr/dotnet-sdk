@@ -30,6 +30,16 @@ public class ExampleBuildValidationTests
     ];
 
     /// <summary>
+    /// Project file names to exclude from example build validation.
+    /// Example test projects are run by their own test steps and should not be
+    /// built as application examples by this integration test.
+    /// </summary>
+    private static readonly string[] ExcludedProjectSuffixes =
+    [
+        ".Tests.csproj"
+    ];
+
+    /// <summary>
     /// Discovers all example project files suitable for build validation.
     /// </summary>
     public static TheoryData<string> GetExampleProjects()
@@ -43,6 +53,9 @@ public class ExampleBuildValidationTests
             var relativePath = Path.GetRelativePath(examplesDir, csproj);
 
             if (ExcludedPathPrefixes.Any(prefix => relativePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            if (ExcludedProjectSuffixes.Any(suffix => relativePath.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
             data.Add(relativePath);
