@@ -527,6 +527,107 @@ public sealed class ActorsNextAnalyzerTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public Task Older_state_usage_is_reported_when_later_additive_version_exists()
+    {
+        const string source = """
+            using System;
+            using System.Threading;
+            using System.Threading.Tasks;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+            using Dapr.Actors.Next.Abstractions.State;
+
+            namespace Sample;
+
+            public sealed class CartStateV1 { public int Count { get; set; } }
+            public sealed class CartStateV2 { public int Count { get; set; } public string Name { get; set; } = ""; }
+
+            [DaprActor]
+            public sealed class CartActor : Actor
+            {
+                protected override ActorId Id => ActorId.Create("a");
+                protected override IActorStateAccessor State => throw new NotImplementedException();
+
+                public async Task ReadAsync(CancellationToken cancellationToken)
+                {
+                    _ = await {|DAPR1428:State.GetOrCreateAsync<CartStateV1>("cart", () => new CartStateV1(), cancellationToken)|};
+                }
+            }
+            """;
+
+        return AnalyzerTest.VerifyAnalyzerAsync(source);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public Task Older_state_usage_is_reported_when_later_explicit_upcaster_target_exists()
+    {
+        const string source = """
+            using System;
+            using System.Threading;
+            using System.Threading.Tasks;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+            using Dapr.Actors.Next.Abstractions.State;
+
+            namespace Sample;
+
+            public sealed class CartStateV1 { public int Count { get; set; } }
+            public sealed class CartStateV2 { public int Quantity { get; set; } }
+
+            public sealed class CartStateV1ToV2 : IActorStateUpcaster<CartStateV1, CartStateV2>
+            {
+                public ValueTask<CartStateV2> UpcastAsync(CartStateV1 state, CancellationToken cancellationToken = default) => new(new CartStateV2());
+            }
+
+            [DaprActor]
+            public sealed class CartActor : Actor
+            {
+                protected override ActorId Id => ActorId.Create("a");
+                protected override IActorStateAccessor State => throw new NotImplementedException();
+
+                public async Task ReadAsync(CancellationToken cancellationToken)
+                {
+                    _ = await {|DAPR1428:State.TryGetAsync<CartStateV1>("cart", cancellationToken)|};
+                }
+            }
+            """;
+
+        return AnalyzerTest.VerifyAnalyzerAsync(source);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public Task Latest_state_usage_is_silent_when_older_versions_exist()
+    {
+        const string source = """
+            using System;
+            using System.Threading;
+            using System.Threading.Tasks;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+            using Dapr.Actors.Next.Abstractions.State;
+
+            namespace Sample;
+
+            public sealed class CartStateV1 { public int Count { get; set; } }
+            public sealed class CartStateV2 { public int Count { get; set; } public string Name { get; set; } = ""; }
+
+            [DaprActor]
+            public sealed class CartActor : Actor
+            {
+                protected override ActorId Id => ActorId.Create("a");
+                protected override IActorStateAccessor State => throw new NotImplementedException();
+
+                public async Task ReadAsync(CancellationToken cancellationToken)
+                {
+                    _ = await State.GetOrCreateAsync<CartStateV2>("cart", () => new CartStateV2(), cancellationToken);
+                }
+            }
+            """;
+
+        return AnalyzerTest.VerifyAnalyzerAsync(source);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Non_versioned_upcaster_types_are_ignored()
     {
         const string source = """

@@ -35,7 +35,8 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         ActorAnalyzerDiagnostics.UpcasterChainGap,
         ActorAnalyzerDiagnostics.NonAdditiveMigrationStep,
         ActorAnalyzerDiagnostics.NonUniqueFoldPath,
-        ActorAnalyzerDiagnostics.MultipleFamiliesForStateName);
+        ActorAnalyzerDiagnostics.MultipleFamiliesForStateName,
+        ActorAnalyzerDiagnostics.OutdatedStateTypeUsage);
 
     /// <summary>
     /// Initializes analyzer actions.
@@ -664,6 +665,7 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
             .Select(edge => (From: edge.From.BaselineName(), To: edge.To.BaselineName(), edge.Location))
             .ToArray();
         var reportedMissing = new HashSet<string>(StringComparer.Ordinal);
+        AnalyzeOutdatedStateTypeUsages(context, usages, relevantNodes, edgeKeys);
 
         foreach (var usage in usages)
         {
@@ -757,6 +759,41 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
                 nameGroup.OrderBy(static usage => usage.Location.SourceSpan.Start).First().Location,
                 nameGroup.Key,
                 string.Join(", ", families)));
+        }
+    }
+
+    private static void AnalyzeOutdatedStateTypeUsages(
+        CompilationAnalysisContext context,
+        IReadOnlyCollection<StateUsage> usages,
+        IReadOnlyCollection<StateNode> relevantNodes,
+        IReadOnlyCollection<(string From, string To, Location? Location)> explicitEdges)
+    {
+        var nodes = relevantNodes.ToDictionary(static node => node.Type.BaselineName(), StringComparer.Ordinal);
+        var directedEdges = BuildDirectedMigrationEdges(relevantNodes, explicitEdges);
+
+        foreach (var usage in usages)
+        {
+            if (!nodes.TryGetValue(usage.Type.BaselineName(), out var used))
+            {
+                continue;
+            }
+
+            var latest = relevantNodes
+                .Where(node => StringComparer.Ordinal.Equals(node.CanonicalName, used.CanonicalName) && node.Version > used.Version)
+                .OrderByDescending(static node => node.Version)
+                .ThenBy(static node => node.Type.BaselineName(), StringComparer.Ordinal)
+                .FirstOrDefault();
+            if (latest is null ||
+                !HasMigrationPath(used.Type.BaselineName(), latest.Type.BaselineName(), directedEdges, new HashSet<string>(StringComparer.Ordinal)))
+            {
+                continue;
+            }
+
+            context.ReportDiagnostic(Diagnostic.Create(
+                ActorAnalyzerDiagnostics.OutdatedStateTypeUsage,
+                usage.Location,
+                used.Type.Name,
+                latest.Type.Name));
         }
     }
 
@@ -926,19 +963,7 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         IReadOnlyList<StateNode> family,
         IReadOnlyCollection<(string From, string To, Location? Location)> explicitEdges)
     {
-        var directedEdges = new List<(string From, string To)>();
-        for (var i = 0; i < family.Count - 1; i++)
-        {
-            var from = family[i].Type.BaselineName();
-            var to = family[i + 1].Type.BaselineName();
-            if (IsAdditive(family[i], family[i + 1]) &&
-                !explicitEdges.Any(edge => StringComparer.Ordinal.Equals(edge.From, from) && StringComparer.Ordinal.Equals(edge.To, to)))
-            {
-                directedEdges.Add((from, to));
-            }
-        }
-
-        directedEdges.AddRange(explicitEdges.Select(static edge => (edge.From, edge.To)));
+        var directedEdges = BuildDirectedMigrationEdges(family, explicitEdges);
         foreach (var target in family)
         {
             var hasMultiplePaths = family.Any(source => CountPaths(source.Type.BaselineName(), target.Type.BaselineName(), directedEdges, new HashSet<string>(StringComparer.Ordinal)) > 1);
@@ -954,6 +979,55 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
                 target.Type.Name));
             return;
         }
+    }
+
+    private static List<(string From, string To)> BuildDirectedMigrationEdges(
+        IReadOnlyCollection<StateNode> nodes,
+        IReadOnlyCollection<(string From, string To, Location? Location)> explicitEdges)
+    {
+        var directedEdges = new List<(string From, string To)>();
+        foreach (var group in nodes.GroupBy(static node => node.CanonicalName, StringComparer.Ordinal))
+        {
+            var ordered = group.OrderBy(static node => node.Version).ThenBy(static node => node.Type.BaselineName(), StringComparer.Ordinal).ToArray();
+            for (var i = 0; i < ordered.Length - 1; i++)
+            {
+                var from = ordered[i].Type.BaselineName();
+                var to = ordered[i + 1].Type.BaselineName();
+                if (IsAdditive(ordered[i], ordered[i + 1]) &&
+                    !explicitEdges.Any(edge => StringComparer.Ordinal.Equals(edge.From, from) && StringComparer.Ordinal.Equals(edge.To, to)))
+                {
+                    directedEdges.Add((from, to));
+                }
+            }
+        }
+
+        directedEdges.AddRange(explicitEdges.Select(static edge => (edge.From, edge.To)));
+        return directedEdges;
+    }
+
+    private static bool HasMigrationPath(string current, string target, IReadOnlyCollection<(string From, string To)> edges, HashSet<string> seen)
+    {
+        if (StringComparer.Ordinal.Equals(current, target))
+        {
+            return true;
+        }
+
+        if (!seen.Add(current))
+        {
+            return false;
+        }
+
+        foreach (var edge in edges.Where(edge => StringComparer.Ordinal.Equals(edge.From, current)))
+        {
+            if (HasMigrationPath(edge.To, target, edges, seen))
+            {
+                seen.Remove(current);
+                return true;
+            }
+        }
+
+        seen.Remove(current);
+        return false;
     }
 
     private static int CountPaths(string current, string target, IReadOnlyCollection<(string From, string To)> edges, HashSet<string> seen)

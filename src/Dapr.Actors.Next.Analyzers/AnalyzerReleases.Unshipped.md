@@ -21,3 +21,4 @@ DAPR1424 | Compatibility | Warning | Actor state migration chain has a gap
 DAPR1425 | Compatibility | Warning | Actor state migration step requires an upcaster
 DAPR1426 | Compatibility | Warning | Actor state migration fold path is ambiguous
 DAPR1427 | Usage | Warning | Actor state name maps to multiple migration families
+DAPR1428 | Usage | Info | Actor state usage should target the latest state version

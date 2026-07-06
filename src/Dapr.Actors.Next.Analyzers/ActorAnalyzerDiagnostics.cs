@@ -10,7 +10,7 @@ public static class ActorAnalyzerDiagnostics
     /// <summary>
     /// Gets the analyzer id range reserved for Dapr Actors Next.
     /// </summary>
-    public const string ReservedRange = "DAPR1410-DAPR1427";
+    public const string ReservedRange = "DAPR1410-DAPR1428";
 
     /// <summary>
     /// Diagnostic raised when a shipped actor state shape is changed in a breaking way.
@@ -193,6 +193,18 @@ public static class ActorAnalyzerDiagnostics
         "State name '{0}' is used with multiple actor state families: {1}",
         "Usage",
         DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
+
+    /// <summary>
+    /// Diagnostic raised when actor code uses an older state type while a later reachable version exists.
+    /// </summary>
+    public static readonly DiagnosticDescriptor OutdatedStateTypeUsage = new(
+        "DAPR1428",
+        "Actor state usage should target the latest state version",
+        "State usage targets '{0}', but later state version '{1}' exists in the application",
+        "Usage",
+        DiagnosticSeverity.Info,
         isEnabledByDefault: true,
         customTags: [WellKnownDiagnosticTags.CompilationEnd]);
 }
