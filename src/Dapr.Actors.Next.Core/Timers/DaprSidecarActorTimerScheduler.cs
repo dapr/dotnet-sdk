@@ -1,4 +1,3 @@
-using System.Globalization;
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.Transport;
@@ -49,6 +48,8 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
         TimeSpan dueTime,
         string operationName,
         string argumentsJson,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
@@ -61,17 +62,31 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
             throw new ArgumentOutOfRangeException(nameof(dueTime), "Due time cannot be negative.");
         }
 
+        ValidatePeriod(period);
+        ValidateTtl(dueTime, ttl);
+
+        var request = new P.RegisterActorTimerRequest
+        {
+            ActorType = actorType,
+            ActorId = actorId.Value,
+            Name = name,
+            DueTime = ActorScheduleDurationFormatter.Format(dueTime),
+            Callback = operationName,
+            Data = ByteString.CopyFrom(serializer.JsonToBytes(argumentsJson)),
+        };
+
+        if (ShouldWritePeriod(period))
+        {
+            request.Period = ActorScheduleDurationFormatter.Format(period!.Value);
+        }
+
+        if (ttl.HasValue)
+        {
+            request.Ttl = ActorScheduleDurationFormatter.Format(ttl.Value);
+        }
+
         await client.Value.RegisterActorTimerAsync(
-            new P.RegisterActorTimerRequest
-            {
-                ActorType = actorType,
-                ActorId = actorId.Value,
-                Name = name,
-                DueTime = FormatDuration(dueTime),
-                Period = FormatDuration(TimeSpan.FromMilliseconds(100)),
-                Callback = operationName,
-                Data = ByteString.CopyFrom(serializer.JsonToBytes(argumentsJson)),
-            },
+            request,
             DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
     }
 
@@ -83,28 +98,43 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
         TimeSpan dueTime,
         string operationName,
         string argumentsJson,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
         await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
-        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, argumentsJson, headers, cancellationToken).ConfigureAwait(false);
+        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, argumentsJson, period, ttl, headers, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async ValueTask CancelAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
         await client.Value.UnregisterActorTimerAsync(
             new P.UnregisterActorTimerRequest { ActorType = actorType, ActorId = actorId.Value, Name = name },
             DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
     }
 
-    private static string FormatDuration(TimeSpan duration)
+    internal static void ValidatePeriod(TimeSpan? period)
     {
-        if (duration == TimeSpan.Zero)
+        if (period.HasValue && period.Value < Timeout.InfiniteTimeSpan)
         {
-            return "0ms";
+            throw new ArgumentOutOfRangeException(nameof(period), "Period cannot be less than Timeout.InfiniteTimeSpan.");
         }
-
-        return duration.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture) + "ms";
     }
+
+    internal static void ValidateTtl(TimeSpan dueTime, TimeSpan? ttl)
+    {
+        if (ttl.HasValue && (ttl.Value < TimeSpan.Zero || ttl.Value < dueTime))
+        {
+            throw new ArgumentOutOfRangeException(nameof(ttl), "TTL cannot be negative or earlier than the due time.");
+        }
+    }
+
+    internal static bool ShouldWritePeriod(TimeSpan? period) =>
+        period.HasValue && period.Value >= TimeSpan.Zero;
+
 }

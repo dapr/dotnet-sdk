@@ -56,6 +56,13 @@ public static class DaprActorsCoreServiceCollectionExtensions
                     sp.GetRequiredService<IActorRuntime>(),
                     sp.GetRequiredService<IActorWireSerializer>(),
                     sp.GetRequiredService<TimeProvider>()));
+        services.TryAddSingleton<IActorReminderScheduler>(sp =>
+            ShouldUseSidecar(sp)
+                ? new DaprSidecarActorReminderScheduler(CreateDaprClientAccessor(sp), sp.GetRequiredService<IActorWireSerializer>(), GetDaprApiToken(sp))
+                : new CoreActorReminderScheduler(
+                    sp.GetRequiredService<IActorRuntime>(),
+                    sp.GetRequiredService<IActorWireSerializer>(),
+                    sp.GetRequiredService<TimeProvider>()));
         services.TryAddSingleton<IActorInvocationClient>(sp =>
             ShouldUseSidecar(sp)
                 ? new DaprActorInvocationClient(CreateDaprClientAccessor(sp), GetDaprApiToken(sp))

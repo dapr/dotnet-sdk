@@ -17,6 +17,10 @@ internal static class InMemoryActorAdapterServiceCollectionExtensions
             sp.GetRequiredService<IActorRuntime>(),
             sp.GetRequiredService<IActorWireSerializer>(),
             sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<IActorReminderScheduler>(sp => new CoreActorReminderScheduler(
+            sp.GetRequiredService<IActorRuntime>(),
+            sp.GetRequiredService<IActorWireSerializer>(),
+            sp.GetRequiredService<TimeProvider>()));
         return services;
     }
 }

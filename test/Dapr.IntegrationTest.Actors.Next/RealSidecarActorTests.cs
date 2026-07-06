@@ -177,6 +177,7 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
                 static (sp, _) => new ProtocolActor(
                     sp.GetRequiredService<ActorActivationContext>(),
                     sp.GetRequiredService<IActorTimerScheduler>(),
+                    sp.GetRequiredService<IActorReminderScheduler>(),
                     sp.GetRequiredService<IActorRuntime>(),
                     sp.GetRequiredService<IActorStateStore>(),
                     sp.GetRequiredService<IActorWireSerializer>(),
@@ -237,21 +238,11 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         using var cts = new CancellationTokenSource(Timeout);
         var actorId = $"callbacks-{Guid.NewGuid():N}";
 
-        await client!.RegisterActorReminderAsync(new P.RegisterActorReminderRequest
-        {
-            ActorType = "ProtocolActor",
-            ActorId = actorId,
-            Name = "reminder",
-            DueTime = "0ms",
-            Period = "100ms",
-            Data = ByteString.CopyFromUtf8("\"from-reminder\""),
-            Overwrite = true,
-        }, cancellationToken: cts.Token);
-
+        await client!.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "ScheduleReminder", Encoding.UTF8.GetBytes("\"from-reminder\"")), cancellationToken: cts.Token);
         await client.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "ScheduleTimer", Encoding.UTF8.GetBytes("\"from-timer\"")), cancellationToken: cts.Token);
 
         await WaitUntilAsync(
-            () => Probe.Reminders.Contains(actorId) && Probe.Timers.Contains(actorId),
+            () => Probe.Reminders.Contains(actorId) && Probe.Timers.Count(value => value == actorId) >= 2,
             cts.Token,
             () => $"reminders=[{string.Join(",", Probe.Reminders)}], timers=[{string.Join(",", Probe.Timers)}], streamErrors=[{string.Join(" | ", Probe.StreamErrors.Select(static ex => ex.Message))}]");
     }
@@ -524,6 +515,7 @@ public sealed class RecordingActorEventsTransport(P.Dapr.DaprClient client) : IS
 public sealed class ProtocolActor(
     ActorActivationContext context,
     IActorTimerScheduler timerScheduler,
+    IActorReminderScheduler reminderScheduler,
     IActorRuntime runtime,
     IActorStateStore stateStore,
     IActorWireSerializer serializer,
@@ -583,7 +575,32 @@ public sealed class ProtocolActor(
     /// </summary>
     public async Task ScheduleTimerAsync(string value, CancellationToken cancellationToken)
     {
-        await timerScheduler.ScheduleAsync("ProtocolActor", Id, "timer", TimeSpan.FromMilliseconds(100), "TimerFired", JsonSerializer.Serialize(value), cancellationToken: cancellationToken);
+        await timerScheduler.ScheduleAsync(
+            "ProtocolActor",
+            Id,
+            "timer",
+            TimeSpan.FromMilliseconds(100),
+            "TimerFired",
+            JsonSerializer.Serialize(value),
+            period: TimeSpan.FromMilliseconds(100),
+            ttl: TimeSpan.FromMilliseconds(500),
+            cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Schedules a real Dapr durable actor reminder from inside the actor turn.
+    /// </summary>
+    public async Task ScheduleReminderAsync(string value, CancellationToken cancellationToken)
+    {
+        await reminderScheduler.ScheduleAsync(
+            "ProtocolActor",
+            Id,
+            "reminder",
+            TimeSpan.Zero,
+            TimeSpan.FromMilliseconds(100),
+            JsonSerializer.Serialize(value),
+            overwrite: true,
+            cancellationToken: cancellationToken);
     }
 
     /// <summary>
@@ -646,6 +663,7 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
         {
             "Ping" => await CompleteAsync(protocol.PingAsync(cancellationToken)),
             "Echo" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.EchoAsync(JsonSerializer.Deserialize<ProtocolRequest>(request.Payload.Span)!, request.Headers, cancellationToken))),
+            "ScheduleReminder" => await CompleteAsync(protocol.ScheduleReminderAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),
             "ScheduleTimer" => await CompleteAsync(protocol.ScheduleTimerAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),
             "TimerFired" => await CompleteAsync(protocol.TimerFiredAsync(cancellationToken)),
             "reminder" => await CompleteAsync(protocol.ReminderAsync(cancellationToken)),

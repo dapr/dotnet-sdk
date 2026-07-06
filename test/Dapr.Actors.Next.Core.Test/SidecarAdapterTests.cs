@@ -45,15 +45,18 @@ public sealed class SidecarAdapterTests
         var invocation = new DaprActorInvocationClient(client, "test-token");
         var store = new DaprSidecarActorStateStore(client, "actors", "test-token");
         var scheduler = new DaprSidecarActorTimerScheduler(client, new ActorWireSerializer(new JsonDaprSerializer()), "test-token");
+        var reminders = new DaprSidecarActorReminderScheduler(client, new ActorWireSerializer(new JsonDaprSerializer()), "test-token");
         var actorId = ActorId.Create("one");
 
         await invocation.InvokeAsync("Counter", actorId.Value, "Ping", ReadOnlyMemory<byte>.Empty, new Dictionary<string, string>());
         await store.ReadAsync("Counter", actorId.Value, "state");
         await scheduler.ScheduleAsync("Counter", actorId, "tick", TimeSpan.Zero, "Tick", "0");
+        await reminders.ScheduleAsync("Counter", actorId, "wake", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0");
 
         AssertToken(client.InvokeActorOptions);
         AssertToken(client.GetStateOptions);
         AssertToken(client.RegisterActorTimerOptions);
+        AssertToken(client.RegisterActorReminderOptions);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -96,18 +99,72 @@ public sealed class SidecarAdapterTests
         var actorId = ActorId.Create("timer");
 
         await scheduler.ScheduleAsync("Counter", actorId, "tick", TimeSpan.FromMilliseconds(250), "Tick", """{"x":1}""");
+        Assert.Equal("250ms", client.RegisterActorTimerRequest!.DueTime);
+        Assert.Equal(string.Empty, client.RegisterActorTimerRequest.Period);
+        Assert.Equal(string.Empty, client.RegisterActorTimerRequest.Ttl);
+
         await scheduler.RescheduleAsync("Counter", actorId, "tick", TimeSpan.Zero, "Tick", "0");
+        Assert.Equal("0ms", client.RegisterActorTimerRequest!.DueTime);
+        Assert.Equal(string.Empty, client.RegisterActorTimerRequest.Period);
+
+        await scheduler.ScheduleAsync(
+            "Counter",
+            actorId,
+            "tick",
+            TimeSpan.FromMilliseconds(250),
+            "Tick",
+            """{"x":2}""",
+            period: TimeSpan.FromSeconds(5),
+            ttl: TimeSpan.FromMinutes(1));
         await scheduler.CancelAsync("Counter", actorId, "tick");
 
         Assert.Equal("Counter", client.RegisterActorTimerRequest!.ActorType);
         Assert.Equal("timer", client.RegisterActorTimerRequest.ActorId);
         Assert.Equal("tick", client.RegisterActorTimerRequest.Name);
-        Assert.Equal("0ms", client.RegisterActorTimerRequest.DueTime);
-        Assert.Equal("100ms", client.RegisterActorTimerRequest.Period);
+        Assert.Equal("250ms", client.RegisterActorTimerRequest.DueTime);
+        Assert.Equal("5000ms", client.RegisterActorTimerRequest.Period);
+        Assert.Equal("60000ms", client.RegisterActorTimerRequest.Ttl);
         Assert.Equal("Tick", client.RegisterActorTimerRequest.Callback);
-        Assert.Equal("0", client.RegisterActorTimerRequest.Data.ToStringUtf8());
+        Assert.Equal("""{"x":2}""", client.RegisterActorTimerRequest.Data.ToStringUtf8());
         Assert.Equal("tick", client.UnregisterActorTimerRequest!.Name);
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad", TimeSpan.FromMilliseconds(-1), "Tick", "0"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-period", TimeSpan.Zero, "Tick", "0", period: TimeSpan.FromMilliseconds(-2)));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-ttl", TimeSpan.FromSeconds(2), "Tick", "0", ttl: TimeSpan.FromSeconds(1)));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Reminder_scheduler_maps_sidecar_reminder_requests()
+    {
+        var client = new RecordingDaprClient();
+        var scheduler = new DaprSidecarActorReminderScheduler(client, new ActorWireSerializer(new JsonDaprSerializer()));
+        var actorId = ActorId.Create("reminder");
+
+        await scheduler.ScheduleAsync(
+            "Counter",
+            actorId,
+            "wake",
+            TimeSpan.FromMilliseconds(250),
+            TimeSpan.FromSeconds(5),
+            """{"x":1}""",
+            TimeSpan.FromMinutes(1),
+            overwrite: false);
+        await scheduler.CancelAsync("Counter", actorId, "wake");
+
+        Assert.Equal("Counter", client.RegisterActorReminderRequest!.ActorType);
+        Assert.Equal("reminder", client.RegisterActorReminderRequest.ActorId);
+        Assert.Equal("wake", client.RegisterActorReminderRequest.Name);
+        Assert.Equal("250ms", client.RegisterActorReminderRequest.DueTime);
+        Assert.Equal("5000ms", client.RegisterActorReminderRequest.Period);
+        Assert.Equal("""{"x":1}""", client.RegisterActorReminderRequest.Data.ToStringUtf8());
+        Assert.Equal("60000ms", client.RegisterActorReminderRequest.Ttl);
+        Assert.True(client.RegisterActorReminderRequest.HasOverwrite);
+        Assert.False(client.RegisterActorReminderRequest.Overwrite);
+        Assert.Equal("wake", client.UnregisterActorReminderRequest!.Name);
+        await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.ScheduleAsync("", actorId, "wake", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0"));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-due", TimeSpan.FromMilliseconds(-1), TimeSpan.FromSeconds(1), "0"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-period", TimeSpan.Zero, TimeSpan.FromMilliseconds(-1), "0"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-ttl", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0", TimeSpan.FromMilliseconds(-1)));
     }
 
     private sealed class RecordingDaprClient : P.Dapr.DaprClient
@@ -141,6 +198,14 @@ public sealed class SidecarAdapterTests
         public P.UnregisterActorTimerRequest? UnregisterActorTimerRequest { get; private set; }
 
         public CallOptions UnregisterActorTimerOptions { get; private set; }
+
+        public P.RegisterActorReminderRequest? RegisterActorReminderRequest { get; private set; }
+
+        public CallOptions RegisterActorReminderOptions { get; private set; }
+
+        public P.UnregisterActorReminderRequest? UnregisterActorReminderRequest { get; private set; }
+
+        public CallOptions UnregisterActorReminderOptions { get; private set; }
 
         public override AsyncUnaryCall<P.InvokeActorResponse> InvokeActorAsync(P.InvokeActorRequest request, CallOptions options)
         {
@@ -183,6 +248,20 @@ public sealed class SidecarAdapterTests
         {
             UnregisterActorTimerRequest = request;
             UnregisterActorTimerOptions = options;
+            return Unary(new Empty());
+        }
+
+        public override AsyncUnaryCall<Empty> RegisterActorReminderAsync(P.RegisterActorReminderRequest request, CallOptions options)
+        {
+            RegisterActorReminderRequest = request;
+            RegisterActorReminderOptions = options;
+            return Unary(new Empty());
+        }
+
+        public override AsyncUnaryCall<Empty> UnregisterActorReminderAsync(P.UnregisterActorReminderRequest request, CallOptions options)
+        {
+            UnregisterActorReminderRequest = request;
+            UnregisterActorReminderOptions = options;
             return Unary(new Empty());
         }
 

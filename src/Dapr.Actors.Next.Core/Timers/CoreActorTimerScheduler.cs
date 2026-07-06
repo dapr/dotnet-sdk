@@ -22,6 +22,8 @@ public sealed class CoreActorTimerScheduler(IActorRuntime runtime, IActorWireSer
         TimeSpan dueTime,
         string operationName,
         string argumentsJson,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
@@ -34,11 +36,31 @@ public sealed class CoreActorTimerScheduler(IActorRuntime runtime, IActorWireSer
             throw new ArgumentOutOfRangeException(nameof(dueTime), "Due time cannot be negative.");
         }
 
+        DaprSidecarActorTimerScheduler.ValidatePeriod(period);
+        DaprSidecarActorTimerScheduler.ValidateTtl(dueTime, ttl);
+
         var key = new TimerKey(actorType, actorId.Value, name);
+        var periodValue = period.GetValueOrDefault(Timeout.InfiniteTimeSpan);
+        var callbackState = new TimerCallbackState(
+            runtime,
+            serializer,
+            timeProvider,
+            actorType,
+            actorId,
+            operationName,
+            argumentsJson,
+            headers ?? ActorHeaders.Empty,
+            ttl.HasValue ? timeProvider.GetUtcNow() + ttl.Value : null);
         var timer = timeProvider.CreateTimer(
             static state =>
             {
                 var callback = (TimerCallbackState)state!;
+                if (callback.ExpiresAt.HasValue && callback.TimeProvider.GetUtcNow() > callback.ExpiresAt.Value)
+                {
+                    callback.DisposeTimer();
+                    return;
+                }
+
                 _ = callback.Runtime.DispatchAsync(
                     new ActorRuntimeRequest(
                         callback.ActorType,
@@ -50,9 +72,10 @@ public sealed class CoreActorTimerScheduler(IActorRuntime runtime, IActorWireSer
                         new ActorRequestContext(null, null, ActorHeaders.Empty)),
                     CancellationToken.None);
             },
-            new TimerCallbackState(runtime, serializer, actorType, actorId, operationName, argumentsJson, headers ?? ActorHeaders.Empty),
+            callbackState,
             dueTime,
-            Timeout.InfiniteTimeSpan);
+            periodValue > TimeSpan.Zero ? periodValue : Timeout.InfiniteTimeSpan);
+        callbackState.Attach(timer);
 
         if (timers.TryGetValue(key, out var existing))
         {
@@ -71,11 +94,13 @@ public sealed class CoreActorTimerScheduler(IActorRuntime runtime, IActorWireSer
         TimeSpan dueTime,
         string operationName,
         string argumentsJson,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
         await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
-        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, argumentsJson, headers, cancellationToken).ConfigureAwait(false);
+        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, argumentsJson, period, ttl, headers, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -103,11 +128,20 @@ public sealed class CoreActorTimerScheduler(IActorRuntime runtime, IActorWireSer
     private sealed record TimerCallbackState(
         IActorRuntime Runtime,
         IActorWireSerializer Serializer,
+        TimeProvider TimeProvider,
         string ActorType,
         ActorId ActorId,
         string OperationName,
         string ArgumentsJson,
-        IReadOnlyDictionary<string, string> Headers);
+        IReadOnlyDictionary<string, string> Headers,
+        DateTimeOffset? ExpiresAt)
+    {
+        private ITimer? timer;
+
+        public void Attach(ITimer activeTimer) => timer = activeTimer;
+
+        public void DisposeTimer() => timer?.Dispose();
+    }
 
     private readonly record struct TimerKey(string ActorType, string ActorId, string Name);
 }

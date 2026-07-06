@@ -38,6 +38,7 @@ public sealed class DaprActorsCoreServiceCollectionExtensionsTests
         Assert.IsType<DaprActorInvocationClient>(provider.GetRequiredService<IActorInvocationClient>());
         Assert.IsType<DaprSidecarActorStateStore>(provider.GetRequiredService<IActorStateStore>());
         Assert.IsType<DaprSidecarActorTimerScheduler>(provider.GetRequiredService<IActorTimerScheduler>());
+        Assert.IsType<DaprSidecarActorReminderScheduler>(provider.GetRequiredService<IActorReminderScheduler>());
         Assert.IsType<DaprActorEventsTransport>(provider.GetRequiredService<ISubscribeActorEventsTransport>());
         Assert.IsType<SocketsHttpHandler>(options.HttpHandler);
         var handler = (SocketsHttpHandler)options.HttpHandler!;

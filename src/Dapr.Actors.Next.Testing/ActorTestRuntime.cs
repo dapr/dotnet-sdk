@@ -35,6 +35,7 @@ public sealed class ActorTestRuntime : IAsyncDisposable
         services.AddSingleton(Time);
         services.AddSingleton<TimeProvider>(Time);
         services.AddSingleton<IActorTimerScheduler>(Time);
+        services.AddSingleton<IActorReminderScheduler>(Time);
         services.AddSingleton(Faults);
         services.AddSingleton<IActorStateFaultInjector>(Faults);
         services.AddSingleton<IActorStateStore>(StateStore);

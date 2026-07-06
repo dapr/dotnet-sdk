@@ -196,7 +196,12 @@ public sealed class SubscribeActorEventsStreamManager(
             // Actor callbacks are at-least-once. State is flushed inside DispatchAsync before this response
             // is queued, so a dropped stream after commit can re-run the turn against already durable state.
             var response = await runtime.DispatchAsync(ToRuntimeRequest(request), cancellationToken).ConfigureAwait(false);
-            return new SubscribeActorEventsResponse(request.Id, request.Kind, response ?? ReadOnlyMemory<byte>.Empty, ActorHeaders.Empty);
+            return new SubscribeActorEventsResponse(
+                request.Id,
+                request.Kind,
+                response ?? ReadOnlyMemory<byte>.Empty,
+                ActorHeaders.Empty,
+                Cancel: ShouldCancelTimerAfterSuccess(request));
         }
         catch (ActorInvocationException ex) when (request.Kind == SubscribeActorEventsFrameKind.Invoke)
         {
@@ -237,6 +242,35 @@ public sealed class SubscribeActorEventsStreamManager(
             request.Headers.GetValueOrDefault("tracestate"),
             request.Headers);
         return new ActorRuntimeRequest(request.ActorType, ActorId.Create(request.ActorId), request.MethodName, turnKind, request.Payload, request.Headers, context);
+    }
+
+    private static bool ShouldCancelTimerAfterSuccess(SubscribeActorEventsRequest request)
+    {
+        if (request.Kind != SubscribeActorEventsFrameKind.Timer)
+        {
+            return false;
+        }
+
+        if (!request.Headers.TryGetValue("dapr-period", out var period) || string.IsNullOrWhiteSpace(period))
+        {
+            return true;
+        }
+
+        return IsZeroDuration(period);
+    }
+
+    private static bool IsZeroDuration(string value)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.Equals("0", StringComparison.Ordinal)
+            || trimmed.Equals("0ms", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("0s", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("PT0S", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private static SubscribeActorEventsInitialConfig CreateInitialConfig(DaprActorsOptions options) =>

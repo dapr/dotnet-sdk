@@ -82,6 +82,51 @@ public sealed class ActorTestRuntimeTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public async Task Actor_can_schedule_reminder_through_virtual_runtime_scheduler()
+    {
+        await using var runtime = CreateTestingRuntime(new PriorityActorScheduler(4));
+        var id = ActorId.Create("actor-scheduled-reminder");
+        var schedule = runtime.InvokeAsync("Testing", id, "ScheduleReminderFromActor");
+        await runtime.RunToIdle();
+        await schedule;
+
+        runtime.Time.Advance(TimeSpan.FromSeconds(1));
+        await runtime.RunToIdle();
+
+        var read = runtime.InvokeAsync("Testing", id, "Add", "0");
+        await runtime.RunToIdle();
+        Assert.Equal(100, int.Parse(System.Text.Encoding.UTF8.GetString((await read)!)));
+        Assert.Contains(runtime.Transcript, entry => entry.OperationName == "Reminder");
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Virtual_time_fires_periodic_timer_until_ttl()
+    {
+        await using var runtime = CreateTestingRuntime(new PriorityActorScheduler(4));
+        var id = ActorId.Create("periodic-timer");
+        var timers = (Dapr.Actors.Next.Core.Timers.IActorTimerScheduler)runtime.Time;
+
+        await timers.ScheduleAsync(
+            "Testing",
+            id,
+            "Timer",
+            TimeSpan.FromSeconds(1),
+            "Timer",
+            string.Empty,
+            period: TimeSpan.FromSeconds(1),
+            ttl: TimeSpan.FromSeconds(2));
+
+        runtime.Time.Advance(TimeSpan.FromSeconds(3));
+        await runtime.RunToIdle();
+
+        var read = runtime.InvokeAsync("Testing", id, "Add", "0");
+        await runtime.RunToIdle();
+        Assert.Equal(20, int.Parse(System.Text.Encoding.UTF8.GetString((await read)!)));
+        Assert.Equal(2, runtime.Transcript.Count(entry => entry.OperationName == "Timer"));
+    }
+
+
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Reentrant_call_chain_completes_under_controlled_scheduler()
     {
         await using var runtime = CreateTestingRuntime(new SeededRandomActorScheduler(3));
@@ -297,7 +342,8 @@ public sealed class ActorTestRuntimeTests
                 typeof(TestingActor),
                 (sp, _) => new TestingActor(
                     sp.GetRequiredService<ActorActivationContext>(),
-                    sp.GetRequiredService<Dapr.Actors.Next.Core.Client.IActorInvocationClient>()),
+                    sp.GetRequiredService<Dapr.Actors.Next.Core.Client.IActorInvocationClient>(),
+                    sp.GetRequiredService<Dapr.Actors.Next.Core.Timers.IActorReminderScheduler>()),
                 new TestingActorDispatcher(),
                 new Dapr.Actors.Next.Core.Activation.ActorLifecycle(
                     (actor, cancellationToken) => ((Actor)actor).InvokeOnActivateAsync(cancellationToken),
@@ -318,7 +364,8 @@ public sealed class ActorTestRuntimeTests
                     typeof(TestingActor),
                     (sp, _) => new TestingActor(
                         sp.GetRequiredService<ActorActivationContext>(),
-                        sp.GetRequiredService<Dapr.Actors.Next.Core.Client.IActorInvocationClient>()),
+                        sp.GetRequiredService<Dapr.Actors.Next.Core.Client.IActorInvocationClient>(),
+                        sp.GetRequiredService<Dapr.Actors.Next.Core.Timers.IActorReminderScheduler>()),
                     new TestingActorDispatcher(),
                     new Dapr.Actors.Next.Core.Activation.ActorLifecycle(
                         (actor, cancellationToken) => ((Actor)actor).InvokeOnActivateAsync(cancellationToken),

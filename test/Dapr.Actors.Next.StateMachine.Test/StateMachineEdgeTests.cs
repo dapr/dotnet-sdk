@@ -176,10 +176,10 @@ public sealed class StateMachineEdgeTests
 
     private sealed class FakeTimerScheduler : IActorTimerScheduler
     {
-        public ValueTask ScheduleAsync(string actorType, ActorId actorId, string name, TimeSpan dueTime, string operationName, string argumentsJson, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default) =>
+        public ValueTask ScheduleAsync(string actorType, ActorId actorId, string name, TimeSpan dueTime, string operationName, string argumentsJson, TimeSpan? period = null, TimeSpan? ttl = null, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default) =>
             ValueTask.CompletedTask;
 
-        public ValueTask RescheduleAsync(string actorType, ActorId actorId, string name, TimeSpan dueTime, string operationName, string argumentsJson, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default) =>
+        public ValueTask RescheduleAsync(string actorType, ActorId actorId, string name, TimeSpan dueTime, string operationName, string argumentsJson, TimeSpan? period = null, TimeSpan? ttl = null, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default) =>
             ValueTask.CompletedTask;
 
         public ValueTask CancelAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default) =>

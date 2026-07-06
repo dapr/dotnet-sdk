@@ -9,7 +9,7 @@ namespace Dapr.Actors.Next.Testing;
 /// <summary>
 /// Virtual time provider whose timers and reminders fire only when time is explicitly advanced.
 /// </summary>
-public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerScheduler
+public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerScheduler, IActorReminderScheduler
 {
     private readonly List<ScheduledCallback> callbacks = [];
     private readonly object syncRoot = new();
@@ -48,23 +48,40 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
             activeRuntime = runtime ?? throw new InvalidOperationException("Virtual time is not attached to an ActorTestRuntime.");
             activeSerializer = serializer ?? throw new InvalidOperationException("Virtual time is not attached to an ActorTestRuntime.");
             due = callbacks
-                .Where(callback => !callback.Canceled && callback.Task is null && callback.DueAt <= utcNow)
+                .Where(callback => !callback.Canceled && callback.DueAt <= utcNow)
                 .OrderBy(callback => callback.DueAt)
                 .ThenBy(callback => callback.Sequence)
                 .ToList();
 
             foreach (var callback in due)
             {
-                callback.Task = activeRuntime.DispatchAsync(
-                    new ActorRuntimeRequest(
-                        callback.ActorType,
-                        callback.ActorId,
-                        callback.OperationName,
-                        callback.Kind,
-                        activeSerializer.JsonToBytes(callback.ArgumentsJson),
-                        callback.Headers,
-                        new ActorRequestContext(null, null, new Dictionary<string, string>(StringComparer.Ordinal))),
-                    CancellationToken.None);
+                while (!callback.Canceled && callback.DueAt <= utcNow)
+                {
+                    if (callback.ExpiresAt.HasValue && callback.DueAt > callback.ExpiresAt.Value)
+                    {
+                        callback.Canceled = true;
+                        break;
+                    }
+
+                    _ = activeRuntime.DispatchAsync(
+                        new ActorRuntimeRequest(
+                            callback.ActorType,
+                            callback.ActorId,
+                            callback.OperationName,
+                            callback.Kind,
+                            activeSerializer.JsonToBytes(callback.ArgumentsJson),
+                            callback.Headers,
+                            new ActorRequestContext(null, null, new Dictionary<string, string>(StringComparer.Ordinal))),
+                        CancellationToken.None);
+
+                    if (callback.Period <= TimeSpan.Zero)
+                    {
+                        callback.Canceled = true;
+                        break;
+                    }
+
+                    callback.DueAt += callback.Period;
+                }
             }
         }
     }
@@ -73,13 +90,13 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
     /// Schedules an actor timer turn.
     /// </summary>
     public void ScheduleTimer(string actorType, ActorId actorId, string operationName, TimeSpan dueTime, string argumentsJson = "", IReadOnlyDictionary<string, string>? headers = null) =>
-        Schedule(actorType, actorId, operationName, operationName, ActorTurnKind.Timer, dueTime, argumentsJson, headers);
+        Schedule(actorType, actorId, operationName, operationName, ActorTurnKind.Timer, dueTime, argumentsJson, headers, period: null, ttl: null);
 
     /// <summary>
     /// Schedules an actor reminder turn.
     /// </summary>
     public void ScheduleReminder(string actorType, ActorId actorId, string operationName, TimeSpan dueTime, string argumentsJson = "", IReadOnlyDictionary<string, string>? headers = null) =>
-        Schedule(actorType, actorId, operationName, operationName, ActorTurnKind.Reminder, dueTime, argumentsJson, headers);
+        Schedule(actorType, actorId, operationName, operationName, ActorTurnKind.Reminder, dueTime, argumentsJson, headers, period: null, ttl: null);
 
     /// <inheritdoc />
     public ValueTask ScheduleAsync(
@@ -89,10 +106,14 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         TimeSpan dueTime,
         string operationName,
         string argumentsJson,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
-        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, argumentsJson, headers);
+        ValidateTimerPeriod(period);
+        ValidateTimerTtl(dueTime, ttl);
+        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, argumentsJson, headers, period, ttl);
         return ValueTask.CompletedTask;
     }
 
@@ -104,11 +125,13 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         TimeSpan dueTime,
         string operationName,
         string argumentsJson,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
         await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
-        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, argumentsJson, headers, cancellationToken).ConfigureAwait(false);
+        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, argumentsJson, period, ttl, headers, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -117,8 +140,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         lock (syncRoot)
         {
             foreach (var callback in callbacks.Where(callback =>
-                callback.Task is null
-                && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
+                string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
                 && callback.ActorId.Equals(actorId)
                 && string.Equals(callback.Name, name, StringComparison.Ordinal)))
             {
@@ -126,6 +148,32 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
             }
         }
 
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    ValueTask IActorReminderScheduler.ScheduleAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        string argumentsJson,
+        TimeSpan? ttl,
+        bool? overwrite,
+        CancellationToken cancellationToken)
+    {
+        if (period < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(period), "Period cannot be negative.");
+        }
+
+        if (ttl.HasValue && ttl.Value < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ttl), "TTL cannot be negative.");
+        }
+
+        Schedule(actorType, actorId, name, name, ActorTurnKind.Reminder, dueTime, argumentsJson, null, period: null, ttl: null);
         return ValueTask.CompletedTask;
     }
 
@@ -146,7 +194,9 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         ActorTurnKind kind,
         TimeSpan dueTime,
         string argumentsJson,
-        IReadOnlyDictionary<string, string>? headers)
+        IReadOnlyDictionary<string, string>? headers,
+        TimeSpan? period,
+        TimeSpan? ttl)
     {
         if (dueTime < TimeSpan.Zero)
         {
@@ -162,24 +212,64 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
                 operationName,
                 kind,
                 utcNow + dueTime,
+                period.GetValueOrDefault(Timeout.InfiniteTimeSpan),
+                ttl.HasValue ? utcNow + ttl.Value : null,
                 nextSequence++,
                 argumentsJson,
                 headers ?? new Dictionary<string, string>(StringComparer.Ordinal)));
         }
     }
 
-    private sealed record ScheduledCallback(
-        string ActorType,
-        ActorId ActorId,
-        string Name,
-        string OperationName,
-        ActorTurnKind Kind,
-        DateTimeOffset DueAt,
-        long Sequence,
-        string ArgumentsJson,
-        IReadOnlyDictionary<string, string> Headers)
+    private static void ValidateTimerPeriod(TimeSpan? period)
     {
-        public Task<byte[]?>? Task { get; set; }
+        if (period.HasValue && period.Value < Timeout.InfiniteTimeSpan)
+        {
+            throw new ArgumentOutOfRangeException(nameof(period), "Period cannot be less than Timeout.InfiniteTimeSpan.");
+        }
+    }
+
+    private static void ValidateTimerTtl(TimeSpan dueTime, TimeSpan? ttl)
+    {
+        if (ttl.HasValue && (ttl.Value < TimeSpan.Zero || ttl.Value < dueTime))
+        {
+            throw new ArgumentOutOfRangeException(nameof(ttl), "TTL cannot be negative or earlier than the due time.");
+        }
+    }
+
+    private sealed class ScheduledCallback(
+        string actorType,
+        ActorId actorId,
+        string name,
+        string operationName,
+        ActorTurnKind kind,
+        DateTimeOffset dueAt,
+        TimeSpan period,
+        DateTimeOffset? expiresAt,
+        long sequence,
+        string argumentsJson,
+        IReadOnlyDictionary<string, string> headers)
+    {
+        public string ActorType { get; } = actorType;
+
+        public ActorId ActorId { get; } = actorId;
+
+        public string Name { get; } = name;
+
+        public string OperationName { get; } = operationName;
+
+        public ActorTurnKind Kind { get; } = kind;
+
+        public DateTimeOffset DueAt { get; set; } = dueAt;
+
+        public TimeSpan Period { get; } = period;
+
+        public DateTimeOffset? ExpiresAt { get; } = expiresAt;
+
+        public long Sequence { get; } = sequence;
+
+        public string ArgumentsJson { get; } = argumentsJson;
+
+        public IReadOnlyDictionary<string, string> Headers { get; } = headers;
 
         public bool Canceled { get; set; }
     }

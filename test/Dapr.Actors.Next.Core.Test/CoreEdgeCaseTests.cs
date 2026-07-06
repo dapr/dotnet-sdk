@@ -248,6 +248,7 @@ public sealed class CoreEdgeCaseTests
         await service.StopAsync(cts.Token);
 
         Assert.Equal(new[] { "deact", "rem", "timer" }, new[] { reminder.Id, timer.Id, deactivate.Id }.Order(StringComparer.Ordinal).ToArray());
+        Assert.True(new[] { reminder, timer, deactivate }.Single(response => response.Id == "timer").Cancel);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -380,13 +381,41 @@ public sealed class CoreEdgeCaseTests
         await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "", TimeSpan.FromMinutes(1), "Tick", "1"));
         await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), "", "1"));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMilliseconds(-1), "Tick", "1"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), "Tick", "1", period: TimeSpan.FromMilliseconds(-2)));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(2), "Tick", "1", ttl: TimeSpan.FromMinutes(1)));
 
         await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), "Tick", "1");
         await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), "Tick", "2");
-        await scheduler.RescheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), "Tick", "3");
+        await scheduler.RescheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), "Tick", "3", period: TimeSpan.FromMinutes(1), ttl: TimeSpan.FromMinutes(2));
         await scheduler.CancelAsync("Counter", actorId, "missing");
         await scheduler.CancelAsync("Counter", actorId, "name");
-        await scheduler.ScheduleAsync("Counter", actorId, "other", TimeSpan.FromMinutes(1), "Tick", "4", new Dictionary<string, string> { ["traceparent"] = "tp" });
+        await scheduler.ScheduleAsync("Counter", actorId, "other", TimeSpan.FromMinutes(1), "Tick", "4", headers: new Dictionary<string, string> { ["traceparent"] = "tp" });
+
+        scheduler.Dispose();
+        scheduler.Dispose();
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Core_reminder_scheduler_validates_replaces_cancels_and_disposes_reminders()
+    {
+        var scheduler = new CoreActorReminderScheduler(
+            new RecordingRuntime(),
+            new ActorWireSerializer(new JsonDaprSerializer()),
+            TimeProvider.System);
+        var actorId = ActorId.Create("reminder");
+
+        await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.ScheduleAsync("", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "1"));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "1"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMilliseconds(-1), TimeSpan.FromMinutes(1), "1"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMilliseconds(-1), "1"));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "1", TimeSpan.FromMilliseconds(-1)));
+
+        await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "1");
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "2", overwrite: false));
+        await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "3");
+        await scheduler.CancelAsync("Counter", actorId, "missing");
+        await scheduler.CancelAsync("Counter", actorId, "name");
+        await scheduler.ScheduleAsync("Counter", actorId, "other", TimeSpan.FromMinutes(1), TimeSpan.Zero, "4");
 
         scheduler.Dispose();
         scheduler.Dispose();

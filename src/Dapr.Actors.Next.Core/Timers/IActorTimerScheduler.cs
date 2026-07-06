@@ -17,6 +17,8 @@ public interface IActorTimerScheduler
         TimeSpan dueTime,
         string operationName,
         string argumentsJson,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default);
 
@@ -30,6 +32,8 @@ public interface IActorTimerScheduler
         TimeSpan dueTime,
         string operationName,
         string argumentsJson,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default);
 
