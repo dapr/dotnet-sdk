@@ -163,8 +163,8 @@ public sealed class InterpretedStateMachineActor(
     private async ValueTask PersistAsync(CancellationToken cancellationToken)
     {
         var snapshot = new InterpretedActorState(definition!.DocumentVersion, currentState!, data!.ToDictionary());
-        await State.SetAsync(StateName, snapshot, 1, cancellationToken).ConfigureAwait(false);
-        await State.SetAsync("__currentState", currentState!, 1, cancellationToken).ConfigureAwait(false);
-        await State.SetAsync("__data", data, 1, cancellationToken).ConfigureAwait(false);
+        await State.SetAsync(StateName, snapshot, cancellationToken).ConfigureAwait(false);
+        await State.SetAsync("__currentState", currentState!, cancellationToken).ConfigureAwait(false);
+        await State.SetAsync("__data", data, cancellationToken).ConfigureAwait(false);
     }
 }

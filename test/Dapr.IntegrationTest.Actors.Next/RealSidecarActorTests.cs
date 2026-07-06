@@ -546,10 +546,10 @@ public sealed class ProtocolActor(
             return;
         }
 
-        var legacy = serializer.DeserializeFromBytes<ActorStateEnvelope<LegacyProfile>>(raw.Value);
-        if (legacy?.SchemaVersion == 1)
+        var legacy = serializer.DeserializeFromBytes<ActorStatePlainEnvelope<LegacyProfile>>(raw.Value);
+        if (!string.IsNullOrWhiteSpace(legacy?.Value.Name))
         {
-            await State.SetAsync("profile", new CurrentProfile($"{legacy.Value.Name} Lovelace", 2), 2, cancellationToken);
+            await State.SetAsync("profile", new CurrentProfile($"{legacy.Value.Name} Lovelace", 2), cancellationToken);
         }
     }
 
@@ -609,7 +609,7 @@ public sealed class ProtocolActor(
     /// </summary>
     public async Task SeedLegacyAsync(string name, CancellationToken cancellationToken)
     {
-        await State.SetAsync("profile", new LegacyProfile(name), 1, cancellationToken);
+        await State.SetAsync("profile", new LegacyProfile(name), cancellationToken);
     }
 
     /// <summary>

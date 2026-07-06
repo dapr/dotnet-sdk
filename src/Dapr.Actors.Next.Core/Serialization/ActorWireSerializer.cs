@@ -32,6 +32,16 @@ public sealed class ActorWireSerializer : IActorWireSerializer
     }
 
     /// <summary>
+    /// Gets the serializer identity recorded in actor state headers.
+    /// </summary>
+    public string SerializerId => "dapr-json";
+
+    /// <summary>
+    /// Gets the serializer version recorded in actor state headers.
+    /// </summary>
+    public int SerializerVersion => 1;
+
+    /// <summary>
     /// Gets a value indicating whether the configured serializer is the default System.Text.Json implementation.
     /// </summary>
     public bool IsDefaultSystemTextJson => jsonSerializer is not null;

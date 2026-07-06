@@ -15,6 +15,23 @@ public sealed class TestingState
     public List<string> Events { get; set; } = [];
 }
 
+public sealed class MigrationTestingStateV1
+{
+    public int Count { get; set; }
+}
+
+public sealed class MigrationTestingStateV2
+{
+    public int Quantity { get; set; }
+}
+
+public sealed class MigrationTestingStateV3
+{
+    public int Total { get; set; }
+
+    public string Label { get; set; } = "";
+}
+
 public sealed class TestingActor(ActorActivationContext context, IActorInvocationClient client) : Actor, ITestingActor
 {
     protected override ActorId Id => context.ActorId;
@@ -75,6 +92,12 @@ public sealed class TestingActor(ActorActivationContext context, IActorInvocatio
         state.Value.Events.Add("inner");
         return state.Value.Value;
     }
+
+    public async Task<int> ReadMigratedAsync(CancellationToken cancellationToken)
+    {
+        var state = await State.GetOrCreateAsync("migrating", () => new MigrationTestingStateV3(), cancellationToken);
+        return state.Value.Total;
+    }
 }
 
 public sealed class OddNamedActor(ActorActivationContext context) : Actor, ITestingActor
@@ -99,6 +122,7 @@ public sealed class TestingActorDispatcher : IActorDispatcher
             "Reenter" => Text((await testActor.ReenterAsync(cancellationToken)).ToString()),
             "Slow" => Text((await testActor.SlowAsync(cancellationToken)).ToString()),
             "Inner" => Text((await testActor.InnerAsync(cancellationToken)).ToString()),
+            "ReadMigrated" => Text((await testActor.ReadMigratedAsync(cancellationToken)).ToString()),
             _ => throw new InvalidOperationException("Unknown method."),
         };
     }

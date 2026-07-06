@@ -10,7 +10,7 @@ public static class ActorAnalyzerDiagnostics
     /// <summary>
     /// Gets the analyzer id range reserved for Dapr Actors Next.
     /// </summary>
-    public const string ReservedRange = "DAPR1410-DAPR1420";
+    public const string ReservedRange = "DAPR1410-DAPR1427";
 
     /// <summary>
     /// Diagnostic raised when a shipped actor state shape is changed in a breaking way.
@@ -69,15 +69,16 @@ public static class ActorAnalyzerDiagnostics
         isEnabledByDefault: true);
 
     /// <summary>
-    /// Diagnostic raised when an upcaster version chain has a missing hop.
+    /// Diagnostic raised when a migration target cannot be reached because no upcaster migrates to it.
     /// </summary>
     public static readonly DiagnosticDescriptor BrokenUpcasterChain = new(
         "DAPR1415",
-        "Actor state upcaster chain has a version gap",
-        "Add an actor state upcaster from '{0}' to '{1}'",
+        "Actor state migration target is unreachable",
+        "No upcaster migrates to '{0}'; did you intend one from '{1}'",
         "Compatibility",
         DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
 
     /// <summary>
     /// Diagnostic raised when a global turn filter appears to contain actor business logic.
@@ -130,6 +131,66 @@ public static class ActorAnalyzerDiagnostics
         "DAPR1420",
         "Actor type name must disambiguate shared actor contracts",
         "Actor type name '{0}' is used by multiple actors implementing '{1}'; set distinct DaprActor names or explicit registration aliases",
+        "Usage",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
+
+    /// <summary>
+    /// Diagnostic raised when a state type looks like part of a migration family but is not connected.
+    /// </summary>
+    public static readonly DiagnosticDescriptor UnconnectedStateFamilyMember = new(
+        "DAPR1423",
+        "Actor state type is not connected to its migration family",
+        "State type '{0}' looks like it belongs to migration family '{1}' but no mapping connects it",
+        "Compatibility",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
+
+    /// <summary>
+    /// Diagnostic raised when two ordered migration fragments have no connecting hop.
+    /// </summary>
+    public static readonly DiagnosticDescriptor UpcasterChainGap = new(
+        "DAPR1424",
+        "Actor state migration chain has a gap",
+        "Actor state migration family '{0}' has no hop from '{1}' to '{2}'",
+        "Compatibility",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
+
+    /// <summary>
+    /// Diagnostic raised when a consecutive state step is not additive and needs a hand-authored upcaster.
+    /// </summary>
+    public static readonly DiagnosticDescriptor NonAdditiveMigrationStep = new(
+        "DAPR1425",
+        "Actor state migration step requires an upcaster",
+        "State migration from '{0}' to '{1}' is not additive and cannot be generated automatically",
+        "Compatibility",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
+
+    /// <summary>
+    /// Diagnostic raised when a migration graph has more than one path to a target.
+    /// </summary>
+    public static readonly DiagnosticDescriptor NonUniqueFoldPath = new(
+        "DAPR1426",
+        "Actor state migration fold path is ambiguous",
+        "Actor state migration family '{0}' has more than one fold path to '{1}'",
+        "Compatibility",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
+
+    /// <summary>
+    /// Diagnostic raised when one persisted state name is used with multiple migration families.
+    /// </summary>
+    public static readonly DiagnosticDescriptor MultipleFamiliesForStateName = new(
+        "DAPR1427",
+        "Actor state name maps to multiple migration families",
+        "State name '{0}' is used with multiple actor state families: {1}",
         "Usage",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,

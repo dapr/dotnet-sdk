@@ -1,7 +1,10 @@
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Options;
+using Dapr.Actors.Next.Abstractions.State;
+using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.DependencyInjection;
+using Dapr.Actors.Next.Core.State.Versioning;
 using Dapr.Actors.Next.SourceGenerators.Sample;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,6 +12,10 @@ namespace Dapr.Actors.Next.Testing.Test;
 
 public sealed class ActorTestRuntimeTests
 {
+    private const string MigrationTestingStateV1ShapeHash = "h1:manual-migration-testing-state-v1";
+    private const string MigrationTestingStateV2ShapeHash = "h1:manual-migration-testing-state-v2";
+    private const string MigrationTestingStateV3ShapeHash = "h1:manual-migration-testing-state-v3";
+
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Generated_proxy_runs_against_in_memory_runtime_and_exposes_state()
     {
@@ -208,6 +215,71 @@ public sealed class ActorTestRuntimeTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public async Task SeedStateAsync_writes_enveloped_and_plain_forms_for_snapshot_reads()
+    {
+        await using var runtime = CreateMigratingRuntime(new SeededRandomActorScheduler(10));
+        var id = ActorId.Create("seed");
+
+        await runtime.SeedStateAsync("Testing", id, "migrating", new MigrationTestingStateV1 { Count = 7 });
+        await runtime.SeedStateAsync("Testing", id, "graduated", new MigrationTestingStateV3 { Total = 11, Label = "plain" }, ActorStateSeedForm.Plain);
+
+        Assert.Equal(7, runtime.StateOf("Testing", id).Get<MigrationTestingStateV1>("migrating")!.Count);
+        Assert.Equal("plain", runtime.StateOf("Testing", id).Get<MigrationTestingStateV3>("graduated")!.Label);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Seeded_enveloped_state_folds_and_repersists_target_node()
+    {
+        await using var runtime = CreateMigratingRuntime(new SeededRandomActorScheduler(11));
+        var id = ActorId.Create("fold");
+        await runtime.SeedStateAsync("Testing", id, "migrating", new MigrationTestingStateV1 { Count = 5 });
+
+        var read = runtime.InvokeAsync("Testing", id, "ReadMigrated");
+        await runtime.RunToIdle();
+
+        Assert.Equal(5, int.Parse(System.Text.Encoding.UTF8.GetString((await read)!)));
+        var stored = runtime.StateOf("Testing", id).Get<MigrationTestingStateV3>("migrating");
+        Assert.NotNull(stored);
+        Assert.Equal(5, stored.Total);
+        Assert.Equal("migrated", stored.Label);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Migration_fault_fails_read_without_consuming_seeded_state()
+    {
+        await using var runtime = CreateMigratingRuntime(new SeededRandomActorScheduler(12));
+        var id = ActorId.Create("migration-fault");
+        await runtime.SeedStateAsync("Testing", id, "migrating", new MigrationTestingStateV1 { Count = 3 });
+        runtime.Faults.FailNextMigration<MigrationTestingStateV3>();
+
+        var failed = runtime.InvokeAsync("Testing", id, "ReadMigrated");
+        await runtime.RunToIdle();
+
+        await Assert.ThrowsAsync<ActorInjectedTransientException>(() => failed);
+        Assert.Equal(3, runtime.StateOf("Testing", id).Get<MigrationTestingStateV1>("migrating")!.Count);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Upcast_hop_fault_fails_between_hops_and_next_turn_recovers()
+    {
+        await using var runtime = CreateMigratingRuntime(new SeededRandomActorScheduler(13));
+        var id = ActorId.Create("hop-fault");
+        await runtime.SeedStateAsync("Testing", id, "migrating", new MigrationTestingStateV1 { Count = 9 });
+        runtime.Faults.FailNextUpcastHop<MigrationTestingStateV1, MigrationTestingStateV2>();
+
+        var failed = runtime.InvokeAsync("Testing", id, "ReadMigrated");
+        await runtime.RunToIdle();
+        await Assert.ThrowsAsync<ActorInjectedTransientException>(() => failed);
+        Assert.Equal(9, runtime.StateOf("Testing", id).Get<MigrationTestingStateV1>("migrating")!.Count);
+
+        var recovered = runtime.InvokeAsync("Testing", id, "ReadMigrated");
+        await runtime.RunToIdle();
+
+        Assert.Equal(9, int.Parse(System.Text.Encoding.UTF8.GetString((await recovered)!)));
+        Assert.Equal("migrated", runtime.StateOf("Testing", id).Get<MigrationTestingStateV3>("migrating")!.Label);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public void Structural_analysis_defect_assertion_reports_defects()
     {
         var analysis = new ActorStateMachineAnalysis(typeof(TestingActor), [], ["defect"]);
@@ -233,6 +305,60 @@ public sealed class ActorTestRuntimeTests
                     (actor, context, cancellationToken) => ((Actor)actor).InvokeOnPreActorMethodAsync(context, cancellationToken),
                     (actor, context, exception, cancellationToken) => ((Actor)actor).InvokeOnPostActorMethodAsync(context, exception, cancellationToken)));
         }), new ActorTestRuntimeOptions { Scheduler = scheduler });
+
+    private static ActorTestRuntime CreateMigratingRuntime(ControlledActorScheduler scheduler) =>
+        new(services =>
+        {
+            services.AddDaprActorStateMigration(CreateMigrationFamilies());
+            services.AddDaprActorsCore(registrations =>
+            {
+                registrations.Add(
+                    "Testing",
+                    typeof(ITestingActor),
+                    typeof(TestingActor),
+                    (sp, _) => new TestingActor(
+                        sp.GetRequiredService<ActorActivationContext>(),
+                        sp.GetRequiredService<Dapr.Actors.Next.Core.Client.IActorInvocationClient>()),
+                    new TestingActorDispatcher(),
+                    new Dapr.Actors.Next.Core.Activation.ActorLifecycle(
+                        (actor, cancellationToken) => ((Actor)actor).InvokeOnActivateAsync(cancellationToken),
+                        (actor, cancellationToken) => ((Actor)actor).InvokeOnDeactivateAsync(cancellationToken),
+                        (actor, context, cancellationToken) => ((Actor)actor).InvokeOnPreActorMethodAsync(context, cancellationToken),
+                        (actor, context, exception, cancellationToken) => ((Actor)actor).InvokeOnPostActorMethodAsync(context, exception, cancellationToken)));
+            });
+        }, new ActorTestRuntimeOptions { Scheduler = scheduler });
+
+    private static IReadOnlyList<ActorStateMigrationFamilyRegistration> CreateMigrationFamilies()
+    {
+        var v1 = new ActorStateMigrationNode(0, typeof(MigrationTestingStateV1), MigrationTestingStateV1ShapeHash);
+        var v2 = new ActorStateMigrationNode(1, typeof(MigrationTestingStateV2), MigrationTestingStateV2ShapeHash);
+        var v3 = new ActorStateMigrationNode(2, typeof(MigrationTestingStateV3), MigrationTestingStateV3ShapeHash);
+        return
+        [
+            new ActorStateMigrationFamilyRegistration(
+                new ActorStateMigrationFamily(
+                    "MigrationTestingState",
+                    [v1, v2, v3],
+                    [new ActorStateMigrationEdge(0, 1), new ActorStateMigrationEdge(1, 2)]),
+                [
+                    new ActorStateNodeDeserializer(0, static (payload, serializer) => serializer.DeserializeFromBytes<ActorStateEnvelope<MigrationTestingStateV1>>(payload)?.Value),
+                    new ActorStateNodeDeserializer(1, static (payload, serializer) => serializer.DeserializeFromBytes<ActorStateEnvelope<MigrationTestingStateV2>>(payload)?.Value),
+                    new ActorStateNodeDeserializer(2, static (payload, serializer) => serializer.DeserializeFromBytes<ActorStateEnvelope<MigrationTestingStateV3>>(payload)?.Value),
+                ],
+                [
+                    new ActorStateHopRegistration(0, 1, static (state, _) =>
+                    {
+                        var typed = (MigrationTestingStateV1)state;
+                        return ValueTask.FromResult<object>(new MigrationTestingStateV2 { Quantity = typed.Count });
+                    }),
+                    new ActorStateHopRegistration(1, 2, static (state, _) =>
+                    {
+                        var typed = (MigrationTestingStateV2)state;
+                        return ValueTask.FromResult<object>(new MigrationTestingStateV3 { Total = typed.Quantity, Label = "migrated" });
+                    }),
+                ]),
+        ];
+    }
 
     private static async Task<(IReadOnlyList<InterleavingTranscriptEntry> Transcript, int Left, int Right)> RunTwoActorAdds(int seed)
     {

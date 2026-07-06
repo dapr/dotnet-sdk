@@ -1,5 +1,7 @@
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Scheduling;
+using Dapr.Actors.Next.Abstractions.State;
+using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.Client;
 using Dapr.Actors.Next.Core.DependencyInjection;
@@ -8,6 +10,7 @@ using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.Core.Scheduling;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.State;
+using Dapr.Actors.Next.Core.State.Versioning;
 using Dapr.Actors.Next.Core.Timers;
 using Dapr.Actors.Next.Core.Transport;
 using Dapr.Common.Serialization;
@@ -17,6 +20,49 @@ namespace Dapr.Actors.Next.Core.Test;
 
 public sealed class CoreEdgeCaseTests
 {
+    private const string MigrationStateV1ShapeHash = "h1:manual-migration-state-v1";
+    private const string MigrationStateV2ShapeHash = "h1:manual-migration-state-v2";
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task State_accessor_folds_registered_migration_family_and_repersists_target_node()
+    {
+        var store = new RecordingActorStateStore();
+        var serializer = new ActorWireSerializer(new JsonDaprSerializer());
+        var v1Node = new ActorStateMigrationNode(0, typeof(MigrationStateV1), MigrationStateV1ShapeHash);
+        var v2Node = new ActorStateMigrationNode(1, typeof(MigrationStateV2), MigrationStateV2ShapeHash);
+        var migrator = new ActorStateMigrationRegistry(
+        [
+            new ActorStateMigrationFamilyRegistration(
+                new ActorStateMigrationFamily(
+                    "MigrationState",
+                    [v1Node, v2Node],
+                    [new ActorStateMigrationEdge(0, 1, typeof(MigrationStateV1ToV2))]),
+                [
+                    new ActorStateNodeDeserializer(0, static (payload, serializer) => serializer.DeserializeFromBytes<ActorStateEnvelope<MigrationStateV1>>(payload)?.Value),
+                    new ActorStateNodeDeserializer(1, static (payload, serializer) => serializer.DeserializeFromBytes<ActorStateEnvelope<MigrationStateV2>>(payload)?.Value),
+                ],
+                [
+                    new ActorStateHopRegistration(0, 1, static (state, _) =>
+                        ValueTask.FromResult<object>(new MigrationStateV2(((MigrationStateV1)state).Name, ((MigrationStateV1)state).Quantity))),
+                ]),
+        ]);
+        var seeded = new ActorStateEnvelope<MigrationStateV1>(
+            ActorStateEnvelopeHeader.Create(ActorStateFormKind.Enveloped, serializer.SerializerId, serializer.SerializerVersion),
+            new ActorStateDiscriminator(v1Node.Index, v1Node.ShapeHash),
+            new MigrationStateV1("apples", 3));
+        await store.WriteAsync("Counter", "migrate", "state", serializer.SerializeToBytes(seeded));
+        var firstTurn = new ActorStateUnitOfWork("Counter", ActorId.Create("migrate"), store, serializer, migrator: migrator);
+
+        var folded = await firstTurn.TryGetAsync<MigrationStateV2>("state");
+        await firstTurn.FlushAsync();
+        var stored = serializer.DeserializeFromBytes<ActorStateEnvelope<MigrationStateV2>>((await store.ReadAsync("Counter", "migrate", "state"))!.Value);
+
+        Assert.Equal("apples", folded!.Value.Name);
+        Assert.Equal(3, folded.Value.TotalQuantity);
+        Assert.Equal(1, stored!.Discriminator.ChainIndex);
+        Assert.Equal(v2Node.ShapeHash, stored.Discriminator.ShapeHash);
+    }
+
     [MinimumDaprRuntimeFact("1.18")]
     public async Task State_accessor_supports_set_remove_missing_and_dirty_setter()
     {
@@ -25,7 +71,7 @@ public sealed class CoreEdgeCaseTests
         var state = new ActorStateUnitOfWork("Counter", ActorId.Create("s1"), store, serializer);
 
         Assert.Null(await state.TryGetAsync<CounterState>("missing"));
-        await state.SetAsync("state", new CounterState { Value = 10 }, 3);
+        await state.SetAsync("state", new CounterState { Value = 10 });
         await state.FlushAsync();
         var loaded = await state.TryGetAsync<CounterState>("state");
         loaded!.Value = new CounterState { Value = 11 };
@@ -46,7 +92,7 @@ public sealed class CoreEdgeCaseTests
         var serializer = new ActorWireSerializer(new JsonDaprSerializer());
         var firstTurn = new ActorStateUnitOfWork("Counter", ActorId.Create("clean"), store, serializer);
 
-        await firstTurn.SetAsync("state", new CounterState { Value = 10 }, 1);
+        await firstTurn.SetAsync("state", new CounterState { Value = 10 });
         await firstTurn.FlushAsync();
 
         var secondTurn = new ActorStateUnitOfWork("Counter", ActorId.Create("clean"), store, serializer);
@@ -88,7 +134,7 @@ public sealed class CoreEdgeCaseTests
         await store.WriteAsync("Counter", "bad", "state", System.Text.Encoding.UTF8.GetBytes("{"));
         var state = new ActorStateUnitOfWork("Counter", ActorId.Create("bad"), store, serializer);
 
-        await Assert.ThrowsAsync<System.Text.Json.JsonException>(async () => await state.TryGetAsync<CounterState>("state"));
+        await Assert.ThrowsAnyAsync<System.Text.Json.JsonException>(async () => await state.TryGetAsync<CounterState>("state"));
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -310,6 +356,10 @@ public sealed class CoreEdgeCaseTests
 
     private sealed class NullEnvelopeWireSerializer : IActorWireSerializer
     {
+        public string SerializerId => "null";
+
+        public int SerializerVersion => 1;
+
         public byte[] JsonToBytes(string? json) => Array.Empty<byte>();
 
         public string? BytesToJson(ReadOnlyMemory<byte> bytes) => null;
@@ -387,4 +437,44 @@ internal static class CoreRuntimeTestsAccess
         });
         return services.BuildServiceProvider(validateScopes: true);
     }
+}
+
+public sealed class MigrationStateV1
+{
+    public MigrationStateV1()
+    {
+    }
+
+    public MigrationStateV1(string name, int quantity)
+    {
+        Name = name;
+        Quantity = quantity;
+    }
+
+    public string Name { get; set; } = string.Empty;
+
+    public int Quantity { get; set; }
+}
+
+public sealed class MigrationStateV2
+{
+    public MigrationStateV2()
+    {
+    }
+
+    public MigrationStateV2(string name, int totalQuantity)
+    {
+        Name = name;
+        TotalQuantity = totalQuantity;
+    }
+
+    public string Name { get; set; } = string.Empty;
+
+    public int TotalQuantity { get; set; }
+}
+
+public sealed class MigrationStateV1ToV2 : IActorStateUpcaster<MigrationStateV1, MigrationStateV2>
+{
+    public ValueTask<MigrationStateV2> UpcastAsync(MigrationStateV1 state, CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult(new MigrationStateV2(state.Name, state.Quantity));
 }

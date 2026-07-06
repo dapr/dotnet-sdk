@@ -1,5 +1,7 @@
 namespace Dapr.Actors.Next.Abstractions.Options;
 
+using Dapr.Actors.Next.Abstractions.State.Versioning;
+
 /// <summary>
 /// Configures the Dapr Actors Next runtime.
 /// </summary>
@@ -19,6 +21,16 @@ public sealed class DaprActorsOptions
     /// Gets or sets a value indicating whether discovered actor state upcasters are automatically registered.
     /// </summary>
     public bool EnableAutoStateMigrationRegistration { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether actor state migration is disabled and state is stored plainly.
+    /// </summary>
+    public bool DisableStateMigration { get; set; }
+
+    /// <summary>
+    /// Gets or sets the application-wide actor state versioning strategy type used by generators and analyzers.
+    /// </summary>
+    public IActorStateVersionStrategyType? ActorStateVersionStrategyType { get; set; }
 
     /// <summary>
     /// Gets or sets the default contract version for generated registry entries.
@@ -74,6 +86,8 @@ public sealed class DaprActorsOptions
 
         EnableAutoActorRegistration = source.EnableAutoActorRegistration;
         EnableAutoStateMigrationRegistration = source.EnableAutoStateMigrationRegistration;
+        DisableStateMigration = source.DisableStateMigration;
+        ActorStateVersionStrategyType = source.ActorStateVersionStrategyType;
         DefaultContractVersion = source.DefaultContractVersion;
         ActorIdleTimeout = source.ActorIdleTimeout;
         DrainOngoingCallTimeout = source.DrainOngoingCallTimeout;

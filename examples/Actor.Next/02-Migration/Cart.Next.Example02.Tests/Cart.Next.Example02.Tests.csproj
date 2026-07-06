@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Cart.Next.Example02.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Actors.Next.Interpreted\Dapr.Actors.Next.Interpreted.csproj" />
     <ProjectReference Include="..\..\..\..\src\Dapr.Actors.Next.Testing\Dapr.Actors.Next.Testing.csproj" />
   </ItemGroup>
 

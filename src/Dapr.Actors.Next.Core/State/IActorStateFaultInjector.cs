@@ -14,4 +14,25 @@ public interface IActorStateFaultInjector
         string actorId,
         string stateName,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Runs after an enrolled state value has been identified and before its migrating read folds.
+    /// </summary>
+    ValueTask BeforeMigrationAsync(
+        Type targetStateType,
+        string actorType,
+        string actorId,
+        string stateName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Runs before a migration hop is applied.
+    /// </summary>
+    ValueTask BeforeUpcastHopAsync(
+        Type fromStateType,
+        Type toStateType,
+        string actorType,
+        string actorId,
+        string stateName,
+        CancellationToken cancellationToken = default);
 }

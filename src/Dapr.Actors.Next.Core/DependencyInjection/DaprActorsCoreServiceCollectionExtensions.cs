@@ -7,6 +7,7 @@ using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.Core.Scheduling;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.State;
+using Dapr.Actors.Next.Core.State.Versioning;
 using Dapr.Actors.Next.Core.Timers;
 using Dapr.Actors.Next.Core.Transport;
 using Dapr.Common.Serialization;
@@ -68,6 +69,20 @@ public static class DaprActorsCoreServiceCollectionExtensions
         services.AddSingleton<SubscribeActorEventsStreamManager>();
         services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<SubscribeActorEventsStreamManager>());
 
+        return services;
+    }
+
+    /// <summary>
+    /// Adds hand-written or generated actor state migration family registrations.
+    /// </summary>
+    public static IServiceCollection AddDaprActorStateMigration(
+        this IServiceCollection services,
+        IEnumerable<ActorStateMigrationFamilyRegistration> families)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(families);
+
+        services.TryAddSingleton<Dapr.Actors.Next.Abstractions.State.Versioning.IActorStateMigrator>(_ => new ActorStateMigrationRegistry(families));
         return services;
     }
 

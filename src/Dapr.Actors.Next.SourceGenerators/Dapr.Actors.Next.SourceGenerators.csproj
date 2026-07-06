@@ -10,6 +10,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="..\Dapr.Actors.Next.Analyzers\ActorStateMigrationShared.cs" Link="ActorStateMigrationShared.cs" />
         <PackageReference Include="Microsoft.CodeAnalysis.Analyzers">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

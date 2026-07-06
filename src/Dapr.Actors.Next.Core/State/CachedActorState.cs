@@ -1,4 +1,5 @@
 using Dapr.Actors.Next.Abstractions.State;
+using Dapr.Actors.Next.Abstractions.State.Versioning;
 
 namespace Dapr.Actors.Next.Core.State;
 
@@ -9,12 +10,13 @@ public sealed class CachedActorState<T> : IActorState<T>
 {
     private T value;
 
-    internal CachedActorState(string name, int schemaVersion, T value, Action onChanged)
+    internal CachedActorState(string name, T value, Action onChanged, ActorStateMigrationNode? migrationNode, bool storePlain)
     {
         Name = name;
-        SchemaVersion = schemaVersion;
         this.value = value;
         this.onChanged = onChanged;
+        MigrationNode = migrationNode;
+        StorePlain = storePlain;
     }
 
     private readonly Action onChanged;
@@ -22,8 +24,9 @@ public sealed class CachedActorState<T> : IActorState<T>
     /// <inheritdoc />
     public string Name { get; }
 
-    /// <inheritdoc />
-    public int SchemaVersion { get; }
+    internal ActorStateMigrationNode? MigrationNode { get; private set; }
+
+    internal bool StorePlain { get; private set; }
 
     /// <inheritdoc />
     public T Value
@@ -34,5 +37,12 @@ public sealed class CachedActorState<T> : IActorState<T>
             this.value = value;
             onChanged();
         }
+    }
+
+    internal void StoreAsPlain()
+    {
+        MigrationNode = null;
+        StorePlain = true;
+        onChanged();
     }
 }

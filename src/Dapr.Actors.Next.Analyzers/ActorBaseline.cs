@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Dapr.Actors.Next.Analyzers;
 
@@ -110,6 +111,22 @@ internal sealed class BaselineEntry
         return new BaselineEntry("state", type.BaselineName(), "v=1", members.ToImmutable(), string.Empty);
     }
 
+    internal static BaselineEntry ForMigrationState(INamedTypeSymbol type)
+    {
+        var members = ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
+        members["F:shapeHash"] = Dapr.Actors.Next.Roslyn.ActorStateMigrationShared.ComputeShapeHash(type);
+
+        return new BaselineEntry("migration-state", type.BaselineName(), "v=1", members.ToImmutable(), string.Empty);
+    }
+
+    internal static BaselineEntry ForMigrationUpcaster(INamedTypeSymbol type)
+    {
+        var members = ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
+        members["F:fingerprint"] = ComputeSyntaxFingerprint(type);
+
+        return new BaselineEntry("migration-upcaster", type.BaselineName(), "v=1", members.ToImmutable(), string.Empty);
+    }
+
     internal static BaselineEntry ForInterface(INamedTypeSymbol type)
     {
         var members = ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
@@ -136,5 +153,32 @@ internal sealed class BaselineEntry
     {
         var parameters = string.Join(",", method.Parameters.Select(static p => p.Type.BaselineName()));
         return "M:" + method.Name + "(" + parameters + ")";
+    }
+
+    private static string ComputeSyntaxFingerprint(INamedTypeSymbol type)
+    {
+        var text = string.Join("\n", type.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax().NormalizeWhitespace().ToFullString())
+            .OrderBy(static value => value, StringComparer.Ordinal));
+#if NETSTANDARD2_0
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(text));
+#else
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text));
+#endif
+        return "h1:" + ToLowerHex(bytes, 16);
+    }
+
+    private static string ToLowerHex(byte[] bytes, int length)
+    {
+        const string Hex = "0123456789abcdef";
+        var chars = new char[length * 2];
+        for (var i = 0; i < length; i++)
+        {
+            chars[i * 2] = Hex[bytes[i] >> 4];
+            chars[i * 2 + 1] = Hex[bytes[i] & 0xF];
+        }
+
+        return new string(chars);
     }
 }

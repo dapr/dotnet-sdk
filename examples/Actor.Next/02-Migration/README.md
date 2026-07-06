@@ -1,14 +1,27 @@
 # Migration
 
-Typed upcasters turn "old data will not deserialize after a deploy" from a production incident into a build-time error and a unit-testable migration.
+Typed actor state migration lets actor code read the current state shape while the SDK folds older
+persisted shapes forward through registered upcasters.
 
 Tutorial: [Part 2 - Serialization and state migration](../../../docs/dotnet-actorsnext/tutorial/part-2.md).
 
-The example keeps the cart state deliberately small: V1 is a flat SKU list, V2 is line items with quantities, and V3 adds a derived total. The tests seed old envelopes into the in-memory runtime store and prove the actor folds the upcaster chain in one activation. The `DAPR1410` analyzer is the companion guard for catching incompatible state-shape changes during builds.
+This example is the reference usage for the migration model:
 
-The local app exposes a small HTTP API that imports V1 or V2 state through the actor, immediately reads it back as V3, and lets you clear the sample cart between runs.
+- `CartStateV1 -> CartStateV2 -> CartStateV3` uses two hand-authored upcasters. The actor reads
+  `CartStateV3` with ordinary `GetOrCreateAsync` and `TryGetAsync`; it never branches on a stored
+  version.
+- `MyState -> MyStateV2 -> MyStateV3` is additive-only. No upcasters are written; the generator emits
+  the hops.
+- `RenamedState -> RenamedStateV2` is non-additive and has one authored hop.
+- `GraduatedCartState` demonstrates the offramp: `GraduateAsync` writes the value in plain form so that
+  entry can leave the migration envelope.
 
-Dapr 1.18 requires the sidecar to have a gRPC app channel before it accepts `SubscribeActorEventsAlpha1`. The sample configures two Kestrel endpoints in `appsettings.json`: port `5000` is the HTTP API that drives the migration actor through the generated actor proxy, and port `5056` is the HTTP/2 app channel used by daprd.
+Imports use the same API as normal writes. Posting a V1 or V2 payload calls `SetAsync` with that legacy
+node type; the next read folds it to the current type and the store heals on the actor turn flush.
+
+The sample configures two Kestrel endpoints in `appsettings.json`: port `5000` is the HTTP API that
+drives the migration actor through the generated actor proxy, and port `5056` is the HTTP/2 app channel
+used by daprd.
 
 ## Start the Dapr runtime
 
@@ -27,15 +40,9 @@ cd examples\Actor.Next\02-Migration
 dotnet run
 ```
 
-Then open `Cart.Next.Example02.http` in Rider or Visual Studio and run the requests in order:
-
-1. Import V1 state and migrate to V3
-2. Read migrated state
-3. Clear state
-4. Import V2 state and migrate to V3
-5. Read migrated V2 state
-
-The request file uses `http://localhost:5000` and a shared `demo` cart id.
+Then open `Cart.Next.Example02.http` in Rider or Visual Studio and run the requests in order. It seeds
+V1 and V2 cart values, reads them as V3, exercises the additive and non-additive families, and graduates
+one state entry to plain storage.
 
 ## Run Tests
 
@@ -45,4 +52,6 @@ Run the example tests:
 dotnet test Cart.Next.Example02.Tests\Cart.Next.Example02.Tests.csproj --no-restore
 ```
 
-The tests run the generated actor against `ActorTestRuntime`, seed V1 state into the in-memory store, and verify the V1-to-V2-to-V3 upcaster chain.
+The tests use `ActorTestRuntime.SeedStateAsync` and migration fault hooks to cover folded reads, generated
+additive hops, corruption detection, family isolation, lazy re-persist, legacy imports, graduation,
+global disable, and the interpreted actor boundary.

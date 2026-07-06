@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.State;
+using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Serialization;
 
 namespace Dapr.Actors.Next.Core.State;
@@ -12,7 +14,9 @@ public sealed class ActorStateUnitOfWork(
     ActorId actorId,
     IActorStateStore store,
     IActorWireSerializer serializer,
-    IActorStateFaultInjector? faultInjector = null) : IActorStateAccessor
+    IActorStateFaultInjector? faultInjector = null,
+    IActorStateMigrator? migrator = null,
+    bool disableStateMigration = false) : IActorStateAccessor
 {
     private readonly Dictionary<string, CacheEntry> entries = new(StringComparer.Ordinal);
     private readonly IActorStateFaultInjector faultInjector = faultInjector ?? new NoopActorStateFaultInjector();
@@ -24,7 +28,18 @@ public sealed class ActorStateUnitOfWork(
 
         if (entries.TryGetValue(name, out var existing))
         {
-            return existing.Removed ? null : (IActorState<T>)existing.State;
+            if (existing.Removed)
+            {
+                return null;
+            }
+
+            if (existing.State is IActorState<T> typed)
+            {
+                return typed;
+            }
+
+            var snapshot = existing.PersistedSnapshot ?? existing.CreateSnapshot(serializer);
+            return await ReadStateAsync<T>(name, snapshot, cancellationToken).ConfigureAwait(false);
         }
 
         var bytes = await store.ReadAsync(actorType, actorId.Value, name, cancellationToken).ConfigureAwait(false);
@@ -33,10 +48,7 @@ public sealed class ActorStateUnitOfWork(
             return null;
         }
 
-        var envelope = serializer.DeserializeFromBytes<ActorStateEnvelope<T>>(bytes.Value)
-            ?? throw new InvalidOperationException($"State '{name}' could not be deserialized.");
-        var state = new CachedActorState<T>(name, envelope.SchemaVersion, envelope.Value, () => MarkDirty(name));
-        entries[name] = CacheEntry.FromClean(state, CreateWriter(state), CreateSnapshot(state), bytes.Value.ToArray(), ShouldTrackInPlaceMutations<T>());
+        var state = await ReadStateAsync<T>(name, bytes.Value, cancellationToken).ConfigureAwait(false);
         return state;
     }
 
@@ -50,18 +62,41 @@ public sealed class ActorStateUnitOfWork(
             return existing;
         }
 
-        var state = new CachedActorState<T>(name, 1, valueFactory(), () => MarkDirty(name));
-        entries[name] = CacheEntry.FromDirty(state, CreateWriter(state), CreateSnapshot(state), ShouldTrackInPlaceMutations<T>());
+        var state = new CachedActorState<T>(
+            name,
+            valueFactory(),
+            () => MarkDirty(name),
+            ResolveWriteNode<T>(),
+            ShouldStorePlain<T>());
+        entries[name] = CacheEntry.FromDirty(state, CreateWriter<T>(), CreateSnapshot(state), ShouldTrackInPlaceMutations<T>());
         return state;
     }
 
     /// <inheritdoc />
-    public ValueTask SetAsync<T>(string name, T value, int schemaVersion, CancellationToken cancellationToken = default)
+    public ValueTask SetAsync<T>(string name, T value, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        var state = new CachedActorState<T>(name, schemaVersion, value, () => MarkDirty(name));
-        entries[name] = CacheEntry.FromDirty(state, CreateWriter(state), CreateSnapshot(state), ShouldTrackInPlaceMutations<T>());
+        var state = new CachedActorState<T>(
+            name,
+            value,
+            () => MarkDirty(name),
+            ResolveWriteNode<T>(),
+            ShouldStorePlain<T>());
+        entries[name] = CacheEntry.FromDirty(state, CreateWriter<T>(), CreateSnapshot(state), ShouldTrackInPlaceMutations<T>());
         return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public async ValueTask GraduateAsync<T>(string name, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var state = await TryGetAsync<T>(name, cancellationToken).ConfigureAwait(false);
+        if (state is null)
+        {
+            return;
+        }
+
+        ((CachedActorState<T>)state).StoreAsPlain();
     }
 
     /// <inheritdoc />
@@ -122,6 +157,103 @@ public sealed class ActorStateUnitOfWork(
         }
     }
 
+    private async ValueTask<CachedActorState<T>> ReadStateAsync<T>(string name, ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken)
+    {
+        if (TryPeekHeader(bytes, out var header, out var discriminator))
+        {
+            ValidateSerializer(header);
+            if (header.FormKind == ActorStateFormKind.Enveloped)
+            {
+                if (migrator is null)
+                {
+                    throw new InvalidOperationException($"State '{name}' is enrolled for migration, but no actor state migrator is registered.");
+                }
+
+                await faultInjector.BeforeMigrationAsync(typeof(T), actorType, actorId.Value, name, cancellationToken).ConfigureAwait(false);
+                var value = await migrator.MigrateAsync<T>(
+                    discriminator.ChainIndex,
+                    discriminator.ShapeHash,
+                    bytes,
+                    serializer,
+                    (fromStateType, toStateType, token) => faultInjector.BeforeUpcastHopAsync(
+                        fromStateType,
+                        toStateType,
+                        actorType,
+                        actorId.Value,
+                        name,
+                        token),
+                    cancellationToken).ConfigureAwait(false);
+                var state = new CachedActorState<T>(
+                    name,
+                    value,
+                    () => MarkDirty(name),
+                    ResolveWriteNode<T>(),
+                    ShouldStorePlain<T>());
+                entries[name] = CacheEntry.FromDirty(state, CreateWriter<T>(), CreateSnapshot(state), ShouldTrackInPlaceMutations<T>());
+                return state;
+            }
+
+            if (header.FormKind == ActorStateFormKind.Plain)
+            {
+                var value = await ReadPlainAsync<T>(bytes, cancellationToken).ConfigureAwait(false);
+                var state = new CachedActorState<T>(name, value, () => MarkDirty(name), null, true);
+                entries[name] = CacheEntry.FromClean(state, CreateWriter<T>(), CreateSnapshot(state), bytes.ToArray(), ShouldTrackInPlaceMutations<T>());
+                return state;
+            }
+
+            throw new InvalidOperationException($"State '{name}' has unsupported actor state form '{header.FormKind}'.");
+        }
+
+        var legacy = ReadLegacy<T>(name, bytes);
+        var legacyState = new CachedActorState<T>(name, legacy, () => MarkDirty(name), null, true);
+        entries[name] = CacheEntry.FromClean(legacyState, CreateWriter<T>(), CreateSnapshot(legacyState), bytes.ToArray(), ShouldTrackInPlaceMutations<T>());
+        return legacyState;
+    }
+
+    private async ValueTask<T> ReadPlainAsync<T>(ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken)
+    {
+        if (migrator is not null)
+        {
+            return await migrator.ReadPlainAsync<T>(bytes, serializer, cancellationToken).ConfigureAwait(false);
+        }
+
+        var envelope = serializer.DeserializeFromBytes<ActorStatePlainEnvelope<T>>(bytes)
+            ?? throw new InvalidOperationException($"State could not be deserialized as '{typeof(T).FullName}'.");
+        return envelope.Value;
+    }
+
+    private T ReadLegacy<T>(string name, ReadOnlyMemory<byte> bytes)
+    {
+        JsonException? rawJsonException = null;
+        try
+        {
+            var value = serializer.DeserializeFromBytes<T>(bytes);
+            if (value is not null)
+            {
+                return value;
+            }
+        }
+        catch (JsonException ex)
+        {
+            rawJsonException = ex;
+        }
+        catch (InvalidCastException)
+        {
+            throw;
+        }
+
+        try
+        {
+            var legacyEnvelope = serializer.DeserializeFromBytes<LegacyActorStateEnvelope<T>>(bytes)
+                ?? throw new InvalidOperationException($"State '{name}' could not be deserialized.");
+            return legacyEnvelope.Value;
+        }
+        catch (JsonException) when (rawJsonException is not null)
+        {
+            throw rawJsonException;
+        }
+    }
+
     private void MarkDirty(string name)
     {
         if (entries.TryGetValue(name, out var entry))
@@ -130,18 +262,39 @@ public sealed class ActorStateUnitOfWork(
         }
     }
 
+    private ActorStateMigrationNode? ResolveWriteNode<T>() =>
+        !disableStateMigration ? migrator?.ResolveTargetNode(typeof(T)) : null;
+
+    private bool ShouldStorePlain<T>() => disableStateMigration || migrator?.ResolveTargetNode(typeof(T)) is null;
+
     private static bool ShouldTrackInPlaceMutations<T>() => !typeof(T).IsValueType;
 
-    private static Func<IActorWireSerializer, byte[]> CreateSnapshot<T>(IActorState<T> state)
+    private static Func<IActorWireSerializer, byte[]> CreateSnapshot<T>(CachedActorState<T> state)
     {
         return serializer =>
         {
-            var envelope = new ActorStateEnvelope<T>(state.SchemaVersion, state.Value);
-            return serializer.SerializeToBytes(envelope);
+            if (state.MigrationNode is not null && !state.StorePlain)
+            {
+                var envelope = new ActorStateEnvelope<T>(
+                    ActorStateEnvelopeHeader.Create(ActorStateFormKind.Enveloped, serializer.SerializerId, serializer.SerializerVersion),
+                    new ActorStateDiscriminator(state.MigrationNode.Index, state.MigrationNode.ShapeHash),
+                    state.Value);
+                return serializer.SerializeToBytes(envelope);
+            }
+
+            if (state.StorePlain)
+            {
+                var envelope = new ActorStatePlainEnvelope<T>(
+                    ActorStateEnvelopeHeader.Create(ActorStateFormKind.Plain, serializer.SerializerId, serializer.SerializerVersion),
+                    state.Value);
+                return serializer.SerializeToBytes(envelope);
+            }
+
+            return serializer.SerializeToBytes(state.Value);
         };
     }
 
-    private static Func<IActorStateStore, IActorStateFaultInjector, string, string, string, byte[], CancellationToken, ValueTask> CreateWriter<T>(IActorState<T> state)
+    private static Func<IActorStateStore, IActorStateFaultInjector, string, string, string, byte[], CancellationToken, ValueTask> CreateWriter<T>()
     {
         return async (store, faultInjector, actorType, actorId, name, snapshot, cancellationToken) =>
         {
@@ -149,6 +302,121 @@ public sealed class ActorStateUnitOfWork(
             await store.WriteAsync(actorType, actorId, name, snapshot, cancellationToken).ConfigureAwait(false);
         };
     }
+
+    private void ValidateSerializer(ActorStateEnvelopeHeader header)
+    {
+        if (header.FormatVersion != ActorStateEnvelopeHeader.CurrentFormatVersion)
+        {
+            throw new InvalidOperationException($"Unsupported actor state envelope format version '{header.FormatVersion}'.");
+        }
+
+        if (!string.Equals(header.SerializerId, serializer.SerializerId, StringComparison.Ordinal) || header.SerializerVersion != serializer.SerializerVersion)
+        {
+            throw new InvalidOperationException(
+                $"Actor state serializer mismatch. Stored '{header.SerializerId}' v{header.SerializerVersion}, current '{serializer.SerializerId}' v{serializer.SerializerVersion}.");
+        }
+    }
+
+    private static bool TryPeekHeader(ReadOnlyMemory<byte> bytes, out ActorStateEnvelopeHeader header, out ActorStateDiscriminator discriminator)
+    {
+        header = default;
+        discriminator = default;
+
+        try
+        {
+            using var document = JsonDocument.Parse(bytes);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !TryGetProperty(document.RootElement, nameof(ActorStateEnvelope<object>.Header), out var headerElement)
+                || headerElement.ValueKind != JsonValueKind.Object
+                || !TryReadByte(headerElement, nameof(ActorStateEnvelopeHeader.Magic), out var magic)
+                || magic != ActorStateEnvelopeHeader.CurrentMagic)
+            {
+                return false;
+            }
+
+            var formatVersion = GetProperty(headerElement, nameof(ActorStateEnvelopeHeader.FormatVersion)).GetInt32();
+            var formKind = ReadFormKind(GetProperty(headerElement, nameof(ActorStateEnvelopeHeader.FormKind)));
+            var serializerId = GetProperty(headerElement, nameof(ActorStateEnvelopeHeader.SerializerId)).GetString() ?? string.Empty;
+            var serializerVersion = GetProperty(headerElement, nameof(ActorStateEnvelopeHeader.SerializerVersion)).GetInt32();
+            header = new ActorStateEnvelopeHeader(magic, formatVersion, formKind, serializerId, serializerVersion);
+
+            if (formKind == ActorStateFormKind.Enveloped)
+            {
+                var discriminatorElement = GetProperty(document.RootElement, nameof(ActorStateEnvelope<object>.Discriminator));
+                discriminator = new ActorStateDiscriminator(
+                    GetProperty(discriminatorElement, nameof(ActorStateDiscriminator.ChainIndex)).GetInt32(),
+                    GetProperty(discriminatorElement, nameof(ActorStateDiscriminator.ShapeHash)).GetString() ?? string.Empty);
+            }
+
+            return true;
+        }
+        catch (JsonException)
+        {
+            throw;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+        catch (KeyNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryReadByte(JsonElement element, string propertyName, out byte value)
+    {
+        value = default;
+        if (!TryGetProperty(element, propertyName, out var property))
+        {
+            return false;
+        }
+
+        if (property.ValueKind == JsonValueKind.Number && property.TryGetByte(out value))
+        {
+            return true;
+        }
+
+        if (property.ValueKind == JsonValueKind.String && byte.TryParse(property.GetString(), out value))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static JsonElement GetProperty(JsonElement element, string propertyName) =>
+        TryGetProperty(element, propertyName, out var property)
+            ? property
+            : throw new KeyNotFoundException(propertyName);
+
+    private static bool TryGetProperty(JsonElement element, string propertyName, out JsonElement property)
+    {
+        if (element.TryGetProperty(propertyName, out property))
+        {
+            return true;
+        }
+
+        var camelCase = char.ToLowerInvariant(propertyName[0]) + propertyName[1..];
+        return element.TryGetProperty(camelCase, out property);
+    }
+
+    private static ActorStateFormKind ReadFormKind(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Number)
+        {
+            return (ActorStateFormKind)element.GetInt32();
+        }
+
+        if (element.ValueKind == JsonValueKind.String && Enum.TryParse<ActorStateFormKind>(element.GetString(), ignoreCase: false, out var formKind))
+        {
+            return formKind;
+        }
+
+        throw new InvalidOperationException("Actor state header has an invalid form kind.");
+    }
+
+    private sealed record LegacyActorStateEnvelope<T>(int SchemaVersion, T Value);
 
     private sealed class CacheEntry
     {

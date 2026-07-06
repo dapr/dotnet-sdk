@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 using System.Collections.Concurrent;
-using System.Text.RegularExpressions;
+using Dapr.Actors.Next.Roslyn;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -15,8 +15,6 @@ namespace Dapr.Actors.Next.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
 {
-    private static readonly Regex VersionSuffix = new("^(?<root>.+)V(?<version>[0-9]+)$", RegexOptions.Compiled);
-
     /// <summary>
     /// Gets the diagnostics supported by the analyzer.
     /// </summary>
@@ -32,7 +30,12 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         ActorAnalyzerDiagnostics.InvalidActorMethodReturnType,
         ActorAnalyzerDiagnostics.WireContractChanged,
         ActorAnalyzerDiagnostics.MutableActorField,
-        ActorAnalyzerDiagnostics.DuplicateActorTypeName);
+        ActorAnalyzerDiagnostics.DuplicateActorTypeName,
+        ActorAnalyzerDiagnostics.UnconnectedStateFamilyMember,
+        ActorAnalyzerDiagnostics.UpcasterChainGap,
+        ActorAnalyzerDiagnostics.NonAdditiveMigrationStep,
+        ActorAnalyzerDiagnostics.NonUniqueFoldPath,
+        ActorAnalyzerDiagnostics.MultipleFamiliesForStateName);
 
     /// <summary>
     /// Initializes analyzer actions.
@@ -47,17 +50,24 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
             var baseline = ActorBaseline.Load(startContext.Options.AdditionalFiles, startContext.CancellationToken);
             var actorImplementations = new ConcurrentBag<ActorImplementationInfo>();
             var explicitActorNames = new ConcurrentBag<ExplicitActorName>();
+            var stateTypes = new ConcurrentBag<INamedTypeSymbol>();
+            var upcasters = new ConcurrentBag<UpcasterEdge>();
+            var stateUsages = new ConcurrentBag<StateUsage>();
             startContext.RegisterOperationAction(ctx =>
             {
                 AnalyzeInvocation(ctx);
                 CollectExplicitActorRegistration(ctx, explicitActorNames);
+                CollectStateUsage(ctx, stateUsages);
             }, OperationKind.Invocation);
             startContext.RegisterOperationAction(AnalyzeObjectCreation, OperationKind.ObjectCreation);
             startContext.RegisterOperationAction(AnalyzePropertyReference, OperationKind.PropertyReference);
-            startContext.RegisterSymbolAction(ctx => AnalyzeNamedType(ctx, baseline, actorImplementations), SymbolKind.NamedType);
+            startContext.RegisterSymbolAction(ctx => AnalyzeNamedType(ctx, baseline, actorImplementations, stateTypes, upcasters), SymbolKind.NamedType);
             startContext.RegisterSymbolAction(AnalyzeField, SymbolKind.Field);
-            startContext.RegisterSymbolAction(AnalyzeUpcasterChain, SymbolKind.NamedType);
-            startContext.RegisterCompilationEndAction(ctx => AnalyzeDuplicateActorTypeNames(ctx, actorImplementations, explicitActorNames));
+            startContext.RegisterCompilationEndAction(ctx =>
+            {
+                AnalyzeDuplicateActorTypeNames(ctx, actorImplementations, explicitActorNames);
+                AnalyzeStateMigrationGraph(ctx, stateTypes, upcasters, stateUsages);
+            });
         });
     }
 
@@ -184,7 +194,12 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static void AnalyzeNamedType(SymbolAnalysisContext context, ActorBaseline baseline, ConcurrentBag<ActorImplementationInfo> actorImplementations)
+    private static void AnalyzeNamedType(
+        SymbolAnalysisContext context,
+        ActorBaseline baseline,
+        ConcurrentBag<ActorImplementationInfo> actorImplementations,
+        ConcurrentBag<INamedTypeSymbol> stateTypes,
+        ConcurrentBag<UpcasterEdge> upcasters)
     {
         var type = (INamedTypeSymbol)context.Symbol;
 
@@ -195,8 +210,11 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         }
 
         AnalyzeStateBaseline(context, baseline, type);
+        AnalyzeMigrationFingerprintBaseline(context, baseline, type);
         AnalyzeFilter(context, type);
         CollectActorImplementation(type, actorImplementations);
+        CollectStateType(type, stateTypes);
+        CollectUpcaster(type, upcasters);
     }
 
     private static void CollectActorImplementation(INamedTypeSymbol type, ConcurrentBag<ActorImplementationInfo> actorImplementations)
@@ -509,58 +527,463 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
             name.EndsWith("Logger", StringComparison.Ordinal);
     }
 
-    private static void AnalyzeUpcasterChain(SymbolAnalysisContext context)
+    private static void CollectStateUsage(OperationAnalysisContext context, ConcurrentBag<StateUsage> stateUsages)
     {
-        var type = (INamedTypeSymbol)context.Symbol;
+        var invocation = (IInvocationOperation)context.Operation;
+        var method = invocation.TargetMethod;
+        if (method.TypeArguments.Length != 1 ||
+            method.Name is not ("TryGetAsync" or "GetOrCreateAsync" or "SetAsync" or "GraduateAsync"))
+        {
+            return;
+        }
+
+        var containingType = method.ContainingType?.ToDisplayString();
+        if (containingType != "Dapr.Actors.Next.Abstractions.State.IActorStateAccessor")
+        {
+            return;
+        }
+
+        var stateName = invocation.Arguments.Length > 0 &&
+            invocation.Arguments[0].Value.ConstantValue is { HasValue: true, Value: string value }
+                ? value
+                : null;
+        stateUsages.Add(new StateUsage(method.TypeArguments[0], stateName, invocation.Syntax.GetLocation()));
+    }
+
+    private static void CollectStateType(INamedTypeSymbol type, ConcurrentBag<INamedTypeSymbol> stateTypes)
+    {
+        if (type.TypeParameters.Length != 0 || type.IsAbstract || type.TypeKind is not (TypeKind.Class or TypeKind.Struct) ||
+            type.IsActorInterface() || type.Implements("Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster<TFromType, TToType>") ||
+            !ActorStateMigrationShared.TryParseNumericVersion(type.Name, out _, out _))
+        {
+            return;
+        }
+
+        stateTypes.Add(type);
+    }
+
+    private static void CollectUpcaster(INamedTypeSymbol type, ConcurrentBag<UpcasterEdge> upcasters)
+    {
         foreach (var implemented in type.AllInterfaces)
         {
-            if (implemented.OriginalDefinition.ToDisplayString() != "Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster<TFromType, TToType>" ||
-                implemented.TypeArguments.Length != 2)
+            if (!IsUpcasterInterface(implemented) ||
+                implemented.TypeArguments.Length != 2 ||
+                implemented.TypeArguments[0] is not INamedTypeSymbol from ||
+                implemented.TypeArguments[1] is not INamedTypeSymbol to)
             {
                 continue;
             }
 
-            if (TryGetVersion(implemented.TypeArguments[0], out var fromRoot, out var fromVersion) &&
-                TryGetVersion(implemented.TypeArguments[1], out var toRoot, out var toVersion) &&
-                StringComparer.Ordinal.Equals(fromRoot, toRoot) &&
-                toVersion == fromVersion + 1 &&
-                fromVersion > 1)
-            {
-                var requiredFrom = fromRoot + "V" + (fromVersion - 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
-                var requiredTo = fromRoot + "V" + fromVersion.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                if (!HasUpcasterHop(context.Compilation.GlobalNamespace, requiredFrom, requiredTo))
-                {
-                    context.ReportDiagnostic(Diagnostic.Create(
-                        ActorAnalyzerDiagnostics.BrokenUpcasterChain,
-                        type.Locations.FirstOrDefault(),
-                        properties: ImmutableDictionary<string, string?>.Empty
-                            .Add("upcaster.from", requiredFrom)
-                            .Add("upcaster.to", requiredTo),
-                        requiredFrom,
-                        requiredTo));
-                }
-            }
+            upcasters.Add(new UpcasterEdge(type, from, to, type.Locations.FirstOrDefault()));
         }
     }
 
-    private static bool HasUpcasterHop(INamespaceSymbol namespaceSymbol, string fromType, string toType)
+    private static void AnalyzeMigrationFingerprintBaseline(SymbolAnalysisContext context, ActorBaseline baseline, INamedTypeSymbol type)
     {
-        foreach (var type in EnumerateNamespaceTypes(namespaceSymbol))
+        BaselineEntry? current = null;
+        if (type.Implements("Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster<TFromType, TToType>"))
         {
-            foreach (var implemented in type.AllInterfaces)
+            current = BaselineEntry.ForMigrationUpcaster(type);
+        }
+        else if (ActorStateMigrationShared.TryParseNumericVersion(type.Name, out _, out _))
+        {
+            current = BaselineEntry.ForMigrationState(type);
+        }
+
+        if (current is null || !baseline.Shipped.TryGetValue(current.Key, out var shipped))
+        {
+            return;
+        }
+
+        var breakReason = FindBreakingMemberChange(shipped, current);
+        if (breakReason is null)
+        {
+            return;
+        }
+
+        context.ReportDiagnostic(Diagnostic.Create(
+            ActorAnalyzerDiagnostics.StateShapeChanged,
+            type.Locations.FirstOrDefault(),
+            properties: ImmutableDictionary<string, string?>.Empty
+                .Add("baseline.kind", current.Kind)
+                .Add("baseline.name", current.Name)
+                .Add("baseline.current", current.ToBaselineLine()),
+            type.BaselineName(),
+            "you modified a type/upcaster that has already participated in migration - this risks corrupting persisted state"));
+    }
+
+    private static void AnalyzeStateMigrationGraph(
+        CompilationAnalysisContext context,
+        ConcurrentBag<INamedTypeSymbol> stateTypes,
+        ConcurrentBag<UpcasterEdge> upcasters,
+        ConcurrentBag<StateUsage> stateUsages)
+    {
+        var usages = stateUsages.ToArray();
+        var edges = upcasters.ToArray();
+        var relevantTypeNames = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var usage in usages)
+        {
+            relevantTypeNames.Add(usage.Type.BaselineName());
+        }
+
+        foreach (var edge in edges)
+        {
+            relevantTypeNames.Add(edge.From.BaselineName());
+            relevantTypeNames.Add(edge.To.BaselineName());
+        }
+
+        var nodes = stateTypes
+            .Select(BuildStateNode)
+            .Where(node => node is not null)
+            .Cast<StateNode>()
+            .ToDictionary(node => node.Type.BaselineName(), StringComparer.Ordinal);
+
+        foreach (var group in nodes.Values.GroupBy(static node => node.CanonicalName, StringComparer.Ordinal))
+        {
+            if (group.Count(node => relevantTypeNames.Contains(node.Type.BaselineName())) > 0)
             {
-                if (implemented.OriginalDefinition.ToDisplayString() == "Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster<TFromType, TToType>" &&
-                    implemented.TypeArguments.Length == 2 &&
-                    implemented.TypeArguments[0].BaselineName() == fromType &&
-                    implemented.TypeArguments[1].BaselineName() == toType)
+                foreach (var node in group)
                 {
-                    return true;
+                    relevantTypeNames.Add(node.Type.BaselineName());
                 }
             }
+        }
+
+        var relevantNodes = nodes.Values
+            .Where(node => relevantTypeNames.Contains(node.Type.BaselineName()))
+            .OrderBy(static node => node.CanonicalName, StringComparer.Ordinal)
+            .ThenBy(static node => node.Version)
+            .ThenBy(static node => node.Type.BaselineName(), StringComparer.Ordinal)
+            .ToArray();
+        if (relevantNodes.Length == 0)
+        {
+            return;
+        }
+
+        var edgeKeys = edges
+            .Select(edge => (From: edge.From.BaselineName(), To: edge.To.BaselineName(), edge.Location))
+            .ToArray();
+        var reportedMissing = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var usage in usages)
+        {
+            if (!nodes.TryGetValue(usage.Type.BaselineName(), out var target))
+            {
+                continue;
+            }
+
+            var predecessor = FindPredecessor(target, nodes.Values);
+            if (predecessor is null || HasIncomingEdge(target, edgeKeys) || IsAdditive(predecessor, target))
+            {
+                continue;
+            }
+
+            reportedMissing.Add(target.Type.BaselineName());
+            context.ReportDiagnostic(Diagnostic.Create(
+                ActorAnalyzerDiagnostics.BrokenUpcasterChain,
+                usage.Location,
+                properties: UpcasterProperties(predecessor.Type.BaselineName(), target.Type.BaselineName(), predecessor, target),
+                target.Type.Name,
+                predecessor.Type.Name));
+        }
+
+        foreach (var family in BuildConnectedFamilies(relevantNodes, edgeKeys))
+        {
+            AnalyzeNonUniquePaths(context, family, edgeKeys);
+        }
+
+        foreach (var familyGroup in relevantNodes.GroupBy(static node => node.CanonicalName, StringComparer.Ordinal))
+        {
+            var familyNodes = familyGroup.OrderBy(static node => node.Version).ThenBy(static node => node.Type.BaselineName(), StringComparer.Ordinal).ToArray();
+            for (var i = 0; i < familyNodes.Length - 1; i++)
+            {
+                var from = familyNodes[i];
+                var to = familyNodes[i + 1];
+                if (HasEdge(from, to, edgeKeys) || IsAdditive(from, to))
+                {
+                    continue;
+                }
+
+                var descriptor = IsExplicitFragmentBoundary(from, to, edgeKeys)
+                    ? ActorAnalyzerDiagnostics.UpcasterChainGap
+                    : ActorAnalyzerDiagnostics.NonAdditiveMigrationStep;
+                context.ReportDiagnostic(Diagnostic.Create(
+                    descriptor,
+                    to.Type.Locations.FirstOrDefault(),
+                    properties: UpcasterProperties(from.Type.BaselineName(), to.Type.BaselineName(), from, to),
+                    descriptor == ActorAnalyzerDiagnostics.UpcasterChainGap ? from.CanonicalName : from.Type.Name,
+                    descriptor == ActorAnalyzerDiagnostics.UpcasterChainGap ? from.Type.Name : to.Type.Name,
+                    to.Type.Name));
+            }
+
+            foreach (var usage in usages)
+            {
+                if (!nodes.TryGetValue(usage.Type.BaselineName(), out var used) ||
+                    !StringComparer.Ordinal.Equals(used.CanonicalName, familyGroup.Key) ||
+                    reportedMissing.Contains(used.Type.BaselineName()) ||
+                    familyNodes.Length < 2 ||
+                    HasIncomingEdge(used, edgeKeys) ||
+                    HasOutgoingEdge(used, edgeKeys) ||
+                    HasAdditiveAdjacency(used, familyNodes))
+                {
+                    continue;
+                }
+
+                context.ReportDiagnostic(Diagnostic.Create(
+                    ActorAnalyzerDiagnostics.UnconnectedStateFamilyMember,
+                    usage.Location,
+                    properties: ImmutableDictionary<string, string?>.Empty
+                        .Add("upcaster.from", FindPredecessor(used, familyNodes)?.Type.BaselineName() ?? used.Type.BaselineName())
+                        .Add("upcaster.to", used.Type.BaselineName()),
+                    used.Type.Name,
+                    familyGroup.Key));
+            }
+        }
+
+        foreach (var nameGroup in usages.Where(static usage => !string.IsNullOrWhiteSpace(usage.StateName)).GroupBy(static usage => usage.StateName!, StringComparer.Ordinal))
+        {
+            var families = nameGroup
+                .Select(usage => nodes.TryGetValue(usage.Type.BaselineName(), out var node) ? node.CanonicalName : usage.Type.BaselineName())
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(static family => family, StringComparer.Ordinal)
+                .ToArray();
+            if (families.Length < 2)
+            {
+                continue;
+            }
+
+            context.ReportDiagnostic(Diagnostic.Create(
+                ActorAnalyzerDiagnostics.MultipleFamiliesForStateName,
+                nameGroup.OrderBy(static usage => usage.Location.SourceSpan.Start).First().Location,
+                nameGroup.Key,
+                string.Join(", ", families)));
+        }
+    }
+
+    private static StateNode? BuildStateNode(INamedTypeSymbol type)
+    {
+        if (!ActorStateMigrationShared.TryParseNumericVersion(type.Name, out var simpleCanonicalName, out var versionText) ||
+            !long.TryParse(versionText, out var version))
+        {
+            return null;
+        }
+
+        var canonicalName = type.ContainingNamespace.IsGlobalNamespace
+            ? simpleCanonicalName
+            : type.ContainingNamespace.ToDisplayString() + "." + simpleCanonicalName;
+        return new StateNode(
+            type,
+            canonicalName,
+            version,
+            ActorStateMigrationShared.GetSerializableMembers(type),
+            ActorStateMigrationShared.HasPublicParameterlessConstructor(type));
+    }
+
+    private static ImmutableDictionary<string, string?> UpcasterProperties(string from, string to, StateNode? fromNode = null, StateNode? toNode = null)
+    {
+        var properties = ImmutableDictionary<string, string?>.Empty
+            .Add("upcaster.from", from)
+            .Add("upcaster.to", to);
+
+        if (fromNode is not null && toNode is not null)
+        {
+            var copied = SharedWritableMembers(fromNode, toNode);
+            if (copied.Length > 0)
+            {
+                properties = properties.Add("upcaster.copiedMembers", string.Join(";", copied));
+            }
+        }
+
+        return properties;
+    }
+
+    private static string[] SharedWritableMembers(StateNode from, StateNode to)
+    {
+        var fromMembers = from.Members.ToDictionary(static member => member.Name, StringComparer.Ordinal);
+        return to.Members
+            .Where(member => member.CanWrite &&
+                fromMembers.TryGetValue(member.Name, out var fromMember) &&
+                StringComparer.Ordinal.Equals(fromMember.TypeName, member.TypeName))
+            .Select(static member => member.Name)
+            .OrderBy(static name => name, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static StateNode? FindPredecessor(StateNode target, IEnumerable<StateNode> nodes)
+    {
+        var sameFamily = nodes
+            .Where(node => StringComparer.Ordinal.Equals(node.CanonicalName, target.CanonicalName) && node.Version < target.Version)
+            .OrderByDescending(static node => node.Version)
+            .ThenBy(static node => node.Type.BaselineName(), StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (sameFamily is not null)
+        {
+            return sameFamily;
+        }
+
+        var previousVersion = target.Version - 1;
+        var candidates = nodes
+            .Where(node => node.Version == previousVersion)
+            .OrderBy(static node => node.Type.BaselineName(), StringComparer.Ordinal)
+            .ToArray();
+        return candidates.Length == 1 ? candidates[0] : null;
+    }
+
+    private static bool IsAdditive(StateNode from, StateNode to) =>
+        ActorStateMigrationShared.IsAdditiveStep(from.Members, to.Members, to.HasPublicParameterlessConstructor, out _);
+
+    private static bool HasEdge(StateNode from, StateNode to, IEnumerable<(string From, string To, Location? Location)> edgeKeys) =>
+        edgeKeys.Any(edge => StringComparer.Ordinal.Equals(edge.From, from.Type.BaselineName()) && StringComparer.Ordinal.Equals(edge.To, to.Type.BaselineName()));
+
+    private static bool HasIncomingEdge(StateNode node, IEnumerable<(string From, string To, Location? Location)> edgeKeys) =>
+        edgeKeys.Any(edge => StringComparer.Ordinal.Equals(edge.To, node.Type.BaselineName()));
+
+    private static bool HasOutgoingEdge(StateNode node, IEnumerable<(string From, string To, Location? Location)> edgeKeys) =>
+        edgeKeys.Any(edge => StringComparer.Ordinal.Equals(edge.From, node.Type.BaselineName()));
+
+    private static bool HasAdditiveAdjacency(StateNode node, IReadOnlyList<StateNode> familyNodes)
+    {
+        for (var i = 0; i < familyNodes.Count; i++)
+        {
+            if (!SymbolEqualityComparer.Default.Equals(familyNodes[i].Type, node.Type))
+            {
+                continue;
+            }
+
+            return i > 0 && IsAdditive(familyNodes[i - 1], node) ||
+                   i < familyNodes.Count - 1 && IsAdditive(node, familyNodes[i + 1]);
         }
 
         return false;
     }
+
+    private static bool IsExplicitFragmentBoundary(StateNode from, StateNode to, IEnumerable<(string From, string To, Location? Location)> edgeKeys) =>
+        HasIncomingEdge(from, edgeKeys) && HasOutgoingEdge(to, edgeKeys);
+
+    private static IEnumerable<StateNode[]> BuildConnectedFamilies(
+        IReadOnlyCollection<StateNode> nodes,
+        IReadOnlyCollection<(string From, string To, Location? Location)> edgeKeys)
+    {
+        var byName = nodes.ToDictionary(static node => node.Type.BaselineName(), StringComparer.Ordinal);
+        var adjacency = nodes.ToDictionary(static node => node.Type.BaselineName(), static _ => new HashSet<string>(StringComparer.Ordinal), StringComparer.Ordinal);
+
+        foreach (var group in nodes.GroupBy(static node => node.CanonicalName, StringComparer.Ordinal))
+        {
+            var ordered = group.OrderBy(static node => node.Version).ThenBy(static node => node.Type.BaselineName(), StringComparer.Ordinal).ToArray();
+            for (var i = 0; i < ordered.Length - 1; i++)
+            {
+                Connect(ordered[i].Type.BaselineName(), ordered[i + 1].Type.BaselineName());
+            }
+        }
+
+        foreach (var edge in edgeKeys)
+        {
+            Connect(edge.From, edge.To);
+        }
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var node in nodes)
+        {
+            var name = node.Type.BaselineName();
+            if (!seen.Add(name))
+            {
+                continue;
+            }
+
+            var component = new List<StateNode>();
+            var stack = new Stack<string>();
+            stack.Push(name);
+            while (stack.Count > 0)
+            {
+                var current = stack.Pop();
+                component.Add(byName[current]);
+                foreach (var next in adjacency[current])
+                {
+                    if (seen.Add(next))
+                    {
+                        stack.Push(next);
+                    }
+                }
+            }
+
+            yield return component.OrderBy(static item => item.Version).ThenBy(static item => item.Type.BaselineName(), StringComparer.Ordinal).ToArray();
+        }
+
+        void Connect(string left, string right)
+        {
+            if (!adjacency.ContainsKey(left) || !adjacency.ContainsKey(right))
+            {
+                return;
+            }
+
+            adjacency[left].Add(right);
+            adjacency[right].Add(left);
+        }
+    }
+
+    private static void AnalyzeNonUniquePaths(
+        CompilationAnalysisContext context,
+        IReadOnlyList<StateNode> family,
+        IReadOnlyCollection<(string From, string To, Location? Location)> explicitEdges)
+    {
+        var directedEdges = new List<(string From, string To)>();
+        for (var i = 0; i < family.Count - 1; i++)
+        {
+            var from = family[i].Type.BaselineName();
+            var to = family[i + 1].Type.BaselineName();
+            if (IsAdditive(family[i], family[i + 1]) &&
+                !explicitEdges.Any(edge => StringComparer.Ordinal.Equals(edge.From, from) && StringComparer.Ordinal.Equals(edge.To, to)))
+            {
+                directedEdges.Add((from, to));
+            }
+        }
+
+        directedEdges.AddRange(explicitEdges.Select(static edge => (edge.From, edge.To)));
+        foreach (var target in family)
+        {
+            var hasMultiplePaths = family.Any(source => CountPaths(source.Type.BaselineName(), target.Type.BaselineName(), directedEdges, new HashSet<string>(StringComparer.Ordinal)) > 1);
+            if (!hasMultiplePaths)
+            {
+                continue;
+            }
+
+            context.ReportDiagnostic(Diagnostic.Create(
+                ActorAnalyzerDiagnostics.NonUniqueFoldPath,
+                target.Type.Locations.FirstOrDefault(),
+                family[0].CanonicalName,
+                target.Type.Name));
+            return;
+        }
+    }
+
+    private static int CountPaths(string current, string target, IReadOnlyCollection<(string From, string To)> edges, HashSet<string> seen)
+    {
+        if (StringComparer.Ordinal.Equals(current, target))
+        {
+            return 1;
+        }
+
+        if (!seen.Add(current))
+        {
+            return 0;
+        }
+
+        var count = 0;
+        foreach (var edge in edges.Where(edge => StringComparer.Ordinal.Equals(edge.From, current)))
+        {
+            count += CountPaths(edge.To, target, edges, seen);
+            if (count > 1)
+            {
+                break;
+            }
+        }
+
+        seen.Remove(current);
+        return count;
+    }
+
+    private static bool IsUpcasterInterface(INamedTypeSymbol type) =>
+        type.OriginalDefinition.ToDisplayString() == "Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster<TFromType, TToType>";
 
     private static IEnumerable<INamedTypeSymbol> EnumerateNamespaceTypes(INamespaceSymbol namespaceSymbol)
     {
@@ -578,23 +1001,6 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    private static bool TryGetVersion(ITypeSymbol type, out string root, out int version)
-    {
-        var match = VersionSuffix.Match(type.Name);
-        if (!match.Success)
-        {
-            root = string.Empty;
-            version = 0;
-            return false;
-        }
-
-        root = type.ContainingNamespace.IsGlobalNamespace
-            ? match.Groups["root"].Value
-            : type.ContainingNamespace.ToDisplayString() + "." + match.Groups["root"].Value;
-        version = int.Parse(match.Groups["version"].Value, System.Globalization.CultureInfo.InvariantCulture);
-        return true;
-    }
-
     private static bool IsInsideActorTurn(SemanticModel? semanticModel, SyntaxNode syntax, CancellationToken cancellationToken)
     {
         if (semanticModel is null)
@@ -609,7 +1015,8 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
-        return type.IsActorImplementation();
+        return type.IsActorImplementation() ||
+            type.Implements("Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster<TFromType, TToType>");
     }
 
     private static bool IsTaskLike(ITypeSymbol? type)
@@ -643,4 +1050,15 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         Location? Location);
 
     private sealed record ExplicitActorName(INamedTypeSymbol ActorType, string ActorTypeName);
+
+    private sealed record StateUsage(ITypeSymbol Type, string? StateName, Location Location);
+
+    private sealed record UpcasterEdge(INamedTypeSymbol Implementation, INamedTypeSymbol From, INamedTypeSymbol To, Location? Location);
+
+    private sealed record StateNode(
+        INamedTypeSymbol Type,
+        string CanonicalName,
+        long Version,
+        ImmutableArray<ActorStateMigrationShared.StateMember> Members,
+        bool HasPublicParameterlessConstructor);
 }

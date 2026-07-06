@@ -3,6 +3,7 @@ using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Options;
 using Dapr.Actors.Next.Abstractions.Registry;
 using Dapr.Actors.Next.Abstractions.State;
+using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Client;
 using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.SourceGenerators.Sample;
@@ -245,6 +246,52 @@ public sealed class GeneratorTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public void Generator_emits_additive_state_migration_family_metadata_and_aot_delegates()
+    {
+        var source = """
+            namespace MigrationSample;
+
+            public sealed class MyState
+            {
+                public string Name { get; set; } = "";
+            }
+
+            public sealed class MyStateV2
+            {
+                public string Name { get; set; } = "";
+                public int Age { get; set; }
+            }
+
+            public sealed class MyStateV3
+            {
+                public string Name { get; set; } = "";
+                public int Age { get; set; }
+                public bool Active { get; set; }
+            }
+            """;
+
+        var generated = RunGenerator(CreateCompilation("MigrationSample", source), scanReferences: false, assertGeneratedCompiles: true);
+
+        Assert.Contains("ActorStateMigrationFamily(@\"MigrationSample.MyState\"", generated);
+        Assert.Contains("ActorStateMigrationNode(0, typeof(global::MigrationSample.MyState)", generated);
+        Assert.Contains("ActorStateMigrationNode(1, typeof(global::MigrationSample.MyStateV2)", generated);
+        Assert.Contains("ActorStateMigrationNode(2, typeof(global::MigrationSample.MyStateV3)", generated);
+        Assert.Contains("ActorStateMigrationEdge(0, 1, null)", generated);
+        Assert.Contains("ActorStateMigrationEdge(1, 2, null)", generated);
+        Assert.Contains("TryAddSingleton<global::Dapr.Actors.Next.Abstractions.State.Versioning.IActorStateMigrator>", generated);
+        Assert.DoesNotContain("if (!options.DisableStateMigration)", generated);
+        Assert.Contains("UpcastStateGenerated_MigrationSample_MyState_0_1", generated);
+        Assert.Contains("new global::MigrationSample.MyStateV2", generated);
+        Assert.Contains("Name = source.Name", generated);
+        Assert.Contains("Age = source.Age", generated);
+        Assert.Contains("DeserializeFromBytes<global::Dapr.Actors.Next.Abstractions.State.ActorStateEnvelope<global::MigrationSample.MyState>>(payload)", generated);
+        Assert.Contains("DeserializeFromBytes<global::MigrationSample.MyState>(payload)", generated);
+        Assert.Contains("JsonSerializable(typeof(global::Dapr.Actors.Next.Abstractions.State.ActorStateEnvelope<global::MigrationSample.MyState>))", generated);
+        Assert.Contains("JsonSerializable(typeof(global::Dapr.Actors.Next.Abstractions.State.ActorStatePlainEnvelope<global::MigrationSample.MyStateV3>))", generated);
+        Assert.Contains("JsonSerializable(typeof(global::MigrationSample.MyStateV2))", generated);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Sample_generated_registration_dispatcher_factory_and_proxy_run_end_to_end()
     {
         _ = typeof(CalculatorActor);
@@ -265,6 +312,7 @@ public sealed class GeneratorTests
         Assert.Equal(2, descriptor.ContractVersion);
         Assert.Contains(descriptor.Methods, method => method.Name == "SumAsync" && method.Parameters.Count == 3);
         Assert.NotNull(provider.GetRequiredService<IActorStateUpcaster<CalculatorStateV1, CalculatorStateV2>>());
+        Assert.NotNull(provider.GetRequiredService<IActorStateMigrator>());
 
         var proxy = ActorProxy.Create<ICalculatorActor>(ActorId.Create("calc-1"), "Calculator");
         Assert.Equal(4, await proxy.SumAsync(1, 2));
@@ -326,6 +374,23 @@ public sealed class GeneratorTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public void Disable_state_migration_keeps_generated_migrator_available_for_tolerant_reads()
+    {
+        _ = typeof(CalculatorActor);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<CalculatorDependency>();
+        services.AddDaprActors(options =>
+        {
+            options.EnableSidecarTransport = false;
+            options.DisableStateMigration = true;
+        });
+        using var provider = services.BuildServiceProvider(validateScopes: true);
+
+        Assert.NotNull(provider.GetRequiredService<IActorStateMigrator>());
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Auto_actor_registration_off_still_installs_runtime_services()
     {
         _ = typeof(CalculatorActor);
@@ -341,15 +406,19 @@ public sealed class GeneratorTests
         Assert.Empty(registry.Actors);
     }
 
-    private static string RunGenerator(CSharpCompilation compilation, bool? scanReferences)
+    private static string RunGenerator(CSharpCompilation compilation, bool? scanReferences, bool assertGeneratedCompiles = false)
     {
         var generator = new ActorsNextSourceGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             [generator.AsSourceGenerator()],
             driverOptions: new GeneratorDriverOptions(IncrementalGeneratorOutputKind.None),
             optionsProvider: new TestAnalyzerConfigOptionsProvider(scanReferences));
-        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out var diagnostics);
+        driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var diagnostics);
         Assert.Empty(diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+        if (assertGeneratedCompiles)
+        {
+            Assert.Empty(outputCompilation.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+        }
 
         var result = driver.GetRunResult().Results.Single();
         return string.Join(Environment.NewLine, result.GeneratedSources.Select(source => source.SourceText.ToString()));

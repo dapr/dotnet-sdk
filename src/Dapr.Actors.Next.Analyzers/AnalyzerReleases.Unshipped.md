@@ -10,9 +10,14 @@ DAPR1411 | Concurrency | Warning | Actor turn must not escape the scheduler
 DAPR1412 | Concurrency | Warning | Actor turn must not block
 DAPR1413 | Determinism | Warning | Actor turn must use TimeProvider
 DAPR1414 | Determinism | Warning | Actor turn must use a scheduler-aware seeded source
-DAPR1415 | Compatibility | Warning | Actor state upcaster chain has a version gap
+DAPR1415 | Compatibility | Warning | Actor state migration target is unreachable
 DAPR1416 | Design | Info | Actor turn filter should stay cross-cutting
 DAPR1417 | Usage | Warning | Actor interface method must return an asynchronous type
 DAPR1418 | Compatibility | Warning | Actor interface change breaks shipped wire contract
 DAPR1419 | Concurrency | Warning | Actor field should not hold mutable shared state
 DAPR1420 | Usage | Warning | Actor type name must disambiguate shared actor contracts
+DAPR1423 | Compatibility | Warning | Actor state type is not connected to its migration family
+DAPR1424 | Compatibility | Warning | Actor state migration chain has a gap
+DAPR1425 | Compatibility | Warning | Actor state migration step requires an upcaster
+DAPR1426 | Compatibility | Warning | Actor state migration fold path is ambiguous
+DAPR1427 | Usage | Warning | Actor state name maps to multiple migration families

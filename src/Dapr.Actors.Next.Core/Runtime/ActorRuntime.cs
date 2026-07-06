@@ -3,7 +3,9 @@ using System.Diagnostics;
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Dispatching;
 using Dapr.Actors.Next.Abstractions.Filters;
+using Dapr.Actors.Next.Abstractions.Options;
 using Dapr.Actors.Next.Abstractions.Scheduling;
+using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.Observability;
 using Dapr.Actors.Next.Core.Registration;
@@ -12,6 +14,7 @@ using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.State;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Dapr.Actors.Next.Core.Runtime;
 
@@ -26,7 +29,9 @@ public sealed class ActorRuntime(
     IActorStateFaultInjector stateFaultInjector,
     IActorScheduler scheduler,
     IEnumerable<IActorTurnFilter> filters,
-    ILogger<ActorRuntime> logger) : IActorRuntime
+    IOptions<DaprActorsOptions> options,
+    ILogger<ActorRuntime> logger,
+    IActorStateMigrator? stateMigrator = null) : IActorRuntime
 {
     private static readonly ActivitySource ActivitySource = new("Dapr.Actors.Next.Core");
     private readonly ConcurrentDictionary<ActorKey, ActorActivation> activations = [];
@@ -178,7 +183,14 @@ public sealed class ActorRuntime(
             return existing;
         }
 
-        var state = new ActorStateUnitOfWork(registration.ActorType, actorId, stateStore, serializer, stateFaultInjector);
+        var state = new ActorStateUnitOfWork(
+            registration.ActorType,
+            actorId,
+            stateStore,
+            serializer,
+            stateFaultInjector,
+            stateMigrator,
+            options.Value.DisableStateMigration || registration.Options?.DisableStateMigration == true);
         var activationContext = new ActorActivationContext(actorId, state);
 
         // The activation service provider layers the activation built-ins over a per-activation DI scope that

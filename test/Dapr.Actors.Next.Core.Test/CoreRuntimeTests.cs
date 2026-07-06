@@ -180,7 +180,7 @@ public sealed class CoreRuntimeTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
-    public async Task State_cache_flushes_envelope_and_reloads_on_activation()
+    public async Task State_cache_flushes_plain_state_and_reloads_on_activation()
     {
         await using var provider = CreateProvider(null, out _);
         var runtime = provider.GetRequiredService<IActorRuntime>();
@@ -189,11 +189,11 @@ public sealed class CoreRuntimeTests
 
         await runtime.InvokeAsync("Counter", "stateful", "Increment", System.Text.Encoding.UTF8.GetBytes("5"), new Dictionary<string, string>());
         var bytes = await store.ReadAsync("Counter", "stateful", "state");
-        var envelope = serializer.DeserializeFromBytes<ActorStateEnvelope<CounterState>>(bytes!.Value);
+        var envelope = serializer.DeserializeFromBytes<ActorStatePlainEnvelope<CounterState>>(bytes!.Value);
         await runtime.DeactivateAsync("Counter", ActorId.Create("stateful"));
         var read = await runtime.InvokeAsync("Counter", "stateful", "Read", ReadOnlyMemory<byte>.Empty, new Dictionary<string, string>());
 
-        Assert.Equal(1, envelope!.SchemaVersion);
+        Assert.Equal(ActorStateFormKind.Plain, envelope!.Header.FormKind);
         Assert.Equal(5, envelope.Value.Value);
         Assert.Equal("5", System.Text.Encoding.UTF8.GetString(read!.AsSpan()));
     }
@@ -203,12 +203,15 @@ public sealed class CoreRuntimeTests
     {
         var serializer = new ActorWireSerializer(new Dapr.Common.Serialization.JsonDaprSerializer());
 
-        var bytes = serializer.SerializeToBytes(new ActorStateEnvelope<int>(7, 42));
+        var bytes = serializer.SerializeToBytes(new ActorStateEnvelope<int>(
+            ActorStateEnvelopeHeader.Create(ActorStateFormKind.Enveloped, serializer.SerializerId, serializer.SerializerVersion),
+            new ActorStateDiscriminator(7, "h1:test"),
+            42));
         var envelope = serializer.DeserializeFromBytes<ActorStateEnvelope<int>>(bytes);
         var json = serializer.BytesToJson(serializer.JsonToBytes("""{"x":1}"""));
 
         Assert.True(serializer.IsDefaultSystemTextJson);
-        Assert.Equal(7, envelope!.SchemaVersion);
+        Assert.Equal(7, envelope!.Discriminator.ChainIndex);
         Assert.Equal(42, envelope.Value);
         Assert.Equal("""{"x":1}""", json);
     }

@@ -491,9 +491,9 @@ public abstract class StateMachineActor<TState, TData> : Actor
     private async ValueTask PersistAsync(CancellationToken cancellationToken)
     {
         var envelope = new StateMachineEnvelope<TState, TData>(currentState, data, deferredEvents.ToArray());
-        await State.SetAsync(StateMachineConstants.EnvelopeStateName, envelope, 1, cancellationToken).ConfigureAwait(false);
-        await State.SetAsync(StateMachineConstants.CurrentStateStateName, currentState, 1, cancellationToken).ConfigureAwait(false);
-        await State.SetAsync(StateMachineConstants.DataStateName, data, 1, cancellationToken).ConfigureAwait(false);
+        await State.SetAsync(StateMachineConstants.EnvelopeStateName, envelope, cancellationToken).ConfigureAwait(false);
+        await State.SetAsync(StateMachineConstants.CurrentStateStateName, currentState, cancellationToken).ConfigureAwait(false);
+        await State.SetAsync(StateMachineConstants.DataStateName, data, cancellationToken).ConfigureAwait(false);
     }
 
     private static TReply ConvertReply<TReply>(object? reply, bool hasReply)

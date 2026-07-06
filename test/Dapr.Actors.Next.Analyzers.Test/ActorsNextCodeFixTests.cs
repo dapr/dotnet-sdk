@@ -249,63 +249,83 @@ public sealed class ActorsNextCodeFixTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
-    public Task Scaffolds_missing_upcaster_hop()
+    public async Task Scaffolds_missing_upcaster_hop()
     {
         const string source = """
             using System;
             using System.Threading;
             using System.Threading.Tasks;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
             using Dapr.Actors.Next.Abstractions.State;
 
             namespace Sample;
 
-            public sealed class CartStateV1 { }
-            public sealed class CartStateV2 { }
-            public sealed class CartStateV3 { }
-            public sealed class CartStateV4 { }
+            public sealed class CartStateV3 { public string Name { get; set; } = ""; public int Count { get; set; } }
+            public sealed class ShoppingCartV4 { public string Name { get; set; } = ""; public int Quantity { get; set; } }
 
-            public sealed class CartStateV1ToV2 : IActorStateUpcaster<CartStateV1, CartStateV2>
+            [DaprActor]
+            public sealed class CartActor : Actor
             {
-                public ValueTask<CartStateV2> UpcastAsync(CartStateV1 state, CancellationToken cancellationToken = default) => new(new CartStateV2());
-            }
+                protected override ActorId Id => ActorId.Create("a");
+                protected override IActorStateAccessor State => throw new NotImplementedException();
 
-            public sealed class {|DAPR1415:CartStateV3ToV4|} : IActorStateUpcaster<CartStateV3, CartStateV4>
-            {
-                public ValueTask<CartStateV4> UpcastAsync(CartStateV3 state, CancellationToken cancellationToken = default) => new(new CartStateV4());
+                public async Task ReadAsync(CancellationToken cancellationToken)
+                {
+                    _ = await State.GetOrCreateAsync<ShoppingCartV4>("cart", () => new ShoppingCartV4(), cancellationToken);
+                }
             }
             """;
         const string fixedSource = """
             using System;
             using System.Threading;
             using System.Threading.Tasks;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
             using Dapr.Actors.Next.Abstractions.State;
 
             namespace Sample;
 
-            public sealed class CartStateV1 { }
-            public sealed class CartStateV2 { }
-            public sealed class CartStateV3 { }
-            public sealed class CartStateV4 { }
+            public sealed class CartStateV3 { public string Name { get; set; } = ""; public int Count { get; set; } }
+            public sealed class ShoppingCartV4 { public string Name { get; set; } = ""; public int Quantity { get; set; } }
 
-            public sealed class CartStateV1ToV2 : IActorStateUpcaster<CartStateV1, CartStateV2>
+            [DaprActor]
+            public sealed class CartActor : Actor
             {
-                public ValueTask<CartStateV2> UpcastAsync(CartStateV1 state, CancellationToken cancellationToken = default) => new(new CartStateV2());
+                protected override ActorId Id => ActorId.Create("a");
+                protected override IActorStateAccessor State => throw new NotImplementedException();
+
+                public async Task ReadAsync(CancellationToken cancellationToken)
+                {
+                    _ = await State.GetOrCreateAsync<ShoppingCartV4>("cart", () => new ShoppingCartV4(), cancellationToken);
+                }
             }
 
-            public sealed class CartStateV3ToV4 : IActorStateUpcaster<CartStateV3, CartStateV4>
+            public sealed class CartStateV3ToShoppingCartV4Upcaster : Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster<Sample.CartStateV3, Sample.ShoppingCartV4>
             {
-                public ValueTask<CartStateV4> UpcastAsync(CartStateV3 state, CancellationToken cancellationToken = default) => new(new CartStateV4());
-            }
-
-            public sealed class CartStateV2ToCartStateV3Upcaster : Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster<Sample.CartStateV2, Sample.CartStateV3>
-            {
-                public ValueTask<Sample.CartStateV3> UpcastAsync(Sample.CartStateV2 state, CancellationToken cancellationToken = default) =>
-                    throw new NotImplementedException();
+                public ValueTask<Sample.ShoppingCartV4> UpcastAsync(Sample.CartStateV3 state, CancellationToken cancellationToken = default) =>
+                    ValueTask.FromResult(new Sample.ShoppingCartV4
+                    {
+                        Name = state.Name,
+                    });
             }
 
             """;
 
-        return AnalyzerTest.VerifyCodeFixAsync(source, fixedSource, "DAPR1415");
+        var fixedText = await ApplyCodeFixAsync(
+            source,
+            Diagnostic.Create(
+                ActorAnalyzerDiagnostics.BrokenUpcasterChain,
+                Location.None,
+                properties: ImmutableDictionary<string, string?>.Empty
+                    .Add("upcaster.from", "Sample.CartStateV3")
+                    .Add("upcaster.to", "Sample.ShoppingCartV4")
+                    .Add("upcaster.copiedMembers", "Name"),
+                "ShoppingCartV4",
+                "CartStateV3"),
+            codeActionIndex: 0);
+
+        Assert.Equal(fixedSource, fixedText);
     }
 
     [MinimumDaprRuntimeFact("1.18")]

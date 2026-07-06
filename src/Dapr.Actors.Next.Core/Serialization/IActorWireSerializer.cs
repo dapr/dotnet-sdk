@@ -1,10 +1,18 @@
+using Dapr.Actors.Next.Abstractions.State.Versioning;
+
 namespace Dapr.Actors.Next.Core.Serialization;
 
 /// <summary>
 /// Serializes actor payloads at the runtime wire boundary.
 /// </summary>
-public interface IActorWireSerializer
+public interface IActorWireSerializer : IActorStateMigrationSerializer
 {
+    /// <inheritdoc />
+    string IActorStateMigrationSerializer.SerializerId => "dapr-json";
+
+    /// <inheritdoc />
+    int IActorStateMigrationSerializer.SerializerVersion => 1;
+
     /// <summary>
     /// Converts JSON text to UTF-8 wire bytes.
     /// </summary>
@@ -18,10 +26,10 @@ public interface IActorWireSerializer
     /// <summary>
     /// Serializes a value to UTF-8 wire bytes.
     /// </summary>
-    byte[] SerializeToBytes<T>(T value);
+    new byte[] SerializeToBytes<T>(T value);
 
     /// <summary>
     /// Deserializes a value from UTF-8 wire bytes.
     /// </summary>
-    T? DeserializeFromBytes<T>(ReadOnlyMemory<byte> bytes);
+    new T? DeserializeFromBytes<T>(ReadOnlyMemory<byte> bytes);
 }

@@ -1,5 +1,6 @@
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Filters;
+using Dapr.Actors.Next.Abstractions.Options;
 using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
@@ -44,7 +45,8 @@ public static class DaprActorsInterpretedServiceCollectionExtensions
                     static (actor, ct) => ((Actor)actor).InvokeOnActivateAsync(ct),
                     static (actor, ct) => ((Actor)actor).InvokeOnDeactivateAsync(ct),
                     static (actor, context, ct) => ((Actor)actor).InvokeOnPreActorMethodAsync(context, ct),
-                    static (actor, context, exception, ct) => ((Actor)actor).InvokeOnPostActorMethodAsync(context, exception, ct)));
+                    static (actor, context, exception, ct) => ((Actor)actor).InvokeOnPostActorMethodAsync(context, exception, ct)),
+                new DaprActorsOptions { DisableStateMigration = true });
         });
 
         return services;

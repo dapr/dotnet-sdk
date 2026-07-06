@@ -8,154 +8,113 @@ namespace Dapr.Actors.Next.Examples.Migration;
 [GenerateActorClient]
 public interface IMigratingCartActor : IActor
 {
-    Task<CartStateV3> GetCurrentState(CancellationToken cancellationToken = default);
+    Task<CartStateV3> GetState(CancellationToken cancellationToken = default);
 
-    Task<CartStateV3> ImportLegacyV1(CartStateV1 state, CancellationToken cancellationToken = default);
+    Task<CartStateV3> TryGetState(CancellationToken cancellationToken = default);
 
-    Task<CartStateV3> ImportLegacyV2(CartStateV2 state, CancellationToken cancellationToken = default);
+    Task ImportLegacyV1(CartStateV1 state, CancellationToken cancellationToken = default);
+
+    Task ImportLegacyV2(CartStateV2 state, CancellationToken cancellationToken = default);
+
+    Task AddSku(string sku, CancellationToken cancellationToken = default);
+
+    Task<MyStateV3> GetAutonomousState(CancellationToken cancellationToken = default);
+
+    Task ImportAutonomousV1(MyState state, CancellationToken cancellationToken = default);
+
+    Task<RenamedStateV2> GetRenamedState(CancellationToken cancellationToken = default);
+
+    Task ImportRenamedV1(RenamedState state, CancellationToken cancellationToken = default);
+
+    Task<GraduatedCartState> GetGraduatedState(CancellationToken cancellationToken = default);
+
+    Task<GraduatedCartStateV2> GetReimportedGraduatedState(CancellationToken cancellationToken = default);
+
+    Task GraduateCart(CancellationToken cancellationToken = default);
+
+    Task ImportGraduated(GraduatedCartState state, CancellationToken cancellationToken = default);
 
     Task Clear(CancellationToken cancellationToken = default);
 }
 
-public sealed record CartLine(string Sku, int Quantity);
-
-public sealed class CartStateV1
-{
-    public List<string> Skus { get; init; } = [];
-}
-
-public sealed class CartStateV2
-{
-    public List<CartLine> Lines { get; init; } = [];
-}
-
-public sealed class CartStateV3
-{
-    public List<CartLine> Lines { get; init; } = [];
-
-    public int TotalQuantity { get; init; }
-}
-
-public sealed class CartStateSnapshot
-{
-    public List<string> Skus { get; init; } = [];
-
-    public List<CartLine> Lines { get; init; } = [];
-
-    public int TotalQuantity { get; init; }
-}
-
-public sealed class CartStateV1ToV2 : IActorStateUpcaster<CartStateV1, CartStateV2>
-{
-    public ValueTask<CartStateV2> UpcastAsync(CartStateV1 state, CancellationToken cancellationToken = default)
-    {
-        var lines = state.Skus
-            .GroupBy(sku => sku, StringComparer.Ordinal)
-            .Select(group => new CartLine(group.Key, group.Count()))
-            .ToList();
-
-        return ValueTask.FromResult(new CartStateV2 { Lines = lines });
-    }
-}
-
-public sealed class CartStateV2ToV3 : IActorStateUpcaster<CartStateV2, CartStateV3>
-{
-    public ValueTask<CartStateV3> UpcastAsync(CartStateV2 state, CancellationToken cancellationToken = default) =>
-        ValueTask.FromResult(new CartStateV3
-        {
-            Lines = state.Lines.ToList(),
-            TotalQuantity = state.Lines.Sum(line => line.Quantity),
-        });
-}
-
 [DaprActor("MigratingCart")]
-public sealed class MigratingCartActor(
-    ActorActivationContext context,
-    IActorStateUpcaster<CartStateV1, CartStateV2> v1ToV2,
-    IActorStateUpcaster<CartStateV2, CartStateV3> v2ToV3) : Actor, IMigratingCartActor
+public sealed class MigratingCartActor(ActorActivationContext context) : Actor, IMigratingCartActor
 {
+    private const string CartStateName = "cart";
+    private const string AutonomousStateName = "autonomous";
+    private const string RenamedStateName = "renamed";
+    private const string GraduatedStateName = "graduated";
+
     protected override ActorId Id => context.ActorId;
 
     protected override IActorStateAccessor State => context.State;
 
-    public async Task<CartStateV3> GetCurrentState(CancellationToken cancellationToken = default)
+    public async Task<CartStateV3> GetState(CancellationToken cancellationToken = default) =>
+        (await State.GetOrCreateAsync(CartStateName, static () => new CartStateV3(), cancellationToken)).Value;
+
+    public async Task<CartStateV3> TryGetState(CancellationToken cancellationToken = default) =>
+        (await State.TryGetAsync<CartStateV3>(CartStateName, cancellationToken))?.Value ?? new CartStateV3();
+
+    public Task ImportLegacyV1(CartStateV1 state, CancellationToken cancellationToken = default) =>
+        State.SetAsync(CartStateName, state, cancellationToken).AsTask();
+
+    public Task ImportLegacyV2(CartStateV2 state, CancellationToken cancellationToken = default) =>
+        State.SetAsync(CartStateName, state, cancellationToken).AsTask();
+
+    public async Task AddSku(string sku, CancellationToken cancellationToken = default)
     {
-        var cart = await TryGetSnapshot(cancellationToken);
-        if (cart is null)
+        var cart = await State.GetOrCreateAsync(CartStateName, static () => new CartStateV3(), cancellationToken);
+        var lines = cart.Value.Lines.ToList();
+        var existing = lines.FindIndex(line => string.Equals(line.Sku, sku, StringComparison.Ordinal));
+        if (existing >= 0)
         {
-            var empty = new CartStateV3();
-            await State.SetAsync("cart", empty, 3, cancellationToken);
-            return empty;
+            var line = lines[existing];
+            lines[existing] = line with { Quantity = line.Quantity + 1 };
+        }
+        else
+        {
+            lines.Add(new CartLine(sku, 1));
         }
 
-        if (cart.SchemaVersion == 1)
+        cart.Value = new CartStateV3
         {
-            var v2 = await v1ToV2.UpcastAsync(new CartStateV1 { Skus = cart.Value.Skus }, cancellationToken);
-            var v3 = await v2ToV3.UpcastAsync(v2, cancellationToken);
-            await State.SetAsync("cart", v3, 3, cancellationToken);
-            return v3;
-        }
-
-        if (cart.SchemaVersion == 2)
-        {
-            var v3 = await v2ToV3.UpcastAsync(new CartStateV2 { Lines = cart.Value.Lines }, cancellationToken);
-            await State.SetAsync("cart", v3, 3, cancellationToken);
-            return v3;
-        }
-
-        return new CartStateV3
-        {
-            Lines = cart.Value.Lines,
-            TotalQuantity = cart.Value.TotalQuantity,
+            Lines = lines,
+            TotalQuantity = lines.Sum(line => line.Quantity),
         };
     }
 
-    public async Task<CartStateV3> ImportLegacyV1(CartStateV1 state, CancellationToken cancellationToken = default)
+    public async Task<MyStateV3> GetAutonomousState(CancellationToken cancellationToken = default) =>
+        (await State.GetOrCreateAsync(
+            AutonomousStateName,
+            static () => new MyStateV3 { Name = "default", Active = true },
+            cancellationToken)).Value;
+
+    public Task ImportAutonomousV1(MyState state, CancellationToken cancellationToken = default) =>
+        State.SetAsync(AutonomousStateName, state, cancellationToken).AsTask();
+
+    public async Task<RenamedStateV2> GetRenamedState(CancellationToken cancellationToken = default) =>
+        (await State.GetOrCreateAsync(RenamedStateName, static () => new RenamedStateV2(), cancellationToken)).Value;
+
+    public Task ImportRenamedV1(RenamedState state, CancellationToken cancellationToken = default) =>
+        State.SetAsync(RenamedStateName, state, cancellationToken).AsTask();
+
+    public async Task<GraduatedCartState> GetGraduatedState(CancellationToken cancellationToken = default) =>
+        (await State.GetOrCreateAsync(GraduatedStateName, static () => new GraduatedCartState(), cancellationToken)).Value;
+
+    public async Task<GraduatedCartStateV2> GetReimportedGraduatedState(CancellationToken cancellationToken = default) =>
+        (await State.GetOrCreateAsync(GraduatedStateName, static () => new GraduatedCartStateV2(), cancellationToken)).Value;
+
+    public Task GraduateCart(CancellationToken cancellationToken = default) =>
+        State.GraduateAsync<GraduatedCartState>(GraduatedStateName, cancellationToken).AsTask();
+
+    public Task ImportGraduated(GraduatedCartState state, CancellationToken cancellationToken = default) =>
+        State.SetAsync(GraduatedStateName, state, cancellationToken).AsTask();
+
+    public async Task Clear(CancellationToken cancellationToken = default)
     {
-        var v2 = await v1ToV2.UpcastAsync(state, cancellationToken);
-        var v3 = await v2ToV3.UpcastAsync(v2, cancellationToken);
-        await State.SetAsync("cart", v3, 3, cancellationToken);
-        return v3;
-    }
-
-    public async Task<CartStateV3> ImportLegacyV2(CartStateV2 state, CancellationToken cancellationToken = default)
-    {
-        var v3 = await v2ToV3.UpcastAsync(state, cancellationToken);
-        await State.SetAsync("cart", v3, 3, cancellationToken);
-        return v3;
-    }
-
-    public async Task Clear(CancellationToken cancellationToken = default) =>
-        await State.RemoveAsync("cart", cancellationToken);
-
-    private async Task<IActorState<CartStateSnapshot>?> TryGetSnapshot(CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await State.TryGetAsync<CartStateSnapshot>("cart", cancellationToken);
-        }
-        catch (InvalidCastException)
-        {
-            var current = await State.TryGetAsync<CartStateV3>("cart", cancellationToken);
-            if (current is null)
-            {
-                return null;
-            }
-
-            return new SnapshotActorState("cart", current.SchemaVersion, new CartStateSnapshot
-            {
-                Lines = current.Value.Lines,
-                TotalQuantity = current.Value.TotalQuantity,
-            });
-        }
-    }
-
-    private sealed class SnapshotActorState(string name, int schemaVersion, CartStateSnapshot value) : IActorState<CartStateSnapshot>
-    {
-        public string Name { get; } = name;
-
-        public int SchemaVersion { get; } = schemaVersion;
-
-        public CartStateSnapshot Value { get; set; } = value;
+        await State.RemoveAsync(CartStateName, cancellationToken);
+        await State.RemoveAsync(AutonomousStateName, cancellationToken);
+        await State.RemoveAsync(RenamedStateName, cancellationToken);
+        await State.RemoveAsync(GraduatedStateName, cancellationToken);
     }
 }

@@ -8,6 +8,8 @@ namespace Dapr.Actors.Next.Testing;
 public sealed class ActorFaults : IActorStateFaultInjector
 {
     private readonly Queue<StateWriteFault> stateWriteFaults = [];
+    private readonly Queue<MigrationFault> migrationFaults = [];
+    private readonly Queue<UpcastHopFault> upcastHopFaults = [];
     private readonly Queue<InvocationFault> invocationFaults = [];
     private readonly object syncRoot = new();
 
@@ -26,6 +28,43 @@ public sealed class ActorFaults : IActorStateFaultInjector
         lock (syncRoot)
         {
             stateWriteFaults.Enqueue(new StateWriteFault(stateType, transient, stateName));
+        }
+    }
+
+    /// <summary>
+    /// Fails the next migrating read targeting the given state type.
+    /// </summary>
+    public void FailNextMigration<T>(bool transient = true, string? stateName = null) =>
+        FailNextMigration(typeof(T), transient, stateName);
+
+    /// <summary>
+    /// Fails the next migrating read targeting the given state type.
+    /// </summary>
+    public void FailNextMigration(Type targetStateType, bool transient = true, string? stateName = null)
+    {
+        ArgumentNullException.ThrowIfNull(targetStateType);
+        lock (syncRoot)
+        {
+            migrationFaults.Enqueue(new MigrationFault(targetStateType, transient, stateName));
+        }
+    }
+
+    /// <summary>
+    /// Fails the next upcast hop between the given state types.
+    /// </summary>
+    public void FailNextUpcastHop<TFrom, TTo>(bool transient = true, string? stateName = null) =>
+        FailNextUpcastHop(typeof(TFrom), typeof(TTo), transient, stateName);
+
+    /// <summary>
+    /// Fails the next upcast hop between the given state types.
+    /// </summary>
+    public void FailNextUpcastHop(Type fromStateType, Type toStateType, bool transient = true, string? stateName = null)
+    {
+        ArgumentNullException.ThrowIfNull(fromStateType);
+        ArgumentNullException.ThrowIfNull(toStateType);
+        lock (syncRoot)
+        {
+            upcastHopFaults.Enqueue(new UpcastHopFault(fromStateType, toStateType, transient, stateName));
         }
     }
 
@@ -55,6 +94,47 @@ public sealed class ActorFaults : IActorStateFaultInjector
         if (fault is not null)
         {
             throw CreateException("Injected state write failure.", fault.Transient);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public ValueTask BeforeMigrationAsync(Type targetStateType, string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
+    {
+        MigrationFault? fault = null;
+        lock (syncRoot)
+        {
+            fault = DequeueFirstMatch(
+                migrationFaults,
+                next => next.TargetStateType == targetStateType
+                    && (next.StateName is null || string.Equals(next.StateName, stateName, StringComparison.Ordinal)));
+        }
+
+        if (fault is not null)
+        {
+            throw CreateException("Injected actor state migration failure.", fault.Transient);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public ValueTask BeforeUpcastHopAsync(Type fromStateType, Type toStateType, string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
+    {
+        UpcastHopFault? fault = null;
+        lock (syncRoot)
+        {
+            fault = DequeueFirstMatch(
+                upcastHopFaults,
+                next => next.FromStateType == fromStateType
+                    && next.ToStateType == toStateType
+                    && (next.StateName is null || string.Equals(next.StateName, stateName, StringComparison.Ordinal)));
+        }
+
+        if (fault is not null)
+        {
+            throw CreateException("Injected actor state upcast-hop failure.", fault.Transient);
         }
 
         return ValueTask.CompletedTask;
@@ -101,6 +181,10 @@ public sealed class ActorFaults : IActorStateFaultInjector
     }
 
     private sealed record StateWriteFault(Type StateType, bool Transient, string? StateName);
+
+    private sealed record MigrationFault(Type TargetStateType, bool Transient, string? StateName);
+
+    private sealed record UpcastHopFault(Type FromStateType, Type ToStateType, bool Transient, string? StateName);
 
     private sealed record InvocationFault(bool Transient, string? ActorType, string? MethodName);
 }

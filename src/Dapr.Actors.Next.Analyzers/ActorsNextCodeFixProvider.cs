@@ -28,7 +28,9 @@ public sealed class ActorsNextCodeFixProvider : CodeFixProvider
         "DAPR1414",
         "DAPR1415",
         "DAPR1416",
-        "DAPR1418");
+        "DAPR1418",
+        "DAPR1423",
+        "DAPR1425");
 
     /// <summary>
     /// Gets the fix-all provider.
@@ -69,6 +71,12 @@ public sealed class ActorsNextCodeFixProvider : CodeFixProvider
                 case "DAPR1418":
                     RegisterDocumentFix(context, diagnostic, "Bump actor contract version", BumpContractVersionAsync);
                     RegisterSolutionFix(context, diagnostic, "Promote current wire baseline", PromoteBaselineAsync);
+                    break;
+                case "DAPR1423":
+                    RegisterDocumentFix(context, diagnostic, "Scaffold state family mapping", ScaffoldMissingUpcasterAsync);
+                    break;
+                case "DAPR1425":
+                    RegisterDocumentFix(context, diagnostic, "Scaffold required upcaster", ScaffoldMissingUpcasterAsync);
                     break;
             }
         }
@@ -205,11 +213,21 @@ public sealed class ActorsNextCodeFixProvider : CodeFixProvider
     {
         var fromType = diagnostic.Properties.TryGetValue("upcaster.from", out var from) ? from : "FromState";
         var toType = diagnostic.Properties.TryGetValue("upcaster.to", out var to) ? to : "ToState";
+        var body = "throw new NotImplementedException()";
+        if (diagnostic.Properties.TryGetValue("upcaster.copiedMembers", out var copiedMembers) &&
+            !string.IsNullOrWhiteSpace(copiedMembers))
+        {
+            var assignments = copiedMembers!
+                .Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(static member => "            " + member + " = state." + member + ",");
+            body = "ValueTask.FromResult(new " + toType + "\n        {\n" + string.Join("\n", assignments) + "\n        })";
+        }
+
         return await AppendTextAsync(document, "\n" + $@"
 public sealed class {SimpleName(fromType)}To{SimpleName(toType)}Upcaster : Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster<{fromType}, {toType}>
 {{
     public ValueTask<{toType}> UpcastAsync({fromType} state, CancellationToken cancellationToken = default) =>
-        throw new NotImplementedException();
+        {body};
 }}
 ").ConfigureAwait(false);
     }

@@ -18,7 +18,12 @@ public interface IActorStateAccessor
     /// <summary>
     /// Sets state by name.
     /// </summary>
-    ValueTask SetAsync<T>(string name, T value, int schemaVersion, CancellationToken cancellationToken = default);
+    ValueTask SetAsync<T>(string name, T value, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Folds state to the requested type and writes it without a migration discriminator.
+    /// </summary>
+    ValueTask GraduateAsync<T>(string name, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes state by name.

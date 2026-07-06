@@ -40,8 +40,13 @@ public sealed class ContractSurfaceTests
     [MinimumDaprRuntimeFact("1.18")]
     public void StateEnvelope_UsesRecordValueEquality()
     {
-        Assert.Equal(new ActorStateEnvelope<string>(1, "value"), new ActorStateEnvelope<string>(1, "value"));
-        Assert.NotEqual(new ActorStateEnvelope<string>(1, "value"), new ActorStateEnvelope<string>(2, "value"));
+        var header = ActorStateEnvelopeHeader.Create(ActorStateFormKind.Enveloped, "test", 1);
+        Assert.Equal(
+            new ActorStateEnvelope<string>(header, new ActorStateDiscriminator(0, "h1:test"), "value"),
+            new ActorStateEnvelope<string>(header, new ActorStateDiscriminator(0, "h1:test"), "value"));
+        Assert.NotEqual(
+            new ActorStateEnvelope<string>(header, new ActorStateDiscriminator(0, "h1:test"), "value"),
+            new ActorStateEnvelope<string>(header, new ActorStateDiscriminator(1, "h1:test"), "value"));
     }
 
     private sealed class TestActor : Actor

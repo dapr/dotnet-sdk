@@ -8,24 +8,91 @@ builder.Services.AddDaprActors();
 
 var app = builder.Build();
 
-app.MapGet("/", () => "Migration actor sample. POST /carts/{cartId}/legacy/v1 or /legacy/v2, then GET /carts/{cartId}.");
+app.MapGet("/", () => "Migration actor sample. POST a legacy cart shape, then GET /carts/{cartId} to read the current shape.");
 
 app.MapGet("/carts/{cartId}", (
     string cartId,
     IActorProxyFactory proxies,
-    CancellationToken cancellationToken) => CreateCart(proxies, cartId).GetCurrentState(cancellationToken));
+    CancellationToken cancellationToken) => CreateCart(proxies, cartId).GetState(cancellationToken));
 
 app.MapPost("/carts/{cartId}/legacy/v1", async (
     string cartId,
     CartStateV1 state,
     IActorProxyFactory proxies,
-    CancellationToken cancellationToken) => Results.Ok(await CreateCart(proxies, cartId).ImportLegacyV1(state, cancellationToken)));
+    CancellationToken cancellationToken) =>
+{
+    await CreateCart(proxies, cartId).ImportLegacyV1(state, cancellationToken);
+    return Results.Accepted();
+});
 
 app.MapPost("/carts/{cartId}/legacy/v2", async (
     string cartId,
     CartStateV2 state,
     IActorProxyFactory proxies,
-    CancellationToken cancellationToken) => Results.Ok(await CreateCart(proxies, cartId).ImportLegacyV2(state, cancellationToken)));
+    CancellationToken cancellationToken) =>
+{
+    await CreateCart(proxies, cartId).ImportLegacyV2(state, cancellationToken);
+    return Results.Accepted();
+});
+
+app.MapGet("/carts/{cartId}/autonomous", (
+    string cartId,
+    IActorProxyFactory proxies,
+    CancellationToken cancellationToken) => CreateCart(proxies, cartId).GetAutonomousState(cancellationToken));
+
+app.MapPost("/carts/{cartId}/autonomous/legacy", async (
+    string cartId,
+    MyState state,
+    IActorProxyFactory proxies,
+    CancellationToken cancellationToken) =>
+{
+    await CreateCart(proxies, cartId).ImportAutonomousV1(state, cancellationToken);
+    return Results.Accepted();
+});
+
+app.MapGet("/carts/{cartId}/renamed", (
+    string cartId,
+    IActorProxyFactory proxies,
+    CancellationToken cancellationToken) => CreateCart(proxies, cartId).GetRenamedState(cancellationToken));
+
+app.MapPost("/carts/{cartId}/renamed/legacy", async (
+    string cartId,
+    RenamedState state,
+    IActorProxyFactory proxies,
+    CancellationToken cancellationToken) =>
+{
+    await CreateCart(proxies, cartId).ImportRenamedV1(state, cancellationToken);
+    return Results.Accepted();
+});
+
+app.MapGet("/carts/{cartId}/graduated", (
+    string cartId,
+    IActorProxyFactory proxies,
+    CancellationToken cancellationToken) => CreateCart(proxies, cartId).GetGraduatedState(cancellationToken));
+
+app.MapPost("/carts/{cartId}/graduated", async (
+    string cartId,
+    GraduatedCartState state,
+    IActorProxyFactory proxies,
+    CancellationToken cancellationToken) =>
+{
+    await CreateCart(proxies, cartId).ImportGraduated(state, cancellationToken);
+    return Results.Accepted();
+});
+
+app.MapPost("/carts/{cartId}/graduated/offramp", async (
+    string cartId,
+    IActorProxyFactory proxies,
+    CancellationToken cancellationToken) =>
+{
+    await CreateCart(proxies, cartId).GraduateCart(cancellationToken);
+    return Results.Accepted();
+});
+
+app.MapGet("/carts/{cartId}/graduated/reimported", (
+    string cartId,
+    IActorProxyFactory proxies,
+    CancellationToken cancellationToken) => CreateCart(proxies, cartId).GetReimportedGraduatedState(cancellationToken));
 
 app.MapDelete("/carts/{cartId}", async (
     string cartId,
