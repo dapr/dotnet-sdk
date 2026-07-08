@@ -27,7 +27,7 @@ public sealed class CartActorTests
     }
 
     [Fact]
-    public async Task Advancing_virtual_time_fires_the_abandon_reminder()
+    public async Task Advancing_virtual_time_fires_the_abandon_timer()
     {
         await using var runtime = CreateRuntime();
         var cart = runtime.CreateActor<ICartActor>(ActorId.Create("idle-cart"), "Cart");
