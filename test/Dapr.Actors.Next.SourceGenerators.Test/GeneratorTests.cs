@@ -246,6 +246,65 @@ public sealed class GeneratorTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public void Generator_supports_actor_implementing_multiple_generate_client_interfaces()
+    {
+        var source = """
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+            using Dapr.Actors.Next.Abstractions.State;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MultiInterfaceSample;
+
+            [GenerateActorClient]
+            public interface IDocumentReader : IActor
+            {
+                Task<DocumentSummary> ReadAsync(CancellationToken cancellationToken = default);
+            }
+
+            [GenerateActorClient]
+            public interface IDocumentWriter : IActor
+            {
+                Task WriteAsync(DocumentPatch patch, CancellationToken cancellationToken = default);
+            }
+
+            public sealed record DocumentSummary(int Version);
+            public sealed record DocumentPatch(string Field, string Value);
+
+            [DaprActor("Document")]
+            public sealed class DocumentActor : Actor, IDocumentReader, IDocumentWriter
+            {
+                protected override ActorId Id => ActorId.Create("doc");
+                protected override IActorStateAccessor State => throw new System.NotSupportedException();
+                public Task<DocumentSummary> ReadAsync(CancellationToken cancellationToken = default) => Task.FromResult(new DocumentSummary(1));
+                public Task WriteAsync(DocumentPatch patch, CancellationToken cancellationToken = default) => Task.CompletedTask;
+            }
+            """;
+
+        var generated = RunGenerator(CreateCompilation("MultiInterfaceSample", source), scanReferences: false, assertGeneratedCompiles: true);
+
+        // One proxy is emitted per interface, each keyed on its own interface type in the factory.
+        Assert.Contains("GeneratedDocumentReaderProxy", generated);
+        Assert.Contains("GeneratedDocumentWriterProxy", generated);
+        Assert.Contains("typeof(TActor) == typeof(global::MultiInterfaceSample.IDocumentReader)", generated);
+        Assert.Contains("typeof(TActor) == typeof(global::MultiInterfaceSample.IDocumentWriter)", generated);
+
+        // A single dispatcher covers the union of both interfaces' methods.
+        Assert.Equal(1, CountOccurrences(generated, "class DocumentActorDispatcher"));
+        Assert.Contains("case @\"ReadAsync\"", generated);
+        Assert.Contains("case @\"WriteAsync\"", generated);
+        Assert.Contains("CompleteResultAsync<global::MultiInterfaceSample.DocumentSummary>", generated);
+        Assert.Contains("DeserializeFromBytes<global::MultiInterfaceSample.DocumentPatch>(request.Payload)", generated);
+
+        // The actor type is registered exactly once (a duplicate would throw at runtime), against the
+        // representative (alphabetically first) interface.
+        Assert.Equal(1, CountOccurrences(generated, "builder.Add(actorType, typeof(global::MultiInterfaceSample.IDocumentReader)"));
+        Assert.DoesNotContain("builder.Add(actorType, typeof(global::MultiInterfaceSample.IDocumentWriter)", generated);
+        Assert.Equal(1, CountOccurrences(generated, "ActorTypeDescriptor(actorType,"));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public void Generator_emits_additive_state_migration_family_metadata_and_aot_delegates()
     {
         var source = """

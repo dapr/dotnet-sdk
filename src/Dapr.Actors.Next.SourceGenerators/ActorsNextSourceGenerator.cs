@@ -291,15 +291,16 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
     private static ActorModel? BuildActor(INamedTypeSymbol symbol, KnownSymbols known, Dictionary<string, ActorInterfaceModel> interfaces)
     {
-        var actorInterface = symbol.AllInterfaces
+        var actorInterfaces = symbol.AllInterfaces
             .Where(candidate => IsActorInterface(candidate, known))
             .Select(candidate => candidate.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat))
             .Where(interfaces.ContainsKey)
+            .Distinct(StringComparer.Ordinal)
             .OrderBy(name => name, StringComparer.Ordinal)
             .Select(name => interfaces[name])
-            .FirstOrDefault();
+            .ToImmutableArray();
 
-        if (actorInterface is null)
+        if (actorInterfaces.IsEmpty)
         {
             return null;
         }
@@ -331,7 +332,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             contractVersion,
             TypeName(symbol),
             symbol.Name,
-            actorInterface,
+            actorInterfaces,
             symbol.Name + "Dispatcher",
             constructorParameters);
     }
@@ -919,7 +920,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         sb.AppendLine("    {");
         sb.AppendLine("        private readonly global::Dapr.Actors.Next.Core.Serialization.IActorWireSerializer wireSerializer;");
         sb.AppendLine($"        public {actor.DispatcherName}(global::Dapr.Actors.Next.Core.Serialization.IActorWireSerializer wireSerializer) => this.wireSerializer = wireSerializer;");
-        foreach (var method in actor.Interface.Methods.Where(method => method.PayloadParameters.Length > 1))
+        foreach (var method in actor.DispatchMethods.Where(method => method.PayloadParameters.Length > 1))
         {
             EmitArgsRecord(sb, method);
         }
@@ -929,7 +930,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         sb.AppendLine($"            var typed = ({actor.ImplementationType})actor;");
         sb.AppendLine("            switch (request.MethodName)");
         sb.AppendLine("            {");
-        foreach (var method in actor.Interface.Methods)
+        foreach (var method in actor.DispatchMethods)
         {
             sb.AppendLine($"                case {Literal(method.WireName)}:");
             sb.AppendLine("                {");
@@ -1016,9 +1017,9 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             sb.AppendLine($"            if (options.EnableAutoActorRegistration || {actor.DispatcherName}ExplicitRegistration is not null)");
             sb.AppendLine("            {");
             sb.AppendLine($"                var actorType = {actor.DispatcherName}ExplicitRegistration?.ActorTypeName ?? {Literal(actor.ActorType)};");
-            sb.AppendLine($"                actorList.Add(new global::Dapr.Actors.Next.Abstractions.Registry.ActorTypeDescriptor(actorType, {actor.ContractVersion}, typeof({actor.ImplementationType}), typeof({actor.Interface.FullName}), new global::System.Collections.Generic.List<global::Dapr.Actors.Next.Abstractions.Registry.ActorMethodDescriptor>");
+            sb.AppendLine($"                actorList.Add(new global::Dapr.Actors.Next.Abstractions.Registry.ActorTypeDescriptor(actorType, {actor.ContractVersion}, typeof({actor.ImplementationType}), typeof({actor.PrimaryInterface.FullName}), new global::System.Collections.Generic.List<global::Dapr.Actors.Next.Abstractions.Registry.ActorMethodDescriptor>");
             sb.AppendLine("                {");
-            foreach (var method in actor.Interface.Methods)
+            foreach (var method in actor.DispatchMethods)
             {
                     sb.AppendLine($"                    new global::Dapr.Actors.Next.Abstractions.Registry.ActorMethodDescriptor({Literal(method.Name)}, {Literal(method.WireName)}, {method.ReturnTypeExpression}, new global::System.Collections.Generic.List<global::Dapr.Actors.Next.Abstractions.Registry.ActorParameterDescriptor>");
                 sb.AppendLine("                    {");
@@ -1055,7 +1056,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
     private static void EmitJsonContext(StringBuilder sb, Manifest manifest)
     {
         var actorPayloadTypes = manifest.Actors
-            .SelectMany(actor => actor.Interface.Methods)
+            .SelectMany(actor => actor.DispatchMethods)
             .SelectMany(method => method.PayloadParameters.Select(parameter => parameter.TypeName).Concat(method.ReturnKind is MethodReturnKind.TaskOfT or MethodReturnKind.ValueTaskOfT ? new[] { method.ReturnType.Substring(method.ReturnType.IndexOf('<') + 1).TrimEnd('>') } : Enumerable.Empty<string>()))
             .Where(type => type != "void");
         var statePayloadTypes = manifest.Families
@@ -1132,7 +1133,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             sb.AppendLine($"                if (options.EnableAutoActorRegistration || {actor.DispatcherName}ExplicitRegistration is not null)");
             sb.AppendLine("                {");
             sb.AppendLine($"                    var actorType = {actor.DispatcherName}ExplicitRegistration?.ActorTypeName ?? {Literal(actor.ActorType)};");
-            sb.AppendLine($"                    builder.Add(actorType, typeof({actor.Interface.FullName}), typeof({actor.ImplementationType}),");
+            sb.AppendLine($"                    builder.Add(actorType, typeof({actor.PrimaryInterface.FullName}), typeof({actor.ImplementationType}),");
             sb.AppendLine($"                    (sp, actorId) => new {actor.ImplementationType}({constructorArguments}),");
             sb.AppendLine($"                    sp => global::Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<{actor.DispatcherName}>(sp),");
             sb.AppendLine("                    new global::Dapr.Actors.Next.Core.Activation.ActorLifecycle(");
@@ -1451,9 +1452,28 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         int ContractVersion,
         string ImplementationType,
         string Name,
-        ActorInterfaceModel Interface,
+        ImmutableArray<ActorInterfaceModel> Interfaces,
         string DispatcherName,
-        ImmutableArray<ConstructorParameterModel> ConstructorParameters);
+        ImmutableArray<ConstructorParameterModel> ConstructorParameters)
+    {
+        /// <summary>
+        /// The representative interface for the actor, used where a single interface type is recorded
+        /// (registration and registry metadata). Interfaces are ordered by full name, so this is stable.
+        /// </summary>
+        public ActorInterfaceModel PrimaryInterface => Interfaces[0];
+
+        /// <summary>
+        /// The union of every implemented actor interface's methods, de-duplicated by wire name. The runtime
+        /// routes an invocation to a single dispatcher per actor type, so the dispatcher's method switch and the
+        /// registry method metadata must cover all interfaces the actor implements.
+        /// </summary>
+        public ImmutableArray<ActorMethodModel> DispatchMethods => Interfaces
+            .SelectMany(actorInterface => actorInterface.Methods)
+            .GroupBy(method => method.WireName, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .OrderBy(method => method.Name, StringComparer.Ordinal)
+            .ToImmutableArray();
+    }
 
     [ExcludeFromCodeCoverage]
     private sealed record ActorMethodModel(
