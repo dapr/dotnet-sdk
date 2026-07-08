@@ -131,6 +131,47 @@ public sealed class InterpretedTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public async Task Reset_purges_state_so_the_machine_reinitializes()
+    {
+        var registry = new TestCapabilityRegistry();
+        var store = new InMemoryInterpretedMachineStore();
+        await Deploy(store, registry, Definition());
+        await using var runtime = Runtime(store, registry);
+
+        // One accepted bid increments the persisted counter to 1.
+        await Raise(runtime, new("bid", Json(1)));
+        await Reset(runtime);
+
+        // After reset the persisted state is gone, so the next bid starts the counter over at 1
+        // (the deactivation round-trip test proves it would otherwise be 2).
+        var result = await Raise(runtime, new("bid", Json(1)));
+
+        Assert.Equal("Open", result.RootElement.GetProperty("State").GetString());
+        var count = result.RootElement
+            .GetProperty("Data")
+            .GetProperty("Values")
+            .GetProperty("count")
+            .GetInt32();
+        Assert.Equal(1, count);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Reset_on_a_never_onboarded_actor_is_a_no_op()
+    {
+        var registry = new TestCapabilityRegistry();
+        var store = new InMemoryInterpretedMachineStore();
+        await using var runtime = Runtime(store, registry);
+
+        // No definition is deployed, so activation must stay lazy and purging absent keys must not throw.
+        var pending = runtime.InvokeAsync("Machine", Id, "Reset", "{}");
+        await runtime.RunToIdle();
+        var bytes = await pending;
+
+        // Reset is a void operation, so it returns no body (null or an empty buffer).
+        Assert.True(bytes is null || bytes.Length == 0);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Guard_fallthrough_returns_rejected_without_running_effect()
     {
         var registry = new TestCapabilityRegistry();
@@ -240,6 +281,13 @@ public sealed class InterpretedTests
         await runtime.RunToIdle();
         var bytes = await pending;
         return JsonDocument.Parse(Encoding.UTF8.GetString(bytes!));
+    }
+
+    private static async Task Reset(ActorTestRuntime runtime)
+    {
+        var pending = runtime.InvokeAsync("Machine", Id, "Reset", "{}");
+        await runtime.RunToIdle();
+        await pending;
     }
 
     private static async Task Deploy(InMemoryInterpretedMachineStore store, ICapabilityRegistry registry, InterpretedMachineDefinition definition)

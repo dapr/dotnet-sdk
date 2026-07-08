@@ -63,12 +63,27 @@ public sealed class InterpretedStateMachineActor(
         return new InterpretedRaiseResult(currentState!, branch.Reply?.Clone(), data!);
     }
 
-    /// <inheritdoc />
-    protected override async ValueTask OnActivateAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Purges the actor's persisted state so a later activation re-initializes from its deployed
+    /// definition. Deliberately does not require a deployed definition, so it is a safe no-op on an
+    /// actor that has never been onboarded.
+    /// </summary>
+    public async Task ResetAsync(CancellationToken cancellationToken = default)
     {
-        await EnsureActivatedAsync(cancellationToken).ConfigureAwait(false);
-        await base.OnActivateAsync(cancellationToken).ConfigureAwait(false);
+        await State.RemoveAsync(StateName, cancellationToken).ConfigureAwait(false);
+        await State.RemoveAsync("__currentState", cancellationToken).ConfigureAwait(false);
+        await State.RemoveAsync("__data", cancellationToken).ConfigureAwait(false);
+        definition = null;
+        currentState = null;
+        data = null;
     }
+
+    /// <inheritdoc />
+    protected override ValueTask OnActivateAsync(CancellationToken cancellationToken = default) =>
+        // Activation is lazy: the definition is loaded and verified on the first raised event (see
+        // EnsureActivatedAsync in RaiseAsync). This keeps a definition-less actor activatable so it can
+        // be reset/purged before it is ever onboarded.
+        base.OnActivateAsync(cancellationToken);
 
     private async ValueTask EnsureActivatedAsync(CancellationToken cancellationToken)
     {

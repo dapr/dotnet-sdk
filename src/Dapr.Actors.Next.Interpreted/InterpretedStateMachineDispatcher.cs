@@ -13,6 +13,13 @@ public sealed class InterpretedStateMachineDispatcher : IActorDispatcher
     public async ValueTask<ActorDispatchResponse> DispatchAsync(IActor actor, ActorDispatchRequest request, CancellationToken cancellationToken = default)
     {
         var typed = (InterpretedStateMachineActor)actor;
+        if (string.Equals(request.MethodName, "Reset", StringComparison.Ordinal)
+            || string.Equals(request.MethodName, nameof(InterpretedStateMachineActor.ResetAsync), StringComparison.Ordinal))
+        {
+            await typed.ResetAsync(cancellationToken).ConfigureAwait(false);
+            return new ActorDispatchResponse(null);
+        }
+
         if (!string.Equals(request.MethodName, "Raise", StringComparison.Ordinal)
             && !string.Equals(request.MethodName, nameof(InterpretedStateMachineActor.RaiseAsync), StringComparison.Ordinal))
         {
