@@ -31,7 +31,8 @@ public sealed class ActorsNextCodeFixProvider : CodeFixProvider
         "DAPR1418",
         "DAPR1421",
         "DAPR1423",
-        "DAPR1425");
+        "DAPR1425",
+        "DAPR1429");
 
     /// <summary>
     /// Gets the fix-all provider.
@@ -41,12 +42,15 @@ public sealed class ActorsNextCodeFixProvider : CodeFixProvider
     /// <summary>
     /// Registers available fixes for the diagnostic.
     /// </summary>
-    public override Task RegisterCodeFixesAsync(CodeFixContext context)
+    public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
         foreach (var diagnostic in context.Diagnostics)
         {
             switch (diagnostic.Id)
             {
+                case "DAPR1429":
+                    await RegisterClosestScheduledCallbackFixAsync(context, diagnostic).ConfigureAwait(false);
+                    break;
                 case "DAPR1410":
                     RegisterSolutionFix(context, diagnostic, "Promote current state baseline", PromoteBaselineAsync);
                     RegisterDocumentFix(context, diagnostic, "Scaffold actor state upcaster", ScaffoldStateUpcasterAsync);
@@ -84,8 +88,129 @@ public sealed class ActorsNextCodeFixProvider : CodeFixProvider
                     break;
             }
         }
+    }
 
-        return Task.CompletedTask;
+    private static async Task RegisterClosestScheduledCallbackFixAsync(CodeFixContext context, Diagnostic diagnostic)
+    {
+        if (!diagnostic.Properties.TryGetValue("callback.candidates", out var candidatesText) ||
+            string.IsNullOrWhiteSpace(candidatesText))
+        {
+            return;
+        }
+
+        var candidates = candidatesText!.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+        if (candidates.Length == 0)
+        {
+            return;
+        }
+
+        var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
+        if (root is null)
+        {
+            return;
+        }
+
+        var node = root.FindNode(diagnostic.Location.SourceSpan);
+        var current = ScheduledCallbackText(node);
+        if (current is null)
+        {
+            return;
+        }
+
+        var best = NearestCandidate(current, candidates);
+        if (best is null)
+        {
+            return;
+        }
+
+        var title = "Change callback to '" + best + "'";
+        context.RegisterCodeFix(
+            CodeAction.Create(title, token => ReplaceScheduledCallbackAsync(context.Document, diagnostic, best, token), title),
+            diagnostic);
+    }
+
+    private static async Task<Document> ReplaceScheduledCallbackAsync(Document document, Diagnostic diagnostic, string replacement, CancellationToken cancellationToken)
+    {
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null)
+        {
+            return document;
+        }
+
+        var node = root.FindNode(diagnostic.Location.SourceSpan);
+        ExpressionSyntax? newNode = node switch
+        {
+            LiteralExpressionSyntax =>
+                SyntaxFactory.LiteralExpression(SyntaxKind.StringLiteralExpression, SyntaxFactory.Literal(replacement)),
+            InvocationExpressionSyntax invocation when IsNameOf(invocation) =>
+                invocation.WithArgumentList(SyntaxFactory.ArgumentList(
+                    SyntaxFactory.SingletonSeparatedList(SyntaxFactory.Argument(SyntaxFactory.IdentifierName(replacement))))),
+            _ => null,
+        };
+
+        return newNode is null
+            ? document
+            : document.WithSyntaxRoot(root.ReplaceNode(node, newNode.WithTriviaFrom(node)));
+    }
+
+    private static string? ScheduledCallbackText(SyntaxNode node) => node switch
+    {
+        LiteralExpressionSyntax { Token.Value: string value } => value,
+        InvocationExpressionSyntax invocation when IsNameOf(invocation) && invocation.ArgumentList.Arguments.Count == 1 =>
+            LastIdentifier(invocation.ArgumentList.Arguments[0].Expression),
+        _ => null,
+    };
+
+    private static string? LastIdentifier(ExpressionSyntax expression) => expression switch
+    {
+        IdentifierNameSyntax identifier => identifier.Identifier.Text,
+        MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
+        _ => null,
+    };
+
+    private static bool IsNameOf(InvocationExpressionSyntax invocation) =>
+        invocation.Expression is IdentifierNameSyntax { Identifier.Text: "nameof" };
+
+    private static string? NearestCandidate(string current, IReadOnlyList<string> candidates)
+    {
+        string? best = null;
+        var bestDistance = int.MaxValue;
+        foreach (var candidate in candidates)
+        {
+            var distance = LevenshteinDistance(current, candidate);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = candidate;
+            }
+        }
+
+        var threshold = Math.Max(3, current.Length / 2);
+        return best is not null && bestDistance <= threshold ? best : null;
+    }
+
+    private static int LevenshteinDistance(string source, string target)
+    {
+        var previous = new int[target.Length + 1];
+        var current = new int[target.Length + 1];
+        for (var j = 0; j <= target.Length; j++)
+        {
+            previous[j] = j;
+        }
+
+        for (var i = 1; i <= source.Length; i++)
+        {
+            current[0] = i;
+            for (var j = 1; j <= target.Length; j++)
+            {
+                var cost = source[i - 1] == target[j - 1] ? 0 : 1;
+                current[j] = Math.Min(Math.Min(current[j - 1] + 1, previous[j] + 1), previous[j - 1] + cost);
+            }
+
+            (previous, current) = (current, previous);
+        }
+
+        return previous[target.Length];
     }
 
     private static void RegisterDocumentFix(

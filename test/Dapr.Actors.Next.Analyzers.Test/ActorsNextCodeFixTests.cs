@@ -741,6 +741,62 @@ public sealed class ActorsNextCodeFixTests
         return AnalyzerTest.VerifyCodeFixWithBaselineAsync(source, fixedSource, shipped, shipped, "DAPR1418", codeActionIndex: 0);
     }
 
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Suggests_closest_matching_scheduled_callback_for_string_literal()
+    {
+        const string markedSource = """class C { void M() { var callback = {|DAPR1429:"AbandonCrt"|}; } }""";
+        const string fixedSource = """class C { void M() { var callback = "AbandonCart"; } }""";
+
+        var source = ExtractMarkup(markedSource, ActorAnalyzerDiagnostics.UnknownScheduledCallback.Id, out var span);
+        var diagnostic = Diagnostic.Create(
+            ActorAnalyzerDiagnostics.UnknownScheduledCallback,
+            Location.Create("Test0.cs", span, new LinePositionSpan()),
+            properties: ImmutableDictionary<string, string?>.Empty.Add("callback.candidates", "AbandonCart;GetSummary"),
+            "Cart",
+            "AbandonCrt");
+
+        var fixedText = await ApplyCodeFixAsync(source, diagnostic, codeActionIndex: 0);
+
+        Assert.Equal(fixedSource, fixedText);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Suggests_closest_matching_scheduled_callback_for_nameof()
+    {
+        const string markedSource = """class C { string AbandonCart() => null; void M() { var callback = {|DAPR1429:nameof(AbandonCart)|}; } }""";
+
+        var source = ExtractMarkup(markedSource, ActorAnalyzerDiagnostics.UnknownScheduledCallback.Id, out var span);
+        var diagnostic = Diagnostic.Create(
+            ActorAnalyzerDiagnostics.UnknownScheduledCallback,
+            Location.Create("Test0.cs", span, new LinePositionSpan()),
+            properties: ImmutableDictionary<string, string?>.Empty.Add("callback.candidates", "AbandonCartNow"),
+            "Cart",
+            "AbandonCart");
+
+        var fixedText = await ApplyCodeFixAsync(source, diagnostic, codeActionIndex: 0);
+
+        Assert.Equal("""class C { string AbandonCart() => null; void M() { var callback = nameof(AbandonCartNow); } }""", fixedText);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Scheduled_callback_fix_is_skipped_when_no_candidate_is_close()
+    {
+        const string markedSource = """class C { void M() { var callback = {|DAPR1429:"xx"|}; } }""";
+
+        var source = ExtractMarkup(markedSource, ActorAnalyzerDiagnostics.UnknownScheduledCallback.Id, out var span);
+        var diagnostic = Diagnostic.Create(
+            ActorAnalyzerDiagnostics.UnknownScheduledCallback,
+            Location.Create("Test0.cs", span, new LinePositionSpan()),
+            properties: ImmutableDictionary<string, string?>.Empty.Add("callback.candidates", "CompletelyDifferentMethodName"),
+            "Cart",
+            "xx");
+
+        var provider = new ActorsNextCodeFixProvider();
+        var actions = await RegisterCodeFixesAsync(provider, source, diagnostic);
+
+        Assert.Empty(actions);
+    }
+
     private const string ActorTemplateStart = """
         using System;
         using System.Threading;
@@ -778,6 +834,29 @@ public sealed class ActorsNextCodeFixTests
         var source = ExtractMarkup(markedSource, descriptor.Id, out var span);
         var diagnostic = Diagnostic.Create(descriptor, Location.Create("Test0.cs", span, new LinePositionSpan()));
         return ApplyCodeFixAsync(source, diagnostic, codeActionIndex);
+    }
+
+    private static async Task<List<CodeAction>> RegisterCodeFixesAsync(ActorsNextCodeFixProvider provider, string source, Diagnostic diagnostic)
+    {
+        using var workspace = new AdhocWorkspace();
+        var project = workspace.CurrentSolution
+            .AddProject("TestProject", "TestProject", LanguageNames.CSharp)
+            .WithMetadataReferences(new[]
+            {
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Dapr.Actors.Next.Abstractions.IActor).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(Dapr.Actors.Next.Abstractions.Attributes.DaprActorAttribute).Assembly.Location),
+            });
+        var document = project.AddDocument("Test0.cs", SourceText.From(source));
+        var actions = new List<CodeAction>();
+        var context = new CodeFixContext(
+            document,
+            diagnostic,
+            (action, _) => actions.Add(action),
+            TestContext.Current.CancellationToken);
+
+        await provider.RegisterCodeFixesAsync(context);
+        return actions;
     }
 
     private static async Task<string> ApplyCodeFixAsync(string source, Diagnostic diagnostic, int codeActionIndex)

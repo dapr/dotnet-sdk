@@ -37,7 +37,10 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         ActorAnalyzerDiagnostics.NonAdditiveMigrationStep,
         ActorAnalyzerDiagnostics.NonUniqueFoldPath,
         ActorAnalyzerDiagnostics.MultipleFamiliesForStateName,
-        ActorAnalyzerDiagnostics.OutdatedStateTypeUsage);
+        ActorAnalyzerDiagnostics.OutdatedStateTypeUsage,
+        ActorAnalyzerDiagnostics.UnknownScheduledCallback,
+        ActorAnalyzerDiagnostics.UnresolvedScheduledActorType,
+        ActorAnalyzerDiagnostics.ScheduledCallbackNotExposed);
 
     /// <summary>
     /// Initializes analyzer actions.
@@ -55,11 +58,13 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
             var stateTypes = new ConcurrentBag<INamedTypeSymbol>();
             var upcasters = new ConcurrentBag<UpcasterEdge>();
             var stateUsages = new ConcurrentBag<StateUsage>();
+            var schedulerCallbacks = new ConcurrentBag<SchedulerCallbackUsage>();
             startContext.RegisterOperationAction(ctx =>
             {
                 AnalyzeInvocation(ctx);
                 CollectExplicitActorRegistration(ctx, explicitActorNames);
                 CollectStateUsage(ctx, stateUsages);
+                CollectSchedulerCallback(ctx, schedulerCallbacks);
             }, OperationKind.Invocation);
             startContext.RegisterOperationAction(AnalyzeObjectCreation, OperationKind.ObjectCreation);
             startContext.RegisterOperationAction(AnalyzePropertyReference, OperationKind.PropertyReference);
@@ -69,6 +74,7 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
             {
                 AnalyzeDuplicateActorTypeNames(ctx, actorImplementations, explicitActorNames);
                 AnalyzeStateMigrationGraph(ctx, stateTypes, upcasters, stateUsages);
+                AnalyzeScheduledCallbacks(ctx, actorImplementations, explicitActorNames, schedulerCallbacks);
             });
         });
     }
@@ -141,6 +147,56 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
             explicitActorNames.Add(new ExplicitActorName(actorType, value));
             return;
         }
+    }
+
+    private static void CollectSchedulerCallback(OperationAnalysisContext context, ConcurrentBag<SchedulerCallbackUsage> schedulerCallbacks)
+    {
+        var invocation = (IInvocationOperation)context.Operation;
+        var method = invocation.TargetMethod;
+        var containingType = method.ContainingType?.ToDisplayString();
+
+        // Reminders carry no separate callback parameter: the reminder 'name' is itself the dispatched method name.
+        // Timers dispatch to the explicit 'operationName' argument.
+        var callbackParameterName = (containingType, method.Name) switch
+        {
+            ("Dapr.Actors.Next.Core.Timers.IActorReminderScheduler", "ScheduleAsync") => "name",
+            ("Dapr.Actors.Next.Core.Timers.IActorTimerScheduler", "ScheduleAsync" or "RescheduleAsync") => "operationName",
+            _ => null,
+        };
+        if (callbackParameterName is null)
+        {
+            return;
+        }
+
+        string? actorTypeName = null;
+        string? callbackName = null;
+        Location? callbackLocation = null;
+        foreach (var argument in invocation.Arguments)
+        {
+            if (argument.Value.ConstantValue is not { HasValue: true, Value: string value } || string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            if (argument.Parameter?.Name == "actorType")
+            {
+                actorTypeName = value;
+            }
+            else if (argument.Parameter?.Name == callbackParameterName)
+            {
+                callbackName = value;
+                callbackLocation = argument.Value.Syntax.GetLocation();
+            }
+        }
+
+        // Only validate when both the actor type and the callback name are compile-time constants; otherwise we cannot
+        // resolve the target or the method with certainty, so we stay silent to avoid false positives.
+        if (actorTypeName is null || callbackName is null || callbackLocation is null)
+        {
+            return;
+        }
+
+        schedulerCallbacks.Add(new SchedulerCallbackUsage(actorTypeName, callbackName, callbackLocation));
     }
 
     private static void AnalyzeObjectCreation(OperationAnalysisContext context)
@@ -359,6 +415,190 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
                 }
             }
         }
+    }
+
+    private static void AnalyzeScheduledCallbacks(
+        CompilationAnalysisContext context,
+        ConcurrentBag<ActorImplementationInfo> actorImplementations,
+        ConcurrentBag<ExplicitActorName> explicitActorNames,
+        ConcurrentBag<SchedulerCallbackUsage> schedulerCallbacks)
+    {
+        var usages = schedulerCallbacks.ToArray();
+        if (usages.Length == 0)
+        {
+            return;
+        }
+
+        var aliases = explicitActorNames.ToArray();
+        var sourceByName = actorImplementations
+            .GroupBy(actor => GetEffectiveActorTypeName(actor.Type, actor.ActorTypeName, aliases), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Select(actor => actor.Type).ToArray(), StringComparer.Ordinal);
+
+        // Referenced-assembly actors are only scanned when a callback cannot be resolved from source, then cached.
+        Dictionary<string, INamedTypeSymbol[]>? referencedByName = null;
+
+        foreach (var usage in usages)
+        {
+            INamedTypeSymbol? actor = null;
+            if (sourceByName.TryGetValue(usage.ActorTypeName, out var sourceMatches))
+            {
+                if (sourceMatches.Length > 1)
+                {
+                    // Ambiguous actor type name is DAPR1420's concern; do not add a second diagnostic here.
+                    continue;
+                }
+
+                actor = sourceMatches[0];
+            }
+            else
+            {
+                referencedByName ??= BuildReferencedActorMap(context.Compilation, aliases);
+                if (referencedByName.TryGetValue(usage.ActorTypeName, out var referencedMatches))
+                {
+                    if (referencedMatches.Length > 1)
+                    {
+                        continue;
+                    }
+
+                    actor = referencedMatches[0];
+                }
+            }
+
+            if (actor is null)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    ActorAnalyzerDiagnostics.UnresolvedScheduledActorType,
+                    usage.CallbackNameLocation,
+                    usage.ActorTypeName,
+                    usage.CallbackName));
+                continue;
+            }
+
+            var dispatchable = GetDispatchableMethodNames(actor);
+            if (dispatchable.Contains(usage.CallbackName))
+            {
+                continue;
+            }
+
+            if (HasAnyMethodNamed(actor, usage.CallbackName))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    ActorAnalyzerDiagnostics.ScheduledCallbackNotExposed,
+                    usage.CallbackNameLocation,
+                    usage.ActorTypeName,
+                    usage.CallbackName));
+            }
+            else
+            {
+                var properties = ImmutableDictionary<string, string?>.Empty
+                    .Add("callback.candidates", string.Join(";", dispatchable.OrderBy(name => name, StringComparer.Ordinal)));
+                context.ReportDiagnostic(Diagnostic.Create(
+                    ActorAnalyzerDiagnostics.UnknownScheduledCallback,
+                    usage.CallbackNameLocation,
+                    properties,
+                    usage.ActorTypeName,
+                    usage.CallbackName));
+            }
+        }
+    }
+
+    private static Dictionary<string, INamedTypeSymbol[]> BuildReferencedActorMap(Compilation compilation, ExplicitActorName[] aliases)
+    {
+        var abstractionsAssembly = compilation
+            .GetTypeByMetadataName("Dapr.Actors.Next.Abstractions.Attributes.DaprActorAttribute")?
+            .ContainingAssembly?.Name;
+        if (abstractionsAssembly is null)
+        {
+            return new Dictionary<string, INamedTypeSymbol[]>(StringComparer.Ordinal);
+        }
+
+        var actors = new List<(string Name, INamedTypeSymbol Type)>();
+        foreach (var reference in compilation.References)
+        {
+            if (compilation.GetAssemblyOrModuleSymbol(reference) is not IAssemblySymbol assembly ||
+                !ReferencesAssembly(assembly, abstractionsAssembly))
+            {
+                continue;
+            }
+
+            foreach (var type in EnumerateNamespaceTypes(assembly.GlobalNamespace))
+            {
+                if (type.IsAbstract ||
+                    type.TypeKind != TypeKind.Class ||
+                    !type.HasAttribute("Dapr.Actors.Next.Abstractions.Attributes.DaprActorAttribute") ||
+                    !type.AllInterfaces.Any(IsConcreteActorInterface))
+                {
+                    continue;
+                }
+
+                actors.Add((GetEffectiveActorTypeName(type, GetDaprActorTypeName(type), aliases), type));
+            }
+        }
+
+        return actors
+            .GroupBy(actor => actor.Name, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Select(actor => actor.Type).ToArray(), StringComparer.Ordinal);
+    }
+
+    private static bool ReferencesAssembly(IAssemblySymbol assembly, string assemblyName) =>
+        assembly.Modules.Any(module => module.ReferencedAssemblies.Any(identity => string.Equals(identity.Name, assemblyName, StringComparison.Ordinal)));
+
+    private static HashSet<string> GetDispatchableMethodNames(INamedTypeSymbol actor)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var actorInterface in actor.AllInterfaces)
+        {
+            if (!IsConcreteActorInterface(actorInterface) ||
+                !actorInterface.HasAttribute("Dapr.Actors.Next.Abstractions.Attributes.GenerateActorClientAttribute"))
+            {
+                continue;
+            }
+
+            // Mirror the generator's dispatch set: the [GenerateActorClient] interface's own methods plus every method
+            // it inherits from base actor interfaces, filtered to supported asynchronous return types.
+            AddDispatchableMethodNames(actorInterface, names);
+            foreach (var baseInterface in actorInterface.AllInterfaces)
+            {
+                if (baseInterface.ToDisplayString() != "Dapr.Actors.Next.Abstractions.IActor")
+                {
+                    AddDispatchableMethodNames(baseInterface, names);
+                }
+            }
+        }
+
+        return names;
+    }
+
+    private static void AddDispatchableMethodNames(INamedTypeSymbol actorInterface, HashSet<string> names)
+    {
+        foreach (var method in actorInterface.GetMembers().OfType<IMethodSymbol>())
+        {
+            if (method.MethodKind == MethodKind.Ordinary && method.ReturnType.IsSupportedActorReturnType())
+            {
+                names.Add(method.Name);
+            }
+        }
+    }
+
+    private static bool HasAnyMethodNamed(INamedTypeSymbol actor, string name)
+    {
+        for (var current = actor; current is not null; current = current.BaseType)
+        {
+            if (current.GetMembers(name).OfType<IMethodSymbol>().Any(method => method.MethodKind == MethodKind.Ordinary))
+            {
+                return true;
+            }
+        }
+
+        foreach (var actorInterface in actor.AllInterfaces)
+        {
+            if (actorInterface.GetMembers(name).OfType<IMethodSymbol>().Any(method => method.MethodKind == MethodKind.Ordinary))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void AnalyzeActorInterfaceReturns(SymbolAnalysisContext context, INamedTypeSymbol type)
@@ -1157,6 +1397,8 @@ public sealed class ActorsNextAnalyzer : DiagnosticAnalyzer
         Location? Location);
 
     private sealed record ExplicitActorName(INamedTypeSymbol ActorType, string ActorTypeName);
+
+    private sealed record SchedulerCallbackUsage(string ActorTypeName, string CallbackName, Location CallbackNameLocation);
 
     private sealed record StateUsage(ITypeSymbol Type, string? StateName, Location Location);
 

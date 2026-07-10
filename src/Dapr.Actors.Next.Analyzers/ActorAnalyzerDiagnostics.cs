@@ -10,7 +10,7 @@ public static class ActorAnalyzerDiagnostics
     /// <summary>
     /// Gets the analyzer id range reserved for Dapr Actors Next.
     /// </summary>
-    public const string ReservedRange = "DAPR1410-DAPR1428";
+    public const string ReservedRange = "DAPR1410-DAPR1431";
 
     /// <summary>
     /// Diagnostic raised when a shipped actor state shape is changed in a breaking way.
@@ -216,6 +216,48 @@ public static class ActorAnalyzerDiagnostics
         "State usage targets '{0}', but later state version '{1}' exists in the application",
         "Usage",
         DiagnosticSeverity.Info,
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
+
+    /// <summary>
+    /// Diagnostic raised when a scheduled reminder/timer callback name does not match any dispatchable actor method.
+    /// </summary>
+    /// <remarks>
+    /// The runtime routes a reminder or timer turn by method name through the generated dispatcher. For reminders the
+    /// reminder <c>name</c> is itself the callback method name; for timers the callback is the <c>operationName</c>
+    /// argument. A name that does not match a dispatchable method fails at runtime with an unknown-method error.
+    /// </remarks>
+    public static readonly DiagnosticDescriptor UnknownScheduledCallback = new(
+        "DAPR1429",
+        "Scheduled actor callback does not match a dispatchable actor method",
+        "Actor '{0}' has no dispatchable method '{1}'; the scheduled reminder/timer callback will fail at runtime",
+        "Usage",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
+
+    /// <summary>
+    /// Diagnostic raised when a scheduled reminder/timer targets an actor type that cannot be found in the compilation.
+    /// </summary>
+    public static readonly DiagnosticDescriptor UnresolvedScheduledActorType = new(
+        "DAPR1430",
+        "Scheduled actor callback targets an unknown actor type",
+        "Cannot find actor type '{0}' in this application; if it is hosted by another Dapr app, ensure that app defines it. Callback '{1}' cannot be verified.",
+        "Usage",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        customTags: [WellKnownDiagnosticTags.CompilationEnd]);
+
+    /// <summary>
+    /// Diagnostic raised when a scheduled reminder/timer callback names a method that exists on the actor but is not
+    /// exposed through a <c>[GenerateActorClient]</c> interface, so no dispatcher routes to it.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ScheduledCallbackNotExposed = new(
+        "DAPR1431",
+        "Scheduled actor callback method is not exposed through a generated actor client",
+        "Actor '{0}' declares '{1}', but it is not exposed through a [GenerateActorClient] actor interface, so no dispatcher routes to it",
+        "Usage",
+        DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         customTags: [WellKnownDiagnosticTags.CompilationEnd]);
 }

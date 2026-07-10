@@ -32,6 +32,24 @@ internal static class AnalyzerTest
         return test.RunAsync(TestContext.Current.CancellationToken);
     }
 
+    internal static DiagnosticResult Error(string id) => new(id, DiagnosticSeverity.Error);
+
+    internal static Task VerifyAnalyzerWithActorLibraryAsync(string source, string librarySource, params DiagnosticResult[] expected)
+    {
+        var test = new AnalyzerHarness { TestCode = source };
+        AddReferences(test);
+
+        var library = new ProjectState("ActorLibrary", LanguageNames.CSharp, "/ActorLibrary/", "cs");
+        library.Sources.Add(("RemoteActor.cs", librarySource));
+        library.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(Actor).Assembly.Location));
+        library.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(DaprActorAttribute).Assembly.Location));
+        test.TestState.AdditionalProjects.Add("ActorLibrary", library);
+        test.TestState.AdditionalProjectReferences.Add("ActorLibrary");
+
+        test.ExpectedDiagnostics.AddRange(expected);
+        return test.RunAsync(TestContext.Current.CancellationToken);
+    }
+
     internal static Task VerifyCodeFixAsync(string source, string fixedSource, string diagnosticId, int codeActionIndex = 0, int? numberOfIterations = null)
     {
         var test = new CodeFixHarness

@@ -23,3 +23,6 @@ DAPR1425 | Compatibility | Warning | Actor state migration step requires an upca
 DAPR1426 | Compatibility | Warning | Actor state migration fold path is ambiguous
 DAPR1427 | Usage | Warning | Actor state name maps to multiple migration families
 DAPR1428 | Usage | Info | Actor state usage should target the latest state version
+DAPR1429 | Usage | Error | Scheduled actor callback does not match a dispatchable actor method
+DAPR1430 | Usage | Warning | Scheduled actor callback targets an unknown actor type
+DAPR1431 | Usage | Error | Scheduled actor callback method is not exposed through a generated actor client

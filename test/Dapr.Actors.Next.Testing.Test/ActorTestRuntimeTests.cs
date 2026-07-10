@@ -167,6 +167,62 @@ public sealed class ActorTestRuntimeTests
         Assert.Equal(2, runtime.Transcript.Count(entry => entry.OperationName == "Timer"));
     }
 
+    // The following three tests anchor the DAPR1429/1430/1431 analyzers to real runtime behavior: a callback name
+    // that resolves to a dispatchable method runs the method, while a name that does not resolve fails the turn with
+    // the generated dispatcher's "Unknown actor method" error. If the dispatch contract ever changes, these break and
+    // signal that the scheduled-callback analyzers must be revisited.
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Scheduled_timer_callback_that_matches_a_dispatchable_method_runs()
+    {
+        await using var runtime = CreateTestingRuntime(new PriorityActorScheduler(4));
+        var id = ActorId.Create("valid-timer-callback");
+        runtime.Time.ScheduleTimer("Testing", id, "Timer", TimeSpan.FromSeconds(1));
+
+        runtime.Time.Advance(TimeSpan.FromSeconds(1));
+        await runtime.RunToIdle();
+
+        var read = runtime.InvokeAsync("Testing", id, "Add", "0");
+        await runtime.RunToIdle();
+        Assert.Equal(10, int.Parse(System.Text.Encoding.UTF8.GetString((await read)!)));
+        Assert.Contains(runtime.Transcript, entry => entry.OperationName == "Timer");
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Scheduled_reminder_callback_that_matches_a_dispatchable_method_runs()
+    {
+        await using var runtime = CreateTestingRuntime(new PriorityActorScheduler(4));
+        var id = ActorId.Create("valid-reminder-callback");
+        runtime.Time.ScheduleReminder("Testing", id, "Reminder", TimeSpan.FromSeconds(1));
+
+        runtime.Time.Advance(TimeSpan.FromSeconds(1));
+        await runtime.RunToIdle();
+
+        var read = runtime.InvokeAsync("Testing", id, "Add", "0");
+        await runtime.RunToIdle();
+        Assert.Equal(100, int.Parse(System.Text.Encoding.UTF8.GetString((await read)!)));
+        Assert.Contains(runtime.Transcript, entry => entry.OperationName == "Reminder");
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Scheduled_callback_that_is_not_a_dispatchable_method_fails_the_turn()
+    {
+        _ = typeof(CalculatorActor);
+        await using var runtime = new ActorTestRuntime(services =>
+        {
+            services.AddSingleton<CalculatorDependency>();
+            services.AddDaprActors(_ => { });
+        });
+        var id = ActorId.Create("unknown-callback");
+
+        // A reminder/timer whose callback name is not on the generated client contract routes to the generated
+        // dispatcher's default case, exactly the failure DAPR1429/DAPR1431 catch at build time.
+        var failed = runtime.InvokeAsync("Calculator", id, "NotADispatchableMethod", string.Empty, Dapr.Actors.Next.Abstractions.Scheduling.ActorTurnKind.Timer);
+        await runtime.RunToIdle();
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => failed);
+        Assert.Contains("Unknown actor method", exception.Message);
+    }
+
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Virtual_time_schedulers_dispatch_typed_and_byte_payloads()
     {
