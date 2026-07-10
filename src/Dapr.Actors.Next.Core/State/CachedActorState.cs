@@ -1,0 +1,61 @@
+// ------------------------------------------------------------------------
+// Copyright 2026 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
+
+using Dapr.Actors.Next.Abstractions.State;
+using Dapr.Actors.Next.Abstractions.State.Versioning;
+
+namespace Dapr.Actors.Next.Core.State;
+
+/// <summary>
+/// Mutable cached actor state value.
+/// </summary>
+public sealed class CachedActorState<T> : IActorState<T>
+{
+    private T value;
+
+    internal CachedActorState(string name, T value, Action onChanged, ActorStateMigrationNode? migrationNode, bool storePlain)
+    {
+        Name = name;
+        this.value = value;
+        this.onChanged = onChanged;
+        MigrationNode = migrationNode;
+        StorePlain = storePlain;
+    }
+
+    private readonly Action onChanged;
+
+    /// <inheritdoc />
+    public string Name { get; }
+
+    internal ActorStateMigrationNode? MigrationNode { get; private set; }
+
+    internal bool StorePlain { get; private set; }
+
+    /// <inheritdoc />
+    public T Value
+    {
+        get => value;
+        set
+        {
+            this.value = value;
+            onChanged();
+        }
+    }
+
+    internal void StoreAsPlain()
+    {
+        MigrationNode = null;
+        StorePlain = true;
+        onChanged();
+    }
+}

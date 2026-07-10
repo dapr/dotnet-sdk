@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <Description>Meta package for Dapr Actors Next runtime, satellites, source generators, analyzers, and transitive build assets.</Description>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dapr.Actors.Next.Abstractions\Dapr.Actors.Next.Abstractions.csproj" />
+        <ProjectReference Include="..\Dapr.Actors.Next.Core\Dapr.Actors.Next.Core.csproj" />
+        <ProjectReference Include="..\Dapr.Actors.Next.StateMachine\Dapr.Actors.Next.StateMachine.csproj" />
+        <ProjectReference Include="..\Dapr.Actors.Next.Streams\Dapr.Actors.Next.Streams.csproj" />
+        <ProjectReference Include="..\Dapr.Actors.Next.Interpreted\Dapr.Actors.Next.Interpreted.csproj" />
+        <ProjectReference Include="..\Dapr.Actors.Next.Testing\Dapr.Actors.Next.Testing.csproj" />
+        <ProjectReference Include="..\Dapr.Actors.Next.SourceGenerators\Dapr.Actors.Next.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="none" />
+        <ProjectReference Include="..\Dapr.Actors.Next.Analyzers\Dapr.Actors.Next.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="none" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="buildTransitive\Dapr.Actors.Next.props" Pack="true" PackagePath="buildTransitive\Dapr.Actors.Next.props" />
+    </ItemGroup>
+
+    <Target Name="IncludeDaprActorsNextAnalyzerAssets"
+            BeforeTargets="_GetPackageFiles">
+        <MSBuild Projects="../Dapr.Actors.Next.SourceGenerators/Dapr.Actors.Next.SourceGenerators.csproj;../Dapr.Actors.Next.Analyzers/Dapr.Actors.Next.Analyzers.csproj"
+                 Targets="GetTargetPath"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0">
+            <Output TaskParameter="TargetOutputs" ItemName="_DaprActorsNextAnalyzerAsset" />
+        </MSBuild>
+        <ItemGroup>
+            <None Include="@(_DaprActorsNextAnalyzerAsset)"
+                  Pack="true"
+                  PackagePath="analyzers/dotnet/cs"
+                  Visible="false" />
+        </ItemGroup>
+    </Target>
+
+</Project>

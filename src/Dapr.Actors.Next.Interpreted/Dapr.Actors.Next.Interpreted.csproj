@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dapr.Actors.Next.Abstractions\Dapr.Actors.Next.Abstractions.csproj" />
+        <ProjectReference Include="..\Dapr.Actors.Next.Core\Dapr.Actors.Next.Core.csproj" />
+    </ItemGroup>
+
+</Project>
