@@ -22,6 +22,34 @@ public interface IActorReminderScheduler
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Registers or updates a durable actor reminder with a caller-provided wire payload.
+    /// </summary>
+    ValueTask ScheduleAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        byte[] arguments,
+        TimeSpan? ttl = null,
+        bool? overwrite = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Registers or updates a durable actor reminder with a typed payload serialized by the configured actor wire serializer.
+    /// </summary>
+    ValueTask ScheduleAsync<TArguments>(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        TArguments arguments,
+        TimeSpan? ttl = null,
+        bool? overwrite = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets a durable actor reminder registration by name.
     /// </summary>
     ValueTask<ActorReminderInfo?> GetAsync(

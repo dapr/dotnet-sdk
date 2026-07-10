@@ -179,7 +179,19 @@ public sealed class StateMachineEdgeTests
         public ValueTask ScheduleAsync(string actorType, ActorId actorId, string name, TimeSpan dueTime, string operationName, string argumentsJson, TimeSpan? period = null, TimeSpan? ttl = null, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default) =>
             ValueTask.CompletedTask;
 
+        public ValueTask ScheduleAsync(string actorType, ActorId actorId, string name, TimeSpan dueTime, string operationName, byte[] arguments, TimeSpan? period = null, TimeSpan? ttl = null, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask ScheduleAsync<TArguments>(string actorType, ActorId actorId, string name, TimeSpan dueTime, string operationName, TArguments arguments, TimeSpan? period = null, TimeSpan? ttl = null, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
+
         public ValueTask RescheduleAsync(string actorType, ActorId actorId, string name, TimeSpan dueTime, string operationName, string argumentsJson, TimeSpan? period = null, TimeSpan? ttl = null, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask RescheduleAsync(string actorType, ActorId actorId, string name, TimeSpan dueTime, string operationName, byte[] arguments, TimeSpan? period = null, TimeSpan? ttl = null, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
+
+        public ValueTask RescheduleAsync<TArguments>(string actorType, ActorId actorId, string name, TimeSpan dueTime, string operationName, TArguments arguments, TimeSpan? period = null, TimeSpan? ttl = null, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default) =>
             ValueTask.CompletedTask;
 
         public ValueTask CancelAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default) =>

@@ -53,6 +53,80 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
+        await ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            operationName,
+            serializer.JsonToBytes(argumentsJson),
+            period,
+            ttl,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ScheduleAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        byte[] arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        await ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            operationName,
+            arguments,
+            period,
+            ttl,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ScheduleAsync<TArguments>(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        TArguments arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        await ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            operationName,
+            serializer.SerializeToBytes(arguments),
+            period,
+            ttl,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask ScheduleCoreAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        byte[] arguments,
+        TimeSpan? period,
+        TimeSpan? ttl,
+        CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(operationName);
@@ -72,7 +146,7 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
             Name = name,
             DueTime = ActorScheduleDurationFormatter.Format(dueTime),
             Callback = operationName,
-            Data = ByteString.CopyFrom(serializer.JsonToBytes(argumentsJson)),
+            Data = ByteString.CopyFrom(arguments),
         };
 
         if (ShouldWritePeriod(period))
@@ -105,6 +179,40 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
     {
         await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
         await ScheduleAsync(actorType, actorId, name, dueTime, operationName, argumentsJson, period, ttl, headers, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask RescheduleAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        byte[] arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
+        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, arguments, period, ttl, headers, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask RescheduleAsync<TArguments>(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        TArguments arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
+        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, arguments, period, ttl, headers, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

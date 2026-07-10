@@ -25,6 +25,80 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
         bool? overwrite = null,
         CancellationToken cancellationToken = default)
     {
+        return ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            period,
+            serializer.JsonToBytes(argumentsJson),
+            argumentsJson,
+            ttl,
+            overwrite);
+    }
+
+    /// <inheritdoc />
+    public ValueTask ScheduleAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        byte[] arguments,
+        TimeSpan? ttl = null,
+        bool? overwrite = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        var payload = arguments.ToArray();
+        return ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            period,
+            payload,
+            serializer.BytesToJson(payload),
+            ttl,
+            overwrite);
+    }
+
+    /// <inheritdoc />
+    public ValueTask ScheduleAsync<TArguments>(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        TArguments arguments,
+        TimeSpan? ttl = null,
+        bool? overwrite = null,
+        CancellationToken cancellationToken = default)
+    {
+        var payload = serializer.SerializeToBytes(arguments);
+        return ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            period,
+            payload,
+            serializer.BytesToJson(payload),
+            ttl,
+            overwrite);
+    }
+
+    private ValueTask ScheduleCoreAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        byte[] arguments,
+        string? argumentsJson,
+        TimeSpan? ttl,
+        bool? overwrite)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
@@ -55,12 +129,12 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
                         callback.ActorId,
                         callback.Name,
                         ActorTurnKind.Reminder,
-                        callback.Serializer.JsonToBytes(callback.ArgumentsJson),
+                        callback.Arguments,
                         ActorHeaders.Empty,
                         new ActorRequestContext(null, null, ActorHeaders.Empty)),
                     CancellationToken.None);
             },
-            new ReminderCallbackState(runtime, serializer, actorType, actorId, name, argumentsJson),
+            new ReminderCallbackState(runtime, actorType, actorId, name, arguments),
             dueTime,
             period == TimeSpan.Zero ? Timeout.InfiniteTimeSpan : period);
 
@@ -148,11 +222,10 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
 
     private sealed record ReminderCallbackState(
         IActorRuntime Runtime,
-        IActorWireSerializer Serializer,
         string ActorType,
         ActorId ActorId,
         string Name,
-        string ArgumentsJson);
+        byte[] Arguments);
 
     private sealed record ReminderRegistration(ITimer Timer, ActorReminderInfo Info);
 

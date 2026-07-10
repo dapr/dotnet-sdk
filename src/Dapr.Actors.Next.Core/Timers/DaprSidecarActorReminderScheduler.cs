@@ -48,6 +48,78 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
         bool? overwrite = null,
         CancellationToken cancellationToken = default)
     {
+        await ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            period,
+            serializer.JsonToBytes(argumentsJson),
+            ttl,
+            overwrite,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ScheduleAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        byte[] arguments,
+        TimeSpan? ttl = null,
+        bool? overwrite = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        await ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            period,
+            arguments,
+            ttl,
+            overwrite,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask ScheduleAsync<TArguments>(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        TArguments arguments,
+        TimeSpan? ttl = null,
+        bool? overwrite = null,
+        CancellationToken cancellationToken = default)
+    {
+        await ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            period,
+            serializer.SerializeToBytes(arguments),
+            ttl,
+            overwrite,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask ScheduleCoreAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        byte[] arguments,
+        TimeSpan? ttl,
+        bool? overwrite,
+        CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
@@ -73,7 +145,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             Name = name,
             DueTime = ActorScheduleDurationFormatter.Format(dueTime),
             Period = ActorScheduleDurationFormatter.Format(period),
-            Data = ByteString.CopyFrom(serializer.JsonToBytes(argumentsJson)),
+            Data = ByteString.CopyFrom(arguments),
         };
 
         if (ttl.HasValue)
@@ -134,7 +206,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
 
         return response.Reminders
-            .Select(static reminder => new NamedActorReminderInfo(reminder.Name, ToInfo(reminder.Reminder)))
+            .Select(reminder => new NamedActorReminderInfo(reminder.Name, ToInfo(reminder.Reminder)))
             .ToArray();
     }
 
@@ -171,7 +243,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
         return new Lazy<P.Dapr.DaprClient>(() => client);
     }
 
-    private static ActorReminderInfo ToInfo(P.GetActorReminderResponse response) =>
+    private ActorReminderInfo ToInfo(P.GetActorReminderResponse response) =>
         new(
             response.ActorType,
             ActorId.Create(response.ActorId),
@@ -180,7 +252,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             DecodeJson(response.Data),
             ActorScheduleDurationParser.ParseOptional(response.HasTtl ? response.Ttl : null));
 
-    private static ActorReminderInfo ToInfo(P.ActorReminder reminder) =>
+    private ActorReminderInfo ToInfo(P.ActorReminder reminder) =>
         new(
             reminder.ActorType,
             ActorId.Create(reminder.ActorId),

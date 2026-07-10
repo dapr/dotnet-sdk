@@ -143,6 +143,34 @@ public sealed class SidecarAdapterTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public async Task Timer_scheduler_accepts_typed_and_byte_payloads()
+    {
+        var client = new RecordingDaprClient();
+        var scheduler = new DaprSidecarActorTimerScheduler(client, new ActorWireSerializer(new JsonDaprSerializer()));
+        var actorId = ActorId.Create("timer-payload");
+
+        await scheduler.ScheduleAsync(
+            "Counter",
+            actorId,
+            "typed",
+            TimeSpan.Zero,
+            "Tick",
+            new Dictionary<string, int> { ["x"] = 7 });
+
+        Assert.Equal("""{"x":7}""", client.RegisterActorTimerRequest!.Data.ToStringUtf8());
+
+        await scheduler.ScheduleAsync(
+            "Counter",
+            actorId,
+            "bytes",
+            TimeSpan.Zero,
+            "Tick",
+            global::System.Text.Encoding.UTF8.GetBytes("raw"));
+
+        Assert.Equal("raw", client.RegisterActorTimerRequest!.Data.ToStringUtf8());
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Reminder_scheduler_maps_sidecar_reminder_requests()
     {
         var client = new RecordingDaprClient
@@ -225,6 +253,34 @@ public sealed class SidecarAdapterTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-due", TimeSpan.FromMilliseconds(-1), TimeSpan.FromSeconds(1), "0"));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-period", TimeSpan.Zero, TimeSpan.FromMilliseconds(-1), "0"));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-ttl", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0", TimeSpan.FromMilliseconds(-1)));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Reminder_scheduler_accepts_typed_and_byte_payloads()
+    {
+        var client = new RecordingDaprClient();
+        var scheduler = new DaprSidecarActorReminderScheduler(client, new ActorWireSerializer(new JsonDaprSerializer()));
+        var actorId = ActorId.Create("reminder-payload");
+
+        await scheduler.ScheduleAsync(
+            "Counter",
+            actorId,
+            "typed",
+            TimeSpan.Zero,
+            TimeSpan.FromMinutes(1),
+            new Dictionary<string, int> { ["x"] = 8 });
+
+        Assert.Equal("""{"x":8}""", client.RegisterActorReminderRequest!.Data.ToStringUtf8());
+
+        await scheduler.ScheduleAsync(
+            "Counter",
+            actorId,
+            "bytes",
+            TimeSpan.Zero,
+            TimeSpan.FromMinutes(1),
+            global::System.Text.Encoding.UTF8.GetBytes("raw"));
+
+        Assert.Equal("raw", client.RegisterActorReminderRequest!.Data.ToStringUtf8());
     }
 
     private sealed class RecordingDaprClient : P.Dapr.DaprClient

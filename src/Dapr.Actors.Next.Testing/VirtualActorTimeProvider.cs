@@ -40,13 +40,12 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         }
 
         IActorRuntime activeRuntime;
-        IActorWireSerializer activeSerializer;
         List<ScheduledCallback> due;
         lock (syncRoot)
         {
             utcNow += duration;
             activeRuntime = runtime ?? throw new InvalidOperationException("Virtual time is not attached to an ActorTestRuntime.");
-            activeSerializer = serializer ?? throw new InvalidOperationException("Virtual time is not attached to an ActorTestRuntime.");
+            _ = serializer ?? throw new InvalidOperationException("Virtual time is not attached to an ActorTestRuntime.");
             due = callbacks
                 .Where(callback => !callback.Canceled && callback.DueAt <= utcNow)
                 .OrderBy(callback => callback.DueAt)
@@ -69,7 +68,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
                             callback.ActorId,
                             callback.OperationName,
                             callback.Kind,
-                            activeSerializer.JsonToBytes(callback.ArgumentsJson),
+                            callback.Arguments,
                             callback.Headers,
                             new ActorRequestContext(null, null, new Dictionary<string, string>(StringComparer.Ordinal))),
                         CancellationToken.None);
@@ -90,13 +89,13 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
     /// Schedules an actor timer turn.
     /// </summary>
     public void ScheduleTimer(string actorType, ActorId actorId, string operationName, TimeSpan dueTime, string argumentsJson = "", IReadOnlyDictionary<string, string>? headers = null) =>
-        Schedule(actorType, actorId, operationName, operationName, ActorTurnKind.Timer, dueTime, argumentsJson, headers, period: null, ttl: null);
+        Schedule(actorType, actorId, operationName, operationName, ActorTurnKind.Timer, dueTime, ToJsonBytes(argumentsJson), argumentsJson, headers, period: null, ttl: null);
 
     /// <summary>
     /// Schedules an actor reminder turn.
     /// </summary>
     public void ScheduleReminder(string actorType, ActorId actorId, string operationName, TimeSpan dueTime, string argumentsJson = "", IReadOnlyDictionary<string, string>? headers = null) =>
-        Schedule(actorType, actorId, operationName, operationName, ActorTurnKind.Reminder, dueTime, argumentsJson, headers, period: null, ttl: null);
+        Schedule(actorType, actorId, operationName, operationName, ActorTurnKind.Reminder, dueTime, ToJsonBytes(argumentsJson), argumentsJson, headers, period: null, ttl: null);
 
     /// <inheritdoc />
     public ValueTask ScheduleAsync(
@@ -113,7 +112,48 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
     {
         ValidateTimerPeriod(period);
         ValidateTimerTtl(dueTime, ttl);
-        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, argumentsJson, headers, period, ttl);
+        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, ToJsonBytes(argumentsJson), argumentsJson, headers, period, ttl);
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public ValueTask ScheduleAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        byte[] arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        ValidateTimerPeriod(period);
+        ValidateTimerTtl(dueTime, ttl);
+        var payload = arguments.ToArray();
+        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, payload, ToJsonText(payload), headers, period, ttl);
+        return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    public ValueTask ScheduleAsync<TArguments>(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        TArguments arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        var payload = Serialize(arguments);
+        ValidateTimerPeriod(period);
+        ValidateTimerTtl(dueTime, ttl);
+        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, payload, ToJsonText(payload), headers, period, ttl);
         return ValueTask.CompletedTask;
     }
 
@@ -132,6 +172,40 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
     {
         await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
         await ScheduleAsync(actorType, actorId, name, dueTime, operationName, argumentsJson, period, ttl, headers, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask RescheduleAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        byte[] arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
+        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, arguments, period, ttl, headers, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask RescheduleAsync<TArguments>(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        TArguments arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
+        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, arguments, period, ttl, headers, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -274,8 +348,41 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
             }
         }
 
-        Schedule(actorType, actorId, name, name, ActorTurnKind.Reminder, dueTime, argumentsJson, null, period, ttl);
+        Schedule(actorType, actorId, name, name, ActorTurnKind.Reminder, dueTime, ToJsonBytes(argumentsJson), argumentsJson, null, period, ttl);
         return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    ValueTask IActorReminderScheduler.ScheduleAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        byte[] arguments,
+        TimeSpan? ttl,
+        bool? overwrite,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        var payload = arguments.ToArray();
+        return ScheduleReminderCoreAsync(actorType, actorId, name, dueTime, period, payload, ToJsonText(payload), ttl, overwrite);
+    }
+
+    /// <inheritdoc />
+    ValueTask IActorReminderScheduler.ScheduleAsync<TArguments>(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        TArguments arguments,
+        TimeSpan? ttl,
+        bool? overwrite,
+        CancellationToken cancellationToken)
+    {
+        var payload = Serialize(arguments);
+        return ScheduleReminderCoreAsync(actorType, actorId, name, dueTime, period, payload, ToJsonText(payload), ttl, overwrite);
     }
 
     internal void Attach(IActorRuntime actorRuntime, IActorWireSerializer wireSerializer)
@@ -294,7 +401,8 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         string operationName,
         ActorTurnKind kind,
         TimeSpan dueTime,
-        string argumentsJson,
+        byte[] arguments,
+        string? argumentsJson,
         IReadOnlyDictionary<string, string>? headers,
         TimeSpan? period,
         TimeSpan? ttl)
@@ -319,10 +427,77 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
                 period,
                 ttl,
                 nextSequence++,
+                arguments,
                 argumentsJson,
                 headers ?? new Dictionary<string, string>(StringComparer.Ordinal)));
         }
     }
+
+    private ValueTask ScheduleReminderCoreAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        TimeSpan period,
+        byte[] arguments,
+        string? argumentsJson,
+        TimeSpan? ttl,
+        bool? overwrite)
+    {
+        if (period < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(period), "Period cannot be negative.");
+        }
+
+        if (ttl.HasValue && ttl.Value < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ttl), "TTL cannot be negative.");
+        }
+
+        lock (syncRoot)
+        {
+            var existing = callbacks
+                .Where(callback =>
+                    !callback.Canceled
+                    && callback.Kind == ActorTurnKind.Reminder
+                    && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
+                    && callback.ActorId.Equals(actorId)
+                    && string.Equals(callback.Name, name, StringComparison.Ordinal))
+                .ToArray();
+
+            if (existing.Length > 0 && overwrite == false)
+            {
+                throw new InvalidOperationException($"Reminder '{name}' is already scheduled for actor '{actorType}/{actorId.Value}'.");
+            }
+
+            foreach (var callback in existing)
+            {
+                callback.Canceled = true;
+            }
+        }
+
+        Schedule(actorType, actorId, name, name, ActorTurnKind.Reminder, dueTime, arguments, argumentsJson, null, period, ttl);
+        return ValueTask.CompletedTask;
+    }
+
+    private byte[] Serialize<TArguments>(TArguments arguments)
+    {
+        lock (syncRoot)
+        {
+            return (serializer ?? throw new InvalidOperationException("Virtual time is not attached to an ActorTestRuntime.")).SerializeToBytes(arguments);
+        }
+    }
+
+    private string? ToJsonText(byte[] arguments)
+    {
+        lock (syncRoot)
+        {
+            return serializer?.BytesToJson(arguments) ?? global::System.Text.Encoding.UTF8.GetString(arguments);
+        }
+    }
+
+    private static byte[] ToJsonBytes(string? argumentsJson) =>
+        string.IsNullOrEmpty(argumentsJson) ? [] : global::System.Text.Encoding.UTF8.GetBytes(argumentsJson);
 
     private static void ValidateTimerPeriod(TimeSpan? period)
     {
@@ -353,7 +528,8 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         TimeSpan? originalPeriod,
         TimeSpan? originalTtl,
         long sequence,
-        string argumentsJson,
+        byte[] arguments,
+        string? argumentsJson,
         IReadOnlyDictionary<string, string> headers)
     {
         public string ActorType { get; } = actorType;
@@ -380,7 +556,9 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
 
         public long Sequence { get; } = sequence;
 
-        public string ArgumentsJson { get; } = argumentsJson;
+        public byte[] Arguments { get; } = arguments;
+
+        public string? ArgumentsJson { get; } = argumentsJson;
 
         public IReadOnlyDictionary<string, string> Headers { get; } = headers;
 

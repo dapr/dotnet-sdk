@@ -167,6 +167,28 @@ public sealed class ActorTestRuntimeTests
         Assert.Equal(2, runtime.Transcript.Count(entry => entry.OperationName == "Timer"));
     }
 
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Virtual_time_schedulers_dispatch_typed_and_byte_payloads()
+    {
+        await using var runtime = CreateTestingRuntime(new PriorityActorScheduler(4));
+        var id = ActorId.Create("typed-time");
+        var timers = (IActorTimerScheduler)runtime.Time;
+        var reminders = (IActorReminderScheduler)runtime.Time;
+
+        await timers.ScheduleAsync("Testing", id, "typed-timer", TimeSpan.Zero, "Add", 5);
+        await timers.ScheduleAsync("Testing", id, "byte-timer", TimeSpan.Zero, "Add", System.Text.Encoding.UTF8.GetBytes("6"));
+        await reminders.ScheduleAsync("Testing", id, "Add", TimeSpan.Zero, TimeSpan.Zero, 7, overwrite: true);
+
+        var fetched = await reminders.GetAsync("Testing", id, "Add");
+        runtime.Time.Advance(TimeSpan.Zero);
+        await runtime.RunToIdle();
+
+        var read = runtime.InvokeAsync("Testing", id, "Add", "0");
+        await runtime.RunToIdle();
+        Assert.Equal(18, int.Parse(System.Text.Encoding.UTF8.GetString((await read)!)));
+        Assert.Equal("7", fetched!.ArgumentsJson);
+    }
+
 
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Reentrant_call_chain_completes_under_controlled_scheduler()

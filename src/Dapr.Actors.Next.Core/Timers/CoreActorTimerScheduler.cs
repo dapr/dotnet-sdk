@@ -27,6 +27,80 @@ public sealed class CoreActorTimerScheduler(IActorRuntime runtime, IActorWireSer
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
+        return ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            operationName,
+            serializer.JsonToBytes(argumentsJson),
+            period,
+            ttl,
+            headers);
+    }
+
+    /// <inheritdoc />
+    public ValueTask ScheduleAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        byte[] arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+        return ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            operationName,
+            arguments.ToArray(),
+            period,
+            ttl,
+            headers);
+    }
+
+    /// <inheritdoc />
+    public ValueTask ScheduleAsync<TArguments>(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        TArguments arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        return ScheduleCoreAsync(
+            actorType,
+            actorId,
+            name,
+            dueTime,
+            operationName,
+            serializer.SerializeToBytes(arguments),
+            period,
+            ttl,
+            headers);
+    }
+
+    private ValueTask ScheduleCoreAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        byte[] arguments,
+        TimeSpan? period,
+        TimeSpan? ttl,
+        IReadOnlyDictionary<string, string>? headers)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(operationName);
@@ -43,12 +117,11 @@ public sealed class CoreActorTimerScheduler(IActorRuntime runtime, IActorWireSer
         var periodValue = period.GetValueOrDefault(Timeout.InfiniteTimeSpan);
         var callbackState = new TimerCallbackState(
             runtime,
-            serializer,
             timeProvider,
             actorType,
             actorId,
             operationName,
-            argumentsJson,
+            arguments,
             headers ?? ActorHeaders.Empty,
             ttl.HasValue ? timeProvider.GetUtcNow() + ttl.Value : null);
         var timer = timeProvider.CreateTimer(
@@ -67,7 +140,7 @@ public sealed class CoreActorTimerScheduler(IActorRuntime runtime, IActorWireSer
                         callback.ActorId,
                         callback.OperationName,
                         ActorTurnKind.Timer,
-                        callback.Serializer.JsonToBytes(callback.ArgumentsJson),
+                        callback.Arguments,
                         callback.Headers,
                         new ActorRequestContext(null, null, ActorHeaders.Empty)),
                     CancellationToken.None);
@@ -104,6 +177,40 @@ public sealed class CoreActorTimerScheduler(IActorRuntime runtime, IActorWireSer
     }
 
     /// <inheritdoc />
+    public async ValueTask RescheduleAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        byte[] arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
+        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, arguments, period, ttl, headers, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask RescheduleAsync<TArguments>(
+        string actorType,
+        ActorId actorId,
+        string name,
+        TimeSpan dueTime,
+        string operationName,
+        TArguments arguments,
+        TimeSpan? period = null,
+        TimeSpan? ttl = null,
+        IReadOnlyDictionary<string, string>? headers = null,
+        CancellationToken cancellationToken = default)
+    {
+        await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
+        await ScheduleAsync(actorType, actorId, name, dueTime, operationName, arguments, period, ttl, headers, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public ValueTask CancelAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default)
     {
         if (timers.TryRemove(new TimerKey(actorType, actorId.Value, name), out var timer))
@@ -127,12 +234,11 @@ public sealed class CoreActorTimerScheduler(IActorRuntime runtime, IActorWireSer
 
     private sealed record TimerCallbackState(
         IActorRuntime Runtime,
-        IActorWireSerializer Serializer,
         TimeProvider TimeProvider,
         string ActorType,
         ActorId ActorId,
         string OperationName,
-        string ArgumentsJson,
+        byte[] Arguments,
         IReadOnlyDictionary<string, string> Headers,
         DateTimeOffset? ExpiresAt)
     {
