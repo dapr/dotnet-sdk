@@ -299,6 +299,27 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         Assert.Equal(2, current.SchemaVersion);
     }
 
+    /// <summary>
+    /// Verifies an actor can force pending state changes to durable state before the turn returns,
+    /// then make later changes that are saved at turn completion.
+    /// </summary>
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Explicit_state_save_persists_before_turn_completion()
+    {
+        using var cts = new CancellationTokenSource(Timeout);
+        var actorId = $"save-now-{Guid.NewGuid():N}";
+
+        var response = await client!.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "SaveProfileThenReadRaw", Encoding.UTF8.GetBytes("\"Grace\"")), cancellationToken: cts.Token);
+        var savedDuringTurn = JsonSerializer.Deserialize<CurrentProfile>(response.Data.Span)!;
+        var finalResponse = await client.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "ReadCurrent", ReadOnlyMemory<byte>.Empty), cancellationToken: cts.Token);
+        var final = JsonSerializer.Deserialize<CurrentProfile>(finalResponse.Data.Span)!;
+
+        Assert.Equal("Grace Hopper", savedDuringTurn.FullName);
+        Assert.Equal(2, savedDuringTurn.SchemaVersion);
+        Assert.Equal("Grace Hopper final", final.FullName);
+        Assert.Equal(3, final.SchemaVersion);
+    }
+
     private static P.InvokeActorRequest CreateInvoke(
         string actorType,
         string actorId,
@@ -711,6 +732,20 @@ public sealed class ProtocolActor(
     }
 
     /// <summary>
+    /// Saves state immediately, reads it directly from the underlying store before the turn completes,
+    /// then changes state again for the end-of-turn save.
+    /// </summary>
+    public async Task<CurrentProfile> SaveProfileThenReadRawAsync(string name, CancellationToken cancellationToken)
+    {
+        await State.SetAsync("profile", new CurrentProfile($"{name} Hopper", 2), cancellationToken);
+        await State.SaveStateAsync(cancellationToken);
+        var raw = await stateStore.ReadAsync("ProtocolActor", Id.Value, "profile", cancellationToken);
+        var envelope = serializer.DeserializeFromBytes<ActorStatePlainEnvelope<CurrentProfile>>(raw!.Value);
+        await State.SetAsync("profile", new CurrentProfile($"{name} Hopper final", 3), cancellationToken);
+        return envelope!.Value;
+    }
+
+    /// <summary>
     /// Forces deactivation through the runtime.
     /// </summary>
     public Task DeactivateAsync() => Task.CompletedTask;
@@ -742,6 +777,7 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
             "reminder" => await CompleteAsync(protocol.ReminderAsync(cancellationToken)),
             "SeedLegacy" => await CompleteAsync(protocol.SeedLegacyAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),
             "ReadCurrent" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ReadCurrentAsync(cancellationToken))),
+            "SaveProfileThenReadRaw" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.SaveProfileThenReadRawAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken))),
             "Deactivate" => await CompleteAsync(protocol.ForceDeactivateAsync(cancellationToken)),
             _ => throw new InvalidOperationException($"Unknown method '{request.MethodName}'."),
         };

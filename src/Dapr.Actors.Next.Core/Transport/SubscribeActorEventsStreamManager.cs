@@ -193,7 +193,7 @@ public sealed class SubscribeActorEventsStreamManager(
     {
         try
         {
-            // Actor callbacks are at-least-once. State is flushed inside DispatchAsync before this response
+            // Actor callbacks are at-least-once. State is saved inside DispatchAsync before this response
             // is queued, so a dropped stream after commit can re-run the turn against already durable state.
             var response = await runtime.DispatchAsync(ToRuntimeRequest(request), cancellationToken).ConfigureAwait(false);
             return new SubscribeActorEventsResponse(

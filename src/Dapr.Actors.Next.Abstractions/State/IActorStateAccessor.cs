@@ -31,12 +31,18 @@ public interface IActorStateAccessor
     ValueTask RemoveAsync(string name, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Unloads cached state entries so future state operations read them from durable state again.
+    /// Persists pending state changes immediately instead of waiting for the end-of-turn save,
+    /// then marks the saved cache entries as clean.
     /// </summary>
-    ValueTask FlushCacheAsync(CancellationToken cancellationToken = default);
+    ValueTask SaveStateAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Unloads cached state entries so future state operations read them from durable state again.
+    /// Unloads cached state entries without persisting them so future state operations read from durable state again.
     /// </summary>
-    ValueTask FlushCacheAsync(DaprFlushStateOptions options, CancellationToken cancellationToken = default);
+    ValueTask EvictCacheAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Unloads cached state entries without persisting them so future state operations read from durable state again.
+    /// </summary>
+    ValueTask EvictCacheAsync(DaprEvictStateOptions options, CancellationToken cancellationToken = default);
 }

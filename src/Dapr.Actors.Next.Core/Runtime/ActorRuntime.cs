@@ -134,7 +134,7 @@ public sealed class ActorRuntime(
         Exception? exception = null;
         try
         {
-            // Invoke, reminder, and timer callbacks are at-least-once. The unit-of-work flush below is
+            // Invoke, reminder, and timer callbacks are at-least-once. The unit-of-work save below is
             // intentionally completed before the transport response is sent, so a dropped stream after
             // commit may re-run the turn against already durable state. Reminder idempotency is keyed on
             // name plus due_time metadata, never on the callback correlation id.

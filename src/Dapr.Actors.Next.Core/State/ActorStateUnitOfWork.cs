@@ -7,7 +7,7 @@ using Dapr.Actors.Next.Core.Serialization;
 namespace Dapr.Actors.Next.Core.State;
 
 /// <summary>
-/// Activation-scoped write-behind state cache flushed at the end of each actor turn.
+/// Activation-scoped write-behind state cache persisted at the end of each actor turn.
 /// </summary>
 public sealed class ActorStateUnitOfWork(
     string actorType,
@@ -108,20 +108,24 @@ public sealed class ActorStateUnitOfWork(
     }
 
     /// <inheritdoc />
-    public ValueTask FlushCacheAsync(CancellationToken cancellationToken = default) =>
-        FlushCacheAsync(new DaprFlushStateOptions(), cancellationToken);
+    public ValueTask SaveStateAsync(CancellationToken cancellationToken = default) =>
+        PersistDirtyEntriesAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async ValueTask FlushCacheAsync(DaprFlushStateOptions options, CancellationToken cancellationToken = default)
+    public ValueTask EvictCacheAsync(CancellationToken cancellationToken = default) =>
+        EvictCacheAsync(new DaprEvictStateOptions(), cancellationToken);
+
+    /// <inheritdoc />
+    public async ValueTask EvictCacheAsync(DaprEvictStateOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
-        if (!options.FlushOnDirtyState)
+        if (!options.EvictOnDirtyState)
         {
             foreach (var (name, entry) in entries)
             {
                 if (entry.Dirty || (entry.TrackInPlaceMutations && await HasInPlaceMutationAsync(entry, cancellationToken).ConfigureAwait(false)))
                 {
-                    throw new InvalidOperationException($"Cannot flush actor state cache because state '{name}' has unpersisted changes.");
+                    throw new InvalidOperationException($"Cannot evict actor state cache because state '{name}' has unpersisted changes.");
                 }
             }
         }
@@ -130,9 +134,12 @@ public sealed class ActorStateUnitOfWork(
     }
 
     /// <summary>
-    /// Flushes dirty state entries to the store.
+    /// Persists dirty state entries to the store at the end of an actor turn.
     /// </summary>
-    public async ValueTask FlushAsync(CancellationToken cancellationToken = default)
+    public ValueTask FlushAsync(CancellationToken cancellationToken = default) =>
+        PersistDirtyEntriesAsync(cancellationToken);
+
+    private async ValueTask PersistDirtyEntriesAsync(CancellationToken cancellationToken)
     {
         List<string>? candidates = null;
         foreach (var (name, entry) in entries)

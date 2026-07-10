@@ -117,19 +117,80 @@ public sealed class CoreEdgeCaseTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
-    public async Task State_cache_flush_unloads_clean_entries_and_reloads_next_operation()
+    public async Task SaveStateAsync_writes_pending_changes_and_leaves_cache_clean()
     {
         var store = new RecordingActorStateStore();
         var serializer = new ActorWireSerializer(new JsonDaprSerializer());
-        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("flush-clean"), store, serializer);
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("save-now"), store, serializer);
+
+        await state.SetAsync("state", new CounterState { Value = 10 });
+        await state.SaveStateAsync();
+        var persisted = serializer.DeserializeFromBytes<ActorStatePlainEnvelope<CounterState>>((await store.ReadAsync("Counter", "save-now", "state"))!.Value);
+
+        Assert.Equal(10, persisted!.Value.Value);
+        Assert.Equal(1, store.WriteCount);
+
+        await state.FlushAsync();
+
+        Assert.Equal(1, store.WriteCount);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task SaveStateAsync_persists_in_place_mutations_and_tracks_later_changes()
+    {
+        var store = new RecordingActorStateStore();
+        var serializer = new ActorWireSerializer(new JsonDaprSerializer());
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("save-mutate"), store, serializer);
+
+        await state.SetAsync("state", new CounterState { Value = 10 });
+        await state.FlushAsync();
+        var loaded = await state.TryGetAsync<CounterState>("state");
+        loaded!.Value.Value = 11;
+
+        await state.SaveStateAsync();
+        await state.FlushAsync();
+
+        Assert.Equal(2, store.WriteCount);
+
+        loaded.Value.Value = 12;
+        await state.FlushAsync();
+
+        Assert.Equal(3, store.WriteCount);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task SaveStateAsync_marks_cache_clean_so_EvictCacheAsync_can_evict_without_losing_saved_state()
+    {
+        var store = new RecordingActorStateStore();
+        var serializer = new ActorWireSerializer(new JsonDaprSerializer());
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("save-then-evict"), store, serializer);
+
+        await state.SetAsync("state", new CounterState { Value = 10 });
+        await state.SaveStateAsync();
+        var readsBeforeEvict = store.ReadCount;
+
+        await state.EvictCacheAsync();
+        var reloaded = await state.TryGetAsync<CounterState>("state");
+
+        Assert.Equal(10, reloaded!.Value.Value);
+        Assert.Equal(1, store.WriteCount);
+        Assert.True(store.ReadCount > readsBeforeEvict);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task State_cache_evict_unloads_clean_entries_and_reloads_next_operation()
+    {
+        var store = new RecordingActorStateStore();
+        var serializer = new ActorWireSerializer(new JsonDaprSerializer());
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("evict-clean"), store, serializer);
 
         await state.SetAsync("state", new CounterState { Value = 10 });
         await state.FlushAsync();
         Assert.Equal(10, (await state.TryGetAsync<CounterState>("state"))!.Value.Value);
 
-        await store.WriteAsync("Counter", "flush-clean", "state", Plain(serializer, new CounterState { Value = 20 }));
+        await store.WriteAsync("Counter", "evict-clean", "state", Plain(serializer, new CounterState { Value = 20 }));
         var readsBeforeFlush = store.ReadCount;
-        await state.FlushCacheAsync();
+        await state.EvictCacheAsync();
         var reloaded = await state.TryGetAsync<CounterState>("state");
 
         Assert.Equal(20, reloaded!.Value.Value);
@@ -137,48 +198,48 @@ public sealed class CoreEdgeCaseTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
-    public async Task State_cache_flush_rejects_dirty_entries_by_default()
+    public async Task State_cache_evict_rejects_dirty_entries_by_default()
     {
         var store = new RecordingActorStateStore();
         var serializer = new ActorWireSerializer(new JsonDaprSerializer());
-        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("flush-dirty"), store, serializer);
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("evict-dirty"), store, serializer);
 
         await state.SetAsync("state", new CounterState { Value = 10 });
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await state.FlushCacheAsync());
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await state.EvictCacheAsync());
 
         Assert.Contains("state", exception.Message, StringComparison.Ordinal);
         Assert.Equal(0, store.WriteCount);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
-    public async Task State_cache_flush_rejects_in_place_mutations_by_default()
+    public async Task State_cache_evict_rejects_in_place_mutations_by_default()
     {
         var store = new RecordingActorStateStore();
         var serializer = new ActorWireSerializer(new JsonDaprSerializer());
-        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("flush-in-place"), store, serializer);
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("evict-in-place"), store, serializer);
 
         await state.SetAsync("state", new CounterState { Value = 10 });
         await state.FlushAsync();
         var loaded = await state.TryGetAsync<CounterState>("state");
         loaded!.Value.Value = 11;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await state.FlushCacheAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await state.EvictCacheAsync());
     }
 
     [MinimumDaprRuntimeFact("1.18")]
-    public async Task State_cache_flush_can_discard_dirty_entries_without_persisting()
+    public async Task State_cache_evict_can_discard_dirty_entries_without_persisting()
     {
         var store = new RecordingActorStateStore();
         var serializer = new ActorWireSerializer(new JsonDaprSerializer());
-        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("flush-discard"), store, serializer);
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("evict-discard"), store, serializer);
 
         await state.SetAsync("state", new CounterState { Value = 10 });
         await state.FlushAsync();
         var writesBeforeDiscard = store.WriteCount;
         await state.SetAsync("state", new CounterState { Value = 99 });
 
-        await state.FlushCacheAsync(new DaprFlushStateOptions { FlushOnDirtyState = true });
+        await state.EvictCacheAsync(new DaprEvictStateOptions { EvictOnDirtyState = true });
         await state.FlushAsync();
         var reloaded = await state.TryGetAsync<CounterState>("state");
 

@@ -180,7 +180,7 @@ public sealed class CoreRuntimeTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
-    public async Task State_cache_flushes_plain_state_and_reloads_on_activation()
+    public async Task State_cache_saves_plain_state_and_reloads_on_activation()
     {
         await using var provider = CreateProvider(null, out _);
         var runtime = provider.GetRequiredService<IActorRuntime>();
