@@ -4,6 +4,7 @@
         <PackageId>Dapr.Actors.Next.StateMachine</PackageId>
         <Title>Dapr Actors Next State Machine</Title>
         <Description>Compiled state-machine actor authoring model for the Dapr Actors Next SDK.</Description>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>

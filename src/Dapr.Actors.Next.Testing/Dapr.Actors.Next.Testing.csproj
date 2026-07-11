@@ -4,6 +4,7 @@
         <PackageId>Dapr.Actors.Next.Testing</PackageId>
         <Title>Dapr Actors Next Testing</Title>
         <Description>Deterministic in-memory testing runtime for the Dapr Actors Next SDK.</Description>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>

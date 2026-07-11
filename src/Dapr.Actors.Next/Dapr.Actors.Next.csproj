@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <Description>Meta package for Dapr Actors Next runtime, satellites, source generators, analyzers, and transitive build assets.</Description>
+        <Description>Provides the functionality necessary to develop Dapr Actors using .NET.</Description>
     </PropertyGroup>
 
     <ItemGroup>
