@@ -20,6 +20,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\Dapr.Actors.Next\Dapr.Actors.Next.csproj" />
+        <ProjectReference Include="..\..\src\Dapr.Actors.Next.Abstractions\Dapr.Actors.Next.Abstractions.csproj" />
         <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
 
     </ItemGroup>

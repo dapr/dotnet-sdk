@@ -5,6 +5,7 @@
         <Title>Dapr Actors Next Abstractions</Title>
         <Description>Public contract surface for the Dapr Actors Next SDK.</Description>
         <DaprActorsNextEnableTrimAotAnalysis>true</DaprActorsNextEnableTrimAotAnalysis>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>

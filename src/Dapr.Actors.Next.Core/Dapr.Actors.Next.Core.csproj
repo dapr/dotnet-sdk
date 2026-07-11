@@ -5,6 +5,7 @@
         <Title>Dapr Actors Next Core</Title>
         <Description>Runtime implementation for the Dapr Actors Next SDK.</Description>
         <DaprActorsNextEnableTrimAotAnalysis>true</DaprActorsNextEnableTrimAotAnalysis>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
