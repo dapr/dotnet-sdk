@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Abstractions.State.Versioning;
 
@@ -38,7 +39,12 @@ public sealed class ActorStateMigrationRegistry : IActorStateMigrator
             {
                 if (!nodesByType.TryAdd(node.ClrType, node))
                 {
-                    throw new InvalidOperationException($"Actor state type '{node.ClrType.FullName}' is registered in more than one migration family.");
+                    throw new ActorStateMigrationException(
+                        $"Actor state type '{node.ClrType.FullName}' is registered in more than one migration family.",
+                        family.Metadata.CanonicalName,
+                        node.Index,
+                        node.ClrType,
+                        node.ShapeHash);
                 }
 
                 familiesByType.Add(node.ClrType, registration);
@@ -65,14 +71,21 @@ public sealed class ActorStateMigrationRegistry : IActorStateMigrator
     {
         if (!familiesByType.TryGetValue(typeof(TTarget), out var family))
         {
-            throw new InvalidOperationException($"Actor state type '{typeof(TTarget).FullName}' is not registered for migration.");
+            throw new ActorStateMigrationException(
+                $"Actor state type '{typeof(TTarget).FullName}' is not registered for migration.",
+                familyName: null,
+                targetType: typeof(TTarget));
         }
 
         var sourceNode = family.ResolveNode(chainIndex);
         if (!string.Equals(sourceNode.ShapeHash, shapeHash, StringComparison.Ordinal))
         {
-            throw new InvalidOperationException(
-                $"Actor state shape drift detected for '{sourceNode.ClrType.FullName}' at chain index {chainIndex}.");
+            throw new ActorStateMigrationException(
+                $"Actor state shape drift detected for '{sourceNode.ClrType.FullName}' at chain index {chainIndex}.",
+                family.Metadata.CanonicalName,
+                chainIndex,
+                sourceNode.ClrType,
+                shapeHash);
         }
 
         var current = family.Deserialize(chainIndex, payload, serializer);
@@ -88,7 +101,12 @@ public sealed class ActorStateMigrationRegistry : IActorStateMigrator
 
         return current is TTarget typed
             ? typed
-            : throw new InvalidOperationException($"Actor state migration did not produce '{typeof(TTarget).FullName}'.");
+            : throw new ActorStateMigrationException(
+                $"Actor state migration did not produce '{typeof(TTarget).FullName}'.",
+                family.Metadata.CanonicalName,
+                chainIndex,
+                typeof(TTarget),
+                shapeHash);
     }
 
     /// <inheritdoc />
@@ -104,7 +122,10 @@ public sealed class ActorStateMigrationRegistry : IActorStateMigrator
         }
 
         var value = serializer.DeserializeFromBytes<TTarget>(payload)
-            ?? throw new InvalidOperationException($"State could not be deserialized as '{typeof(TTarget).FullName}'.");
+            ?? throw new ActorStateMigrationException(
+                $"State could not be deserialized as '{typeof(TTarget).FullName}'.",
+                familyName: null,
+                targetType: typeof(TTarget));
         return ValueTask.FromResult(value);
     }
 
@@ -164,7 +185,12 @@ public sealed class ActorStateMigrationRegistry : IActorStateMigrator
             {
                 if (!deserializers.ContainsKey(node.Index))
                 {
-                    throw new InvalidOperationException($"Actor state migration node {node.Index} in '{Metadata.CanonicalName}' has no deserializer.");
+                    throw new ActorStateMigrationException(
+                        $"Actor state migration node {node.Index} in '{Metadata.CanonicalName}' has no deserializer.",
+                        Metadata.CanonicalName,
+                        node.Index,
+                        node.ClrType,
+                        node.ShapeHash);
                 }
             }
 
@@ -177,21 +203,34 @@ public sealed class ActorStateMigrationRegistry : IActorStateMigrator
         public ActorStateMigrationNode ResolveNode(int chainIndex) =>
             nodes.TryGetValue(chainIndex, out var node)
                 ? node
-                : throw new InvalidOperationException($"Unknown actor state migration chain index {chainIndex} in '{Metadata.CanonicalName}'.");
+                : throw new ActorStateMigrationException(
+                    $"Unknown actor state migration chain index {chainIndex} in '{Metadata.CanonicalName}'.",
+                    Metadata.CanonicalName,
+                    chainIndex);
 
         public object Deserialize(int chainIndex, ReadOnlyMemory<byte> payload, IActorStateMigrationSerializer serializer) =>
             deserializers[chainIndex](payload, serializer)
-            ?? throw new InvalidOperationException($"Actor state at chain index {chainIndex} in '{Metadata.CanonicalName}' could not be deserialized.");
+            ?? throw new ActorStateMigrationException(
+                $"Actor state at chain index {chainIndex} in '{Metadata.CanonicalName}' could not be deserialized.",
+                Metadata.CanonicalName,
+                chainIndex);
 
         public IReadOnlyList<ActorStateUpcastStep> ResolvePath(int chainIndex, Type targetType)
         {
             var targetNode = Metadata.Nodes.SingleOrDefault(node => node.ClrType == targetType)
-                ?? throw new InvalidOperationException($"Actor state type '{targetType.FullName}' is not in migration family '{Metadata.CanonicalName}'.");
+                ?? throw new ActorStateMigrationException(
+                    $"Actor state type '{targetType.FullName}' is not in migration family '{Metadata.CanonicalName}'.",
+                    Metadata.CanonicalName,
+                    targetType: targetType);
 
             return paths.TryGetValue((chainIndex, targetType), out var path)
                 ? path
-                : throw new InvalidOperationException(
-                    $"No actor state migration path exists from chain index {chainIndex} to '{targetType.FullName}' in '{Metadata.CanonicalName}'.");
+                : throw new ActorStateMigrationException(
+                    $"No actor state migration path exists from chain index {chainIndex} to '{targetType.FullName}' in '{Metadata.CanonicalName}'.",
+                    Metadata.CanonicalName,
+                    chainIndex,
+                    targetType,
+                    targetNode.ShapeHash);
         }
 
         private void ValidateEdges()
@@ -200,12 +239,18 @@ public sealed class ActorStateMigrationRegistry : IActorStateMigrator
             {
                 if (!nodes.ContainsKey(edge.FromIndex) || !nodes.ContainsKey(edge.ToIndex))
                 {
-                    throw new InvalidOperationException($"Actor state migration edge {edge.FromIndex}->{edge.ToIndex} in '{Metadata.CanonicalName}' references a missing node.");
+                    throw new ActorStateMigrationException(
+                        $"Actor state migration edge {edge.FromIndex}->{edge.ToIndex} in '{Metadata.CanonicalName}' references a missing node.",
+                        Metadata.CanonicalName,
+                        edge.FromIndex);
                 }
 
                 if (!hops.ContainsKey((edge.FromIndex, edge.ToIndex)))
                 {
-                    throw new InvalidOperationException($"Actor state migration edge {edge.FromIndex}->{edge.ToIndex} in '{Metadata.CanonicalName}' has no hop delegate.");
+                    throw new ActorStateMigrationException(
+                        $"Actor state migration edge {edge.FromIndex}->{edge.ToIndex} in '{Metadata.CanonicalName}' has no hop delegate.",
+                        Metadata.CanonicalName,
+                        edge.FromIndex);
                 }
             }
         }
@@ -238,7 +283,10 @@ public sealed class ActorStateMigrationRegistry : IActorStateMigrator
             {
                 1 => results[0],
                 0 => null,
-                _ => throw new InvalidOperationException($"More than one actor state migration path exists from {sourceIndex} to {targetIndex} in '{Metadata.CanonicalName}'."),
+                _ => throw new ActorStateMigrationException(
+                    $"More than one actor state migration path exists from {sourceIndex} to {targetIndex} in '{Metadata.CanonicalName}'.",
+                    Metadata.CanonicalName,
+                    sourceIndex),
             };
         }
 

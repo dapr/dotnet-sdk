@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Reflection;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 
 namespace Dapr.Actors.Next.StateMachine;
 
@@ -28,7 +29,9 @@ public static class StateMachineAnalyzer
         ArgumentNullException.ThrowIfNull(actorType);
 
         var baseType = FindStateMachineBase(actorType)
-            ?? throw new InvalidOperationException($"Actor type '{actorType.FullName}' does not derive from StateMachineActor<TState,TData>.");
+            ?? throw new StateMachineDefinitionException(
+                $"Actor type '{actorType.FullName}' does not derive from StateMachineActor<TState,TData>.",
+                actorType);
         var stateType = baseType.GetGenericArguments()[0];
         var dataType = baseType.GetGenericArguments()[1];
         var method = typeof(StateMachineAnalyzer)

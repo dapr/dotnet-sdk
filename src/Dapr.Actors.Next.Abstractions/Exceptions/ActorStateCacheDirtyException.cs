@@ -14,21 +14,21 @@
 namespace Dapr.Actors.Next.Abstractions.Exceptions;
 
 /// <summary>
-/// Thrown when actor state handling fails.
+/// Thrown when actor state cache eviction is rejected because cached state has unpersisted changes.
 /// </summary>
-public class ActorStateException : DaprActorException
+public sealed class ActorStateCacheDirtyException : ActorStateException
 {
     /// <summary>
     /// Initializes a new exception.
     /// </summary>
-    public ActorStateException()
+    public ActorStateCacheDirtyException()
     {
     }
 
     /// <summary>
     /// Initializes a new exception.
     /// </summary>
-    public ActorStateException(string? message)
+    public ActorStateCacheDirtyException(string? message)
         : base(message)
     {
     }
@@ -36,8 +36,25 @@ public class ActorStateException : DaprActorException
     /// <summary>
     /// Initializes a new exception.
     /// </summary>
-    public ActorStateException(string? message, Exception? innerException)
+    public ActorStateCacheDirtyException(string? message, Exception? innerException)
         : base(message, innerException)
     {
     }
+
+    /// <summary>
+    /// Initializes a new exception for a dirty cached state value.
+    /// </summary>
+    /// <param name="stateName">The cached state name with unpersisted changes.</param>
+    /// <param name="message">The exception message.</param>
+    /// <param name="innerException">The exception that caused this exception, if any.</param>
+    public ActorStateCacheDirtyException(string stateName, string? message, Exception? innerException = null)
+        : base(message, innerException)
+    {
+        StateName = stateName;
+    }
+
+    /// <summary>
+    /// Gets the cached state name with unpersisted changes, when known.
+    /// </summary>
+    public string? StateName { get; }
 }
