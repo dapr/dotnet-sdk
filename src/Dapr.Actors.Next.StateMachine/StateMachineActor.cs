@@ -184,7 +184,9 @@ public abstract class StateMachineActor<TState, TData> : Actor
         var envelope = await State.TryGetAsync<StateMachineEnvelope<TState, TData>>(StateMachineConstants.EnvelopeStateName, cancellationToken).ConfigureAwait(false);
         if (envelope is null)
         {
-            currentState = table!.InitialState ?? throw new InvalidOperationException("State machine initial state was not configured.");
+            currentState = table!.InitialState ?? throw new StateMachineDefinitionException(
+                "State machine initial state was not configured.",
+                GetType());
             data = initialData;
             deferredEvents = [];
         }
@@ -298,7 +300,10 @@ public abstract class StateMachineActor<TState, TData> : Actor
 
             if (branch.GuardName is not null)
             {
-                throw new InvalidOperationException($"Named guard '{branch.GuardName}' cannot execute without a capability registry.");
+                throw new StateMachineDefinitionException(
+                    $"Named guard '{branch.GuardName}' cannot execute without a capability registry.",
+                    GetType(),
+                    currentState.ToString());
             }
 
             return branch;
@@ -446,13 +451,15 @@ public abstract class StateMachineActor<TState, TData> : Actor
         method.MakeGenericMethod(value?.GetType() ?? typeof(object)).Invoke(context, [value]);
     }
 
-    private static async ValueTask InvokeEffectAsync(object effect, object context, CancellationToken cancellationToken)
+    private async ValueTask InvokeEffectAsync(object effect, object context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         switch (effect)
         {
             case string name:
-                throw new InvalidOperationException($"Named effect '{name}' cannot execute without a capability registry.");
+                throw new StateMachineDefinitionException(
+                    $"Named effect '{name}' cannot execute without a capability registry.",
+                    GetType());
             case Action<IEffectContext<TState, TData, object>> action:
                 action((IEffectContext<TState, TData, object>)context);
                 break;

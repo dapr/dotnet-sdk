@@ -35,7 +35,40 @@ public sealed class ExceptionTests
         AssertDerived(new ActorActivationException(), new ActorActivationException("message"), new ActorActivationException("message", inner), inner);
         AssertDerived(new ActorInvocationException(), new ActorInvocationException("message"), new ActorInvocationException("message", inner), inner);
         AssertDerived(new ActorStateException(), new ActorStateException("message"), new ActorStateException("message", inner), inner);
+        AssertDerived(new ActorReminderAlreadyExistsException(), new ActorReminderAlreadyExistsException("message"), new ActorReminderAlreadyExistsException("message", inner), inner);
+        AssertDerived(new ActorStateMigrationException(), new ActorStateMigrationException("message"), new ActorStateMigrationException("message", inner), inner);
+        AssertDerived(new ActorStateEnvelopeException(), new ActorStateEnvelopeException("message"), new ActorStateEnvelopeException("message", inner), inner);
+        AssertDerived(new ActorStateCacheDirtyException(), new ActorStateCacheDirtyException("message"), new ActorStateCacheDirtyException("message", inner), inner);
+        AssertDerived(new StateMachineDefinitionException(), new StateMachineDefinitionException("message"), new StateMachineDefinitionException("message", inner), inner);
         AssertDerived(new InvalidActorEventException(), new InvalidActorEventException("message"), new InvalidActorEventException("message", inner), inner);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void DomainException_ConstructorsCaptureContext()
+    {
+        var reminder = new ActorReminderAlreadyExistsException("Counter", "one", "wake");
+        var migration = new ActorStateMigrationException("migration", "Family", 2, typeof(TestEvent), "shape");
+        var envelope = new ActorStateEnvelopeException("envelope", "state", 1, "Plain", "stored", 2, "current", 3);
+        var dirty = new ActorStateCacheDirtyException("state", "dirty");
+        var definition = new StateMachineDefinitionException("definition", typeof(TestEvent), "Open");
+
+        Assert.Equal("Counter", reminder.ActorType);
+        Assert.Equal("one", reminder.ActorId);
+        Assert.Equal("wake", reminder.ReminderName);
+        Assert.Equal("Family", migration.FamilyName);
+        Assert.Equal(2, migration.ChainIndex);
+        Assert.Equal(typeof(TestEvent), migration.TargetType);
+        Assert.Equal("shape", migration.ShapeHash);
+        Assert.Equal("state", envelope.StateName);
+        Assert.Equal(1, envelope.FormatVersion);
+        Assert.Equal("Plain", envelope.FormKind);
+        Assert.Equal("stored", envelope.StoredSerializerId);
+        Assert.Equal(2, envelope.StoredSerializerVersion);
+        Assert.Equal("current", envelope.CurrentSerializerId);
+        Assert.Equal(3, envelope.CurrentSerializerVersion);
+        Assert.Equal("state", dirty.StateName);
+        Assert.Equal(typeof(TestEvent), definition.ActorType);
+        Assert.Equal("Open", definition.StateName);
     }
 
     [MinimumDaprRuntimeFact("1.18")]

@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.Scheduling;
 using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.Core.Serialization;
@@ -352,7 +353,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
 
             if (existing.Length > 0 && overwrite == false)
             {
-                throw new InvalidOperationException($"Reminder '{name}' is already scheduled for actor '{actorType}/{actorId.Value}'.");
+                throw new ActorReminderAlreadyExistsException(actorType, actorId.Value, name);
             }
 
             foreach (var callback in existing)
@@ -480,7 +481,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
 
             if (existing.Length > 0 && overwrite == false)
             {
-                throw new InvalidOperationException($"Reminder '{name}' is already scheduled for actor '{actorType}/{actorId.Value}'.");
+                throw new ActorReminderAlreadyExistsException(actorType, actorId.Value, name);
             }
 
             foreach (var callback in existing)

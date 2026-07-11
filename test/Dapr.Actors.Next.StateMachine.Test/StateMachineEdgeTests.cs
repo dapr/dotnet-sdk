@@ -44,8 +44,8 @@ public sealed class StateMachineEdgeTests
         await using var runtime = CreateRuntime();
         var id = ActorId.Create("named");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => Invoke<string>(runtime, id, "UseNamedEffect"));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => Invoke<string>(runtime, id, "UseNamedGuard"));
+        await Assert.ThrowsAsync<StateMachineDefinitionException>(() => Invoke<string>(runtime, id, "UseNamedEffect"));
+        await Assert.ThrowsAsync<StateMachineDefinitionException>(() => Invoke<string>(runtime, id, "UseNamedGuard"));
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -112,7 +112,7 @@ public sealed class StateMachineEdgeTests
     {
         await using var runtime = CreateRuntime();
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => Invoke<string>(runtime, ActorId.Create("missing"), "Begin", actorType: "MissingInitial"));
+        var ex = await Assert.ThrowsAsync<StateMachineDefinitionException>(() => Invoke<string>(runtime, ActorId.Create("missing"), "Begin", actorType: "MissingInitial"));
         Assert.Contains("initial state", ex.Message);
     }
 
@@ -127,7 +127,7 @@ public sealed class StateMachineEdgeTests
         Assert.Contains(StateMachineAnalyzer.Analyze(typeof(MissingInitialActor)).StructuralDefects, defect => defect.Contains("Initial state", StringComparison.Ordinal));
         Assert.Contains(StateMachineAnalyzer.Analyze(typeof(CycleActor)).StructuralDefects, defect => defect.Contains("cycle", StringComparison.Ordinal));
         Assert.Throws<ArgumentOutOfRangeException>(() => new StateMachineBuilder<EdgeState, EdgeData>().In(EdgeState.A).After(TimeSpan.FromTicks(-1)));
-        Assert.Throws<InvalidOperationException>(() => StateMachineAnalyzer.Analyze(typeof(object)));
+        Assert.Throws<StateMachineDefinitionException>(() => StateMachineAnalyzer.Analyze(typeof(object)));
     }
 
     [MinimumDaprRuntimeFact("1.18")]
