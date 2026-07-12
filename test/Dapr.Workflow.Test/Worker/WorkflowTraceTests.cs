@@ -58,7 +58,8 @@ public class WorkflowTraceTests
         ActivitySource.AddActivityListener(listener);
 
         const string expectedTraceId = "0af7651916cd43dd8448eb211c80319c";
-        const string traceParent = $"00-{expectedTraceId}-b7ad6b7169203331-01";
+        const string expectedParentSpanId = "b7ad6b7169203331";
+        const string traceParent = $"00-{expectedTraceId}-{expectedParentSpanId}-01";
         var events = new[]
         {
             new HistoryEvent
@@ -76,6 +77,7 @@ public class WorkflowTraceTests
 
         Assert.NotNull(Activity.Current);
         Assert.Equal(expectedTraceId, Activity.Current.TraceId.ToHexString());
+        Assert.Equal(expectedParentSpanId, Activity.Current.ParentSpanId.ToHexString());
         Assert.Equal(string.Empty, Activity.Current.Source.Name);
         Assert.Equal(0, startedCount);
     }
