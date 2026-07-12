@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+        <OutputType>Library</OutputType>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <CompilerVisibleProperty Include="DaprActorsScanReferences" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Dapr.Actors.Next.Core\Dapr.Actors.Next.Core.csproj" />
+        <ProjectReference Include="..\..\src\Dapr.Actors.Next.SourceGenerators\Dapr.Actors.Next.SourceGenerators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+</Project>
