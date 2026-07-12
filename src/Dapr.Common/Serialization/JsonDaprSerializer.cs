@@ -13,6 +13,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Dapr.Common.Serialization;
 
@@ -44,12 +45,16 @@ public class JsonDaprSerializer : IDaprSerializer
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="options"/> is null.</exception>
     public JsonDaprSerializer(JsonSerializerOptions options)
     {
-        _options = options ?? throw new ArgumentNullException(nameof(options));
+        ArgumentNullException.ThrowIfNull(options);
+
+        _options = options.TypeInfoResolver is null && JsonSerializer.IsReflectionEnabledByDefault
+            ? new JsonSerializerOptions(options) { TypeInfoResolver = new DefaultJsonTypeInfoResolver() }
+            : options;
     }
 
     /// <inheritdoc />
     public string Serialize<T>(T value) =>
-        value is null ? string.Empty : JsonSerializer.Serialize(value, _options);
+        value is null ? string.Empty : JsonSerializer.Serialize(value, GetTypeInfo<T>());
 
     /// <inheritdoc />
     [RequiresUnreferencedCode("JSON serialization with a runtime Type may require types that cannot be statically analyzed.")]
@@ -65,7 +70,33 @@ public class JsonDaprSerializer : IDaprSerializer
     }
 
     /// <inheritdoc />
-    public T? Deserialize<T>(string? data) => string.IsNullOrEmpty(data) ? default : JsonSerializer.Deserialize<T>(data, _options);
+    public T? Deserialize<T>(string? data) => string.IsNullOrEmpty(data) ? default : JsonSerializer.Deserialize(data, GetTypeInfo<T>());
+
+    /// <summary>
+    /// Serializes a value of a known type directly to its UTF-8 JSON byte representation, avoiding an
+    /// intermediate string allocation.
+    /// </summary>
+    /// <typeparam name="T">The compile-time type of the value being serialized.</typeparam>
+    /// <param name="value">The value to serialize. Can be null.</param>
+    /// <returns>
+    /// The UTF-8 JSON bytes for the value. Returns an empty array if <paramref name="value"/> is null,
+    /// matching the empty-string contract of <see cref="Serialize{T}"/>.
+    /// </returns>
+    public byte[] SerializeToUtf8Bytes<T>(T value) =>
+        value is null ? Array.Empty<byte>() : JsonSerializer.SerializeToUtf8Bytes(value, GetTypeInfo<T>());
+
+    /// <summary>
+    /// Deserializes UTF-8 JSON bytes to an object of the specified type, avoiding an intermediate string
+    /// allocation.
+    /// </summary>
+    /// <typeparam name="T">The target type to deserialize to.</typeparam>
+    /// <param name="utf8Json">The UTF-8 JSON bytes to deserialize. Can be empty.</param>
+    /// <returns>
+    /// The deserialized object of type <typeparamref name="T"/>, or <c>default(T)</c> if
+    /// <paramref name="utf8Json"/> is empty.
+    /// </returns>
+    public T? DeserializeFromUtf8Bytes<T>(ReadOnlySpan<byte> utf8Json) =>
+        utf8Json.IsEmpty ? default : JsonSerializer.Deserialize(utf8Json, GetTypeInfo<T>());
 
     /// <inheritdoc />
     [RequiresUnreferencedCode("JSON deserialization with a runtime Type may require types that cannot be statically analyzed.")]
@@ -75,5 +106,20 @@ public class JsonDaprSerializer : IDaprSerializer
         ArgumentNullException.ThrowIfNull(returnType);
 
         return string.IsNullOrEmpty(data) ? null : JsonSerializer.Deserialize(data, returnType, _options);
+    }
+
+    private JsonTypeInfo<T> GetTypeInfo<T>()
+    {
+        if (_options.TypeInfoResolver is not null)
+        {
+            return (JsonTypeInfo<T>)_options.GetTypeInfo(typeof(T));
+        }
+
+        if (JsonSerializer.IsReflectionEnabledByDefault)
+        {
+            return (JsonTypeInfo<T>)_options.GetTypeInfo(typeof(T));
+        }
+
+        throw new NotSupportedException($"JsonTypeInfo metadata for '{typeof(T)}' was not provided.");
     }
 }

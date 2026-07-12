@@ -1,0 +1,86 @@
+@host = http://localhost:5000
+@cartId = demo
+
+### Seed V1 cart state
+POST {{host}}/carts/{{cartId}}/legacy/v1
+Content-Type: application/json
+
+{
+  "skus": [
+    "sku-1",
+    "sku-1",
+    "sku-2"
+  ]
+}
+
+### Read V1 as current V3
+GET {{host}}/carts/{{cartId}}
+
+### Clear state
+DELETE {{host}}/carts/{{cartId}}
+
+### Seed V2 cart state
+POST {{host}}/carts/{{cartId}}/legacy/v2
+Content-Type: application/json
+
+{
+  "lines": [
+    {
+      "sku": "sku-3",
+      "quantity": 2
+    },
+    {
+      "sku": "sku-4",
+      "quantity": 5
+    }
+  ]
+}
+
+### Read V2 as current V3
+GET {{host}}/carts/{{cartId}}
+
+### Seed additive-only family
+POST {{host}}/carts/{{cartId}}/autonomous/legacy
+Content-Type: application/json
+
+{
+  "name": "Ada"
+}
+
+### Read additive-only family as V3
+GET {{host}}/carts/{{cartId}}/autonomous
+
+### Seed non-additive renamed family
+POST {{host}}/carts/{{cartId}}/renamed/legacy
+Content-Type: application/json
+
+{
+  "firstName": "Ada",
+  "lastName": "Lovelace"
+}
+
+### Read non-additive family as V2
+GET {{host}}/carts/{{cartId}}/renamed
+
+### Seed graduated state
+POST {{host}}/carts/{{cartId}}/graduated
+Content-Type: application/json
+
+{
+  "lines": [
+    {
+      "sku": "sku-5",
+      "quantity": 3
+    }
+  ],
+  "totalQuantity": 3
+}
+
+### Graduate state to plain storage
+POST {{host}}/carts/{{cartId}}/graduated/offramp
+
+### Read graduated plain state
+GET {{host}}/carts/{{cartId}}/graduated
+
+### Read graduated value through the next additive shape
+GET {{host}}/carts/{{cartId}}/graduated/reimported

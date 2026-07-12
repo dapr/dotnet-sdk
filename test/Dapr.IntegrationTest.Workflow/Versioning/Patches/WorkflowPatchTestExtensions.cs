@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Dapr.Workflow;
 
 namespace Dapr.IntegrationTest.Workflow.Versioning.Patches;

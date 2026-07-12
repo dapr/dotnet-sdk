@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    
+    <PropertyGroup>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dapr.Actors.Next.Abstractions\Dapr.Actors.Next.Abstractions.csproj" />
+        <ProjectReference Include="..\Dapr.Actors.Next.Core\Dapr.Actors.Next.Core.csproj" />
+        <ProjectReference Include="..\Dapr.Messaging\Dapr.Messaging.csproj" />
+    </ItemGroup>
+
+</Project>

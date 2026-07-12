@@ -1,0 +1,29 @@
+@host = http://localhost:5000
+@cartId = demo
+
+### Add first item
+POST {{host}}/carts/{{cartId}}/items
+Content-Type: application/json
+
+{
+  "sku": "sku-1",
+  "quantity": 2
+}
+
+### Add second item
+POST {{host}}/carts/{{cartId}}/items
+Content-Type: application/json
+
+{
+  "sku": "sku-2",
+  "quantity": 3
+}
+
+### Get summary
+GET {{host}}/carts/{{cartId}}/summary
+
+### Abandon cart
+POST {{host}}/carts/{{cartId}}/abandon
+
+### Get summary after abandon
+GET {{host}}/carts/{{cartId}}/summary
