@@ -50,6 +50,27 @@ public sealed class DaprRuntimeOptionsTests : IDisposable
         }
     }
 
+    [Fact]
+    public void ShouldSetEnvironmentVariable()
+    {
+        var options = new DaprRuntimeOptions()
+            .WithEnvironmentVariable("REDIS_HOST", "redis:6379")
+            .WithEnvironmentVariable("REDIS_PASSWORD", "password");
+
+        Assert.Equal("redis:6379", options.EnvironmentVariables["REDIS_HOST"]);
+        Assert.Equal("password", options.EnvironmentVariables["REDIS_PASSWORD"]);
+    }
+
+    [Fact]
+    public void ShouldOverwriteEnvironmentVariable()
+    {
+        var options = new DaprRuntimeOptions()
+            .WithEnvironmentVariable("REDIS_HOST", "redis:6379")
+            .WithEnvironmentVariable("REDIS_HOST", "redis:6380");
+
+        Assert.Equal("redis:6380", options.EnvironmentVariables["REDIS_HOST"]);
+    }
+
     public void Dispose()
     {
         // Clear this variable
