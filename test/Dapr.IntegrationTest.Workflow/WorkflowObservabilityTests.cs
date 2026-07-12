@@ -103,11 +103,13 @@ public sealed class WorkflowObservabilityTests
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         Assert.Equal(3, result.ReadOutputAs<int>());
 
-        var traceIds = await WaitForRuntimeActivityTraceIdsAsync(run.Harness, nameof(RetryObservedActivity), expectedCount: 3);
+        var runtimeSpans = await WaitForRuntimeActivitySpansAsync(run.Harness, nameof(RetryObservedActivity), expectedCount: 3);
         var activities = await WaitForSdkActivitiesAsync(run.Harness, nameof(RetryObservedActivity), expectedCount: 3);
 
         Assert.Equal(3, activities.Count);
-        Assert.All(activities, activity => Assert.Contains(activity.TraceId, traceIds));
+        Assert.All(activities, activity => Assert.Contains(
+            runtimeSpans,
+            span => IsChildOfRuntimeSpan(activity, span)));
     }
 
     [MinimumDaprRuntimeFact("1.17")]
@@ -131,11 +133,13 @@ public sealed class WorkflowObservabilityTests
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         Assert.Equal(12, result.ReadOutputAs<int>());
 
-        var traceIds = await WaitForRuntimeActivityTraceIdsAsync(run.Harness, nameof(FanOutObservedActivity), expectedCount: 3);
+        var runtimeSpans = await WaitForRuntimeActivitySpansAsync(run.Harness, nameof(FanOutObservedActivity), expectedCount: 3);
         var activities = await WaitForSdkActivitiesAsync(run.Harness, nameof(FanOutObservedActivity), expectedCount: 3);
 
         Assert.Equal(3, activities.Count);
-        Assert.All(activities, activity => Assert.Contains(activity.TraceId, traceIds));
+        Assert.All(activities, activity => Assert.Contains(
+            runtimeSpans,
+            span => IsChildOfRuntimeSpan(activity, span)));
     }
 
     [MinimumDaprRuntimeFact("1.17")]
@@ -511,13 +515,17 @@ public sealed class WorkflowObservabilityTests
         Assert.Equal(WorkflowRuntimeStatus.Completed, rerunResult.RuntimeStatus);
         Assert.Equal(8, rerunResult.ReadOutputAs<int>());
 
-        var firstTraceIds = await WaitForRuntimeActivityTraceIdsAsync(run.Harness, nameof(RerunFirstObservedActivity), expectedCount: 2);
+        var firstRuntimeSpans = await WaitForRuntimeActivitySpansAsync(run.Harness, nameof(RerunFirstObservedActivity), expectedCount: 2);
         var firstActivities = await WaitForSdkActivitiesAsync(run.Harness, nameof(RerunFirstObservedActivity), expectedCount: 2);
-        Assert.All(firstActivities, activity => Assert.Contains(activity.TraceId, firstTraceIds));
+        Assert.All(firstActivities, activity => Assert.Contains(
+            firstRuntimeSpans,
+            span => IsChildOfRuntimeSpan(activity, span)));
 
-        var secondTraceIds = await WaitForRuntimeActivityTraceIdsAsync(run.Harness, nameof(RerunSecondObservedActivity), expectedCount: 2);
+        var secondRuntimeSpans = await WaitForRuntimeActivitySpansAsync(run.Harness, nameof(RerunSecondObservedActivity), expectedCount: 2);
         var secondActivities = await WaitForSdkActivitiesAsync(run.Harness, nameof(RerunSecondObservedActivity), expectedCount: 2);
-        Assert.All(secondActivities, activity => Assert.Contains(activity.TraceId, secondTraceIds));
+        Assert.All(secondActivities, activity => Assert.Contains(
+            secondRuntimeSpans,
+            span => IsChildOfRuntimeSpan(activity, span)));
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -601,11 +609,13 @@ public sealed class WorkflowObservabilityTests
         Assert.NotNull(output);
         Assert.Equal([10, 20, 30], output);
 
-        var traceIds = await WaitForRuntimeActivityTraceIdsAsync(run.Harness, nameof(ParallelChildObservedActivity), expectedCount: 3);
+        var runtimeSpans = await WaitForRuntimeActivitySpansAsync(run.Harness, nameof(ParallelChildObservedActivity), expectedCount: 3);
         var activities = await WaitForSdkActivitiesAsync(run.Harness, nameof(ParallelChildObservedActivity), expectedCount: 3);
 
         Assert.Equal(3, activities.Count);
-        Assert.All(activities, activity => Assert.Contains(activity.TraceId, traceIds));
+        Assert.All(activities, activity => Assert.Contains(
+            runtimeSpans,
+            span => IsChildOfRuntimeSpan(activity, span)));
     }
 
     [MinimumDaprRuntimeFact("1.17")]
@@ -719,15 +729,21 @@ public sealed class WorkflowObservabilityTests
 
     private static async Task AssertRuntimeAndSdkActivityTraceAsync(WorkflowHarness harness, string activityName)
     {
-        var traceId = await GetRuntimeActivityTraceIdAsync(harness, activityName);
-        var activities = await WaitForSdkActivitiesAsync(harness, activityName, traceId, expectedCount: 1);
+        var runtimeSpan = await GetRuntimeActivitySpanAsync(harness, activityName);
+        var activities = await WaitForSdkActivitiesAsync(harness, activityName, runtimeSpan.TraceId, expectedCount: 1);
 
         var activity = Assert.Single(activities);
         Assert.False(string.IsNullOrWhiteSpace(activity.ParentId));
         Assert.False(string.IsNullOrWhiteSpace(activity.SpanId));
+        Assert.True(
+            IsChildOfRuntimeSpan(activity, runtimeSpan),
+            $"Expected SDK activity '{activity.DisplayName}' span '{activity.SpanId}' to be a child of runtime span '{runtimeSpan.Id}' on trace '{runtimeSpan.TraceId}'.");
     }
 
-    private static async Task<string> GetRuntimeActivityTraceIdAsync(WorkflowHarness harness, string activityName)
+    private static async Task<string> GetRuntimeActivityTraceIdAsync(WorkflowHarness harness, string activityName) =>
+        (await GetRuntimeActivitySpanAsync(harness, activityName)).TraceId;
+
+    private static async Task<ZipkinSpan> GetRuntimeActivitySpanAsync(WorkflowHarness harness, string activityName)
     {
         var collector = GetCollector(harness);
         var runtimeActivitySpan = await collector.WaitForZipkinSpanAsync(
@@ -737,10 +753,10 @@ public sealed class WorkflowObservabilityTests
 
         Assert.False(string.IsNullOrWhiteSpace(runtimeActivitySpan.Id));
         Assert.False(string.IsNullOrWhiteSpace(runtimeActivitySpan.TraceId));
-        return runtimeActivitySpan.TraceId;
+        return runtimeActivitySpan;
     }
 
-    private static async Task<IReadOnlySet<string>> WaitForRuntimeActivityTraceIdsAsync(
+    private static async Task<IReadOnlyList<ZipkinSpan>> WaitForRuntimeActivitySpansAsync(
         WorkflowHarness harness,
         string activityName,
         int expectedCount)
@@ -751,16 +767,15 @@ public sealed class WorkflowObservabilityTests
 
         while (DateTimeOffset.UtcNow < deadline)
         {
-            var traceIds = collector.ZipkinSpans
+            var spans = collector.ZipkinSpans
                 .Where(span => string.Equals(span.Name, runtimeName, StringComparison.OrdinalIgnoreCase))
-                .Select(span => span.TraceId)
-                .Where(traceId => !string.IsNullOrWhiteSpace(traceId))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                .Where(span => !string.IsNullOrWhiteSpace(span.Id))
+                .Where(span => !string.IsNullOrWhiteSpace(span.TraceId))
+                .ToList();
 
-            if (traceIds.Count >= expectedCount)
+            if (spans.Count >= expectedCount)
             {
-                return traceIds;
+                return spans;
             }
 
             await Task.Delay(TimeSpan.FromMilliseconds(100), TestContext.Current.CancellationToken);
@@ -771,6 +786,10 @@ public sealed class WorkflowObservabilityTests
             $"but captured {collector.ZipkinSpans.Count} Zipkin span(s).");
         throw new UnreachableException();
     }
+
+    private static bool IsChildOfRuntimeSpan(CapturedActivity activity, ZipkinSpan runtimeSpan) =>
+        string.Equals(activity.TraceId, runtimeSpan.TraceId, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(activity.ParentSpanId, runtimeSpan.Id, StringComparison.OrdinalIgnoreCase);
 
     private static async Task<IReadOnlyList<CapturedActivity>> WaitForSdkActivitiesAsync(
         WorkflowHarness harness,
