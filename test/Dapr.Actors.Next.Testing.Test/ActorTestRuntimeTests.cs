@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.Options;
 using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Abstractions.State.Versioning;
@@ -154,6 +155,23 @@ public sealed class ActorTestRuntimeTests
         Assert.Single(await reminders.ListAsync("Testing"));
         await reminders.CancelAllAsync("Testing");
         Assert.Empty(await reminders.ListAsync("Testing"));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Virtual_reminder_scheduler_reports_duplicate_without_overwrite()
+    {
+        await using var runtime = CreateTestingRuntime(new PriorityActorScheduler(4));
+        var id = ActorId.Create("virtual-reminder-duplicate");
+        var reminders = (IActorReminderScheduler)runtime.Time;
+
+        await reminders.ScheduleAsync("Testing", id, "Reminder", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), string.Empty);
+
+        var exception = await Assert.ThrowsAsync<ActorReminderAlreadyExistsException>(
+            async () => await reminders.ScheduleAsync("Testing", id, "Reminder", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), string.Empty, overwrite: false));
+
+        Assert.Equal("Testing", exception.ActorType);
+        Assert.Equal("virtual-reminder-duplicate", exception.ActorId);
+        Assert.Equal("Reminder", exception.ReminderName);
     }
 
     [MinimumDaprRuntimeFact("1.18")]

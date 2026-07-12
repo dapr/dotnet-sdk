@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.Scheduling;
 using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Abstractions.State.Versioning;
@@ -219,9 +220,10 @@ public sealed class CoreEdgeCaseTests
 
         await state.SetAsync("state", new CounterState { Value = 10 });
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await state.EvictCacheAsync());
+        var exception = await Assert.ThrowsAsync<ActorStateCacheDirtyException>(async () => await state.EvictCacheAsync());
 
         Assert.Contains("state", exception.Message, StringComparison.Ordinal);
+        Assert.Equal("state", exception.StateName);
         Assert.Equal(0, store.WriteCount);
     }
 
@@ -237,7 +239,9 @@ public sealed class CoreEdgeCaseTests
         var loaded = await state.TryGetAsync<CounterState>("state");
         loaded!.Value.Value = 11;
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await state.EvictCacheAsync());
+        var exception = await Assert.ThrowsAsync<ActorStateCacheDirtyException>(async () => await state.EvictCacheAsync());
+
+        Assert.Equal("state", exception.StateName);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -268,6 +272,63 @@ public sealed class CoreEdgeCaseTests
         var state = new ActorStateUnitOfWork("Counter", ActorId.Create("null"), store, new NullEnvelopeWireSerializer());
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await state.TryGetAsync<CounterState>("state"));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task State_accessor_reports_serializer_mismatch_as_envelope_exception()
+    {
+        var store = new InMemoryActorStateStore();
+        var serializer = new ActorWireSerializer(new JsonDaprSerializer());
+        var envelope = new ActorStatePlainEnvelope<CounterState>(
+            ActorStateEnvelopeHeader.Create(ActorStateFormKind.Plain, "other", 9),
+            new CounterState { Value = 10 });
+        await store.WriteAsync("Counter", "serializer", "state", serializer.SerializeToBytes(envelope));
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("serializer"), store, serializer);
+
+        var exception = await Assert.ThrowsAsync<ActorStateEnvelopeException>(async () => await state.TryGetAsync<CounterState>("state"));
+
+        Assert.Equal("other", exception.StoredSerializerId);
+        Assert.Equal(9, exception.StoredSerializerVersion);
+        Assert.Equal(serializer.SerializerId, exception.CurrentSerializerId);
+        Assert.Equal(serializer.SerializerVersion, exception.CurrentSerializerVersion);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task State_accessor_reports_shape_drift_as_migration_exception()
+    {
+        var store = new RecordingActorStateStore();
+        var serializer = new ActorWireSerializer(new JsonDaprSerializer());
+        var v1Node = new ActorStateMigrationNode(0, typeof(MigrationStateV1), MigrationStateV1ShapeHash);
+        var v2Node = new ActorStateMigrationNode(1, typeof(MigrationStateV2), MigrationStateV2ShapeHash);
+        var migrator = new ActorStateMigrationRegistry(
+        [
+            new ActorStateMigrationFamilyRegistration(
+                new ActorStateMigrationFamily(
+                    "MigrationState",
+                    [v1Node, v2Node],
+                    [new ActorStateMigrationEdge(0, 1, typeof(MigrationStateV1ToV2))]),
+                [
+                    new ActorStateNodeDeserializer(0, static (payload, serializer) => serializer.DeserializeFromBytes<ActorStateEnvelope<MigrationStateV1>>(payload)?.Value),
+                    new ActorStateNodeDeserializer(1, static (payload, serializer) => serializer.DeserializeFromBytes<ActorStateEnvelope<MigrationStateV2>>(payload)?.Value),
+                ],
+                [
+                    new ActorStateHopRegistration(0, 1, static (state, _) =>
+                        ValueTask.FromResult<object>(new MigrationStateV2(((MigrationStateV1)state).Name, ((MigrationStateV1)state).Quantity))),
+                ]),
+        ]);
+        var seeded = new ActorStateEnvelope<MigrationStateV1>(
+            ActorStateEnvelopeHeader.Create(ActorStateFormKind.Enveloped, serializer.SerializerId, serializer.SerializerVersion),
+            new ActorStateDiscriminator(v1Node.Index, "h1:stale"),
+            new MigrationStateV1("apples", 3));
+        await store.WriteAsync("Counter", "drift", "state", serializer.SerializeToBytes(seeded));
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("drift"), store, serializer, migrator: migrator);
+
+        var exception = await Assert.ThrowsAsync<ActorStateMigrationException>(async () => await state.TryGetAsync<MigrationStateV2>("state"));
+
+        Assert.Equal("MigrationState", exception.FamilyName);
+        Assert.Equal(0, exception.ChainIndex);
+        Assert.Equal(typeof(MigrationStateV1), exception.TargetType);
+        Assert.Equal("h1:stale", exception.ShapeHash);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -486,7 +547,6 @@ public sealed class CoreEdgeCaseTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "1", failurePolicy: new ActorReminderFailurePolicy.Constant(TimeSpan.FromMilliseconds(-1))));
 
         await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "1");
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "2", overwrite: false));
         var failurePolicy = new ActorReminderFailurePolicy.Constant(TimeSpan.FromSeconds(2)) { MaxRetries = 4 };
         await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(2), "3", TimeSpan.FromMinutes(5), failurePolicy: failurePolicy);
         await scheduler.ScheduleAsync("Counter", ActorId.Create("other"), "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "other");

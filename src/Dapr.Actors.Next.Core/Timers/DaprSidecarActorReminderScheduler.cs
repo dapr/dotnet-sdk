@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.Transport;
 using Google.Protobuf;
@@ -183,14 +184,21 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             request.Overwrite = overwrite.Value;
         }
 
-        if (failurePolicy is not null)
+        try 
         {
-            request.FailurePolicy = ToProto(failurePolicy);
-        }
+          if (failurePolicy is not null)
+          {
+              request.FailurePolicy = ToProto(failurePolicy);
+          }
 
-        await client.Value.RegisterActorReminderAsync(
-            request,
-            DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+          await client.Value.RegisterActorReminderAsync(
+              request,
+              DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.AlreadyExists)
+        {
+            throw new ActorReminderAlreadyExistsException(actorType, actorId.Value, name, ex);
+        }
     }
 
     /// <inheritdoc />

@@ -13,6 +13,7 @@
 
 using System.Text.Json;
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Serialization;
@@ -138,7 +139,9 @@ public sealed class ActorStateUnitOfWork(
             {
                 if (entry.Dirty || (entry.TrackInPlaceMutations && await HasInPlaceMutationAsync(entry, cancellationToken).ConfigureAwait(false)))
                 {
-                    throw new InvalidOperationException($"Cannot evict actor state cache because state '{name}' has unpersisted changes.");
+                    throw new ActorStateCacheDirtyException(
+                        name,
+                        $"Cannot evict actor state cache because state '{name}' has unpersisted changes.");
                 }
             }
         }
@@ -208,7 +211,12 @@ public sealed class ActorStateUnitOfWork(
             {
                 if (migrator is null)
                 {
-                    throw new InvalidOperationException($"State '{name}' is enrolled for migration, but no actor state migrator is registered.");
+                    throw new ActorStateMigrationException(
+                        $"State '{name}' is enrolled for migration, but no actor state migrator is registered.",
+                        familyName: null,
+                        chainIndex: discriminator.ChainIndex,
+                        targetType: typeof(T),
+                        shapeHash: discriminator.ShapeHash);
                 }
 
                 await faultInjector.BeforeMigrationAsync(typeof(T), actorType, actorId.Value, name, cancellationToken).ConfigureAwait(false);
@@ -243,7 +251,15 @@ public sealed class ActorStateUnitOfWork(
                 return state;
             }
 
-            throw new InvalidOperationException($"State '{name}' has unsupported actor state form '{header.FormKind}'.");
+            throw new ActorStateEnvelopeException(
+                $"State '{name}' has unsupported actor state form '{header.FormKind}'.",
+                name,
+                header.FormatVersion,
+                header.FormKind.ToString(),
+                header.SerializerId,
+                header.SerializerVersion,
+                serializer.SerializerId,
+                serializer.SerializerVersion);
         }
 
         var legacy = ReadLegacy<T>(name, bytes);
@@ -260,7 +276,7 @@ public sealed class ActorStateUnitOfWork(
         }
 
         var envelope = serializer.DeserializeFromBytes<ActorStatePlainEnvelope<T>>(bytes)
-            ?? throw new InvalidOperationException($"State could not be deserialized as '{typeof(T).FullName}'.");
+            ?? throw new ActorStateEnvelopeException($"State could not be deserialized as '{typeof(T).FullName}'.", stateName: null);
         return envelope.Value;
     }
 
@@ -361,13 +377,28 @@ public sealed class ActorStateUnitOfWork(
     {
         if (header.FormatVersion != ActorStateEnvelopeHeader.CurrentFormatVersion)
         {
-            throw new InvalidOperationException($"Unsupported actor state envelope format version '{header.FormatVersion}'.");
+            throw new ActorStateEnvelopeException(
+                $"Unsupported actor state envelope format version '{header.FormatVersion}'.",
+                stateName: null,
+                formatVersion: header.FormatVersion,
+                formKind: header.FormKind.ToString(),
+                storedSerializerId: header.SerializerId,
+                storedSerializerVersion: header.SerializerVersion,
+                currentSerializerId: serializer.SerializerId,
+                currentSerializerVersion: serializer.SerializerVersion);
         }
 
         if (!string.Equals(header.SerializerId, serializer.SerializerId, StringComparison.Ordinal) || header.SerializerVersion != serializer.SerializerVersion)
         {
-            throw new InvalidOperationException(
-                $"Actor state serializer mismatch. Stored '{header.SerializerId}' v{header.SerializerVersion}, current '{serializer.SerializerId}' v{serializer.SerializerVersion}.");
+            throw new ActorStateEnvelopeException(
+                $"Actor state serializer mismatch. Stored '{header.SerializerId}' v{header.SerializerVersion}, current '{serializer.SerializerId}' v{serializer.SerializerVersion}.",
+                stateName: null,
+                formatVersion: header.FormatVersion,
+                formKind: header.FormKind.ToString(),
+                storedSerializerId: header.SerializerId,
+                storedSerializerVersion: header.SerializerVersion,
+                currentSerializerId: serializer.SerializerId,
+                currentSerializerVersion: serializer.SerializerVersion);
         }
     }
 

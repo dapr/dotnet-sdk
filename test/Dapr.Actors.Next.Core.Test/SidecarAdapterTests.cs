@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Core.Client;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.State;
@@ -312,6 +313,22 @@ public sealed class SidecarAdapterTests
         Assert.Equal("raw", client.RegisterActorReminderRequest!.Data.ToStringUtf8());
     }
 
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Reminder_scheduler_maps_sidecar_duplicate_registration()
+    {
+        var client = new RecordingDaprClient { RegisterActorReminderAlreadyExists = true };
+        var scheduler = new DaprSidecarActorReminderScheduler(client, new ActorWireSerializer(new JsonDaprSerializer()));
+        var actorId = ActorId.Create("reminder-duplicate");
+
+        var exception = await Assert.ThrowsAsync<ActorReminderAlreadyExistsException>(
+            async () => await scheduler.ScheduleAsync("Counter", actorId, "wake", TimeSpan.Zero, TimeSpan.FromMinutes(1), "0", overwrite: false));
+
+        Assert.Equal("Counter", exception.ActorType);
+        Assert.Equal("reminder-duplicate", exception.ActorId);
+        Assert.Equal("wake", exception.ReminderName);
+        Assert.IsType<RpcException>(exception.InnerException);
+    }
+
     private sealed class RecordingDaprClient : P.Dapr.DaprClient
     {
         public P.InvokeActorRequest? InvokeActorRequest { get; private set; }
@@ -347,6 +364,8 @@ public sealed class SidecarAdapterTests
         public P.RegisterActorReminderRequest? RegisterActorReminderRequest { get; private set; }
 
         public CallOptions RegisterActorReminderOptions { get; private set; }
+
+        public bool RegisterActorReminderAlreadyExists { get; set; }
 
         public P.UnregisterActorReminderRequest? UnregisterActorReminderRequest { get; private set; }
 
@@ -418,7 +437,9 @@ public sealed class SidecarAdapterTests
         {
             RegisterActorReminderRequest = request;
             RegisterActorReminderOptions = options;
-            return Unary(new Empty());
+            return RegisterActorReminderAlreadyExists
+                ? UnaryFailed<Empty>(new RpcException(new Status(StatusCode.AlreadyExists, "duplicate")))
+                : Unary(new Empty());
         }
 
         public override AsyncUnaryCall<Empty> UnregisterActorReminderAsync(P.UnregisterActorReminderRequest request, CallOptions options)

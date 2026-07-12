@@ -13,6 +13,7 @@
 
 using System.Collections.Concurrent;
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.Scheduling;
 using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.Core.Serialization;
@@ -168,7 +169,7 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
             if (overwrite == false)
             {
                 timer.Dispose();
-                throw new InvalidOperationException($"Reminder '{name}' is already scheduled for actor '{actorType}/{actorId.Value}'.");
+                throw new ActorReminderAlreadyExistsException(actorType, actorId.Value, name);
             }
 
             existing.Timer.Dispose();
