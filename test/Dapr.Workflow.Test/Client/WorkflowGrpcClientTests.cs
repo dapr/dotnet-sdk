@@ -16,6 +16,7 @@ using Dapr.Workflow.Client;
 using Dapr.Common.Serialization;
 using Dapr.Workflow.Serialization;
 using Grpc.Core;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -89,6 +90,73 @@ public class WorkflowGrpcClientTests
         Assert.NotNull(capturedRequest);
         Assert.NotNull(capturedRequest!.ScheduledStartTimestamp);
         Assert.Equal(startAt, capturedRequest.ScheduledStartTimestamp.ToDateTimeOffset());
+    }
+
+    [Fact]
+    public async Task ScheduleNewWorkflowAsync_ShouldSetParentTraceContext_WhenActivityCurrentIsW3C()
+    {
+        var serializer = new StubSerializer { SerializeResult = "" };
+
+        CreateInstanceRequest? capturedRequest = null;
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.StartInstanceAsync(It.IsAny<CreateInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Callback<CreateInstanceRequest, CallOptions>((r, _) => capturedRequest = r)
+            .Returns(CreateAsyncUnaryCall(new CreateInstanceResponse { InstanceId = "returned" }));
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        var previous = Activity.Current;
+        using var activity = new Activity("parent");
+        activity.SetIdFormat(ActivityIdFormat.W3C);
+        activity.TraceStateString = "vendor=value";
+        activity.Start();
+
+        try
+        {
+            await client.ScheduleNewWorkflowAsync("MyWorkflow", input: null, options: new StartWorkflowOptions { InstanceId = "i" }, cancellationToken: TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            Activity.Current = previous;
+        }
+
+        Assert.NotNull(capturedRequest);
+        Assert.NotNull(capturedRequest!.ParentTraceContext);
+        Assert.Equal(activity.Id, capturedRequest.ParentTraceContext.TraceParent);
+        Assert.Equal(activity.TraceStateString, capturedRequest.ParentTraceContext.TraceState);
+    }
+
+    [Fact]
+    public async Task ScheduleNewWorkflowAsync_ShouldNotSetParentTraceContext_WhenActivityCurrentIsNull()
+    {
+        var serializer = new StubSerializer { SerializeResult = "" };
+
+        CreateInstanceRequest? capturedRequest = null;
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.StartInstanceAsync(It.IsAny<CreateInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Callback<CreateInstanceRequest, CallOptions>((r, _) => capturedRequest = r)
+            .Returns(CreateAsyncUnaryCall(new CreateInstanceResponse { InstanceId = "returned" }));
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        var previous = Activity.Current;
+        Activity.Current = null;
+
+        try
+        {
+            await client.ScheduleNewWorkflowAsync("MyWorkflow", input: null, options: new StartWorkflowOptions { InstanceId = "i" }, cancellationToken: TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            Activity.Current = previous;
+        }
+
+        Assert.NotNull(capturedRequest);
+        Assert.Null(capturedRequest!.ParentTraceContext);
     }
 
     [Fact]
