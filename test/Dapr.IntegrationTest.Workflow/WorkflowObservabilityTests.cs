@@ -234,6 +234,72 @@ public sealed class WorkflowObservabilityTests
     }
 
     [MinimumDaprRuntimeFact("1.17")]
+    public async Task WorkflowFailureAfterActivityFailure_ShouldPreserveFailedActivityTraceAndHistory()
+    {
+        var run = await StartWorkflowTestAsync(
+            opt =>
+            {
+                opt.RegisterWorkflow<WorkflowFailureAfterActivityFailureObservedWorkflow>();
+                opt.RegisterActivity<WorkflowFailureObservedActivity>();
+            },
+            TestContext.Current.CancellationToken);
+        await using var _ = run;
+
+        var client = GetWorkflowClient(run.App);
+        var instanceId = NewInstanceId();
+
+        await client.ScheduleNewWorkflowAsync(nameof(WorkflowFailureAfterActivityFailureObservedWorkflow), instanceId);
+        var result = await client.WaitForWorkflowCompletionAsync(instanceId, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.Equal(WorkflowRuntimeStatus.Failed, result.RuntimeStatus);
+
+        var history = await client.GetInstanceHistoryAsync(instanceId, TestContext.Current.CancellationToken);
+        Assert.Contains(history, e => e.EventType == WorkflowHistoryEventType.TaskFailed);
+
+        var traceId = await GetRuntimeActivityTraceIdAsync(run.Harness, nameof(WorkflowFailureObservedActivity));
+        var activity = Assert.Single(await WaitForSdkActivitiesAsync(
+            run.Harness,
+            nameof(WorkflowFailureObservedActivity),
+            traceId,
+            expectedCount: 1));
+
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
+    }
+
+    [MinimumDaprRuntimeFact("1.17")]
+    public async Task CaughtActivityFailureCompensation_ShouldTraceFailedAndCompensatingActivities()
+    {
+        var run = await StartWorkflowTestAsync(
+            opt =>
+            {
+                opt.RegisterWorkflow<CaughtFailureCompensationObservedWorkflow>();
+                opt.RegisterActivity<CompensatedFailingObservedActivity>();
+                opt.RegisterActivity<CompensationObservedActivity>();
+            },
+            TestContext.Current.CancellationToken);
+        await using var _ = run;
+
+        var client = GetWorkflowClient(run.App);
+        var instanceId = NewInstanceId();
+
+        await client.ScheduleNewWorkflowAsync(nameof(CaughtFailureCompensationObservedWorkflow), instanceId, 7);
+        var result = await client.WaitForWorkflowCompletionAsync(instanceId, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+        Assert.Equal("compensated-7", result.ReadOutputAs<string>());
+
+        var failureTraceId = await GetRuntimeActivityTraceIdAsync(run.Harness, nameof(CompensatedFailingObservedActivity));
+        var failedActivity = Assert.Single(await WaitForSdkActivitiesAsync(
+            run.Harness,
+            nameof(CompensatedFailingObservedActivity),
+            failureTraceId,
+            expectedCount: 1));
+        Assert.Equal(ActivityStatusCode.Error, failedActivity.Status);
+
+        await AssertRuntimeAndSdkActivityTraceAsync(run.Harness, nameof(CompensationObservedActivity));
+    }
+
+    [MinimumDaprRuntimeFact("1.17")]
     public async Task ContinueAsNew_ShouldPreserveActivityTracingAfterContinuation()
     {
         var run = await StartWorkflowTestAsync(
@@ -302,6 +368,33 @@ public sealed class WorkflowObservabilityTests
         Assert.Equal(20, result.ReadOutputAs<int>());
 
         await AssertRuntimeAndSdkActivityTraceAsync(harness2, nameof(MultiAppChildObservedActivity));
+    }
+
+    [MinimumDaprRuntimeFact("1.17")]
+    public async Task SubworkflowWithParentAndChildActivities_ShouldTraceBothWorkflowLevels()
+    {
+        var run = await StartWorkflowTestAsync(
+            opt =>
+            {
+                opt.RegisterWorkflow<ParentChildActivitiesObservedParentWorkflow>();
+                opt.RegisterWorkflow<ParentChildActivitiesObservedChildWorkflow>();
+                opt.RegisterActivity<ParentLevelObservedActivity>();
+                opt.RegisterActivity<ChildLevelObservedActivity>();
+            },
+            TestContext.Current.CancellationToken);
+        await using var _ = run;
+
+        var client = GetWorkflowClient(run.App);
+        var instanceId = NewInstanceId();
+
+        await client.ScheduleNewWorkflowAsync(nameof(ParentChildActivitiesObservedParentWorkflow), instanceId, 5);
+        var result = await client.WaitForWorkflowCompletionAsync(instanceId, cancellation: TestContext.Current.CancellationToken);
+
+        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+        Assert.Equal(36, result.ReadOutputAs<int>());
+
+        await AssertRuntimeAndSdkActivityTraceAsync(run.Harness, nameof(ParentLevelObservedActivity));
+        await AssertRuntimeAndSdkActivityTraceAsync(run.Harness, nameof(ChildLevelObservedActivity));
     }
 
     [MinimumDaprRuntimeFact("1.17")]
@@ -893,6 +986,49 @@ public sealed class WorkflowObservabilityTests
             throw new InvalidOperationException("Observed failure");
     }
 
+    private sealed class WorkflowFailureAfterActivityFailureObservedWorkflow : Workflow<string?, string>
+    {
+        public override async Task<string> RunAsync(WorkflowContext context, string? input)
+        {
+            await context.CallActivityAsync<string>(nameof(WorkflowFailureObservedActivity), string.Empty);
+            return "unreachable";
+        }
+    }
+
+    private sealed class WorkflowFailureObservedActivity : WorkflowActivity<string?, string>
+    {
+        public override Task<string> RunAsync(WorkflowActivityContext context, string? input) =>
+            throw new InvalidOperationException("Observed workflow failure");
+    }
+
+    private sealed class CaughtFailureCompensationObservedWorkflow : Workflow<int, string>
+    {
+        public override async Task<string> RunAsync(WorkflowContext context, int input)
+        {
+            try
+            {
+                await context.CallActivityAsync<string>(nameof(CompensatedFailingObservedActivity), input);
+                return "unreachable";
+            }
+            catch (WorkflowTaskFailedException)
+            {
+                return await context.CallActivityAsync<string>(nameof(CompensationObservedActivity), input);
+            }
+        }
+    }
+
+    private sealed class CompensatedFailingObservedActivity : WorkflowActivity<int, string>
+    {
+        public override Task<string> RunAsync(WorkflowActivityContext context, int input) =>
+            throw new InvalidOperationException("Observed compensated failure");
+    }
+
+    private sealed class CompensationObservedActivity : WorkflowActivity<int, string>
+    {
+        public override Task<string> RunAsync(WorkflowActivityContext context, int input) =>
+            Task.FromResult($"compensated-{input}");
+    }
+
     private sealed class ContinueAsNewObservedWorkflow : Workflow<int, int>
     {
         public override async Task<int> RunAsync(WorkflowContext context, int input)
@@ -938,6 +1074,38 @@ public sealed class WorkflowObservabilityTests
     {
         public override Task<int> RunAsync(WorkflowActivityContext context, int input) =>
             Task.FromResult(input * 5);
+    }
+
+    private sealed class ParentChildActivitiesObservedParentWorkflow : Workflow<int, int>
+    {
+        public override async Task<int> RunAsync(WorkflowContext context, int input)
+        {
+            var parentValue = await context.CallActivityAsync<int>(nameof(ParentLevelObservedActivity), input);
+            var childValue = await context.CallChildWorkflowAsync<int>(
+                nameof(ParentChildActivitiesObservedChildWorkflow),
+                parentValue,
+                new ChildWorkflowTaskOptions(InstanceId: $"{context.InstanceId}-child"));
+
+            return parentValue + childValue;
+        }
+    }
+
+    private sealed class ParentChildActivitiesObservedChildWorkflow : Workflow<int, int>
+    {
+        public override Task<int> RunAsync(WorkflowContext context, int input) =>
+            context.CallActivityAsync<int>(nameof(ChildLevelObservedActivity), input);
+    }
+
+    private sealed class ParentLevelObservedActivity : WorkflowActivity<int, int>
+    {
+        public override Task<int> RunAsync(WorkflowActivityContext context, int input) =>
+            Task.FromResult(input + 7);
+    }
+
+    private sealed class ChildLevelObservedActivity : WorkflowActivity<int, int>
+    {
+        public override Task<int> RunAsync(WorkflowActivityContext context, int input) =>
+            Task.FromResult(input * 2);
     }
 
     private sealed class DownstreamObservedWorkflow : Workflow<int, int>
