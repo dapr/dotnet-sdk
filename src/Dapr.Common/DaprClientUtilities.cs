@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Headers;
+using System.Diagnostics;
 using System.Reflection;
 using Grpc.Core;
 
@@ -35,6 +36,8 @@ internal static class DaprClientUtilities
             }
         }
 
+        AddTraceContextHeaders(callOptions.Headers);
+
         return callOptions;
     }
     
@@ -61,5 +64,21 @@ internal static class DaprClientUtilities
         string.IsNullOrWhiteSpace(daprApiToken)
             ? null
             : new KeyValuePair<string, string>("dapr-api-token", daprApiToken);
+
+    private static void AddTraceContextHeaders(Metadata headers)
+    {
+        var activity = Activity.Current;
+        if (activity?.Id is null || activity.IdFormat != ActivityIdFormat.W3C)
+        {
+            return;
+        }
+
+        headers.Add("traceparent", activity.Id);
+
+        if (!string.IsNullOrWhiteSpace(activity.TraceStateString))
+        {
+            headers.Add("tracestate", activity.TraceStateString);
+        }
+    }
 }
 

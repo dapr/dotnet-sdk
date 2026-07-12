@@ -12,10 +12,12 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Containers;
+using Dapr.Testcontainers.Telemetry;
 
 namespace Dapr.Testcontainers.Harnesses;
 
@@ -26,6 +28,7 @@ public sealed class WorkflowHarness : BaseHarness
 {
     private readonly RedisContainer _redis;
     private readonly bool _isSelfHostedRedis;
+    private DaprTelemetryCollector? _telemetryCollector;
     
     /// <summary>
     /// Provides an implementation harness for Dapr's Workflow building block.
@@ -40,6 +43,29 @@ public sealed class WorkflowHarness : BaseHarness
         _isSelfHostedRedis = environment?.RedisContainer is null;
     }
 
+    /// <summary>
+    /// Gets the telemetry collector when telemetry capture has been enabled for this harness.
+    /// </summary>
+    public DaprTelemetryCollector? TelemetryCollector => _telemetryCollector;
+
+    /// <summary>
+    /// Enables Dapr runtime trace export capture for this workflow harness.
+    /// When <paramref name="captureWorkflowActivitySource"/> is true, completed
+    /// <c>Dapr.Workflow</c> in-process activities are captured from the test application.
+    /// </summary>
+    /// <param name="captureWorkflowActivitySource">Whether to capture .NET activities emitted by the workflow SDK.</param>
+    /// <returns>This workflow harness.</returns>
+    public WorkflowHarness EnableTelemetryCapture(bool captureWorkflowActivitySource = true)
+    {
+        _telemetryCollector ??= new DaprTelemetryCollector();
+        if (captureWorkflowActivitySource)
+        {
+            _telemetryCollector.CaptureActivitySource("Dapr.Workflow");
+        }
+
+        return this;
+    }
+
     /// <inheritdoc />
 	protected override async Task OnInitializeAsync(CancellationToken cancellationToken)
 	{
@@ -51,6 +77,13 @@ public sealed class WorkflowHarness : BaseHarness
         
         // Emit component YAMLs pointing to Redis
         RedisContainer.Yaml.WriteStateStoreYamlToFolder(ComponentsDirectory, redisHost: $"{_redis.NetworkAlias}:{RedisContainer.ContainerPort}");
+
+        if (_telemetryCollector is not null)
+        {
+            await _telemetryCollector.StartAsync(cancellationToken);
+            WriteWorkflowTracingConfigYaml(ComponentsDirectory, _telemetryCollector.ZipkinEndpointAddressForDapr);
+            DaprConfigFilePath = "/components/workflow-tracing-config.yaml";
+        }
         
         // Set the service ports
         this.DaprPlacementExternalPort = Environment.PlacementExternalPort;
@@ -58,10 +91,32 @@ public sealed class WorkflowHarness : BaseHarness
         this.DaprSchedulerExternalPort = Environment.SchedulerExternalPort;
         this.DaprSchedulerAlias = Environment.SchedulerAlias;
     }
+
+    private static void WriteWorkflowTracingConfigYaml(string componentsDirectory, string zipkinEndpointAddress)
+    {
+        var yaml = $$"""
+            apiVersion: dapr.io/v1alpha1
+            kind: Configuration
+            metadata:
+              name: workflowTracing
+            spec:
+              tracing:
+                samplingRate: "1"
+                zipkin:
+                  endpointAddress: "{{zipkinEndpointAddress}}"
+            """;
+        Directory.CreateDirectory(componentsDirectory);
+        File.WriteAllText(Path.Combine(componentsDirectory, "workflow-tracing-config.yaml"), yaml);
+    }
     
     /// <inheritdoc />
 	protected override async ValueTask OnDisposeAsync()
     {
+        if (_telemetryCollector is not null)
+        {
+            await _telemetryCollector.DisposeAsync();
+        }
+
         if (_isSelfHostedRedis)
         {
             await _redis.DisposeAsync();
