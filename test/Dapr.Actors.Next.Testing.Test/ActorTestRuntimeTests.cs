@@ -129,7 +129,8 @@ public sealed class ActorTestRuntimeTests
             TimeSpan.FromSeconds(1),
             """{"payload":true}""",
             ttl: TimeSpan.FromSeconds(2),
-            overwrite: true);
+            overwrite: true,
+            failurePolicy: new ActorReminderFailurePolicy.Drop());
         await reminders.ScheduleAsync("Testing", otherId, "Reminder", TimeSpan.FromSeconds(10), TimeSpan.Zero, string.Empty);
         var fetched = await reminders.GetAsync("Testing", id, "Reminder");
         var listedForActor = await reminders.ListAsync("Testing", id);
@@ -139,6 +140,7 @@ public sealed class ActorTestRuntimeTests
         Assert.Equal(TimeSpan.FromSeconds(1), fetched.Period);
         Assert.Equal("""{"payload":true}""", fetched.ArgumentsJson);
         Assert.Equal(TimeSpan.FromSeconds(2), fetched.Ttl);
+        Assert.IsType<ActorReminderFailurePolicy.Drop>(fetched.FailurePolicy);
         Assert.Single(listedForActor);
         Assert.Equal(2, (await reminders.ListAsync("Testing")).Count);
 

@@ -36,6 +36,7 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
         string argumentsJson,
         TimeSpan? ttl = null,
         bool? overwrite = null,
+        ActorReminderFailurePolicy? failurePolicy = null,
         CancellationToken cancellationToken = default)
     {
         return ScheduleCoreAsync(
@@ -47,7 +48,8 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
             serializer.JsonToBytes(argumentsJson),
             argumentsJson,
             ttl,
-            overwrite);
+            overwrite,
+            failurePolicy);
     }
 
     /// <inheritdoc />
@@ -60,6 +62,7 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
         byte[] arguments,
         TimeSpan? ttl = null,
         bool? overwrite = null,
+        ActorReminderFailurePolicy? failurePolicy = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(arguments);
@@ -73,7 +76,8 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
             payload,
             serializer.BytesToJson(payload),
             ttl,
-            overwrite);
+            overwrite,
+            failurePolicy);
     }
 
     /// <inheritdoc />
@@ -86,6 +90,7 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
         TArguments arguments,
         TimeSpan? ttl = null,
         bool? overwrite = null,
+        ActorReminderFailurePolicy? failurePolicy = null,
         CancellationToken cancellationToken = default)
     {
         var payload = serializer.SerializeToBytes(arguments);
@@ -98,7 +103,8 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
             payload,
             serializer.BytesToJson(payload),
             ttl,
-            overwrite);
+            overwrite,
+            failurePolicy);
     }
 
     private ValueTask ScheduleCoreAsync(
@@ -110,7 +116,8 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
         byte[] arguments,
         string? argumentsJson,
         TimeSpan? ttl,
-        bool? overwrite)
+        bool? overwrite,
+        ActorReminderFailurePolicy? failurePolicy)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -130,8 +137,13 @@ public sealed class CoreActorReminderScheduler(IActorRuntime runtime, IActorWire
             throw new ArgumentOutOfRangeException(nameof(ttl), "TTL cannot be negative.");
         }
 
+        if (failurePolicy is ActorReminderFailurePolicy.Constant constantPolicy && constantPolicy.Interval < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(failurePolicy), "Failure policy interval cannot be negative.");
+        }
+
         var key = new ReminderKey(actorType, actorId.Value, name);
-        var info = new ActorReminderInfo(actorType, actorId, dueTime, period, argumentsJson, ttl);
+        var info = new ActorReminderInfo(actorType, actorId, dueTime, period, argumentsJson, ttl, failurePolicy);
         var timer = timeProvider.CreateTimer(
             static state =>
             {
