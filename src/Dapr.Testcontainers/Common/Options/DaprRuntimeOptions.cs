@@ -12,6 +12,7 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 
 namespace Dapr.Testcontainers.Common.Options;
 
@@ -21,6 +22,7 @@ namespace Dapr.Testcontainers.Common.Options;
 public sealed record DaprRuntimeOptions
 {
     private const string DEFAULT_VERSION_ENVVAR_NAME = "DAPR_RUNTIME_VERSION";
+    private readonly Dictionary<string, string> environmentVariables = new(StringComparer.Ordinal);
     private static readonly string[] CiEnvironmentSignals =
     [
         "CI",
@@ -73,6 +75,11 @@ public sealed record DaprRuntimeOptions
     /// The Dapr API token used to secure communications with the sidecar.
     /// </summary>
     public string? DaprApiToken { get; private set; }
+
+    /// <summary>
+    /// Environment variables to set on the Dapr runtime container.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> EnvironmentVariables => environmentVariables;
     
     /// <summary>
     /// The level of Dapr logs to show.
@@ -146,6 +153,20 @@ public sealed record DaprRuntimeOptions
     public DaprRuntimeOptions WithDaprApiToken(string daprApiToken)
     {
         DaprApiToken = daprApiToken;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets an environment variable on the Dapr runtime container.
+    /// </summary>
+    /// <param name="name">The environment variable name.</param>
+    /// <param name="value">The environment variable value.</param>
+    public DaprRuntimeOptions WithEnvironmentVariable(string name, string value)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(value);
+
+        environmentVariables[name] = value;
         return this;
     }
 

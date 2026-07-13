@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,7 +44,8 @@ internal sealed class WorkflowGrpcClient(
         {
             InstanceId = instanceId,
             Name = workflowName,
-            Input = SerializeToJson(input)
+            Input = SerializeToJson(input),
+            ParentTraceContext = CreateParentTraceContext()
         };
         
         // Add the scheduled start time if specified
@@ -331,6 +333,21 @@ internal sealed class WorkflowGrpcClient(
     }
 
     private string SerializeToJson(object? obj) => obj == null ? string.Empty : serializer.Serialize(obj);
+
+    private static grpc.TraceContext? CreateParentTraceContext()
+    {
+        var activity = Activity.Current;
+        if (activity?.Id is null || activity.IdFormat != ActivityIdFormat.W3C)
+        {
+            return null;
+        }
+
+        return new grpc.TraceContext
+        {
+            TraceParent = activity.Id,
+            TraceState = string.IsNullOrEmpty(activity.TraceStateString) ? null : activity.TraceStateString
+        };
+    }
 
     private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>
         DaprClientUtilities.ConfigureGrpcCallOptions(typeof(DaprWorkflowClient).Assembly, daprApiToken, cancellationToken);
