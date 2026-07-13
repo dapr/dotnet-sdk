@@ -229,7 +229,8 @@ public sealed class SidecarAdapterTests
             TimeSpan.FromSeconds(5),
             """{"x":1}""",
             TimeSpan.FromMinutes(1),
-            overwrite: false);
+            overwrite: false,
+            failurePolicy: new ActorReminderFailurePolicy.Constant(TimeSpan.FromSeconds(2)) { MaxRetries = 4 });
         var fetched = await scheduler.GetAsync("Counter", actorId, "wake");
         var listed = await scheduler.ListAsync("Counter", actorId);
         await scheduler.CancelAsync("Counter", actorId, "wake");
@@ -244,6 +245,10 @@ public sealed class SidecarAdapterTests
         Assert.Equal("60000ms", client.RegisterActorReminderRequest.Ttl);
         Assert.True(client.RegisterActorReminderRequest.HasOverwrite);
         Assert.False(client.RegisterActorReminderRequest.Overwrite);
+        Assert.Equal(P.JobFailurePolicy.PolicyOneofCase.Constant, client.RegisterActorReminderRequest.FailurePolicy.PolicyCase);
+        Assert.Equal(TimeSpan.FromSeconds(2), client.RegisterActorReminderRequest.FailurePolicy.Constant.Interval.ToTimeSpan());
+        Assert.True(client.RegisterActorReminderRequest.FailurePolicy.Constant.HasMaxRetries);
+        Assert.Equal(4u, client.RegisterActorReminderRequest.FailurePolicy.Constant.MaxRetries);
         Assert.Equal("Counter", client.GetActorReminderRequest!.ActorType);
         Assert.Equal("reminder", client.GetActorReminderRequest.ActorId);
         Assert.Equal("wake", client.GetActorReminderRequest.Name);
@@ -260,6 +265,15 @@ public sealed class SidecarAdapterTests
         Assert.Equal("wake", client.UnregisterActorReminderRequest!.Name);
         Assert.Equal("Counter", client.UnregisterActorRemindersByTypeRequest!.ActorType);
         Assert.Equal("reminder", client.UnregisterActorRemindersByTypeRequest.ActorId);
+        await scheduler.ScheduleAsync(
+            "Counter",
+            actorId,
+            "drop",
+            TimeSpan.Zero,
+            TimeSpan.FromSeconds(1),
+            "0",
+            failurePolicy: new ActorReminderFailurePolicy.Drop());
+        Assert.Equal(P.JobFailurePolicy.PolicyOneofCase.Drop, client.RegisterActorReminderRequest!.FailurePolicy.PolicyCase);
         client.GetActorReminderNotFound = true;
         Assert.Null(await scheduler.GetAsync("Counter", actorId, "missing"));
         await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.ScheduleAsync("", actorId, "wake", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0"));
@@ -267,6 +281,7 @@ public sealed class SidecarAdapterTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-due", TimeSpan.FromMilliseconds(-1), TimeSpan.FromSeconds(1), "0"));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-period", TimeSpan.Zero, TimeSpan.FromMilliseconds(-1), "0"));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-ttl", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0", TimeSpan.FromMilliseconds(-1)));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-policy", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0", failurePolicy: new ActorReminderFailurePolicy.Constant(TimeSpan.FromMilliseconds(-1))));
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -285,6 +300,7 @@ public sealed class SidecarAdapterTests
             new Dictionary<string, int> { ["x"] = 8 });
 
         Assert.Equal("""{"x":8}""", client.RegisterActorReminderRequest!.Data.ToStringUtf8());
+        Assert.Null(client.RegisterActorReminderRequest.FailurePolicy);
 
         await scheduler.ScheduleAsync(
             "Counter",

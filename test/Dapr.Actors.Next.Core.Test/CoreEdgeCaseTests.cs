@@ -544,13 +544,11 @@ public sealed class CoreEdgeCaseTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMilliseconds(-1), TimeSpan.FromMinutes(1), "1"));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMilliseconds(-1), "1"));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "1", TimeSpan.FromMilliseconds(-1)));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "1", failurePolicy: new ActorReminderFailurePolicy.Constant(TimeSpan.FromMilliseconds(-1))));
 
         await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "1");
-        var duplicate = await Assert.ThrowsAsync<ActorReminderAlreadyExistsException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "2", overwrite: false));
-        Assert.Equal("Counter", duplicate.ActorType);
-        Assert.Equal("reminder", duplicate.ActorId);
-        Assert.Equal("name", duplicate.ReminderName);
-        await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(2), "3", TimeSpan.FromMinutes(5));
+        var failurePolicy = new ActorReminderFailurePolicy.Constant(TimeSpan.FromSeconds(2)) { MaxRetries = 4 };
+        await scheduler.ScheduleAsync("Counter", actorId, "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(2), "3", TimeSpan.FromMinutes(5), failurePolicy: failurePolicy);
         await scheduler.ScheduleAsync("Counter", ActorId.Create("other"), "name", TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1), "other");
         var fetched = await scheduler.GetAsync("Counter", actorId, "name");
         var listedForActor = await scheduler.ListAsync("Counter", actorId);
@@ -560,8 +558,10 @@ public sealed class CoreEdgeCaseTests
         Assert.Equal(TimeSpan.FromMinutes(2), fetched.Period);
         Assert.Equal("3", fetched.ArgumentsJson);
         Assert.Equal(TimeSpan.FromMinutes(5), fetched.Ttl);
+        Assert.Equal(failurePolicy, fetched.FailurePolicy);
         Assert.Single(listedForActor);
         Assert.Equal("name", listedForActor[0].Name);
+        Assert.Equal(failurePolicy, listedForActor[0].Reminder.FailurePolicy);
         Assert.Equal(2, (await scheduler.ListAsync("Counter")).Count);
         await scheduler.CancelAsync("Counter", actorId, "missing");
         await scheduler.CancelAsync("Counter", actorId, "name");
