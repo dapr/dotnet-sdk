@@ -60,6 +60,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
         string argumentsJson,
         TimeSpan? ttl = null,
         bool? overwrite = null,
+        ActorReminderFailurePolicy? failurePolicy = null,
         CancellationToken cancellationToken = default)
     {
         await ScheduleCoreAsync(
@@ -71,6 +72,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             serializer.JsonToBytes(argumentsJson),
             ttl,
             overwrite,
+            failurePolicy,
             cancellationToken).ConfigureAwait(false);
     }
 
@@ -84,6 +86,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
         byte[] arguments,
         TimeSpan? ttl = null,
         bool? overwrite = null,
+        ActorReminderFailurePolicy? failurePolicy = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(arguments);
@@ -96,6 +99,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             arguments,
             ttl,
             overwrite,
+            failurePolicy,
             cancellationToken).ConfigureAwait(false);
     }
 
@@ -109,6 +113,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
         TArguments arguments,
         TimeSpan? ttl = null,
         bool? overwrite = null,
+        ActorReminderFailurePolicy? failurePolicy = null,
         CancellationToken cancellationToken = default)
     {
         await ScheduleCoreAsync(
@@ -120,6 +125,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             serializer.SerializeToBytes(arguments),
             ttl,
             overwrite,
+            failurePolicy,
             cancellationToken).ConfigureAwait(false);
     }
 
@@ -132,6 +138,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
         byte[] arguments,
         TimeSpan? ttl,
         bool? overwrite,
+        ActorReminderFailurePolicy? failurePolicy,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
@@ -150,6 +157,11 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
         if (ttl.HasValue && ttl.Value < TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(ttl), "TTL cannot be negative.");
+        }
+
+        if (failurePolicy is ActorReminderFailurePolicy.Constant constantPolicy && constantPolicy.Interval < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(failurePolicy), "Failure policy interval cannot be negative.");
         }
 
         var request = new P.RegisterActorReminderRequest
@@ -172,11 +184,16 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             request.Overwrite = overwrite.Value;
         }
 
-        try
+        try 
         {
-            await client.Value.RegisterActorReminderAsync(
-                request,
-                DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+          if (failurePolicy is not null)
+          {
+              request.FailurePolicy = ToProto(failurePolicy);
+          }
+
+          await client.Value.RegisterActorReminderAsync(
+              request,
+              DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.AlreadyExists)
         {
@@ -281,6 +298,32 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             ActorScheduleDurationParser.ParseOptional(reminder.HasPeriod ? reminder.Period : null),
             DecodeJson(reminder.Data),
             ActorScheduleDurationParser.ParseOptional(reminder.HasTtl ? reminder.Ttl : null));
+
+    private static P.JobFailurePolicy ToProto(ActorReminderFailurePolicy failurePolicy)
+    {
+        switch (failurePolicy)
+        {
+            case ActorReminderFailurePolicy.Drop:
+                return new P.JobFailurePolicy { Drop = new P.JobFailurePolicyDrop() };
+            case ActorReminderFailurePolicy.Constant constant:
+                var policy = new P.JobFailurePolicy
+                {
+                    Constant = new P.JobFailurePolicyConstant
+                    {
+                        Interval = constant.Interval.ToDuration(),
+                    },
+                };
+
+                if (constant.MaxRetries.HasValue)
+                {
+                    policy.Constant.MaxRetries = constant.MaxRetries.Value;
+                }
+
+                return policy;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(failurePolicy), failurePolicy, "Unsupported actor reminder failure policy.");
+        }
+    }
 
     private static string? DecodeJson(Any? data)
     {

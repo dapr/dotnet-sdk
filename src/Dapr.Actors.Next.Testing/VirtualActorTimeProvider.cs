@@ -328,6 +328,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         string argumentsJson,
         TimeSpan? ttl,
         bool? overwrite,
+        ActorReminderFailurePolicy? failurePolicy,
         CancellationToken cancellationToken)
     {
         if (period < TimeSpan.Zero)
@@ -339,6 +340,8 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         {
             throw new ArgumentOutOfRangeException(nameof(ttl), "TTL cannot be negative.");
         }
+
+        ValidateFailurePolicy(failurePolicy);
 
         lock (syncRoot)
         {
@@ -362,7 +365,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
             }
         }
 
-        Schedule(actorType, actorId, name, name, ActorTurnKind.Reminder, dueTime, ToJsonBytes(argumentsJson), argumentsJson, null, period, ttl);
+        Schedule(actorType, actorId, name, name, ActorTurnKind.Reminder, dueTime, ToJsonBytes(argumentsJson), argumentsJson, null, period, ttl, failurePolicy);
         return ValueTask.CompletedTask;
     }
 
@@ -376,11 +379,12 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         byte[] arguments,
         TimeSpan? ttl,
         bool? overwrite,
+        ActorReminderFailurePolicy? failurePolicy,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(arguments);
         var payload = arguments.ToArray();
-        return ScheduleReminderCoreAsync(actorType, actorId, name, dueTime, period, payload, ToJsonText(payload), ttl, overwrite);
+        return ScheduleReminderCoreAsync(actorType, actorId, name, dueTime, period, payload, ToJsonText(payload), ttl, overwrite, failurePolicy);
     }
 
     /// <inheritdoc />
@@ -393,10 +397,11 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         TArguments arguments,
         TimeSpan? ttl,
         bool? overwrite,
+        ActorReminderFailurePolicy? failurePolicy,
         CancellationToken cancellationToken)
     {
         var payload = Serialize(arguments);
-        return ScheduleReminderCoreAsync(actorType, actorId, name, dueTime, period, payload, ToJsonText(payload), ttl, overwrite);
+        return ScheduleReminderCoreAsync(actorType, actorId, name, dueTime, period, payload, ToJsonText(payload), ttl, overwrite, failurePolicy);
     }
 
     internal void Attach(IActorRuntime actorRuntime, IActorWireSerializer wireSerializer)
@@ -419,7 +424,8 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         string? argumentsJson,
         IReadOnlyDictionary<string, string>? headers,
         TimeSpan? period,
-        TimeSpan? ttl)
+        TimeSpan? ttl,
+        ActorReminderFailurePolicy? failurePolicy = null)
     {
         if (dueTime < TimeSpan.Zero)
         {
@@ -443,7 +449,8 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
                 nextSequence++,
                 arguments,
                 argumentsJson,
-                headers ?? new Dictionary<string, string>(StringComparer.Ordinal)));
+                headers ?? new Dictionary<string, string>(StringComparer.Ordinal),
+                failurePolicy));
         }
     }
 
@@ -456,7 +463,8 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         byte[] arguments,
         string? argumentsJson,
         TimeSpan? ttl,
-        bool? overwrite)
+        bool? overwrite,
+        ActorReminderFailurePolicy? failurePolicy)
     {
         if (period < TimeSpan.Zero)
         {
@@ -467,6 +475,8 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         {
             throw new ArgumentOutOfRangeException(nameof(ttl), "TTL cannot be negative.");
         }
+
+        ValidateFailurePolicy(failurePolicy);
 
         lock (syncRoot)
         {
@@ -490,7 +500,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
             }
         }
 
-        Schedule(actorType, actorId, name, name, ActorTurnKind.Reminder, dueTime, arguments, argumentsJson, null, period, ttl);
+        Schedule(actorType, actorId, name, name, ActorTurnKind.Reminder, dueTime, arguments, argumentsJson, null, period, ttl, failurePolicy);
         return ValueTask.CompletedTask;
     }
 
@@ -529,6 +539,14 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         }
     }
 
+    private static void ValidateFailurePolicy(ActorReminderFailurePolicy? failurePolicy)
+    {
+        if (failurePolicy is ActorReminderFailurePolicy.Constant constantPolicy && constantPolicy.Interval < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(failurePolicy), "Failure policy interval cannot be negative.");
+        }
+    }
+
     private sealed class ScheduledCallback(
         string actorType,
         ActorId actorId,
@@ -544,7 +562,8 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         long sequence,
         byte[] arguments,
         string? argumentsJson,
-        IReadOnlyDictionary<string, string> headers)
+        IReadOnlyDictionary<string, string> headers,
+        ActorReminderFailurePolicy? failurePolicy)
     {
         public string ActorType { get; } = actorType;
 
@@ -576,9 +595,11 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
 
         public IReadOnlyDictionary<string, string> Headers { get; } = headers;
 
+        public ActorReminderFailurePolicy? FailurePolicy { get; } = failurePolicy;
+
         public bool Canceled { get; set; }
 
         public ActorReminderInfo ToReminderInfo() =>
-            new(ActorType, ActorId, OriginalDueTime, OriginalPeriod, ArgumentsJson, OriginalTtl);
+            new(ActorType, ActorId, OriginalDueTime, OriginalPeriod, ArgumentsJson, OriginalTtl, FailurePolicy);
     }
 }
