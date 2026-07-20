@@ -12,16 +12,12 @@ internal static class Utilities
 {
     internal static ImmutableArray<DiagnosticAnalyzer> GetAnalyzers() =>
     [
-        new WorkflowRegistrationAnalyzer(),
-        new WorkflowActivityRegistrationAnalyzer(),
         new WorkflowTypeSafetyAnalyzer()
     ];
 
     internal static IReadOnlyList<MetadataReference> GetReferences()
     {
-        var metadataReferences = TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowActivityRegistrationAnalyzer)).ToList();
-        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowRegistrationAnalyzer)));
-        metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowTypeSafetyAnalyzer)));
+        var metadataReferences = TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowTypeSafetyAnalyzer)).ToList();
         metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(TimeSpan)));
         metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(Workflow<,>)));
         metadataReferences.AddRange(TestUtilities.GetAllReferencesNeededForType(typeof(WorkflowActivity<,>)));

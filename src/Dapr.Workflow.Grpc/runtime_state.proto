@@ -19,7 +19,8 @@ option csharp_namespace = "Dapr.DurableTask.Protobuf";
 option java_package = "io.dapr.durabletask.implementation.protobuf";
 option go_package = "/api/protos";
 
-import "orchestrator_service.proto";
+import "orchestration.proto";
+import "history_events.proto";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
@@ -29,14 +30,14 @@ message RuntimeStateStalled {
   optional string description = 2;
 }
 
-// OrchestrationRuntimeState holds the current state for an orchestration.
-message OrchestrationRuntimeState {
+// WorkflowRuntimeState holds the current state for a workflow.
+message WorkflowRuntimeState {
   string instanceId = 1;
   repeated HistoryEvent newEvents = 2;
   repeated HistoryEvent oldEvents = 3;
   repeated HistoryEvent pendingTasks = 4;
   repeated HistoryEvent pendingTimers = 5;
-  repeated OrchestrationRuntimeStateMessage pendingMessages = 6;
+  repeated WorkflowRuntimeStateMessage pendingMessages = 6;
 
   ExecutionStartedEvent startEvent = 7;
   ExecutionCompletedEvent completedEvent = 8;
@@ -50,8 +51,14 @@ message OrchestrationRuntimeState {
   optional RuntimeStateStalled stalled = 15;
 }
 
-// OrchestrationRuntimeStateMessage holds an OrchestratorMessage and the target instance ID.
-message OrchestrationRuntimeStateMessage {
+// WorkflowRuntimeStateMessage holds a HistoryEvent payload and the target instance ID.
+message WorkflowRuntimeStateMessage {
   HistoryEvent historyEvent = 1;
-  string TargetInstanceID = 2;
+  string targetInstanceId = 2;
+
+  // Propagated history to deliver to the child workflow.
+  // This is a transport field used when creating child workflows with
+  // history propagation enabled. It is NOT stored as part of any
+  // workflow's history events.
+  optional PropagatedHistory propagatedHistory = 3;
 }

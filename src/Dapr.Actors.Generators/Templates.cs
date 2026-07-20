@@ -43,7 +43,8 @@ namespace {destinationNamespace}
             SyntaxFactory.ParseCompilationUnit(source)
                 .NormalizeWhitespace()
                 .ToFullString(),
-            Encoding.UTF8);
+            Encoding.UTF8,
+            SourceHashAlgorithm.Sha256);
     }
 
     /// <summary>
@@ -81,6 +82,7 @@ namespace {destinationNamespace}
             SyntaxFactory.ParseCompilationUnit(source)
                 .NormalizeWhitespace()
                 .ToFullString(),
-            Encoding.UTF8);
+            Encoding.UTF8,
+            SourceHashAlgorithm.Sha256);
     }
 }

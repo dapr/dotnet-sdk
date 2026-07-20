@@ -150,6 +150,57 @@ describe("computeFromTags - core scenarios", () => {
         ]);
     });
 
+    test("latest stable version suppresses RCs from the same latest minor", () => {
+        const tags = [
+            "v1.18.0",
+            "v1.18.0-rc.2",
+            "v1.18.0-rc.1",
+            "v1.17.8",
+            "v1.16.15",
+            "v1.16.16-rc.1",
+            "v1.15.14",
+        ];
+        const out = computeFromTags({
+            tags,
+            tagPrefix: "v",
+            stableCount: 3,
+            rcCount: 1,
+            rcIdent: "rc",
+        });
+
+        expect(out.matrix_json).toEqual([
+            { version: "1.18.0", channel: "stable" },
+            { version: "1.17.8", channel: "stable" },
+            { version: "1.16.15", channel: "stable" },
+        ]);
+    });
+
+    test("only an RC-only newest minor returns an RC; preceding minors use stable patches", () => {
+        const tags = [
+            "v1.19.0-rc.1",
+            "v1.19.0-rc.3",
+            "v1.18.0",
+            "v1.18.1-rc.1",
+            "v1.17.8",
+            "v1.16.15",
+            "v1.16.16-rc.1",
+        ];
+        const out = computeFromTags({
+            tags,
+            tagPrefix: "v",
+            stableCount: 3,
+            rcCount: 1,
+            rcIdent: "rc",
+        });
+
+        expect(out.matrix_json).toEqual([
+            { version: "1.19.0-rc.3", channel: "rc" },
+            { version: "1.18.0", channel: "stable" },
+            { version: "1.17.8", channel: "stable" },
+            { version: "1.16.15", channel: "stable" },
+        ]);
+    });
+
     test("each stable minor is represented by its single latest patch, not multiple patches", () => {
         // 1.17 has stable patches; 1.17.2-rc.1 and 1.16.9-rc.1 are patch RCs within stable minors — ignored
         const tags = [
@@ -170,6 +221,52 @@ describe("computeFromTags - core scenarios", () => {
         expect(out.matrix_json).toEqual([
             { version: "1.17.1", channel: "stable" },
             { version: "1.16.8", channel: "stable" },
+        ]);
+    });
+
+    test("release-source prerelease tags are excluded from stable patch selection", () => {
+        const tags = [
+            "v1.18.0",
+            "v1.16.16",
+            "v1.16.15",
+            "v1.15.14",
+            "v1.14.10",
+        ];
+        const out = computeFromTags({
+            tags,
+            prereleaseTags: ["v1.16.16"],
+            tagPrefix: "v",
+            stableCount: 3,
+            rcCount: 1,
+            rcIdent: "rc",
+        });
+
+        expect(out.matrix_json).toEqual([
+            { version: "1.18.0", channel: "stable" },
+            { version: "1.16.15", channel: "stable" },
+            { version: "1.15.14", channel: "stable" },
+        ]);
+    });
+
+    test("patch RCs do not displace latest stable patch for a selected minor", () => {
+        const tags = [
+            "v1.18.0",
+            "v1.16.16-rc.1",
+            "v1.16.15",
+            "v1.15.14",
+        ];
+        const out = computeFromTags({
+            tags,
+            tagPrefix: "v",
+            stableCount: 3,
+            rcCount: 1,
+            rcIdent: "rc",
+        });
+
+        expect(out.matrix_json).toEqual([
+            { version: "1.18.0", channel: "stable" },
+            { version: "1.16.15", channel: "stable" },
+            { version: "1.15.14", channel: "stable" },
         ]);
     });
 

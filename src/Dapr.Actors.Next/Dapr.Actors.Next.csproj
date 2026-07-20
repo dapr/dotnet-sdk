@@ -1,0 +1,128 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <Description>Provides the functionality necessary to develop Dapr Actors using .NET.</Description>
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+        <TargetsForTfmSpecificContentInPackage>
+            $(TargetsForTfmSpecificContentInPackage);
+            _BuildDaprActorsNextChildrenForCurrentTFM;
+            _CollectDaprActorsNextChildOutputsForCurrentTFM;
+            _AddDaprActorsNextAnalyzerOnce
+        </TargetsForTfmSpecificContentInPackage>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+        <ProjectReference Include="..\Dapr.Messaging\Dapr.Messaging.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <_DaprActorsNextChildLib Include="..\Dapr.Actors.Next.Abstractions\Dapr.Actors.Next.Abstractions.csproj" />
+        <_DaprActorsNextChildLib Include="..\Dapr.Actors.Next.Core\Dapr.Actors.Next.Core.csproj" />
+        <_DaprActorsNextChildLib Include="..\Dapr.Actors.Next.StateMachine\Dapr.Actors.Next.StateMachine.csproj" />
+        <_DaprActorsNextChildLib Include="..\Dapr.Actors.Next.Streams\Dapr.Actors.Next.Streams.csproj" />
+        <_DaprActorsNextChildLib Include="..\Dapr.Actors.Next.Interpreted\Dapr.Actors.Next.Interpreted.csproj" />
+        <_DaprActorsNextChildLib Include="..\Dapr.Actors.Next.Testing\Dapr.Actors.Next.Testing.csproj" />
+
+        <ProjectReference Include="@(_DaprActorsNextChildLib)"
+                          PrivateAssets="all"
+                          ReferenceOutputAssembly="true" />
+
+        <ProjectReference Include="..\Dapr.Actors.Next.SourceGenerators\Dapr.Actors.Next.SourceGenerators.csproj"
+                          PrivateAssets="all"
+                          ReferenceOutputAssembly="false"
+                          SetTargetFramework="TargetFramework=netstandard2.0" />
+        <ProjectReference Include="..\Dapr.Actors.Next.Analyzers\Dapr.Actors.Next.Analyzers.csproj"
+                          PrivateAssets="all"
+                          ReferenceOutputAssembly="false"
+                          SetTargetFramework="TargetFramework=netstandard2.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Grpc.Net.ClientFactory" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Http" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Options" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="buildTransitive\Dapr.Actors.Next.props" Pack="true" PackagePath="buildTransitive\Dapr.Actors.Next.props" />
+    </ItemGroup>
+
+    <Target Name="_BuildDaprActorsNextChildrenForCurrentTFM">
+        <MSBuild Projects="@(_DaprActorsNextChildLib)"
+                 Targets="Build"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)"
+                 BuildInParallel="true" />
+    </Target>
+
+    <Target Name="_CollectDaprActorsNextChildOutputsForCurrentTFM"
+            DependsOnTargets="_BuildDaprActorsNextChildrenForCurrentTFM">
+        <MSBuild Projects="@(_DaprActorsNextChildLib)"
+                 Targets="GetTargetPath"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)">
+            <Output TaskParameter="TargetOutputs" ItemName="_DaprActorsNextBuiltChildOutputs" />
+        </MSBuild>
+
+        <PropertyGroup>
+            <_DaprActorsNextEffectiveTfmFolder>$(NuGetTargetFrameworkFolderName)</_DaprActorsNextEffectiveTfmFolder>
+            <_DaprActorsNextEffectiveTfmFolder Condition="'$(_DaprActorsNextEffectiveTfmFolder)' == ''">$(TargetFramework)</_DaprActorsNextEffectiveTfmFolder>
+        </PropertyGroup>
+
+        <ItemGroup>
+            <_DaprActorsNextChildDll Include="@(_DaprActorsNextBuiltChildOutputs)"
+                                     Condition="'%(_DaprActorsNextBuiltChildOutputs.Extension)' == '.dll'" />
+            <_DaprActorsNextChildXml Include="%(_DaprActorsNextChildDll.RootDir)%(_DaprActorsNextChildDll.Directory)%(_DaprActorsNextChildDll.Filename).xml"
+                                     Condition="Exists('%(_DaprActorsNextChildDll.RootDir)%(_DaprActorsNextChildDll.Directory)%(_DaprActorsNextChildDll.Filename).xml')" />
+            <_DaprActorsNextChildPdb Include="%(_DaprActorsNextChildDll.RootDir)%(_DaprActorsNextChildDll.Directory)%(_DaprActorsNextChildDll.Filename).pdb"
+                                     Condition="Exists('%(_DaprActorsNextChildDll.RootDir)%(_DaprActorsNextChildDll.Directory)%(_DaprActorsNextChildDll.Filename).pdb')" />
+
+            <TfmSpecificPackageFile Include="@(_DaprActorsNextChildDll)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_DaprActorsNextEffectiveTfmFolder)/%(_DaprActorsNextChildDll.Filename)%(_DaprActorsNextChildDll.Extension)</PackagePath>
+            </TfmSpecificPackageFile>
+            <TfmSpecificPackageFile Include="@(_DaprActorsNextChildXml)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_DaprActorsNextEffectiveTfmFolder)/%(_DaprActorsNextChildXml.Filename).xml</PackagePath>
+            </TfmSpecificPackageFile>
+            <TfmSpecificPackageFile Include="@(_DaprActorsNextChildPdb)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_DaprActorsNextEffectiveTfmFolder)/%(_DaprActorsNextChildPdb.Filename).pdb</PackagePath>
+            </TfmSpecificPackageFile>
+        </ItemGroup>
+    </Target>
+
+    <ItemGroup>
+        <_DaprActorsNextAnalyzerProject Include="..\Dapr.Actors.Next.SourceGenerators\Dapr.Actors.Next.SourceGenerators.csproj" />
+        <_DaprActorsNextAnalyzerProject Include="..\Dapr.Actors.Next.Analyzers\Dapr.Actors.Next.Analyzers.csproj" />
+    </ItemGroup>
+
+    <Target Name="_AddDaprActorsNextAnalyzerOnce">
+        <PropertyGroup>
+            <_DaprActorsNextIsFirstTfm Condition="'$(TargetFramework)' == 'net8.0'">true</_DaprActorsNextIsFirstTfm>
+        </PropertyGroup>
+
+        <MSBuild Condition="'$(_DaprActorsNextIsFirstTfm)' == 'true'"
+                 Projects="@(_DaprActorsNextAnalyzerProject)"
+                 Targets="Build"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0" />
+
+        <MSBuild Condition="'$(_DaprActorsNextIsFirstTfm)' == 'true'"
+                 Projects="@(_DaprActorsNextAnalyzerProject)"
+                 Targets="GetTargetPath"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0">
+            <Output TaskParameter="TargetOutputs" ItemName="_DaprActorsNextAnalyzerOutput" />
+        </MSBuild>
+
+        <ItemGroup Condition="'$(_DaprActorsNextIsFirstTfm)' == 'true'">
+            <TfmSpecificPackageFile Include="@(_DaprActorsNextAnalyzerOutput)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>analyzers/dotnet/cs/%(_DaprActorsNextAnalyzerOutput.Filename)%(_DaprActorsNextAnalyzerOutput.Extension)</PackagePath>
+            </TfmSpecificPackageFile>
+        </ItemGroup>
+    </Target>
+
+</Project>

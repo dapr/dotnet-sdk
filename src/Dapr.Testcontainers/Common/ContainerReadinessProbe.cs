@@ -12,8 +12,10 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -210,5 +212,108 @@ internal static class ContainerReadinessProbe
             if (ownsClient)
                 httpClient.Dispose();
         }
+    }
+
+    // The 24-byte HTTP/2 connection preface that every HTTP/2 client must send
+    // immediately after establishing the TCP connection. An HTTP/2 server replies
+    // with at least a SETTINGS frame (minimum 9-byte frame header).
+    // See RFC 7540 §3.5.
+    private static readonly byte[] Http2ClientPreface =
+        Encoding.ASCII.GetBytes("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
+
+    /// <summary>
+    /// Polls the given TCP host/port until a gRPC (HTTP/2) server responds to the HTTP/2
+    /// connection preface, or the timeout elapses.
+    /// </summary>
+    /// <remarks>
+    /// A successful TCP connect (as performed by <see cref="WaitForTcpPortAsync"/>) only
+    /// proves that the kernel/Docker port forwarding accepts SYN packets — it does not
+    /// prove that an HTTP/2 (gRPC) server is actually wired up on the upstream socket. On
+    /// slow CI hosts there can be a brief window in which Docker's published port
+    /// forwarding accepts connections before the upstream gRPC server is fully serving,
+    /// surfacing to the test as a transient
+    /// <c>Grpc.Core.RpcException(StatusCode=Unavailable, "Error connecting to subchannel /
+    /// Connection refused")</c> on the first RPC.
+    /// <para>
+    /// This probe defeats that race by performing the HTTP/2 connection handshake itself:
+    /// it opens a TCP connection, sends the 24-byte HTTP/2 client preface, and waits for
+    /// any bytes back from the server. Any HTTP/2-speaking server (including gRPC) will
+    /// reply with a SETTINGS frame as soon as it is actively serving the connection. If the
+    /// connection is accepted but no bytes arrive within the per-attempt timeout, the
+    /// upstream is not yet ready and the probe retries.
+    /// </para>
+    /// </remarks>
+    /// <param name="host">The host to connect to (e.g. "127.0.0.1").</param>
+    /// <param name="port">The gRPC port to probe.</param>
+    /// <param name="timeout">Maximum total time to wait before throwing <see cref="TimeoutException"/>.</param>
+    /// <param name="cancellationToken">Token used to cancel waiting.</param>
+    /// <exception cref="TimeoutException">Thrown when no HTTP/2 response is received within <paramref name="timeout"/>.</exception>
+    internal static async Task WaitForGrpcServerReadyAsync(
+        string host,
+        int port,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var start = DateTimeOffset.UtcNow;
+        Exception? lastError = null;
+
+        while (DateTimeOffset.UtcNow - start < timeout)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            TcpClient? client = null;
+            try
+            {
+                client = new TcpClient();
+
+                using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                // Bound each individual attempt so a stalled connection does not exhaust the overall timeout.
+                attemptCts.CancelAfter(TimeSpan.FromSeconds(2));
+
+                await client.ConnectAsync(host, port, attemptCts.Token);
+
+                var stream = client.GetStream();
+
+                // Send the HTTP/2 client preface; the server should reply with a SETTINGS frame.
+                await stream.WriteAsync(Http2ClientPreface, attemptCts.Token);
+                await stream.FlushAsync(attemptCts.Token);
+
+                // Reading any byte back is sufficient to prove the server is speaking HTTP/2.
+                // A full SETTINGS frame is 9 bytes of header + payload; we only need to see
+                // that the server has begun responding.
+                var buffer = new byte[1];
+                var bytesRead = await stream.ReadAsync(buffer, attemptCts.Token);
+                if (bytesRead > 0)
+                {
+                    return;
+                }
+
+                // EOF: the server accepted the connection but closed without sending the
+                // server preface — it is not yet serving HTTP/2. Retry.
+                lastError = new IOException("gRPC server closed the connection before sending the HTTP/2 server preface.");
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex) when (
+                ex is SocketException
+                    or IOException
+                    or InvalidOperationException
+                    or OperationCanceledException)
+            {
+                lastError = ex;
+            }
+            finally
+            {
+                client?.Dispose();
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
+        }
+
+        throw new TimeoutException(
+            $"Timed out waiting for gRPC server at {host}:{port} to respond to the HTTP/2 client preface.",
+            lastError);
     }
 }

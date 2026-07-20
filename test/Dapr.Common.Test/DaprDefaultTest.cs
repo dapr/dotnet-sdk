@@ -316,8 +316,8 @@ public class DaprDefaultTest
         [Fact]
         public void ShouldBuildGrpcEndpointAndPortUsingConfiguration()
         {
-            const string endpointVarName = DaprDefaults.DaprGrpcEndpointName;
-            const string portVarName = DaprDefaults.DaprGrpcPortName;
+            const string endpointVarName = DaprDefaults.DaprGrpcEndpointEnvironmentVariableName;
+            const string portVarName = DaprDefaults.DaprGrpcPortEnvironmentVariableName;
             var original_GrpcEndpoint = Environment.GetEnvironmentVariable(endpointVarName);
             var original_GrpcPort = Environment.GetEnvironmentVariable(portVarName);
 
@@ -452,8 +452,8 @@ public class DaprDefaultTest
         [Fact]
         public void ShouldBuildGrpcEndpointDefaultToLocalhostWithPort()
         {
-            const string endpointVarName = DaprDefaults.DaprGrpcEndpointName;
-            const string portVarName = DaprDefaults.DaprGrpcPortName;
+            const string endpointVarName = DaprDefaults.DaprGrpcEndpointEnvironmentVariableName;
+            const string portVarName = DaprDefaults.DaprGrpcPortEnvironmentVariableName;
             var original_grpcEndpoint = Environment.GetEnvironmentVariable(endpointVarName);
             var original_grpcPort = Environment.GetEnvironmentVariable(portVarName);
 
@@ -479,8 +479,8 @@ public class DaprDefaultTest
         [Fact]
         public void ShouldBuildGrpcEndpointDefaultToLocalhostWithDefaultPort()
         {
-            const string endpointVarName = DaprDefaults.DaprGrpcEndpointName;
-            const string portVarName = DaprDefaults.DaprGrpcPortName;
+            const string endpointVarName = DaprDefaults.DaprGrpcEndpointEnvironmentVariableName;
+            const string portVarName = DaprDefaults.DaprGrpcPortEnvironmentVariableName;
             var original_grpcEndpoint = Environment.GetEnvironmentVariable(endpointVarName);
             var original_grpcPort = Environment.GetEnvironmentVariable(portVarName);
 
@@ -506,7 +506,7 @@ public class DaprDefaultTest
         [Fact]
         public void ShouldBuildApiTokenUsingConfiguration()
         {
-            const string envVarName = DaprDefaults.DaprApiTokenName;
+            const string envVarName = DaprDefaults.DaprApiTokenEnvironmentVariableName;
             var original_ApiToken = Environment.GetEnvironmentVariable(envVarName);
 
             try
@@ -532,7 +532,7 @@ public class DaprDefaultTest
         public void ShouldBuildApiTokenUsingPrefixedConfiguration()
         {
             
-            const string envVarName = $"test_{DaprDefaults.DaprApiTokenName}";
+            const string envVarName = $"test_{DaprDefaults.DaprApiTokenEnvironmentVariableName}";
             var original_ApiToken = Environment.GetEnvironmentVariable(envVarName);
 
             try
@@ -559,7 +559,7 @@ public class DaprDefaultTest
         [Fact]
         public void ShouldBuildApiTokenWithEnvVarWhenConfigurationNotAvailable()
         {
-            const string envVarName = DaprDefaults.DaprApiTokenName;
+            const string envVarName = DaprDefaults.DaprApiTokenEnvironmentVariableName;
             var original_ApiToken = Environment.GetEnvironmentVariable(envVarName);
             const string apiToken = "abc123";
             Environment.SetEnvironmentVariable(envVarName, apiToken);

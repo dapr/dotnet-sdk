@@ -123,11 +123,11 @@ internal sealed class WorkflowVersionTracker
     }
 
     /// <summary>
-    /// Produces the <see cref="OrchestrationVersion"/> to stamp into the <see cref="OrchestratorResponse"/>.
+    /// Produces the <see cref="WorkflowVersion"/> to stamp into the <see cref="WorkflowResponse"/>.
     /// </summary>
     /// <param name="workflowName">The name of the current workflow.</param>
-    /// <returns>An instance of a <see cref="OrchestrationVersion"/>.</returns>
-    public OrchestrationVersion BuildResponseVersion(string workflowName) => new()
+    /// <returns>An instance of a <see cref="WorkflowVersion"/>.</returns>
+    public WorkflowVersion BuildResponseVersion(string workflowName) => new()
     {
         Name = workflowName,
         Patches = { _patchesThisTurn } 
@@ -139,7 +139,7 @@ internal sealed class WorkflowVersionTracker
 
         foreach (var ev in events)
         {
-            var version = ev.OrchestratorStarted?.Version;
+            var version = ev.WorkflowStarted?.Version;
             if (version is not null)
             {
                 result.AddRange(version.Patches);

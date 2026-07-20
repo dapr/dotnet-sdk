@@ -1,0 +1,7 @@
+<Project>
+  <ItemGroup>
+    <Compile Remove="**\*.Tests\**\*.cs;**\*Tests\**\*.cs" />
+    <Content Remove="**\*.Tests\**;**\*Tests\**" />
+    <None Include="**\*.Tests\**\*.cs;**\*Tests\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+</Project>

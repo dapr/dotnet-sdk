@@ -97,19 +97,7 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
                 }
                 catch (Exception ex)
                 {
-                    lastError = ex;
-
-                    if (attemptApp is not null)
-                    {
-                        try
-                        {
-                            await attemptApp.StopAsync();
-                        }
-                        finally
-                        {
-                            await attemptApp.DisposeAsync();
-                        }
-                    }
+                    lastError = await StopAndDisposeAppAsync(attemptApp, ex);
                 }
             }
 
@@ -148,19 +136,7 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
             }
             catch (Exception ex)
             {
-                lastError = ex;
-
-                if (attemptApp is not null)
-                {
-                    try
-                    {
-                        await attemptApp.StopAsync();
-                    }
-                    finally
-                    {
-                        await attemptApp.DisposeAsync();
-                    }
-                }
+                lastError = await StopAndDisposeAppAsync(attemptApp, ex);
                 
                 // Try again with a frest set of ports
             }
@@ -211,5 +187,35 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
         }
 
         throw new InvalidOperationException($"Unable to determine bound port from addresses: {string.Join(", ", addresses)}");
+    }
+
+    private static async Task<Exception> StopAndDisposeAppAsync(WebApplication? app, Exception startupException)
+    {
+        if (app is null)
+        {
+            return startupException;
+        }
+
+        try
+        {
+            await app.StopAsync();
+        }
+        catch (Exception stopException)
+        {
+            startupException = new AggregateException(startupException, stopException);
+        }
+        finally
+        {
+            try
+            {
+                await app.DisposeAsync();
+            }
+            catch (Exception disposeException)
+            {
+                startupException = new AggregateException(startupException, disposeException);
+            }
+        }
+
+        return startupException;
     }
 }

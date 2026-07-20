@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //  ------------------------------------------------------------------------
+
+using System.Diagnostics.CodeAnalysis;
 
 namespace Dapr.Common.Serialization;
 
@@ -24,8 +26,21 @@ namespace Dapr.Common.Serialization;
 public interface IDaprSerializer
 {
     /// <summary>
-    /// Serializes an object to a string representation.
+    /// Serializes a value of a known type to its string representation.
     /// </summary>
+    /// <typeparam name="T">The compile-time type of the value being serialized.</typeparam>
+    /// <param name="value">The value to serialize. Can be null.</param>
+    /// <returns>
+    /// A string representation of the value. Returns an empty string if <paramref name="value"/> is null.
+    /// </returns>
+    string Serialize<T>(T value);
+
+    /// <summary>
+    /// Serializes an object to a string representation using an optional type hint.
+    /// </summary>
+    /// <remarks>
+    /// Prefer <see cref="Serialize{T}"/> when the type is known at compile time.
+    /// </remarks>
     /// <param name="value">The object to serialize. Can be null.</param>
     /// <param name="inputType">
     /// Optional type hint for the object being serialized. Some serializers may use this for better type fidelity.
@@ -34,6 +49,8 @@ public interface IDaprSerializer
     /// <returns>
     /// A string representation of the object. Returns an empty string if <paramref name="value"/> is null.
     /// </returns>
+    [RequiresUnreferencedCode("JSON serialization with a runtime Type may require types that cannot be statically analyzed.")]
+    [RequiresDynamicCode("JSON serialization with a runtime Type requires dynamic code generation.")]
     string Serialize(object? value, Type? inputType = null);
 
     /// <summary>
@@ -49,11 +66,16 @@ public interface IDaprSerializer
     /// <summary>
     /// Deserializes a string to an object of the specified type.
     /// </summary>
+    /// <remarks>
+    /// Prefer <see cref="Deserialize{T}"/> when the type is known at compile time.
+    /// </remarks>
     /// <param name="data">The string data to deserialize. Can be null or empty.</param>
     /// <param name="returnType">The target type to deserialize to.</param>
     /// <returns>
     /// The deserialized object, or <c>null</c> if <paramref name="data"/> is null or empty.
     /// </returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="returnType"/> is null.</exception>
+    [RequiresUnreferencedCode("JSON deserialization with a runtime Type may require types that cannot be statically analyzed.")]
+    [RequiresDynamicCode("JSON deserialization with a runtime Type requires dynamic code generation.")]
     object? Deserialize(string? data, Type returnType);
 }

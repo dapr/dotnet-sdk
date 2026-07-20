@@ -46,15 +46,21 @@ This repo builds the following packages:
 - Dapr.Actors.AspNetCore
 - Dapr.Actors.Generators
 - Dapr.AI
+- Dapr.AI.A2A
+- Dapr.Cryptography
+- Dapr.DistributedLock
+- Dapr.Extensions.Configuration
 - Dapr.Jobs
 - Dapr.Messaging
-- Dapr.Extensions.Configuration
+- Dapr.Metadata
+- Dapr.SecretsManagement
+- Dapr.StateManagement
+- Dapr.Testcontainers
 - Dapr.Workflow
 
 It also builds the following packages which are not intended for public use and contain common types used in the packages above:
 - Dapr.Common
 - Dapr.Protos
-
 
 ### Prerequisites
 

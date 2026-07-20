@@ -278,6 +278,115 @@ public sealed class ContainerReadinessProbeTests
     }
 
     // ---------------------------------------------------------------------------
+    // WaitForGrpcServerReadyAsync — performs the HTTP/2 client-preface handshake
+    // to confirm a gRPC server is actively serving (not just that TCP accepts).
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public async Task WaitForGrpcServerReadyAsync_Returns_WhenServerSendsHttp2ServerPreface()
+    {
+        // Simulate an HTTP/2 server by replying with a minimal SETTINGS frame
+        // (9-byte HTTP/2 frame header with type=0x4) as soon as we receive any bytes
+        // from the client. A real gRPC server does the same on connection setup.
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+        var serverTask = Task.Run(async () =>
+        {
+            using var socket = await listener.AcceptSocketAsync(TestContext.Current.CancellationToken);
+            using var stream = new NetworkStream(socket, ownsSocket: false);
+
+            // Wait for any client data, then send a SETTINGS frame (length=0, type=0x4).
+            var buffer = new byte[1];
+            _ = await stream.ReadAtLeastAsync(buffer, 1, throwOnEndOfStream: false, TestContext.Current.CancellationToken);
+
+            // HTTP/2 SETTINGS frame: 24-bit length(0) | type(0x04) | flags(0) | stream(0)
+            byte[] settingsFrame = [0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00];
+            await stream.WriteAsync(settingsFrame, TestContext.Current.CancellationToken);
+            await stream.FlushAsync(TestContext.Current.CancellationToken);
+        }, TestContext.Current.CancellationToken);
+
+        try
+        {
+            await ContainerReadinessProbe.WaitForGrpcServerReadyAsync(
+                "127.0.0.1", port, TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        }
+        finally
+        {
+            listener.Stop();
+            try { await serverTask; } catch { /* fake server may be torn down mid-write */ }
+        }
+    }
+
+    [Fact]
+    public async Task WaitForGrpcServerReadyAsync_Times_Out_WhenServerAcceptsButNeverResponds()
+    {
+        // Simulate Docker port forwarding accepting TCP SYN before the upstream gRPC server
+        // is wired up: we accept the connection and read the client's preface, but never
+        // send any bytes back. The probe must time out rather than declaring readiness.
+        var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((IPEndPoint)listener.LocalEndpoint).Port;
+
+        using var serverCts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var serverTask = Task.Run(async () =>
+        {
+            try
+            {
+                while (!serverCts.IsCancellationRequested)
+                {
+                    using var socket = await listener.AcceptSocketAsync(serverCts.Token);
+                    // Drain the preface and hold the socket open without replying.
+                    var buffer = new byte[64];
+                    try { _ = await socket.ReceiveAsync(buffer, serverCts.Token); } catch { }
+                    await Task.Delay(TimeSpan.FromSeconds(5), serverCts.Token);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (SocketException) { }
+            catch (ObjectDisposedException) { }
+        }, serverCts.Token);
+
+        try
+        {
+            await Assert.ThrowsAsync<TimeoutException>(() =>
+                ContainerReadinessProbe.WaitForGrpcServerReadyAsync(
+                    "127.0.0.1", port, TimeSpan.FromMilliseconds(1500), TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            serverCts.Cancel();
+            listener.Stop();
+            try { await serverTask; } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task WaitForGrpcServerReadyAsync_Times_Out_WhenPortIsRefused()
+    {
+        // Port is not listening at all — the probe should retry until the overall timeout.
+        var port = PortUtilities.GetAvailablePort();
+
+        await Assert.ThrowsAsync<TimeoutException>(() =>
+            ContainerReadinessProbe.WaitForGrpcServerReadyAsync(
+                "127.0.0.1", port, TimeSpan.FromMilliseconds(500), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task WaitForGrpcServerReadyAsync_ThrowsOperationCanceledException_WhenTokenCancelled()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var port = PortUtilities.GetAvailablePort();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            ContainerReadinessProbe.WaitForGrpcServerReadyAsync(
+                "127.0.0.1", port, TimeSpan.FromSeconds(5), cts.Token));
+    }
+
+    // ---------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------
 

@@ -1103,9 +1103,11 @@ internal class DaprClientGrpc : DaprClient
             envelope.States.Add(stateItem);
         }
 
+        var options = CreateCallOptions(headers: null, cancellationToken);
+
         try
         {
-            await this.Client.DeleteBulkStateAsync(envelope, cancellationToken: cancellationToken);
+            await this.Client.DeleteBulkStateAsync(envelope, options);
         }
         catch (RpcException ex)
         {

@@ -31,6 +31,7 @@ public class WorkflowStateTests
         Assert.Equal(DateTime.MinValue, state.LastUpdatedAt.DateTime);
         Assert.Equal(WorkflowRuntimeStatus.Unknown, state.RuntimeStatus);
         Assert.Null(state.FailureDetails);
+        Assert.Null(state.WorkflowName);
 
         Assert.Equal(default, state.ReadInputAs<int>());
         Assert.Equal(default, state.ReadOutputAs<int>());
@@ -60,6 +61,7 @@ public class WorkflowStateTests
         Assert.Equal(created, state.CreatedAt.DateTime);
         Assert.Equal(updated, state.LastUpdatedAt.DateTime);
         Assert.Equal(WorkflowRuntimeStatus.Running, state.RuntimeStatus);
+        Assert.Equal("wf", state.WorkflowName);
     }
 
     [Fact]

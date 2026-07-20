@@ -38,10 +38,7 @@ public sealed class WorkflowDependencyInjectionAnalyzer : DiagnosticAnalyzer
     /// <summary>
     /// Gets the diagnostics supported by this analyzer.
     /// </summary>
-    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-    [
-        WorkflowDependencyInjectionDescriptor
-    ];
+    public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(WorkflowDependencyInjectionDescriptor);
 
     /// <summary>
     /// Initializes analyzer actions.

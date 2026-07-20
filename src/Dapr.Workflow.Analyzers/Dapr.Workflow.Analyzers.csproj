@@ -9,7 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" VersionOverride="$(ShippingAnalyzerRoslynVersion)" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="$(ShippingAnalyzerRoslynVersion)" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.Common" VersionOverride="$(ShippingAnalyzerRoslynVersion)" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" VersionOverride="$(ShippingAnalyzerRoslynVersion)" PrivateAssets="all" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -21,6 +24,9 @@
 
     <!-- Do not include the generator as a lib dependency -->
     <IncludeBuildOutput>false</IncludeBuildOutput>
+
+    <!-- This analyzer assembly ships bundled inside the Dapr.Workflow NuGet package; it is not published as a standalone package. -->
+    <IsPackable>false</IsPackable>
 
     <!-- Additional NuGet package properties. -->
     <Description>This package contains analyzers for interacting with Dapr workflows.</Description>

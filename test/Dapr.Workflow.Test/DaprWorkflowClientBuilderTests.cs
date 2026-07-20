@@ -296,6 +296,7 @@ public class DaprWorkflowClientBuilderTests
     /// <summary>Custom IDaprSerializer stub — does not implement IWorkflowSerializer.</summary>
     private sealed class StubDaprSerializer(string name) : IDaprSerializer
     {
+        public string Serialize<T>(T value) => name;
         public string Serialize(object? value, Type? inputType = null) => name;
         public T? Deserialize<T>(string? data) => default;
         public object? Deserialize(string? data, Type returnType) => null;
@@ -304,6 +305,7 @@ public class DaprWorkflowClientBuilderTests
     /// <summary>Custom IWorkflowSerializer stub — exercises the backward-compat interface.</summary>
     private sealed class StubWorkflowSerializer(string name) : IWorkflowSerializer
     {
+        public string Serialize<T>(T value) => name;
         public string Serialize(object? value, Type? inputType = null) => name;
         public T? Deserialize<T>(string? data) => default;
         public object? Deserialize(string? data, Type returnType) => null;

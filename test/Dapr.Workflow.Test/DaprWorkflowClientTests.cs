@@ -85,20 +85,21 @@ public class DaprWorkflowClientTests
     }
 
     [Fact]
-    public async Task GetWorkflowStateAsync_ShouldReturnNull_WhenInnerReturnsNullMetadata()
+    public async Task GetWorkflowStateAsync_ShouldReflectNotExists_WhenInnerReturnsNullMetadata()
     {
         var inner = new CapturingWorkflowClient { GetWorkflowMetadataResult = null };
         var client = new DaprWorkflowClient(inner);
 
         var state = await client.GetWorkflowStateAsync("missing", cancellation: TestContext.Current.CancellationToken);
 
-        Assert.Null(state);
+        Assert.NotNull(state);
+        Assert.False(state.Exists);
         Assert.Equal("missing", inner.LastGetMetadataInstanceId);
         Assert.True(inner.LastGetMetadataGetInputsAndOutputs);
     }
 
     [Fact]
-    public async Task GetWorkflowStateAsync_ShouldReturnNull_WhenInnerThrowsRpcException()
+    public async Task GetWorkflowStateAsync_ShouldReflectNotExists_WhenInnerThrowsNotFoundRpcException()
     {
         var inner = new CapturingWorkflowClient
         {
@@ -108,7 +109,22 @@ public class DaprWorkflowClientTests
 
         var state = await client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken);
 
-        Assert.Null(state);
+        Assert.NotNull(state);
+        Assert.False(state.Exists);
+    }
+
+    [Fact]
+    public async Task GetWorkflowStateAsync_ShouldRethrow_WhenInnerThrowsNonNotFoundRpcException()
+    {
+        var inner = new CapturingWorkflowClient
+        {
+            GetWorkflowMetadataException = new RpcException(new Status(StatusCode.Unavailable, "sidecar down"))
+        };
+        var client = new DaprWorkflowClient(inner);
+
+        var ex = await Assert.ThrowsAsync<RpcException>(() =>
+            client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken));
+        Assert.Equal(StatusCode.Unavailable, ex.StatusCode);
     }
 
     [Fact]

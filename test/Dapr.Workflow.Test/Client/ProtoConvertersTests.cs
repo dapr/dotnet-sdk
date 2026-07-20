@@ -15,7 +15,6 @@ using System.Text.Json;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
 using Dapr.Common.Serialization;
-using Dapr.Workflow.Serialization;
 using Google.Protobuf.WellKnownTypes;
 
 namespace Dapr.Workflow.Test.Client;
@@ -57,11 +56,11 @@ public class ProtoConvertersTests
         var createdUtc = new DateTime(2025, 01, 02, 03, 04, 05, DateTimeKind.Utc);
         var updatedUtc = new DateTime(2025, 02, 03, 04, 05, 06, DateTimeKind.Utc);
 
-        var state = new OrchestrationState
+        var state = new Dapr.DurableTask.Protobuf.WorkflowState
         {
             InstanceId = "instance-123",
             Name = "MyWorkflow",
-            OrchestrationStatus = OrchestrationStatus.Running,
+            WorkflowStatus = OrchestrationStatus.Running,
             CreatedTimestamp = Timestamp.FromDateTime(createdUtc),
             LastUpdatedTimestamp = Timestamp.FromDateTime(updatedUtc),
             Input = "{\"hello\":\"in\"}",
@@ -89,11 +88,11 @@ public class ProtoConvertersTests
     {
         var serializer = new JsonDaprSerializer();
 
-        var state = new OrchestrationState
+        var state = new Dapr.DurableTask.Protobuf.WorkflowState
         {
             InstanceId = "i",
             Name = "n",
-            OrchestrationStatus = OrchestrationStatus.Pending,
+            WorkflowStatus = OrchestrationStatus.Pending,
             CreatedTimestamp = null,
             LastUpdatedTimestamp = null
         };
@@ -109,11 +108,11 @@ public class ProtoConvertersTests
     {
         var serializer = new JsonDaprSerializer();
 
-        var state = new OrchestrationState
+        var state = new Dapr.DurableTask.Protobuf.WorkflowState
         {
             InstanceId = "i",
             Name = "n",
-            OrchestrationStatus = OrchestrationStatus.Completed,
+            WorkflowStatus = OrchestrationStatus.Completed,
             Input = "",
             Output = null,
             CustomStatus = ""
@@ -127,15 +126,41 @@ public class ProtoConvertersTests
     }
 
     [Fact]
+    public void ToWorkflowMetadata_ShouldMapFailureDetails_WhenPresent()
+    {
+        var serializer = new JsonDaprSerializer();
+
+        var state = new Dapr.DurableTask.Protobuf.WorkflowState
+        {
+            InstanceId = "i",
+            Name = "n",
+            WorkflowStatus = OrchestrationStatus.Failed,
+            FailureDetails = new TaskFailureDetails
+            {
+                ErrorType = "System.InvalidOperationException",
+                ErrorMessage = "boom",
+                StackTrace = "trace"
+            }
+        };
+
+        var metadata = ProtoConverters.ToWorkflowMetadata(state, serializer);
+
+        Assert.NotNull(metadata.FailureDetails);
+        Assert.Equal("System.InvalidOperationException", metadata.FailureDetails!.ErrorType);
+        Assert.Equal("boom", metadata.FailureDetails.ErrorMessage);
+        Assert.Equal("trace", metadata.FailureDetails.StackTrace);
+    }
+
+    [Fact]
     public void ToWorkflowMetadata_ShouldKeepSerializedFields_WhenProtoStringsContainWhitespace()
     {
         var serializer = new JsonDaprSerializer();
 
-        var state = new OrchestrationState
+        var state = new Dapr.DurableTask.Protobuf.WorkflowState
         {
             InstanceId = "i",
             Name = "n",
-            OrchestrationStatus = OrchestrationStatus.Completed,
+            WorkflowStatus = OrchestrationStatus.Completed,
             Input = " ",
             Output = "\t",
             CustomStatus = "\r\n"
@@ -153,11 +178,11 @@ public class ProtoConvertersTests
     {
         var serializer = new JsonDaprSerializer();
 
-        var state = new OrchestrationState
+        var state = new Dapr.DurableTask.Protobuf.WorkflowState
         {
             InstanceId = "i",
             Name = "n",
-            OrchestrationStatus = OrchestrationStatus.ContinuedAsNew
+            WorkflowStatus = OrchestrationStatus.ContinuedAsNew
         };
 
         var metadata = ProtoConverters.ToWorkflowMetadata(state, serializer);

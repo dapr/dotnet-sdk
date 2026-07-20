@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Headers;
+using System.Diagnostics;
 using System.Reflection;
 using Grpc.Core;
 
@@ -15,7 +16,7 @@ internal static class DaprClientUtilities
     /// <returns>The gRPC call options.</returns>
     internal static CallOptions ConfigureGrpcCallOptions(Assembly assembly, string? daprApiToken, CancellationToken cancellationToken = default)
     {
-        var callOptions = new CallOptions(headers: new Metadata(), cancellationToken: cancellationToken);
+        var callOptions = new CallOptions(headers: [], cancellationToken: cancellationToken);
         
         //Add the user-agent header to the gRPC call options
         var assemblyVersion = assembly
@@ -34,6 +35,8 @@ internal static class DaprClientUtilities
                 callOptions.Headers.Add(apiTokenHeader.Value.Key, apiTokenHeader.Value.Value);
             }
         }
+
+        AddTraceContextHeaders(callOptions.Headers);
 
         return callOptions;
     }
@@ -61,5 +64,21 @@ internal static class DaprClientUtilities
         string.IsNullOrWhiteSpace(daprApiToken)
             ? null
             : new KeyValuePair<string, string>("dapr-api-token", daprApiToken);
+
+    private static void AddTraceContextHeaders(Metadata headers)
+    {
+        var activity = Activity.Current;
+        if (activity?.Id is null || activity.IdFormat != ActivityIdFormat.W3C)
+        {
+            return;
+        }
+
+        headers.Add("traceparent", activity.Id);
+
+        if (!string.IsNullOrWhiteSpace(activity.TraceStateString))
+        {
+            headers.Add("tracestate", activity.TraceStateString);
+        }
+    }
 }
 

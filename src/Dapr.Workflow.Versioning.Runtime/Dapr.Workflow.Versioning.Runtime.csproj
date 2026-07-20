@@ -3,6 +3,8 @@
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <!-- This assembly ships bundled inside the Dapr.Workflow NuGet package; it is not published as a standalone package. -->
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,8 +15,8 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj" />
-        <ProjectReference Include="..\Dapr.Workflow\Dapr.Workflow.csproj" />
         <ProjectReference Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
+        <ProjectReference Include="..\Dapr.Workflow.Grpc\Dapr.Workflow.Grpc.csproj" />
     </ItemGroup>
 
 </Project>

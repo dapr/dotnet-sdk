@@ -25436,18 +25436,26 @@ function computeFromTags(input) {
   const stableCount = input.stableCount ?? 2;
   const rcCount = input.rcCount ?? 1;
   const rcIdent = input.rcIdent ?? "rc";
+  const prereleaseTagSet = new Set(
+    (input.prereleaseTags ?? []).map((t) => stripPrefix(t.replace(/^refs\/tags\//, ""), tagPrefix))
+  );
   const versions = [];
   for (const t of input.tags) {
     const raw = stripPrefix(t.replace(/^refs\/tags\//, ""), tagPrefix);
     const cleaned = import_semver.default.valid(raw);
-    if (cleaned) versions.push(cleaned);
+    if (cleaned) {
+      versions.push({
+        version: cleaned,
+        isPrereleaseRelease: prereleaseTagSet.has(raw)
+      });
+    }
   }
   if (versions.length === 0) {
     return { matrix_json: [] };
   }
-  const stable = versions.filter((v) => !import_semver.default.prerelease(v));
-  const prerelease = versions.filter((v) => !!import_semver.default.prerelease(v));
-  const allSorted = [...versions].sort(import_semver.default.rcompare);
+  const stable = versions.filter((v) => !v.isPrereleaseRelease && !import_semver.default.prerelease(v.version)).map((v) => v.version);
+  const prerelease = versions.filter((v) => v.isPrereleaseRelease || !!import_semver.default.prerelease(v.version)).map((v) => v.version);
+  const allSorted = versions.map((v) => v.version).sort(import_semver.default.rcompare);
   const highestOverall = allSorted[0];
   const highestMajor = import_semver.default.major(highestOverall);
   const highestMinor = import_semver.default.minor(highestOverall);
@@ -25498,14 +25506,18 @@ async function run() {
     const owner = getInput("owner") || "dapr";
     const repo = getInput("repo") || "dapr";
     const octokit = getOctokit(token);
-    const tags = await octokit.paginate(octokit.rest.repos.listTags, {
+    const releases = await octokit.paginate(octokit.rest.repos.listReleases, {
       owner,
       repo,
       per_page: 100
     });
-    const tagNames = tags.map((t) => t.name);
+    const releaseTags = releases.filter((release) => !release.draft).filter((release) => !release.tag_name.includes("1.17.")).map((release) => ({
+      name: release.tag_name,
+      prerelease: release.prerelease
+    }));
     const result = computeFromTags({
-      tags: tagNames,
+      tags: releaseTags.map((tag) => tag.name),
+      prereleaseTags: releaseTags.filter((tag) => tag.prerelease).map((tag) => tag.name),
       tagPrefix,
       stableCount,
       rcCount,

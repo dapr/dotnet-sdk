@@ -124,11 +124,15 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// </param>
     /// <param name="cancellation">Token to cancel the retrieval operation.</param>
     /// <returns>
-    /// A <see cref="WorkflowState"/> if the workflow instance exists, or <c>null</c> if the instance does not
-    /// exist or an error occurs retrieving the metadata.
-    /// This method never throws.
+    /// A <see cref="WorkflowState"/> describing the instance. If the instance does not exist, the returned
+    /// state reports <see cref="WorkflowState.Exists"/> as <c>false</c> rather than throwing.
     /// </returns>
-    public async Task<WorkflowState?> GetWorkflowStateAsync(
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
+    /// <exception cref="RpcException">
+    /// Thrown for gRPC failures other than <see cref="StatusCode.NotFound"/> (e.g. a transient runtime or
+    /// transport error), so callers can distinguish a genuinely missing workflow from an error retrieving it.
+    /// </exception>
+    public async Task<WorkflowState> GetWorkflowStateAsync(
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellation = default)
@@ -138,12 +142,13 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
         try
         {
             var metadata = await _innerClient.GetWorkflowMetadataAsync(instanceId, getInputsAndOutputs, cancellation);
-            return metadata is null ? null : new WorkflowState(metadata);    
+            return new WorkflowState(metadata);    
         }
-        catch (RpcException)
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
         {
-            // If the state doesn't exist, we typically get an `RpcException`, so this wraps this and just returns null
-            return null;
+            // A missing instance surfaces as a NotFound RpcException; represent it as a non-existent state.
+            // Any other RpcException propagates so the caller can handle the error.
+            return new WorkflowState(null);
         }
     }
     

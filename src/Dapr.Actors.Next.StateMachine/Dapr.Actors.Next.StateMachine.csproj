@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <PackageId>Dapr.Actors.Next.StateMachine</PackageId>
+        <Title>Dapr Actors Next State Machine</Title>
+        <Description>Compiled state-machine actor authoring model for the Dapr Actors Next SDK.</Description>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dapr.Actors.Next.Abstractions\Dapr.Actors.Next.Abstractions.csproj" />
+        <ProjectReference Include="..\Dapr.Actors.Next.Core\Dapr.Actors.Next.Core.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,116 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <IsPackable>true</IsPackable>
+        <PackageId>Dapr.Metadata</PackageId>
+        <Description>Dapr Metadata SDK for .NET</Description>
+
+        <!-- Create the package on build -->
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+
+        <!-- This aggregator produces no own binaries -->
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+
+        <!-- Aggregator package has lib assets from bundled child projects -->
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+        <!-- Avoid creating an empty .snupkg -->
+        <IncludeSymbols>false</IncludeSymbols>
+
+        <!-- Per-TFM content hook (runs once per TFM) -->
+        <TargetsForTfmSpecificContentInPackage>
+            $(TargetsForTfmSpecificContentInPackage);
+            _BuildChildrenForCurrentTFM;
+            _CollectChildOutputsForCurrentTFM
+        </TargetsForTfmSpecificContentInPackage>
+    </PropertyGroup>
+
+    <!-- Fail fast if TargetFrameworks from src/Directory.Build.props is not applied -->
+    <Target Name="_EnsureTargetFrameworks" BeforeTargets="Pack">
+        <PropertyGroup>
+            <_ExpectedDirectoryBuildProps>$(MSBuildProjectDirectory)\..\Directory.Build.props</_ExpectedDirectoryBuildProps>
+        </PropertyGroup>
+        <Error Condition="'$(TargetFrameworks)' == ''"
+               Text="TargetFrameworks is empty. This project relies on $(_ExpectedDirectoryBuildProps) for its TFM list. Ensure ImportDirectoryBuildProps is enabled and the file is imported." />
+    </Target>
+
+    <ItemGroup>
+        <!-- Child projects whose outputs are bundled into this package but are NOT NuGet dependencies. -->
+        <_MetadataChildLib Include="..\Dapr.Metadata.Abstractions\Dapr.Metadata.Abstractions.csproj" />
+        <_MetadataChildLib Include="..\Dapr.Metadata.Runtime\Dapr.Metadata.Runtime.csproj" />
+
+        <ProjectReference Include="@(_MetadataChildLib)"
+                          PrivateAssets="all"
+                          ReferenceOutputAssembly="false" />
+
+        <!-- Dapr.Common remains a visible dependency because the bundled assemblies expose and use
+             its public types, and consumers need it as a compile/runtime asset. -->
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+    </ItemGroup>
+
+    <!-- Package references required by the bundled runtime assembly. These must remain visible to
+         consumers because the runtime project is bundled privately instead of published separately. -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Http" />
+    </ItemGroup>
+
+    <!-- Build child libs for the current TFM -->
+    <Target Name="_BuildChildrenForCurrentTFM">
+        <MSBuild Projects="@(_MetadataChildLib)"
+                 Targets="Build"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)"
+                 BuildInParallel="true" />
+    </Target>
+
+    <!-- Create per-TFM content items mapped to lib/<tfm>/ -->
+    <Target Name="_CollectChildOutputsForCurrentTFM" DependsOnTargets="_BuildChildrenForCurrentTFM">
+        <!-- Ask children for their TargetPath for THIS TFM -->
+        <MSBuild Projects="@(_MetadataChildLib)"
+                 Targets="GetTargetPath"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)">
+            <Output TaskParameter="TargetOutputs" ItemName="_BuiltChildOutputs" />
+        </MSBuild>
+
+        <!-- Derive a reliable folder name for lib/<tfm>. Use NuGet's name when available, else fall back to $(TargetFramework). -->
+        <PropertyGroup>
+            <_EffectiveTfmFolder>$(NuGetTargetFrameworkFolderName)</_EffectiveTfmFolder>
+            <_EffectiveTfmFolder Condition="'$(_EffectiveTfmFolder)'==''">$(TargetFramework)</_EffectiveTfmFolder>
+        </PropertyGroup>
+
+        <!-- Instrumentation: confirm the resolved folder name -->
+        <Message Importance="high" Text="[Dapr.Metadata] TFM=$(TargetFramework); Folder=$(_EffectiveTfmFolder); outputs: @(_BuiltChildOutputs->'%(Identity)')" />
+
+        <ItemGroup>
+            <!-- Only DLLs -->
+            <_ChildDll Include="@(_BuiltChildOutputs)" Condition="'%(_BuiltChildOutputs.Extension)'=='.dll'" />
+
+            <!-- Optional XML/PDB alongside -->
+            <_ChildXml Include="%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).xml"
+                       Condition="Exists('%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).xml')" />
+            <_ChildPdb Include="%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).pdb"
+                       Condition="Exists('%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).pdb')" />
+
+            <!-- Map to lib/<resolved-tfm>/... -->
+            <TfmSpecificPackageFile Include="@(_ChildDll)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_EffectiveTfmFolder)/%(_ChildDll.Filename)%(_ChildDll.Extension)</PackagePath>
+            </TfmSpecificPackageFile>
+
+            <TfmSpecificPackageFile Include="@(_ChildXml)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_EffectiveTfmFolder)/%(_ChildXml.Filename).xml</PackagePath>
+            </TfmSpecificPackageFile>
+
+            <TfmSpecificPackageFile Include="@(_ChildPdb)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_EffectiveTfmFolder)/%(_ChildPdb.Filename).pdb</PackagePath>
+            </TfmSpecificPackageFile>
+        </ItemGroup>
+    </Target>
+
+    <ItemGroup>
+        <Folder Include="Properties\" />
+    </ItemGroup>
+</Project>

@@ -15,16 +15,24 @@ async function run() {
 
         const octokit = github.getOctokit(token);
 
-        // Paginate all tags
-        const tags: Tag[] = await octokit.paginate(octokit.rest.repos.listTags, {
+        // Paginate releases so prerelease releases are excluded from stable selection
+        // even when their tag name does not include a prerelease suffix.
+        const releases = await octokit.paginate(octokit.rest.repos.listReleases, {
             owner,
             repo,
             per_page: 100
         });
 
-        const tagNames = tags.map((t: { name: string }) => t.name);
+        const releaseTags = releases
+            .filter((release) => !release.draft)
+            .map((release) => ({
+                name: release.tag_name,
+                prerelease: release.prerelease,
+            }));
+
         const result = computeFromTags({
-            tags: tagNames,
+            tags: releaseTags.map((tag) => tag.name),
+            prereleaseTags: releaseTags.filter((tag) => tag.prerelease).map((tag) => tag.name),
             tagPrefix,
             stableCount,
             rcCount,

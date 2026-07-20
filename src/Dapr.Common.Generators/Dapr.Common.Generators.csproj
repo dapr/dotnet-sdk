@@ -19,7 +19,10 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp">
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" VersionOverride="$(ShippingAnalyzerRoslynVersion)">
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="$(ShippingAnalyzerRoslynVersion)">
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
     </ItemGroup>
