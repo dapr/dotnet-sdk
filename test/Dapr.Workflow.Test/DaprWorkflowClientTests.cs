@@ -99,7 +99,7 @@ public class DaprWorkflowClientTests
     }
 
     [Fact]
-    public async Task GetWorkflowStateAsync_ShouldReflectNotExists_WhenInnerThrowsRpcException()
+    public async Task GetWorkflowStateAsync_ShouldReflectNotExists_WhenInnerThrowsNotFoundRpcException()
     {
         var inner = new CapturingWorkflowClient
         {
@@ -111,6 +111,20 @@ public class DaprWorkflowClientTests
 
         Assert.NotNull(state);
         Assert.False(state.Exists);
+    }
+
+    [Fact]
+    public async Task GetWorkflowStateAsync_ShouldRethrow_WhenInnerThrowsNonNotFoundRpcException()
+    {
+        var inner = new CapturingWorkflowClient
+        {
+            GetWorkflowMetadataException = new RpcException(new Status(StatusCode.Unavailable, "sidecar down"))
+        };
+        var client = new DaprWorkflowClient(inner);
+
+        var ex = await Assert.ThrowsAsync<RpcException>(() =>
+            client.GetWorkflowStateAsync("i", cancellation: TestContext.Current.CancellationToken));
+        Assert.Equal(StatusCode.Unavailable, ex.StatusCode);
     }
 
     [Fact]

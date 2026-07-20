@@ -90,11 +90,9 @@ internal sealed class WorkflowGrpcClient(
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
         {
-            return null;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error getting workflow metadata for instance '{InstanceId}'", instanceId);
+            // A missing instance is represented as null metadata. Every other gRPC failure (e.g. a transient
+            // Unavailable/Unknown from the runtime) is allowed to propagate so callers can distinguish a
+            // genuine "not found" from a transport/runtime error rather than seeing an identical null result.
             return null;
         }
     }
