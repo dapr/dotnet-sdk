@@ -95,13 +95,21 @@ public sealed class DaprdContainer : IAsyncStartable
 			{
                 "/daprd",
 				"-app-id", appId,
-				"-app-port", options.AppPort.ToString(),
-                "-app-channel-address", "host.docker.internal",
 				"-dapr-http-port", InternalHttpPort.ToString(),
 				"-dapr-grpc-port", InternalGrpcPort.ToString(),
 				"-log-level", options.LogLevel.ToString().ToLowerInvariant(),
 				"-resources-path", componentsPath
 			};
+
+        if (options.AppPort > 0)
+        {
+            cmd.Add("-app-port");
+            cmd.Add(options.AppPort.ToString());
+            cmd.Add("-app-channel-address");
+            cmd.Add("host.docker.internal");
+            cmd.Add("-app-protocol");
+            cmd.Add(options.AppProtocol);
+        }
 
         if (configFilePath is not null)
         {
@@ -157,6 +165,11 @@ public sealed class DaprdContainer : IAsyncStartable
         if (_logAttachment is not null)
         {
             containerBuilder = containerBuilder.WithOutputConsumer(_logAttachment.OutputConsumer);
+        }
+
+        foreach (var (name, value) in options.EnvironmentVariables)
+        {
+            containerBuilder = containerBuilder.WithEnvironment(name, value);
         }
 
         // Put the API token in an envvar so it can be picked up by the Dapr runtime at startup
