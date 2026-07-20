@@ -24,7 +24,8 @@ public sealed record ActorReminderInfo(
     TimeSpan? DueTime,
     TimeSpan? Period,
     string? ArgumentsJson,
-    TimeSpan? Ttl);
+    TimeSpan? Ttl,
+    ActorReminderFailurePolicy? FailurePolicy = null);
 
 /// <summary>
 /// Describes a named durable actor reminder registration returned from a list operation.

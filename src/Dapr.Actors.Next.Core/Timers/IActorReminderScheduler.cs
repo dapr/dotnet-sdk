@@ -32,6 +32,7 @@ public interface IActorReminderScheduler
         string argumentsJson,
         TimeSpan? ttl = null,
         bool? overwrite = null,
+        ActorReminderFailurePolicy? failurePolicy = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -46,6 +47,7 @@ public interface IActorReminderScheduler
         byte[] arguments,
         TimeSpan? ttl = null,
         bool? overwrite = null,
+        ActorReminderFailurePolicy? failurePolicy = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -60,6 +62,7 @@ public interface IActorReminderScheduler
         TArguments arguments,
         TimeSpan? ttl = null,
         bool? overwrite = null,
+        ActorReminderFailurePolicy? failurePolicy = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

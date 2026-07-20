@@ -167,6 +167,11 @@ public sealed class DaprdContainer : IAsyncStartable
             containerBuilder = containerBuilder.WithOutputConsumer(_logAttachment.OutputConsumer);
         }
 
+        foreach (var (name, value) in options.EnvironmentVariables)
+        {
+            containerBuilder = containerBuilder.WithEnvironment(name, value);
+        }
+
         // Put the API token in an envvar so it can be picked up by the Dapr runtime at startup
         if (!string.IsNullOrWhiteSpace(options.DaprApiToken))
         {
