@@ -11,9 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json.Serialization;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Net.Client;
 
 namespace Dapr.Client.Test;
@@ -32,6 +34,35 @@ using Xunit;
 public class PublishEventApiTest
 {
     const string TestPubsubName = "testpubsubname";
+
+    [Fact]
+    public async Task PublishEventAsync_PropagatesGrpcTraceContextHeader()
+    {
+        Activity.Current = null;
+        using var activity = new Activity("test");
+        activity.SetIdFormat(ActivityIdFormat.W3C);
+        activity.Start();
+
+        var client = new MockClient();
+        CallOptions capturedCallOptions = default;
+
+        client.Mock
+            .Setup(m => m.PublishEventAsync(
+                It.IsAny<Autogen.Grpc.v1.PublishEventRequest>(),
+                It.IsAny<CallOptions>()))
+            .Callback<Autogen.Grpc.v1.PublishEventRequest, CallOptions>((_, options) =>
+                capturedCallOptions = options)
+            .Returns(client.Call<Empty>().SetResponse(new Empty()).Build());
+
+        await client.DaprClient.PublishEventAsync(
+            TestPubsubName,
+            "test",
+            TestContext.Current.CancellationToken);
+
+        var headers = capturedCallOptions.Headers;
+        headers.ShouldNotBeNull();
+        headers.First(header => header.Key == "grpc-trace-bin").ValueBytes.Length.ShouldBe(29);
+    }
 
     [Fact]
     public async Task PublishEventAsync_CanPublishTopicWithData()
