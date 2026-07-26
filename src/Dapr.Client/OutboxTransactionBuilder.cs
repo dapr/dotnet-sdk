@@ -87,7 +87,7 @@ public sealed class OutboxTransactionBuilder
         ArgumentNullException.ThrowIfNull(projectionValue);
 
         var state = new StateTransactionRequest(key, stateValue, StateOperationType.Upsert, etag, stateMetadata, options);
-        var projection = new StateTransactionRequest(key, projectionValue, StateOperationType.Upsert, etag: null, projectionMetadata, options: null)
+        var projection = new StateTransactionRequest(key, projectionValue, StateOperationType.Upsert, etag: null, metadata: projectionMetadata, options: null)
             .WithOutboxProjection();
 
         entries.Add(new Entry(state, projection));
