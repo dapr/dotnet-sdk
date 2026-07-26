@@ -11,6 +11,7 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -21,8 +22,12 @@ namespace Dapr.Common.Test;
 
 public sealed class DaprClientUtilitiesTests
 {
+    private const int TraceIdLength = 16;
+    private const int SpanIdLength = 8;
+    private const int GrpcTraceBinHeaderLength = 29;
+
     [Fact]
-    public void ConfigureGrpcCallOptions_ShouldIncludeW3CTraceContext_WhenActivityCurrentIsSet()
+    public void ConfigureGrpcCallOptions_ShouldIncludeTraceContext_WhenActivityCurrentIsSet()
     {
         var previous = Activity.Current;
         using var activity = new Activity("parent");
@@ -41,6 +46,8 @@ public sealed class DaprClientUtilitiesTests
             Assert.Equal(activity.Id, traceParent);
             Assert.True(TryGetHeader(options.Headers, "tracestate", out var traceState));
             Assert.Equal(activity.TraceStateString, traceState);
+            Assert.True(TryGetBinaryHeader(options.Headers, "grpc-trace-bin", out var grpcTraceBin));
+            AssertGrpcTraceBinHeader(activity, grpcTraceBin);
         }
         finally
         {
@@ -63,11 +70,57 @@ public sealed class DaprClientUtilitiesTests
 
             Assert.False(TryGetHeader(options.Headers, "traceparent", out _));
             Assert.False(TryGetHeader(options.Headers, "tracestate", out _));
+            Assert.False(TryGetBinaryHeader(options.Headers, "grpc-trace-bin", out _));
         }
         finally
         {
             Activity.Current = previous;
         }
+    }
+
+    [Fact]
+    public void AddTraceContextHeaders_ShouldNotDuplicateGrpcTraceBinHeader()
+    {
+        var previous = Activity.Current;
+        using var activity = new Activity("parent");
+        activity.SetIdFormat(ActivityIdFormat.W3C);
+        activity.Start();
+
+        var existingGrpcTraceBin = new byte[] { 1, 2, 3 };
+        var headers = new Metadata
+        {
+            { "grpc-trace-bin", existingGrpcTraceBin },
+        };
+
+        try
+        {
+            DaprClientUtilities.AddTraceContextHeaders(headers);
+
+            Assert.Equal(1, headers.Count(header => header.Key == "grpc-trace-bin"));
+            Assert.True(TryGetBinaryHeader(headers, "grpc-trace-bin", out var grpcTraceBin));
+            Assert.Equal(existingGrpcTraceBin, grpcTraceBin);
+        }
+        finally
+        {
+            Activity.Current = previous;
+        }
+    }
+
+    private static void AssertGrpcTraceBinHeader(Activity activity, byte[] grpcTraceBin)
+    {
+        var expectedTraceId = new byte[TraceIdLength];
+        activity.TraceId.CopyTo(expectedTraceId);
+        var expectedSpanId = new byte[SpanIdLength];
+        activity.SpanId.CopyTo(expectedSpanId);
+
+        Assert.Equal(GrpcTraceBinHeaderLength, grpcTraceBin.Length);
+        Assert.Equal(0, grpcTraceBin[0]);
+        Assert.Equal(0, grpcTraceBin[1]);
+        Assert.True(grpcTraceBin.AsSpan(2, TraceIdLength).SequenceEqual(expectedTraceId));
+        Assert.Equal(1, grpcTraceBin[18]);
+        Assert.True(grpcTraceBin.AsSpan(19, SpanIdLength).SequenceEqual(expectedSpanId));
+        Assert.Equal(2, grpcTraceBin[27]);
+        Assert.Equal((byte)(activity.ActivityTraceFlags & ActivityTraceFlags.Recorded), grpcTraceBin[28]);
     }
 
     private static bool TryGetHeader(Metadata metadata, string key, out string value)
@@ -80,6 +133,19 @@ public sealed class DaprClientUtilitiesTests
         }
 
         value = entry.Value;
+        return true;
+    }
+
+    private static bool TryGetBinaryHeader(Metadata metadata, string key, out byte[] value)
+    {
+        value = [];
+        var entry = metadata.FirstOrDefault(item => item.Key == key);
+        if (entry is null)
+        {
+            return false;
+        }
+
+        value = entry.ValueBytes;
         return true;
     }
 }
