@@ -90,6 +90,33 @@ public sealed class GeneratedActorEventsTransportTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public async Task Transport_maps_disabled_drain_and_custom_depth_in_initial_config()
+    {
+        var harness = new GeneratedActorEventsHarness();
+        var transport = new DaprActorEventsTransport(harness.Client);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        await using var stream = await transport.OpenStreamAsync(cts.Token);
+        await stream.WriteAsync(SubscribeActorEventsResponse.RegisteredActors(
+            ["Merged"],
+            new SubscribeActorEventsInitialConfig(
+                TimeSpan.FromSeconds(90),
+                TimeSpan.FromSeconds(5),
+                false,
+                false,
+                7)), cts.Token);
+        var initial = await harness.ReceiveAsync(cts.Token);
+
+        var entityConfig = Assert.Single(initial.InitialRequest.EntitiesConfig);
+        Assert.Equal(new[] { "Merged" }, entityConfig.Entities.ToArray());
+        Assert.Equal(90, entityConfig.ActorIdleTimeout.Seconds);
+        Assert.Equal(5, entityConfig.DrainOngoingCallTimeout.Seconds);
+        Assert.False(entityConfig.DrainRebalancedActors);
+        Assert.False(entityConfig.Reentrancy.Enabled);
+        Assert.Equal(7, entityConfig.Reentrancy.MaxStackDepth);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Transport_maps_failures_and_non_invoke_callbacks()
     {
         var harness = new GeneratedActorEventsHarness();

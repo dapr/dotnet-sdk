@@ -37,6 +37,30 @@ public sealed class DaprActorRegistrationCollection
     }
 
     /// <summary>
+    /// Registers an actor type for hosting with per-type runtime overrides.
+    /// </summary>
+    public void RegisterActor<TActor>(Action<DaprActorTypeOptions> configure)
+        where TActor : IActor
+        => RegisterActor<TActor>(actorTypeName: null, configure);
+
+    /// <summary>
+    /// Registers an actor type for hosting under an explicit name with per-type runtime overrides.
+    /// </summary>
+    public void RegisterActor<TActor>(string? actorTypeName, Action<DaprActorTypeOptions> configure)
+        where TActor : IActor
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        if (actorTypeName is not null && string.IsNullOrWhiteSpace(actorTypeName))
+        {
+            throw new ArgumentException("Actor type name cannot be empty.", nameof(actorTypeName));
+        }
+
+        var typeOptions = new DaprActorTypeOptions();
+        configure(typeOptions);
+        registrations[typeof(TActor)] = new DaprActorRegistration(typeof(TActor), actorTypeName) { TypeOptions = typeOptions };
+    }
+
+    /// <summary>
     /// Gets the explicit registrations.
     /// </summary>
     public IReadOnlyCollection<DaprActorRegistration> Registrations => registrations.Values;

@@ -1154,7 +1154,8 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             sb.AppendLine("                        static (actor, ct) => ((global::Dapr.Actors.Next.Abstractions.Actor)actor).InvokeOnDeactivateAsync(ct),");
             sb.AppendLine("                        static (actor, context, ct) => ((global::Dapr.Actors.Next.Abstractions.Actor)actor).InvokeOnPreActorMethodAsync(context, ct),");
             sb.AppendLine("                        static (actor, context, exception, ct) => ((global::Dapr.Actors.Next.Abstractions.Actor)actor).InvokeOnPostActorMethodAsync(context, exception, ct)),");
-            sb.AppendLine("                    options: options);");
+            sb.AppendLine("                    options: options,");
+            sb.AppendLine($"                    typeOptions: {actor.DispatcherName}ExplicitRegistration?.TypeOptions);");
             sb.AppendLine("                }");
         }
 
