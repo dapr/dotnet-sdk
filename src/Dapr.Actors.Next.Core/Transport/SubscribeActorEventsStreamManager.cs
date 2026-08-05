@@ -177,7 +177,7 @@ public sealed class SubscribeActorEventsStreamManager(
             await outbound.Writer.WriteAsync(
                 SubscribeActorEventsResponse.RegisteredActors(
                     [registration.ActorType],
-                    CreateInitialConfig(registration.Options ?? options.Value)),
+                    CreateInitialConfig(registration.Options ?? options.Value, registration.TypeOptions)),
                 stoppingToken).ConfigureAwait(false);
 
             await foreach (var request in stream.ReadAllAsync(stoppingToken).ConfigureAwait(false))
@@ -286,13 +286,13 @@ public sealed class SubscribeActorEventsStreamManager(
         return false;
     }
 
-    private static SubscribeActorEventsInitialConfig CreateInitialConfig(DaprActorsOptions options) =>
+    private static SubscribeActorEventsInitialConfig CreateInitialConfig(DaprActorsOptions options, DaprActorTypeOptions? typeOptions) =>
         new(
-            options.ActorIdleTimeout,
-            options.DrainOngoingCallTimeout,
-            options.DrainRebalancedActors,
-            options.EnableReentrancy,
-            options.MaxReentrantDepth);
+            typeOptions?.IdleTimeout ?? options.ActorIdleTimeout,
+            typeOptions?.DrainOngoingCallTimeout ?? options.DrainOngoingCallTimeout,
+            typeOptions?.DrainRebalancedActors ?? options.DrainRebalancedActors,
+            typeOptions?.EnableReentrancy ?? options.EnableReentrancy,
+            typeOptions?.MaxReentrantDepth ?? options.MaxReentrantDepth);
 
     private sealed record StreamLease(CancellationTokenSource Cancellation, Task Task)
     {

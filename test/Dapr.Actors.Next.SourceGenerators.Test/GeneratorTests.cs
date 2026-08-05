@@ -18,6 +18,7 @@ using Dapr.Actors.Next.Abstractions.Registry;
 using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Client;
+using Dapr.Actors.Next.Core.Registration;
 using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.SourceGenerators.Sample;
 using Microsoft.CodeAnalysis;
@@ -418,6 +419,80 @@ public sealed class GeneratorTests
 
         var weakResult = await runtime.InvokeAsync("RenamedCalculator", "calc-2", "SumAsync", System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { left = 2, right = 3 }), new Dictionary<string, string>());
         Assert.NotNull(weakResult);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void Generated_module_passes_type_options_to_builder_add()
+    {
+        var source = """
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+            using Dapr.Actors.Next.Abstractions.State;
+            using Dapr.Actors.Next.Core.Activation;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace TypeOptionsSample;
+
+            [GenerateActorClient]
+            public interface ICartActor : IActor
+            {
+                Task<int> CountAsync(int left, int right, CancellationToken cancellationToken = default);
+            }
+
+            [DaprActor("Cart")]
+            public sealed class CartActor(ActorActivationContext context) : Actor, ICartActor
+            {
+                protected override ActorId Id => context.ActorId;
+                protected override IActorStateAccessor State => context.State;
+                public Task<int> CountAsync(int left, int right, CancellationToken cancellationToken = default) => Task.FromResult(left + right);
+            }
+            """;
+
+        var generated = RunGenerator(CreateCompilation("TypeOptionsSample", source), scanReferences: false, assertGeneratedCompiles: true);
+
+        Assert.Contains("typeOptions: ", generated);
+        Assert.Contains("ExplicitRegistration?.TypeOptions", generated);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void Explicit_type_options_flow_to_runtime_registration()
+    {
+        _ = typeof(CalculatorActor);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<CalculatorDependency>();
+        services.AddDaprActors(options => options.Actors.RegisterActor<CalculatorActor>("RenamedCalculator", typeOptions =>
+        {
+            typeOptions.IdleTimeout = TimeSpan.FromSeconds(90);
+            typeOptions.EnableReentrancy = true;
+        }));
+        using var provider = services.BuildServiceProvider(validateScopes: true);
+
+        var registration = provider.GetRequiredService<ActorRuntimeRegistry>().GetByActorType("RenamedCalculator");
+
+        var typeOptions = registration.TypeOptions;
+        Assert.NotNull(typeOptions);
+        Assert.Equal(TimeSpan.FromSeconds(90), typeOptions!.IdleTimeout);
+        Assert.True(typeOptions.EnableReentrancy);
+        Assert.Null(typeOptions.DrainOngoingCallTimeout);
+        Assert.Null(typeOptions.DrainRebalancedActors);
+        Assert.Null(typeOptions.MaxReentrantDepth);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void Type_options_without_explicit_name_use_default_actor_type()
+    {
+        _ = typeof(CalculatorActor);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<CalculatorDependency>();
+        services.AddDaprActors(options => options.Actors.RegisterActor<CalculatorActor>(typeOptions => typeOptions.MaxReentrantDepth = 4));
+        using var provider = services.BuildServiceProvider(validateScopes: true);
+
+        var registration = provider.GetRequiredService<ActorRuntimeRegistry>().GetByActorType("Calculator");
+
+        Assert.Equal(4, registration.TypeOptions?.MaxReentrantDepth);
     }
 
     [MinimumDaprRuntimeFact("1.18")]

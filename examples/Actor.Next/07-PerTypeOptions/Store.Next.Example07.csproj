@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Store.Next.Example07.AppHost\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Dapr.Actors.Next.Abstractions\Dapr.Actors.Next.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\Dapr.Actors.Next.Core\Dapr.Actors.Next.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\Dapr.Actors.Next.SourceGenerators\Dapr.Actors.Next.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>

@@ -31,6 +31,19 @@ public sealed class DaprActorsOptionsValidator : IValidateOptions<DaprActorsOpti
         AddFailureIf(options.DrainRebalancedActorsTimeout <= TimeSpan.Zero, "DrainRebalancedActorsTimeout must be greater than zero.", ref failures);
         AddFailureIf(options.MaxReentrantDepth <= 0, "MaxReentrantDepth must be greater than zero.", ref failures);
 
+        foreach (var registration in options.Actors.Registrations)
+        {
+            if (registration.TypeOptions is not { } typeOptions)
+            {
+                continue;
+            }
+
+            var actorName = registration.ActorImplementationType.Name;
+            AddFailureIf(typeOptions.IdleTimeout is { } idleTimeout && idleTimeout <= TimeSpan.Zero, $"IdleTimeout for actor type '{actorName}' must be greater than zero.", ref failures);
+            AddFailureIf(typeOptions.DrainOngoingCallTimeout is { } drainTimeout && drainTimeout <= TimeSpan.Zero, $"DrainOngoingCallTimeout for actor type '{actorName}' must be greater than zero.", ref failures);
+            AddFailureIf(typeOptions.MaxReentrantDepth is { } maxDepth && maxDepth <= 0, $"MaxReentrantDepth for actor type '{actorName}' must be greater than zero.", ref failures);
+        }
+
         return failures is null ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 
