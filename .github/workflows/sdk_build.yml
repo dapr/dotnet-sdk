@@ -48,7 +48,7 @@ jobs:
 
   discover-integration-v2-tests:
     runs-on: ubuntu-latest
-    outputs: 
+    outputs:
       projects: ${{ steps.set-matrix.outputs.projects }}
     steps:
       - uses: actions/checkout@v6
@@ -412,7 +412,7 @@ jobs:
               ))
           ')
           echo "matrix=$files" >> $GITHUB_OUTPUT
-  
+
   publish:
     permissions:
       id-token: write # Enable GitHub OIDC token issuance for this job
@@ -441,3 +441,19 @@ jobs:
         run: |
           dotnet nuget push "${{ matrix.package }}" --skip-duplicate --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
  
+
+  # Opens (or comments on) a tracking issue only when the publish job (NuGet
+  # push) itself fails. Any upstream build/test failure skips publish, whose
+  # result is then 'skipped' (not 'failure'), so CI flakes never open issues.
+  # Prerelease tags (-rc/-dev/-prerelease) are excluded to match the publish job.
+  notify-on-failure:
+    needs: [publish]
+    if: always() && startsWith(github.ref, 'refs/tags/v') && !(endsWith(github.ref, '-rc') || endsWith(github.ref, '-dev') || endsWith(github.ref, '-prerelease')) && needs.publish.result == 'failure'
+    permissions:
+      issues: write
+      actions: read
+    uses: dapr/.github/.github/workflows/open-issue-on-failure.yml@main
+    with:
+      title: "Release workflow failed: ${{ github.workflow }} (${{ github.ref_name }})"
+      labels: "release,ci/release-failure"
+      mention: "@dapr/maintainers-dotnet-sdk @dapr/approvers-dotnet-sdk"

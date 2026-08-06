@@ -1,0 +1,85 @@
+@host = http://localhost:5000
+
+### List the runtime catalog of document types
+GET {{host}}/document-types
+
+### List the compiled actor types this app hosts (one interpreted actor runs them all)
+GET {{host}}/hosted-types
+
+# ---------------------------------------------------------------------------
+# Happy path: a small expense report auto-approves and settles to Archived.
+# Each scenario starts by onboarding its document, which both cleans up any
+# state left by a previous run and sets up the fresh definition, so the whole
+# file is safe to run top-to-bottom repeatedly.
+# ---------------------------------------------------------------------------
+
+### Onboard an expense report: clears any prior run and deploys the ExpenseReport definition
+POST {{host}}/documents/exp-001/onboard?type=ExpenseReport
+
+### Submit it (small amount: clears the auto-approval limit)
+POST {{host}}/documents/exp-001/submit
+Content-Type: application/json
+
+{ "requester": "alice", "amount": 250.00, "parties": ["finance", "alice"], "simulateChargeFailure": false }
+
+### Begin review
+POST {{host}}/documents/exp-001/begin-review
+
+### Approve -think> enters Approved -> StartSettlement schedules the settlement workflow.
+# The workflow notifies parties, charges, then drives the document to Archived.
+# ---------------------------------------------------------------------------
+# Escalation + compensation: a large expense whose charge fails is compensated,
+# and the workflow drives the document to SettlementFailed.
+# ---------------------------------------------------------------------------
+POST {{host}}/documents/exp-001/approve
+Content-Type: application/json
+
+{ "approver": "bob", "note": "looks good" }
+
+### Onboard a second expense report: clears any prior run and deploys a fresh ExpenseReport
+POST {{host}}/documents/exp-002/onboard?type=ExpenseReport
+
+### Submit a large amount that will fail the charge (exceeds the auto-approval limit)
+POST {{host}}/documents/exp-002/submit
+Content-Type: application/json
+
+{ "requester": "carol", "amount": 8500.00, "parties": ["finance", "carol", "vendor"], "simulateChargeFailure": true }
+
+### Begin review
+POST {{host}}/documents/exp-002/begin-review
+
+### Approve -> large amount escalates to a manager (state becomes Escalated)
+POST {{host}}/documents/exp-002/approve
+Content-Type: application/json
+
+{ "approver": "bob", "note": "over limit" }
+
+### Manager approves -> Approved -> settlement workflow runs, charge fails, compensation runs
+# ---------------------------------------------------------------------------
+# A different document type (Contract) is the same compiled actor, different data.
+# ---------------------------------------------------------------------------
+POST {{host}}/documents/exp-002/approve
+Content-Type: application/json
+
+{ "approver": "manager", "note": "approved with budget" }
+
+### Onboard a contract: clears any prior run and deploys the Contract definition (adds a LegalReview stage)
+POST {{host}}/documents/con-001/onboard?type=Contract
+
+### Submit
+POST {{host}}/documents/con-001/submit
+Content-Type: application/json
+
+{ "requester": "dave", "amount": 500.00, "parties": ["legal", "dave"], "simulateChargeFailure": false }
+
+### Begin legal review
+POST {{host}}/documents/con-001/begin-legal-review
+
+### Complete legal review -> InReview
+POST {{host}}/documents/con-001/complete-legal-review
+
+### Approve -> Approved -> settlement -> Archived
+POST {{host}}/documents/con-001/approve
+Content-Type: application/json
+
+{ "approver": "legal-lead", "note": "signed" }

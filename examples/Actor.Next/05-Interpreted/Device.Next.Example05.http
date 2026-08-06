@@ -1,0 +1,23 @@
+@host = http://localhost:5000
+@deviceId = front-door
+
+### List runtime-onboarded device types
+GET {{host}}/device-types
+
+### List operations for the smart-lock device type
+GET {{host}}/device-types/SmartLock/operations
+
+### Onboard front-door smart lock
+POST {{host}}/devices/{{deviceId}}/onboard
+
+### Command: Unlock moves Locked to Unlocking
+POST {{host}}/devices/{{deviceId}}/commands/unlock
+
+### Sensor: MotorStopped moves Unlocking to Unlocked
+POST {{host}}/devices/{{deviceId}}/sensors/motor-stopped
+
+### Command: Lock moves Unlocked to Locking
+POST {{host}}/devices/{{deviceId}}/commands/lock
+
+### Sensor: MotorStopped moves Locking to Locked
+POST {{host}}/devices/{{deviceId}}/sensors/motor-stopped

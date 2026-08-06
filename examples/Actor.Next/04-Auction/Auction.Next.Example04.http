@@ -1,0 +1,54 @@
+@host = http://localhost:5000
+@auctionId = auction-demo
+@expiredAuctionId = auction-expired-demo
+
+### Place opening bid
+POST {{host}}/auctions/{{auctionId}}/bids
+Content-Type: application/json
+
+{
+  "amount": 100,
+  "bidder": "alice"
+}
+
+### Read open auction
+GET {{host}}/auctions/{{auctionId}}
+
+### Reject lower bid
+POST {{host}}/auctions/{{auctionId}}/bids
+Content-Type: application/json
+
+{
+  "amount": 90,
+  "bidder": "charlie"
+}
+
+### Accept higher bid and reschedule soft close timer
+POST {{host}}/auctions/{{auctionId}}/bids
+Content-Type: application/json
+
+{
+  "amount": 110,
+  "bidder": "bob"
+}
+
+### Close auction as sold
+POST {{host}}/auctions/{{auctionId}}/close
+
+### Read sold auction with fulfillment started
+GET {{host}}/auctions/{{auctionId}}
+
+### Reject bid after close
+POST {{host}}/auctions/{{auctionId}}/bids
+Content-Type: application/json
+
+{
+  "amount": 125,
+  "bidder": "dana"
+}
+
+### Expire a separate auction without a sale
+POST {{host}}/auctions/{{expiredAuctionId}}/expire
+
+### Read expired auction
+GET {{host}}/auctions/{{expiredAuctionId}}

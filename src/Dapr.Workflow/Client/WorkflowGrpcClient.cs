@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,7 +44,8 @@ internal sealed class WorkflowGrpcClient(
         {
             InstanceId = instanceId,
             Name = workflowName,
-            Input = SerializeToJson(input)
+            Input = SerializeToJson(input),
+            ParentTraceContext = CreateParentTraceContext()
         };
         
         // Add the scheduled start time if specified
@@ -88,11 +90,9 @@ internal sealed class WorkflowGrpcClient(
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
         {
-            return null;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error getting workflow metadata for instance '{InstanceId}'", instanceId);
+            // A missing instance is represented as null metadata. Every other gRPC failure (e.g. a transient
+            // Unavailable/Unknown from the runtime) is allowed to propagate so callers can distinguish a
+            // genuine "not found" from a transport/runtime error rather than seeing an identical null result.
             return null;
         }
     }
@@ -331,6 +331,21 @@ internal sealed class WorkflowGrpcClient(
     }
 
     private string SerializeToJson(object? obj) => obj == null ? string.Empty : serializer.Serialize(obj);
+
+    private static grpc.TraceContext? CreateParentTraceContext()
+    {
+        var activity = Activity.Current;
+        if (activity?.Id is null || activity.IdFormat != ActivityIdFormat.W3C)
+        {
+            return null;
+        }
+
+        return new grpc.TraceContext
+        {
+            TraceParent = activity.Id,
+            TraceState = string.IsNullOrEmpty(activity.TraceStateString) ? null : activity.TraceStateString
+        };
+    }
 
     private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>
         DaprClientUtilities.ConfigureGrpcCallOptions(typeof(DaprWorkflowClient).Assembly, daprApiToken, cancellationToken);

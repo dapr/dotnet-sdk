@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Headers;
+using System.Diagnostics;
 using System.Reflection;
 using Grpc.Core;
 
@@ -6,6 +7,16 @@ namespace Dapr.Common;
 
 internal static class DaprClientUtilities
 {
+    private const byte TraceContextVersion = 0;
+    private const byte TraceIdFieldId = 0;
+    private const byte SpanIdFieldId = 1;
+    private const byte TraceOptionsFieldId = 2;
+
+    private const int TraceIdLength = 16;
+    private const int SpanIdLength = 8;
+    private const int GrpcTraceBinHeaderLength = 29;
+    private const string GrpcTraceBinHeader = "grpc-trace-bin";
+
     /// <summary>
     /// Provisions the gRPC call options used to provision the various Dapr clients.
     /// </summary>
@@ -35,6 +46,8 @@ internal static class DaprClientUtilities
             }
         }
 
+        AddTraceContextHeaders(callOptions.Headers);
+
         return callOptions;
     }
     
@@ -61,5 +74,51 @@ internal static class DaprClientUtilities
         string.IsNullOrWhiteSpace(daprApiToken)
             ? null
             : new KeyValuePair<string, string>("dapr-api-token", daprApiToken);
-}
 
+    internal static void AddTraceContextHeaders(Metadata headers)
+    {
+        var activity = Activity.Current;
+        if (activity?.Id is null || activity.IdFormat != ActivityIdFormat.W3C)
+        {
+            return;
+        }
+
+        headers.Add("traceparent", activity.Id);
+
+        if (!string.IsNullOrWhiteSpace(activity.TraceStateString))
+        {
+            headers.Add("tracestate", activity.TraceStateString);
+        }
+
+        if (!headers.Any(header => string.Equals(header.Key, GrpcTraceBinHeader, StringComparison.OrdinalIgnoreCase)))
+        {
+            headers.Add(GrpcTraceBinHeader, CreateGrpcTraceBinHeader(activity));
+        }
+    }
+
+    private static byte[] CreateGrpcTraceBinHeader(Activity activity)
+    {
+        // grpc-trace-bin format:
+        // {version}{trace-id-field}{trace-id}{span-id-field}{span-id}{trace-options-field}{trace-options}
+        // See:
+        // https://github.com/census-instrumentation/opencensus-specs/blob/master/encodings/BinaryEncoding.md
+        var header = new byte[GrpcTraceBinHeaderLength];
+
+        var offset = 0;
+
+        header[offset++] = TraceContextVersion;
+
+        header[offset++] = TraceIdFieldId;
+        activity.TraceId.CopyTo(header.AsSpan(offset, TraceIdLength));
+        offset += TraceIdLength;
+
+        header[offset++] = SpanIdFieldId;
+        activity.SpanId.CopyTo(header.AsSpan(offset, SpanIdLength));
+        offset += SpanIdLength;
+
+        header[offset++] = TraceOptionsFieldId;
+        header[offset] = (byte)(activity.ActivityTraceFlags & ActivityTraceFlags.Recorded);
+
+        return header;
+    }
+}

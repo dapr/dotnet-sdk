@@ -2,7 +2,9 @@
 using Dapr.DistributedLock.Extensions;
 using Dapr.DistributedLock.Models;
 using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
+using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,11 +18,17 @@ public sealed class DistributedLockTests
         var componentsDir = TestDirectoryManager.CreateTestDirectory("distributedlock-components");
         var resourceId = $"resource-{Guid.NewGuid():N}";
         var owner = $"owner-{Guid.NewGuid():N}";
+        var daprApiToken = $"distributed-lock-token-{Guid.NewGuid():N}";
+        var options = new DaprRuntimeOptions()
+            .WithEnvironmentVariable("DAPR_API_TOKEN", daprApiToken);
 
         await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
         await environment.StartAsync(TestContext.Current.CancellationToken);
 
-        var harness = new DaprHarnessBuilder(componentsDir).BuildDistributedLock();
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .WithOptions(options)
+            .BuildDistributedLock();
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
             .ConfigureServices(builder =>
             {
@@ -30,12 +38,26 @@ public sealed class DistributedLockTests
                     var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
                     if (!string.IsNullOrEmpty(grpcEndpoint))
                         clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    clientBuilder.UseDaprApiToken(daprApiToken);
                 });
             })
             .BuildAndStartAsync();
 
         const string componentName = DistributedLockHarness.DistributedLockComponentName;
         Assert.NotNull(componentName);
+
+        using var unauthenticatedClient = new DaprDistributedLockBuilder()
+            .UseGrpcEndpoint($"http://127.0.0.1:{harness.DaprGrpcPort}")
+            .Build();
+        var unauthenticatedException = await Assert.ThrowsAsync<DaprException>(
+            () => unauthenticatedClient.TryLockAsync(
+                componentName,
+                $"unauthenticated-{resourceId}",
+                owner,
+                expiryInSeconds: 10,
+                cancellationToken: TestContext.Current.CancellationToken));
+        var rpcException = Assert.IsType<RpcException>(unauthenticatedException.InnerException);
+        Assert.Equal(StatusCode.Unauthenticated, rpcException.StatusCode);
 
         using var scope = testApp.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<DaprDistributedLockClient>();
