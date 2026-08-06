@@ -149,7 +149,65 @@ public class WorkflowWorkerTests
 
         await executeTask;
     }
-    
+
+    /// <summary>
+    /// The stateful-history options are a user-facing escape hatch, so they have to survive the trip
+    /// from <see cref="WorkflowRuntimeOptions"/> through the worker into the protocol handler. This
+    /// asserts it behaviourally, on the capability the handler actually puts on the wire; all four
+    /// options are forwarded together on the same construction, so proving one proves the wiring.
+    /// </summary>
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task ExecuteAsync_ShouldForwardDisableStatefulHistory_ToTheProtocolHandler(
+        bool disableStatefulHistory, bool expectCapabilityAdvertised)
+    {
+        var services = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var factory = new StubWorkflowsFactory();
+
+        var startedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        GetWorkItemsRequest? capturedRequest = null;
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Callback<GetWorkItemsRequest, CallOptions>((r, _) =>
+            {
+                capturedRequest ??= r;
+                startedTcs.TrySetResult();
+            })
+            .Returns(CreateServerStreamingCall(EmptyWorkItems()));
+
+        var options = new WorkflowRuntimeOptions
+        {
+            DisableStatefulHistory = disableStatefulHistory,
+            HistoryCacheTtl = TimeSpan.FromMinutes(2),
+            HistoryCacheMaxInstances = 50,
+            HistoryCacheMaxBytes = 4096
+        };
+
+        var worker = new WorkflowWorker(
+            grpcClientMock.Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            services,
+            configuration: null,
+            options: options);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var executeTask = InvokeExecuteAsync(worker, cts.Token);
+
+        await startedTcs.Task.WaitAsync(cts.Token);
+        await cts.CancelAsync();
+        await executeTask;
+
+        Assert.NotNull(capturedRequest);
+        Assert.Equal(expectCapabilityAdvertised,
+            capturedRequest!.Capabilities.Contains(WorkerCapability.StatefulHistory));
+    }
+
     [Fact]
     public async Task HandleWorkflowResponseAsync_ShouldReturnTerminatedCompletion_WhenReplayLatestEventIsExecutionTerminated()
     {
