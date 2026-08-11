@@ -49,6 +49,24 @@ internal sealed class WorkflowHistoryCache
     private readonly Func<DateTime> _clock;
     private long _totalBytes;
 
+    // Bumped by every Reset, i.e. once per work-item stream. Writes carry the generation of the
+    // stream they belong to so a work item that outlives its stream cannot repopulate the cache
+    // behind the next one: ReceiveLoopAsync abandons in-flight tasks on cancellation, and a
+    // handler that ignores the token can finish long after Reset has run.
+    private int _generation;
+
+    /// <summary>The current stream generation; pass it back to <see cref="Put"/>/<see cref="Remove"/>.</summary>
+    public int Generation
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _generation;
+            }
+        }
+    }
+
     /// <summary>Initializes the cache. Non-positive ttl/maxInstances use defaults; maxBytes &lt;= 0 means unlimited.</summary>
     public WorkflowHistoryCache(
         TimeSpan? ttl = null,
@@ -77,8 +95,12 @@ internal sealed class WorkflowHistoryCache
         }
     }
 
-    /// <summary>Caches an instance's committed history, evicting LRU entries to stay within bounds.</summary>
-    public void Put(string instanceId, IEnumerable<HistoryEvent> events)
+    /// <summary>
+    /// Caches an instance's committed history, evicting LRU entries to stay within bounds. Ignored
+    /// when <paramref name="generation"/> is not the current one, i.e. the writing work item's
+    /// stream has already been retired.
+    /// </summary>
+    public void Put(string instanceId, IEnumerable<HistoryEvent> events, int generation)
     {
         var snapshot = new List<HistoryEvent>(events);
 
@@ -96,6 +118,11 @@ internal sealed class WorkflowHistoryCache
 
         lock (_lock)
         {
+            if (generation != _generation)
+            {
+                return;
+            }
+
             if (_entries.TryGetValue(instanceId, out var existing))
             {
                 _totalBytes -= existing.Bytes;
@@ -107,22 +134,35 @@ internal sealed class WorkflowHistoryCache
         }
     }
 
-    /// <summary>Drops an instance's cached history (e.g. once it completes).</summary>
-    public void Remove(string instanceId)
+    /// <summary>
+    /// Drops an instance's cached history (e.g. once it completes). Ignored when
+    /// <paramref name="generation"/> is not the current one, so a retired stream's late work item
+    /// cannot evict an entry the current stream is relying on.
+    /// </summary>
+    public void Remove(string instanceId, int generation)
     {
         lock (_lock)
         {
+            if (generation != _generation)
+            {
+                return;
+            }
+
             RemoveLocked(instanceId);
         }
     }
 
-    /// <summary>Clears the cache; used when the stream reconnects (and starts cold).</summary>
+    /// <summary>
+    /// Clears the cache and retires the current generation; used when the stream reconnects (and
+    /// starts cold).
+    /// </summary>
     public void Reset()
     {
         lock (_lock)
         {
             _entries.Clear();
             _totalBytes = 0;
+            _generation++;
         }
     }
 

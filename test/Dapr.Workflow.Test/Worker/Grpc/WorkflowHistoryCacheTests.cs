@@ -48,21 +48,47 @@ public sealed class WorkflowHistoryCacheTests
     private static long BytesOf(int count) => Events(count).Sum(e => (long)e.CalculateSize());
 
     [Fact]
+    public void WriteFromARetiredStreamIsIgnored()
+    {
+        // A work item can outlive the stream it arrived on: ReceiveLoopAsync abandons in-flight
+        // tasks on cancellation, so a handler that ignores the token can finish after Reset. Such a
+        // late write must not repopulate the cache the next stream is already using, or a matching
+        // event count could accept history carried over from the previous stream.
+        var cache = new WorkflowHistoryCache();
+        var retiredGeneration = cache.Generation;
+
+        cache.Reset();
+
+        cache.Put("a", Events(3), retiredGeneration);
+        Assert.Null(cache.Get("a"));
+
+        cache.Put("a", Events(3), cache.Generation);
+        Assert.NotNull(cache.Get("a"));
+
+        // Same rule for eviction: a retired stream must not drop an entry the current one relies on.
+        cache.Remove("a", retiredGeneration);
+        Assert.NotNull(cache.Get("a"));
+
+        cache.Remove("a", cache.Generation);
+        Assert.Null(cache.Get("a"));
+    }
+
+    [Fact]
     public void GetPutRemoveReset()
     {
         var cache = new WorkflowHistoryCache();
 
         Assert.Null(cache.Get("a"));
 
-        cache.Put("a", Events(3));
+        cache.Put("a", Events(3), cache.Generation);
         var cached = cache.Get("a");
         Assert.NotNull(cached);
         Assert.Equal(3, cached!.Count);
 
-        cache.Remove("a");
+        cache.Remove("a", cache.Generation);
         Assert.Null(cache.Get("a"));
 
-        cache.Put("b", Events(1));
+        cache.Put("b", Events(1), cache.Generation);
         cache.Reset();
         Assert.Null(cache.Get("b"));
     }
@@ -73,11 +99,11 @@ public sealed class WorkflowHistoryCacheTests
         var clock = new TestClock();
         var cache = new WorkflowHistoryCache(maxInstances: 2, clock: clock.Read);
 
-        cache.Put("a", Events(1));
+        cache.Put("a", Events(1), cache.Generation);
         clock.Advance(TimeSpan.FromSeconds(1));
-        cache.Put("b", Events(1));
+        cache.Put("b", Events(1), cache.Generation);
         clock.Advance(TimeSpan.FromSeconds(1));
-        cache.Put("c", Events(1)); // over the cap, evicts the LRU entry ("a")
+        cache.Put("c", Events(1), cache.Generation); // over the cap, evicts the LRU entry ("a")
 
         Assert.Null(cache.Get("a"));
         Assert.NotNull(cache.Get("b"));
@@ -92,9 +118,9 @@ public sealed class WorkflowHistoryCacheTests
         var clock = new TestClock();
         var cache = new WorkflowHistoryCache(maxBytes: entryBytes + 1, clock: clock.Read);
 
-        cache.Put("a", Events(4));
+        cache.Put("a", Events(4), cache.Generation);
         clock.Advance(TimeSpan.FromSeconds(1));
-        cache.Put("b", Events(4)); // two entries exceed the byte budget, evicts the LRU entry ("a")
+        cache.Put("b", Events(4), cache.Generation); // two entries exceed the byte budget, evicts the LRU entry ("a")
 
         Assert.Null(cache.Get("a"));
         Assert.NotNull(cache.Get("b"));
@@ -105,7 +131,7 @@ public sealed class WorkflowHistoryCacheTests
     public void SingleOversizedEntryIsKept()
     {
         var cache = new WorkflowHistoryCache(maxBytes: 1);
-        cache.Put("big", Events(5));
+        cache.Put("big", Events(5), cache.Generation);
         Assert.NotNull(cache.Get("big"));
     }
 
@@ -115,14 +141,14 @@ public sealed class WorkflowHistoryCacheTests
         // A budget large enough that nothing is evicted; accounting only runs when one is configured.
         var cache = new WorkflowHistoryCache(maxBytes: 1024 * 1024);
 
-        cache.Put("a", Events(3));
-        cache.Put("b", Events(2));
+        cache.Put("a", Events(3), cache.Generation);
+        cache.Put("b", Events(2), cache.Generation);
         Assert.Equal(BytesOf(3) + BytesOf(2), cache.TotalBytes);
 
-        cache.Put("a", Events(6)); // replace adjusts the running total to the new size
+        cache.Put("a", Events(6), cache.Generation); // replace adjusts the running total to the new size
         Assert.Equal(BytesOf(6) + BytesOf(2), cache.TotalBytes);
 
-        cache.Remove("a");
+        cache.Remove("a", cache.Generation);
         Assert.Equal(BytesOf(2), cache.TotalBytes);
 
         cache.Reset();
@@ -137,8 +163,8 @@ public sealed class WorkflowHistoryCacheTests
         // reference guards it the same way (durabletask-go client/worker_history.go).
         var cache = new WorkflowHistoryCache();
 
-        cache.Put("a", Events(3));
-        cache.Put("b", Events(2));
+        cache.Put("a", Events(3), cache.Generation);
+        cache.Put("b", Events(2), cache.Generation);
 
         Assert.Equal(2, cache.Count); // still cached and usable...
         Assert.NotNull(cache.Get("a"));
@@ -151,8 +177,8 @@ public sealed class WorkflowHistoryCacheTests
         var clock = new TestClock();
         var cache = new WorkflowHistoryCache(ttl: TimeSpan.FromSeconds(60), clock: clock.Read);
 
-        cache.Put("idle", Events(2));
-        cache.Put("active", Events(2));
+        cache.Put("idle", Events(2), cache.Generation);
+        cache.Put("active", Events(2), cache.Generation);
 
         clock.Advance(TimeSpan.FromSeconds(120)); // past the TTL...
         Assert.NotNull(cache.Get("active")); // ...but a turn refreshes "active"
@@ -170,9 +196,9 @@ public sealed class WorkflowHistoryCacheTests
         var cache = new WorkflowHistoryCache(
             ttl: TimeSpan.Zero, maxInstances: -1, maxBytes: -5);
 
-        cache.Put("a", Events(1));
-        cache.Put("b", Events(1));
-        cache.Put("c", Events(1));
+        cache.Put("a", Events(1), cache.Generation);
+        cache.Put("b", Events(1), cache.Generation);
+        cache.Put("c", Events(1), cache.Generation);
 
         Assert.Equal(3, cache.Count);
         Assert.NotNull(cache.Get("a"));

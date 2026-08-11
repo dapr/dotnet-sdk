@@ -289,6 +289,12 @@ jobs:
           make build-linux BINARIES="daprd placement scheduler"
           make docker-build DAPR_REGISTRY=daprio DAPR_TAG=dapr-head \
             BINARIES="daprd placement scheduler"
+          # docker-build tags as $(DAPR_TAG)-$(DOCKER_IMAGE_VARIANT), i.e. dapr-head-linux-amd64
+          # (dapr docker/docker.mk). DaprRuntimeOptions derives image tags from
+          # DAPR_RUNTIME_VERSION verbatim, so alias the unqualified tag it actually pulls.
+          for image in daprd placement scheduler; do
+            docker tag "daprio/$image:dapr-head-linux-amd64" "daprio/$image:dapr-head"
+          done
       - name: Stateful-history integration tests
         env:
           DAPR_RUNTIME_VERSION: dapr-head

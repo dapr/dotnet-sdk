@@ -100,6 +100,10 @@ internal sealed class GrpcProtocolHandler(
                 var streamCts = CancellationTokenSource.CreateLinkedTokenSource(token);
                 var streamToken = streamCts.Token;
 
+                // Captured once per stream: work items carry it back on every cache write so a
+                // task that outlives its stream cannot mutate the next stream's cache.
+                var streamGeneration = _historyCache.Generation;
+
                 void TeardownStream()
                 {
                     // A work item runs on its own task and can outlive the stream it arrived on, so
@@ -129,7 +133,7 @@ internal sealed class GrpcProtocolHandler(
 
                     // Process work items from the stream
                     await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler,
-                        TeardownStream, streamToken);
+                        TeardownStream, streamGeneration, streamToken);
 
                     // Stream ended gracefully => treat as an interrupted and reconnect unless shutting down
                     if (!token.IsCancellationRequested)
@@ -226,6 +230,7 @@ internal sealed class GrpcProtocolHandler(
         Func<WorkflowRequest, string, Task<WorkflowResponse>> workflowHandler,
         Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
         Action teardownStream,
+        int streamGeneration,
         CancellationToken cancellationToken)
     {
         // Track active work items for proper exception handling
@@ -242,7 +247,7 @@ internal sealed class GrpcProtocolHandler(
                 {
                     WorkItem.RequestOneofCase.WorkflowRequest => Task.Run(
                         () => ProcessWorkflowAsync(workItem.WorkflowRequest, completionToken, workflowHandler,
-                            teardownStream, cancellationToken),
+                            teardownStream, streamGeneration, cancellationToken),
                         cancellationToken),
                     WorkItem.RequestOneofCase.ActivityRequest => Task.Run(
                         () => ProcessActivityAsync(workItem.ActivityRequest, completionToken, activityHandler, cancellationToken),
@@ -291,7 +296,7 @@ internal sealed class GrpcProtocolHandler(
     /// </summary>
     private async Task ProcessWorkflowAsync(WorkflowRequest request, string completionToken,
         Func<WorkflowRequest, string, Task<WorkflowResponse>> handler, Action teardownStream,
-        CancellationToken cancellationToken)
+        int streamGeneration, CancellationToken cancellationToken)
     {
         await _orchestrationSemaphore.WaitAsync(cancellationToken);
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
@@ -312,7 +317,7 @@ internal sealed class GrpcProtocolHandler(
             {
                 try
                 {
-                    await ResolveCachedHistoryAsync(request, cancellationToken);
+                    await ResolveCachedHistoryAsync(request, streamGeneration, cancellationToken);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -342,7 +347,7 @@ internal sealed class GrpcProtocolHandler(
             try
             {
                 result = await handler(request, completionToken);
-                UpdateHistoryCache(request, result);
+                UpdateHistoryCache(request, result, streamGeneration);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -385,7 +390,8 @@ internal sealed class GrpcProtocolHandler(
     /// the cached prefix (validated against the sidecar's expected event count) plus the delta, or the
     /// full history fetched via GetInstanceHistory on a cache miss.
     /// </summary>
-    private async Task ResolveCachedHistoryAsync(WorkflowRequest request, CancellationToken token)
+    private async Task ResolveCachedHistoryAsync(WorkflowRequest request, int streamGeneration,
+        CancellationToken token)
     {
         var cached = _historyCache.Get(request.InstanceId);
         if (cached is not null && cached.Count == request.CachedHistory.EventCount)
@@ -402,7 +408,7 @@ internal sealed class GrpcProtocolHandler(
         // have, so drop it now rather than leaving a prefix we already know is wrong sitting there
         // until the post-turn Put overwrites it. A turn that abandons below would otherwise leave
         // the stale entry to be matched against on the next delta.
-        _historyCache.Remove(request.InstanceId);
+        _historyCache.Remove(request.InstanceId, streamGeneration);
 
         var historyRequest = new GetInstanceHistoryRequest { InstanceId = request.InstanceId };
         var response = await _grpcClient.GetInstanceHistoryAsync(historyRequest, CreateCallOptions(token));
@@ -417,7 +423,7 @@ internal sealed class GrpcProtocolHandler(
     /// continued-as-new). Skipped when stateful history is disabled or the request used history streaming
     /// (which leaves PastEvents partial).
     /// </summary>
-    private void UpdateHistoryCache(WorkflowRequest request, WorkflowResponse result)
+    private void UpdateHistoryCache(WorkflowRequest request, WorkflowResponse result, int streamGeneration)
     {
         if (_disableStatefulHistory || request.RequiresHistoryStreaming)
         {
@@ -427,11 +433,11 @@ internal sealed class GrpcProtocolHandler(
         var ended = result.Actions.Any(a => a.CompleteWorkflow is not null);
         if (ended)
         {
-            _historyCache.Remove(request.InstanceId);
+            _historyCache.Remove(request.InstanceId, streamGeneration);
         }
         else
         {
-            _historyCache.Put(request.InstanceId, request.PastEvents);
+            _historyCache.Put(request.InstanceId, request.PastEvents, streamGeneration);
         }
     }
 
