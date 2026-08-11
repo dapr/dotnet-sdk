@@ -11,6 +11,8 @@
 // limitations under the License.
 //  ------------------------------------------------------------------------
 
+using System.Runtime.CompilerServices;
+
 namespace Dapr.IntegrationTest.Workflow.StatefulHistory;
 
 /// <summary>
@@ -37,7 +39,14 @@ public sealed class RequiresDaprHeadFactAttribute : FactAttribute
     /// <summary>
     /// Initializes the <see cref="RequiresDaprHeadFactAttribute"/> instance.
     /// </summary>
-    public RequiresDaprHeadFactAttribute()
+    /// <param name="sourceFilePath">Populated by the compiler; forwarded so xUnit v3 can report
+    /// the test's source location (xUnit3003).</param>
+    /// <param name="sourceLineNumber">Populated by the compiler; see
+    /// <paramref name="sourceFilePath"/>.</param>
+    public RequiresDaprHeadFactAttribute(
+        [CallerFilePath] string? sourceFilePath = null,
+        [CallerLineNumber] int sourceLineNumber = -1)
+        : base(sourceFilePath, sourceLineNumber)
     {
         var current = Environment.GetEnvironmentVariable(RuntimeVersionEnvVarName);
         if (!string.Equals(current, DaprHeadVersion, StringComparison.Ordinal))

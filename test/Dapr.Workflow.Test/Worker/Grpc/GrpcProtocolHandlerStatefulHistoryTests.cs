@@ -398,6 +398,49 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
         Assert.Equal(0, Volatile.Read(ref completed)); // and never completed
     }
 
+    [Fact]
+    public async Task FailedHistoryFetch_TearsDownTheStream_SoTheTurnIsRedelivered()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+
+        var delta = new WorkflowRequest { InstanceId = "i-1", PastEvents = { Events(1) } };
+        delta.CachedHistory = new CachedHistory { EventCount = 5 };
+
+        // Both streams stay open indefinitely, so the only thing that can end the first one (and
+        // produce a second) is the handler tearing it down. Returning without a teardown would
+        // strand the turn: the sidecar re-dispatches a stream's in-flight items only on disconnect.
+        var neverCompletes = new TaskCompletionSource();
+        var streamCount = 0;
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(() =>
+            {
+                var isFirstStream = Interlocked.Increment(ref streamCount) == 1;
+                var items = new List<(WorkItem item, Task? gate)>();
+                if (isFirstStream)
+                {
+                    items.Add((new WorkItem { WorkflowRequest = delta }, null));
+                }
+
+                items.Add((new WorkItem(), neverCompletes.Task));
+                return CreateServerStreamingCallFromReader(new GatedStreamReader(items));
+            });
+
+        grpcClientMock
+            .Setup(x => x.GetInstanceHistoryAsync(It.IsAny<GetInstanceHistoryRequest>(), It.IsAny<CallOptions>()))
+            .Throws(new RpcException(new Status(StatusCode.Unavailable, "history unavailable")));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        // The handler waits ReconnectDelay (5s) before the next stream, so allow well past that.
+        await RunHandlerUntilAsync(handler,
+            AcceptingWorkflowHandler,
+            NoActivityHandler,
+            untilCondition: () => Volatile.Read(ref streamCount) >= 2, timeout: TimeSpan.FromSeconds(20));
+
+        Assert.True(Volatile.Read(ref streamCount) >= 2, "the failed fetch did not tear down the stream");
+    }
+
     // --- harness -----------------------------------------------------------------------
 
     private static Task<WorkflowResponse> AcceptingWorkflowHandler(WorkflowRequest req, string _) =>

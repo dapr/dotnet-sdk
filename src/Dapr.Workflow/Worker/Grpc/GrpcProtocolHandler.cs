@@ -92,22 +92,44 @@ internal sealed class GrpcProtocolHandler(
                 CancellationTokenSource? keepaliveCts = null;
                 Task? keepaliveTask = null;
 
+                // Scoped to this connection, so a work item that cannot be recovered can drop just
+                // this stream and force a reconnect without cancelling the caller's listener. The
+                // sidecar has no per-item NACK: it only re-dispatches a stream's in-flight items
+                // when that stream disconnects, so dropping the stream is the only way to hand a
+                // stuck turn back.
+                var streamCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                var streamToken = streamCts.Token;
+
+                void TeardownStream()
+                {
+                    // A work item runs on its own task and can outlive the stream it arrived on, so
+                    // racing the disposal below is expected; by then the stream is already gone.
+                    try
+                    {
+                        streamCts.Cancel();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                    }
+                }
+
                 try
                 {
                     _logger.LogGrpcProtocolHandlerStartStream();
 
                     // Establish the server streaming call
-                    var grpcCallOptions = CreateCallOptions(token);
+                    var grpcCallOptions = CreateCallOptions(streamToken);
                     _streamingCall = _grpcClient.GetWorkItems(request, grpcCallOptions);
 
                     _logger.LogGrpcProtocolHandlerStreamEstablished();
 
                     // Start the background keepalive loop to keep the connection alive
-                    keepaliveCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                    keepaliveCts = CancellationTokenSource.CreateLinkedTokenSource(streamToken);
                     keepaliveTask = KeepaliveLoopAsync(keepaliveCts.Token);
 
                     // Process work items from the stream
-                    await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler, token);
+                    await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler,
+                        TeardownStream, streamToken);
 
                     // Stream ended gracefully => treat as an interrupted and reconnect unless shutting down
                     if (!token.IsCancellationRequested)
@@ -153,6 +175,7 @@ internal sealed class GrpcProtocolHandler(
 
                     _streamingCall?.Dispose();
                     _streamingCall = null;
+                    streamCts.Dispose();
 
                     // The next stream starts cold: the sidecar drops this stream's warm set,
                     // so the cached histories from this connection are no longer in sync.
@@ -202,6 +225,7 @@ internal sealed class GrpcProtocolHandler(
         IAsyncStreamReader<WorkItem> workItemsStream,
         Func<WorkflowRequest, string, Task<WorkflowResponse>> workflowHandler,
         Func<ActivityRequest, string, Task<ActivityResponse>> activityHandler,
+        Action teardownStream,
         CancellationToken cancellationToken)
     {
         // Track active work items for proper exception handling
@@ -217,7 +241,8 @@ internal sealed class GrpcProtocolHandler(
                 var workItemTask = workItem.RequestCase switch
                 {
                     WorkItem.RequestOneofCase.WorkflowRequest => Task.Run(
-                        () => ProcessWorkflowAsync(workItem.WorkflowRequest, completionToken, workflowHandler, cancellationToken),
+                        () => ProcessWorkflowAsync(workItem.WorkflowRequest, completionToken, workflowHandler,
+                            teardownStream, cancellationToken),
                         cancellationToken),
                     WorkItem.RequestOneofCase.ActivityRequest => Task.Run(
                         () => ProcessActivityAsync(workItem.ActivityRequest, completionToken, activityHandler, cancellationToken),
@@ -265,7 +290,8 @@ internal sealed class GrpcProtocolHandler(
     /// Processes a workflow request work item.
     /// </summary>
     private async Task ProcessWorkflowAsync(WorkflowRequest request, string completionToken,
-        Func<WorkflowRequest, string, Task<WorkflowResponse>> handler, CancellationToken cancellationToken)
+        Func<WorkflowRequest, string, Task<WorkflowResponse>> handler, Action teardownStream,
+        CancellationToken cancellationToken)
     {
         await _orchestrationSemaphore.WaitAsync(cancellationToken);
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
@@ -295,10 +321,15 @@ internal sealed class GrpcProtocolHandler(
                 }
                 catch (Exception ex)
                 {
-                    // The cache-miss fallback fetch failed and there is no per-item NACK. Abandon
-                    // the work item so the backend redelivers it (as a full-history send on a future
-                    // stream) rather than marking an otherwise-healthy turn as failed.
+                    // The cache-miss fallback fetch failed, and there is no per-item NACK: the
+                    // sidecar only re-dispatches in-flight items when the stream they arrived on
+                    // disconnects, so simply returning would strand this turn until something else
+                    // dropped the stream. Tear down our own stream instead. The turn (and the
+                    // stream's other in-flight items) then comes back on a fresh, cold stream as a
+                    // full-history send, which needs no cache. Failing the turn is not an option:
+                    // the workflow itself is healthy, we just cannot tell what to replay.
                     _logger.LogGrpcProtocolHandlerWorkflowProcessorFailedToSendError(ex, request.InstanceId);
+                    teardownStream();
                     return;
                 }
             }
