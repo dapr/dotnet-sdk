@@ -278,7 +278,11 @@ internal sealed class GrpcProtocolHandler(
             // carries only the events new since this worker was last warm for the instance, so we
             // rebuild the full history from our per-stream cache, or fetch it on a miss. Overwriting
             // request.PastEvents here keeps the workflow handler oblivious to the delta protocol.
-            if (!_disableStatefulHistory && request.CachedHistory is not null)
+            //
+            // History streaming is mutually exclusive with this: it also treats PastEvents as partial
+            // and appends its own GetInstanceHistory fetch downstream, so reconstructing here as well
+            // would hand the workflow a doubled history. UpdateHistoryCache skips the same case.
+            if (!_disableStatefulHistory && !request.RequiresHistoryStreaming && request.CachedHistory is not null)
             {
                 try
                 {

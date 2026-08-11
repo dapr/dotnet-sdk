@@ -207,6 +207,49 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
     }
 
     [Fact]
+    public async Task HistoryStreamingRequest_IsLeftAloneByDeltaReconstruction()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+
+        // History streaming also treats PastEvents as partial and appends its own GetInstanceHistory
+        // fetch downstream, so reconstructing here too would hand the workflow a doubled history.
+        // The two modes are mutually exclusive; PastEvents must reach the handler untouched.
+        var request = new WorkflowRequest
+        {
+            InstanceId = "i-1",
+            PastEvents = { Events(2) },
+            RequiresHistoryStreaming = true
+        };
+        request.CachedHistory = new CachedHistory { EventCount = 2 };
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCall([new WorkItem { WorkflowRequest = request }]));
+
+        var completed = 0;
+        grpcClientMock
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
+            .Callback(() => Interlocked.Increment(ref completed))
+            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
+
+        var seenPastEvents = new ConcurrentQueue<int>();
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        await RunHandlerUntilAsync(handler,
+            workflowHandler: (req, _) =>
+            {
+                seenPastEvents.Enqueue(req.PastEvents.Count);
+                return Task.FromResult(new WorkflowResponse { InstanceId = req.InstanceId });
+            },
+            NoActivityHandler,
+            untilCondition: () => Volatile.Read(ref completed) >= 1, timeout: TimeSpan.FromSeconds(2));
+
+        Assert.Equal([2], seenPastEvents); // untouched; the streaming path appends the rest itself
+        grpcClientMock.Verify(
+            x => x.GetInstanceHistoryAsync(It.IsAny<GetInstanceHistoryRequest>(), It.IsAny<CallOptions>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task CompletedWorkflow_EvictsCacheEntry_SoTheNextDeltaMisses()
     {
         var grpcClientMock = CreateGrpcClientMock();

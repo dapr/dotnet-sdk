@@ -34,7 +34,10 @@ internal sealed class WorkflowHistoryCache
     private sealed class Entry
     {
         public required IReadOnlyList<HistoryEvent> Events { get; init; }
-        public required int Bytes { get; init; }
+
+        /// <summary>Matches the width of the running total and the configured budget, so a large
+        /// history cannot overflow and corrupt the accounting.</summary>
+        public required long Bytes { get; init; }
         public DateTime LastAccess { get; set; }
     }
 
@@ -82,7 +85,7 @@ internal sealed class WorkflowHistoryCache
         // Only measure the serialized size when a byte budget is configured. On the default
         // (unbounded) path this avoids re-serializing the whole history every turn, which would
         // reintroduce the full-history serialization cost this cache exists to avoid.
-        var bytes = 0;
+        long bytes = 0;
         if (_maxBytes > 0)
         {
             foreach (var historyEvent in snapshot)
