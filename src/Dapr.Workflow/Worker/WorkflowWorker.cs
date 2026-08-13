@@ -96,6 +96,19 @@ internal sealed class WorkflowWorker(
             string? serializedInput = null;
             string? appId = null;
 
+            // The execution ID seeds the context's deterministic guid
+            // namespace, which TaskExecutionId derivation depends on. Older
+            // sidecars leave it unset on the request, so fall back to the
+            // runtime-minted execution ID persisted in the
+            // ExecutionStartedEvent: it is stable across replays of one
+            // execution and fresh for each execution of a recreated instance
+            // ID. Without a per-execution seed, two executions of the same
+            // instance ID derive colliding TaskExecutionIds, and the runtime's
+            // activity de-duplication can treat the second execution's
+            // activity as a duplicate of the first, leaving the workflow stuck
+            // in Running.
+            var executionId = request.ExecutionId;
+
             if (request.RequiresHistoryStreaming)
             {
                 var streamRequest = new GetInstanceHistoryRequest { InstanceId = request.InstanceId };
@@ -157,6 +170,11 @@ internal sealed class WorkflowWorker(
                 {
                     workflowName = e.ExecutionStarted.Name;
                     serializedInput = e.ExecutionStarted.Input;
+
+                    if (string.IsNullOrWhiteSpace(executionId))
+                    {
+                        executionId = e.ExecutionStarted.WorkflowInstance?.ExecutionId;
+                    }
 
                     // Try pulling the app ID out of the target first, then the source if not available
                     if (!string.IsNullOrEmpty(e.Router?.TargetAppID))
@@ -326,7 +344,7 @@ internal sealed class WorkflowWorker(
                 ? request.PropagatedHistory.Chunks
                 : null;
             var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime,
-                _serializer, loggerFactory, versionTracker, appId, request.ExecutionId,
+                _serializer, loggerFactory, versionTracker, appId, executionId,
                 allPastEvents,
                 incomingPropagatedHistory);
 
