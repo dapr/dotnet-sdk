@@ -174,6 +174,45 @@ public class EndpointRouteBuilderExtensionsTest
         }
     }
     
+    [Fact]
+    public async Task MapDaprScheduledJobHandler_RegistersBothGrpcAndHttpHandlers()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Services.AddDaprJobsClient();
+        builder.Services.AddSingleton<Validator>();
+        builder.Services.AddRouting();
+        var app = builder.Build();
+        app.UseRouting();
+        app.MapDaprScheduledJobHandler(async (string jobName, ReadOnlyMemory<byte> jobPayload,
+            Validator validator, CancellationToken cancellationToken) =>
+        {
+            validator.JobName = jobName;
+            validator.SerializedPayload = Encoding.UTF8.GetString(jobPayload.Span);
+            await Task.CompletedTask;
+        });
+
+        await app.StartAsync(TestContext.Current.CancellationToken);
+        var testServer = app.GetTestServer();
+
+        // The gRPC handler registry should be populated.
+        var registry = testServer.Services.GetRequiredService<DaprJobsHandlerRegistry>();
+        Assert.NotNull(registry.Handler);
+
+        // The HTTP endpoint should also be registered and functional.
+        var client = testServer.CreateClient();
+        var serializedPayload = JsonSerializer.Serialize(new SamplePayload("Dapr", 789));
+        var content = new StringContent(serializedPayload, Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/job/testJob", content, TestContext.Current.CancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var validator = testServer.Services.GetRequiredService<Validator>();
+        Assert.Equal("testJob", validator.JobName);
+        Assert.Equal(serializedPayload, validator.SerializedPayload);
+
+        await app.StopAsync(TestContext.Current.CancellationToken);
+    }
+    
     private sealed record SamplePayload(string Name, int Count);
 
     public sealed class Validator
