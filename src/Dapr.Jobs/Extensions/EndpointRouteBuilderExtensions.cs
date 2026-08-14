@@ -13,7 +13,9 @@
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Dapr.Jobs.Extensions;
 
@@ -52,6 +54,22 @@ public static class EndpointRouteBuilderExtensions
             registry.Handler = action;
             registry.Timeout = timeout;
             endpoints.MapGrpcService<DaprJobsAppCallbackService>();
+
+            // Ensure Kestrel accepts HTTP/2 on plaintext endpoints so the sidecar's
+            // gRPC callbacks can connect. AddDaprJobsClient already registers this via
+            // services.Configure<KestrelServerOptions>, but that may not take effect
+            // when the host configures UseUrls *before* AddDaprJobsClient is called
+            // (the options builder might have already cached a different value). Touching
+            // the IOptions<KestrelServerOptions> singleton here — after the service
+            // provider is built but before the server starts — guarantees the
+            // ConfigureEndpointDefaults callback is on the live options instance that
+            // Kestrel reads during StartAsync.
+            var kestrelOptions = endpoints.ServiceProvider.GetService<IOptions<KestrelServerOptions>>();
+            if (kestrelOptions is not null)
+            {
+                kestrelOptions.Value.ConfigureEndpointDefaults(
+                    listen => listen.Protocols = HttpProtocols.Http1AndHttp2);
+            }
         }
 
         // Register the HTTP callback endpoint so the sidecar can deliver job triggers
