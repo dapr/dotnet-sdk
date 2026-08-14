@@ -37,7 +37,15 @@ public sealed partial class DaprJobSchedule
     /// The value of the expression represented by the schedule.
     /// </summary>
     public string ExpressionValue { get; }
-    
+
+    /// <summary>
+    /// The IANA timezone identifier associated with the schedule, if any. This is populated when a
+    /// <c>CRON_TZ=&lt;tz&gt;</c> segment is provided as part of a Cron expression (either through
+    /// <see cref="FromExpression"/> or via <see cref="FromCronExpression"/> using a
+    /// <see cref="CronExpressionBuilder"/> configured with <see cref="CronExpressionBuilder.WithTimeZone(string)"/>).
+    /// </summary>
+    public string? TimeZone { get; }
+
     /// <summary>
     /// Initializes the value of <see cref="ExpressionValue"/> based on the provided value from each of the factory methods.
     /// </summary>
@@ -47,7 +55,11 @@ public sealed partial class DaprJobSchedule
     /// <param name="expressionValue">The value of the scheduling expression.</param>
     internal DaprJobSchedule(string expressionValue)
     {
+        // Persist any timezone embedded in the expression as a CRON_TZ=<tz> segment so that it's
+        // available on the schedule independently of the expression string itself.
+        CronExpressionBuilder.TryStripCronTimeZone(expressionValue, out var timeZone);
         ExpressionValue = expressionValue;
+        TimeZone = timeZone;
     }
 
     /// <summary>

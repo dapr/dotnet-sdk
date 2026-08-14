@@ -29,17 +29,24 @@ public sealed class CronExpressionBuilder
     private const string DayOfMonthRegexText = @"\*|(\*\/(([0-2]?\d)|(3[0-1])))|(((([0-2]?\d)|(3[0-1]))(-(([0-2]?\d)|(3[0-1])))?))";
     private const string MonthRegexText = @"(^(\*\/)?((0?\d)|(1[0-2]))$)|(^\*$)|(^((0?\d)|(1[0-2]))(-((0?\d)|(1[0-2]))?)$)|(^(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(?:-(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))?(?:,(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(?:-(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))?)*$)";
     private const string DayOfWeekRegexText = @"\*|(\*\/(0?[0-6])|(0?[0-6](-0?[0-6])?)|((,?(SUN|MON|TUE|WED|THU|FRI|SAT))+)|((SUN|MON|TUE|WED|THU|FRI|SAT)(-(SUN|MON|TUE|WED|THU|FRI|SAT))?))";
-    
-    private static readonly Regex cronExpressionRegex =
+
+    /// <summary>
+    /// The prefix used to associate an IANA timezone identifier with a Cron expression (e.g.
+    /// <c>CRON_TZ=Europe/Rome</c>), as supported by the Dapr Jobs runtime.
+    /// </summary>
+    private const string CronTimeZonePrefix = "CRON_TZ=";
+
+    private static readonly Regex CronExpressionRegex =
         new(
             $"{SecondsAndMinutesRegexText} {SecondsAndMinutesRegexText} {HoursRegexText} {DayOfMonthRegexText} {MonthRegexText} {DayOfWeekRegexText}", RegexOptions.Compiled);
-    
-    private string seconds = "*";
-    private string minutes = "*";
-    private string hours = "*";
-    private string dayOfMonth = "*";
-    private string month = "*";
-    private string dayOfWeek = "*";
+
+    private string _seconds = "*";
+    private string _minutes = "*";
+    private string _hours = "*";
+    private string _dayOfMonth = "*";
+    private string _month = "*";
+    private string _dayOfWeek = "*";
+    private string? _timeZone;
 
     /// <summary>
     /// Reflects an expression in which the developer specifies a series of numeric values and the period they're associated
@@ -64,16 +71,16 @@ public sealed class CronExpressionBuilder
         switch (period)
         {
             case OnCronPeriod.Second:
-                seconds = strValue;
+                _seconds = strValue;
                 break;
             case OnCronPeriod.Minute:
-                minutes = strValue;
+                _minutes = strValue;
                 break;
             case OnCronPeriod.Hour:
-                hours = strValue;
+                _hours = strValue;
                 break;
             case OnCronPeriod.DayOfMonth:
-                dayOfMonth = strValue;
+                _dayOfMonth = strValue;
                 break;
         }
 
@@ -86,7 +93,7 @@ public sealed class CronExpressionBuilder
     /// <param name="months">The months of the year to invoke the trigger on.</param>
     public CronExpressionBuilder On(params MonthOfYear[] months)
     {
-        month = string.Join(',', months.Distinct().OrderBy(a => a).Select(a => a.GetValueFromEnumMember()));
+        _month = string.Join(',', months.Distinct().OrderBy(a => a).Select(a => a.GetValueFromEnumMember()));
         return this;
     }
 
@@ -96,7 +103,7 @@ public sealed class CronExpressionBuilder
     /// <param name="days">The days of the week to invoke the trigger on.</param>
     public CronExpressionBuilder On(params DayOfWeek[] days)
     {
-        dayOfWeek = string.Join(',', days.Distinct().OrderBy(a => a).Select(a => a.GetValueFromEnumMember()));
+        _dayOfWeek = string.Join(',', days.Distinct().OrderBy(a => a).Select(a => a.GetValueFromEnumMember()));
         return this;
     }
 
@@ -123,19 +130,19 @@ public sealed class CronExpressionBuilder
         switch (period)
         {
             case ThroughCronPeriod.Second:
-                seconds = stringValue;
+                _seconds = stringValue;
                 break;
             case ThroughCronPeriod.Minute:
-                minutes = stringValue;
+                _minutes = stringValue;
                 break;
             case ThroughCronPeriod.Hour:
-                hours = stringValue;
+                _hours = stringValue;
                 break;
             case ThroughCronPeriod.DayOfMonth:
-                dayOfMonth = stringValue;
+                _dayOfMonth = stringValue;
                 break;
             case ThroughCronPeriod.Month:
-                month = stringValue;
+                _month = stringValue;
                 break;
         }
 
@@ -159,7 +166,7 @@ public sealed class CronExpressionBuilder
             throw new ArgumentException("The From and To properties should not be equivalent");
         }
 
-        dayOfWeek = $"{from.GetValueFromEnumMember()}-{to.GetValueFromEnumMember()}";
+        _dayOfWeek = $"{from.GetValueFromEnumMember()}-{to.GetValueFromEnumMember()}";
         return this;
     }
 
@@ -180,7 +187,7 @@ public sealed class CronExpressionBuilder
             throw new ArgumentException("The From and To properties should not be equivalent");
         }
 
-        month = $"{from.GetValueFromEnumMember()}-{to.GetValueFromEnumMember()}";
+        _month = $"{from.GetValueFromEnumMember()}-{to.GetValueFromEnumMember()}";
         return this;
     }
 
@@ -194,22 +201,22 @@ public sealed class CronExpressionBuilder
         switch (period)
         {
             case CronPeriod.Second:
-                seconds = "*";
+                _seconds = "*";
                 break;
             case CronPeriod.Minute:
-                minutes = "*";
+                _minutes = "*";
                 break;
             case CronPeriod.Hour:
-                hours = "*";
+                _hours = "*";
                 break;
             case CronPeriod.DayOfMonth:
-                dayOfMonth = "*";
+                _dayOfMonth = "*";
                 break;
             case CronPeriod.Month:
-                month = "*";
+                _month = "*";
                 break;
             case CronPeriod.DayOfWeek:
-                dayOfWeek = "*";
+                _dayOfWeek = "*";
                 break;
         }
 
@@ -234,22 +241,22 @@ public sealed class CronExpressionBuilder
         switch (period)
         {
             case EveryCronPeriod.Second:
-                seconds = value;
+                _seconds = value;
                 break;
             case EveryCronPeriod.Minute:
-                minutes = value;
+                _minutes = value;
                 break;
             case EveryCronPeriod.Hour:
-                hours = value;
+                _hours = value;
                 break;
             case EveryCronPeriod.Month:
-                month = value;
+                _month = value;
                 break;
             case EveryCronPeriod.DayInMonth:
-                dayOfMonth = value;
+                _dayOfMonth = value;
                 break;
             case EveryCronPeriod.DayInWeek:
-                dayOfWeek = value;
+                _dayOfWeek = value;
                 break;
         }
 
@@ -257,17 +264,86 @@ public sealed class CronExpressionBuilder
     }
 
     /// <summary>
+    /// Associates an IANA timezone identifier with the Cron expression. The Dapr Jobs runtime uses this
+    /// to evaluate the schedule in the specified timezone (e.g. <c>Europe/Rome</c>).
+    /// </summary>
+    /// <param name="timeZoneId">The IANA timezone identifier to associate with the expression.</param>
+    /// <returns></returns>
+    public CronExpressionBuilder WithTimeZone(string timeZoneId)
+    {
+        if (string.IsNullOrWhiteSpace(timeZoneId))
+        {
+            throw new ArgumentException("A timezone identifier must be provided.", nameof(timeZoneId));
+        }
+
+        this._timeZone = timeZoneId;
+        return this;
+    }
+
+    /// <summary>
+    /// Associates a <see cref="TimeZoneInfo"/> with the Cron expression. The Dapr Jobs runtime uses this
+    /// to evaluate the schedule in the specified timezone.
+    /// </summary>
+    /// <param name="timezone">The timezone to associate with the expression.</param>
+    /// <returns></returns>
+    public CronExpressionBuilder WithTimeZone(TimeZoneInfo timezone)
+    {
+        ArgumentNullException.ThrowIfNull(timezone);
+        this._timeZone = timezone.Id;
+        return this;
+    }
+
+    /// <summary>
+    /// The timezone associated with the Cron expression, if any. This is exposed so that consumers
+    /// (such as <see cref="Models.DaprJobSchedule"/>) can persist the value alongside the expression.
+    /// </summary>
+    internal string? TimeZone => _timeZone;
+
+    /// <summary>
+    /// Removes a leading <c>CRON_TZ=&lt;tz&gt;</c> segment from the expression, if present, and returns
+    /// the remaining Cron expression along with the extracted timezone identifier.
+    /// </summary>
+    /// <param name="expression">The expression to evaluate.</param>
+    /// <param name="timeZone">When this method returns, contains the extracted timezone identifier if a
+    /// <c>CRON_TZ=</c> prefix was present; otherwise <c>null</c>.</param>
+    /// <returns>The expression with any leading <c>CRON_TZ=</c> segment removed.</returns>
+    internal static string TryStripCronTimeZone(string expression, out string? timeZone)
+    {
+        timeZone = null;
+        if (!expression.StartsWith(CronTimeZonePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return expression;
+        }
+
+        var spaceIndex = expression.IndexOf(' ');
+        if (spaceIndex <= CronTimeZonePrefix.Length)
+        {
+            return expression;
+        }
+
+        timeZone = expression.Substring(CronTimeZonePrefix.Length, spaceIndex - CronTimeZonePrefix.Length);
+        return expression[(spaceIndex + 1)..];
+
+    }
+
+    /// <summary>
     /// Validates whether a given expression is valid Cron syntax.
     /// </summary>
     /// <param name="expression">The string to evaluate.</param>
     /// <returns>True if the expression is valid Cron syntax; false if not.</returns>
-    internal static bool IsCronExpression(string expression) => expression.Split(' ').Length == 6 && cronExpressionRegex.IsMatch(expression);
+    internal static bool IsCronExpression(string expression)
+    {
+        var stripped = TryStripCronTimeZone(expression, out _);
+        return stripped.Split(' ').Length == 6 && CronExpressionRegex.IsMatch(stripped);
+    }
 
     /// <summary>
     /// Builds the Cron expression.
     /// </summary>
     /// <returns></returns>
-    public override string ToString() => $"{seconds} {minutes} {hours} {dayOfMonth} {month} {dayOfWeek}";
+    public override string ToString() => string.IsNullOrEmpty(_timeZone)
+        ? $"{_seconds} {_minutes} {_hours} {_dayOfMonth} {_month} {_dayOfWeek}"
+        : $"{CronTimeZonePrefix}{_timeZone} {_seconds} {_minutes} {_hours} {_dayOfMonth} {_month} {_dayOfWeek}";
 }
 
 /// <summary>
