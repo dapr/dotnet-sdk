@@ -177,4 +177,79 @@ public sealed class DaprJobScheduleTests
         Assert.False(schedule.IsPointInTimeExpression);
         Assert.False(schedule.IsDurationExpression);
     }
+
+    [Fact]
+    public void FromExpression_PersistsTimezoneFromCronTzExpression()
+    {
+        const string expression = "CRON_TZ=Europe/Rome 0 */5 * * * *";
+        var schedule = DaprJobSchedule.FromExpression(expression);
+
+        Assert.Equal(expression, schedule.ExpressionValue);
+        Assert.Equal("Europe/Rome", schedule.TimeZone);
+        Assert.True(schedule.IsCronExpression);
+        Assert.False(schedule.IsPrefixedPeriodExpression);
+        Assert.False(schedule.IsPointInTimeExpression);
+        Assert.False(schedule.IsDurationExpression);
+    }
+
+    [Theory]
+    [InlineData("CRON_TZ=Europe/Rome 0 */5 * * * *")]
+    [InlineData("CRON_TZ=America/New_York 30 15 6 */4 JAN,APR,AUG WED-FRI")]
+    [InlineData("CRON_TZ=UTC * * * * * *")]
+    [InlineData("cron_tz=Asia/Kolkata 0 0 0 * * *")]
+    public void FromExpression_CronTzExpressionsAreCronExpressions(string expression)
+    {
+        var schedule = DaprJobSchedule.FromExpression(expression);
+        Assert.True(schedule.IsCronExpression);
+        Assert.NotNull(schedule.TimeZone);
+    }
+
+    [Fact]
+    public void FromExpression_WithoutTimezoneHasNullTimeZone()
+    {
+        var schedule = DaprJobSchedule.FromExpression("0 */5 * * * *");
+        Assert.Null(schedule.TimeZone);
+    }
+
+    [Fact]
+    public void FromCronExpression_PersistsTimezoneFromBuilder()
+    {
+        var builder = new CronExpressionBuilder()
+            .Every(EveryCronPeriod.Minute, 5)
+            .WithTimeZone("Europe/Rome");
+
+        var schedule = DaprJobSchedule.FromCronExpression(builder);
+
+        Assert.Equal("CRON_TZ=Europe/Rome * */5 * * * *", schedule.ExpressionValue);
+        Assert.Equal("Europe/Rome", schedule.TimeZone);
+        Assert.True(schedule.IsCronExpression);
+    }
+
+    [Fact]
+    public void FromCronExpression_WithoutTimezoneHasNullTimeZone()
+    {
+        var builder = new CronExpressionBuilder()
+            .Every(EveryCronPeriod.Minute, 5);
+
+        var schedule = DaprJobSchedule.FromCronExpression(builder);
+
+        Assert.Equal("* */5 * * * *", schedule.ExpressionValue);
+        Assert.Null(schedule.TimeZone);
+    }
+
+    [Fact]
+    public void PrefixedAndDurationAndPointInTimeSchedulesHaveNullTimeZone()
+    {
+        Assert.Null(DaprJobSchedule.Weekly.TimeZone);
+        Assert.Null(DaprJobSchedule.FromDuration(TimeSpan.FromHours(2)).TimeZone);
+        Assert.Null(DaprJobSchedule.FromDateTime(DateTimeOffset.UtcNow.AddDays(2)).TimeZone);
+    }
+
+    [Fact]
+    public void InternalConstructor_ParsesTimezoneFromExpression()
+    {
+        var schedule = new DaprJobSchedule("CRON_TZ=Europe/Rome 0 */5 * * * *");
+        Assert.Equal("Europe/Rome", schedule.TimeZone);
+        Assert.Equal("CRON_TZ=Europe/Rome 0 */5 * * * *", schedule.ExpressionValue);
+    }
 }

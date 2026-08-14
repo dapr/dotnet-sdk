@@ -230,4 +230,114 @@ public sealed class JobSchedulingTests
         var finalCount = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         Assert.Equal(3, finalCount);
     }
+
+    [MinimumDaprRuntimeFact("1.16")]
+    public async Task ShouldScheduleJobWithCronTimeZoneFromExpression()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
+        var jobName = $"cron-tz-expr-job-{Guid.NewGuid():N}";
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprJobsClient(configure: (sp, clientBuilder) =>
+                {
+                    var config = sp.GetRequiredService<IConfiguration>();
+                    var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                    var httpEndpoint = config["DAPR_HTTP_ENDPOINT"];
+
+                    if (!string.IsNullOrEmpty(grpcEndpoint))
+                        clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    if (!string.IsNullOrEmpty(httpEndpoint))
+                        clientBuilder.UseHttpEndpoint(httpEndpoint);
+                });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
+
+        // Use a cron expression that fires far in the future (midnight on January 1st) so the job
+        // doesn't trigger during the test — we're only validating that the timezone is persisted
+        // and echoed back by the runtime when the job is retrieved.
+        const string timeZoneId = "Europe/Rome";
+        var schedule = DaprJobSchedule.FromExpression($"CRON_TZ={timeZoneId} 0 0 0 1 1 *");
+        Assert.Equal(timeZoneId, schedule.TimeZone);
+
+        await daprJobsClient.ScheduleJobAsync(jobName, schedule, overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
+
+        var jobDetails = await daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(jobDetails);
+        Assert.Equal(timeZoneId, jobDetails.Schedule.TimeZone);
+        Assert.Contains($"CRON_TZ={timeZoneId}", jobDetails.Schedule.ExpressionValue);
+        Assert.True(jobDetails.Schedule.IsCronExpression);
+
+        await daprJobsClient.DeleteJobAsync(jobName, TestContext.Current.CancellationToken);
+    }
+
+    [MinimumDaprRuntimeFact("1.16")]
+    public async Task ShouldScheduleJobWithCronTimeZoneFromBuilder()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("jobs-component");
+        var jobName = $"cron-tz-builder-job-{Guid.NewGuid():N}";
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildJobs();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprJobsClient(configure: (sp, clientBuilder) =>
+                {
+                    var config = sp.GetRequiredService<IConfiguration>();
+                    var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                    var httpEndpoint = config["DAPR_HTTP_ENDPOINT"];
+
+                    if (!string.IsNullOrEmpty(grpcEndpoint))
+                        clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    if (!string.IsNullOrEmpty(httpEndpoint))
+                        clientBuilder.UseHttpEndpoint(httpEndpoint);
+                });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
+
+        // Use a cron expression that fires far in the future (midnight on January 1st) so the job
+        // doesn't trigger during the test — we're only validating that the timezone configured via
+        // the fluent builder is persisted and echoed back by the runtime when the job is retrieved.
+        const string timeZoneId = "Europe/Rome";
+        var cronSchedule = new CronExpressionBuilder()
+            .On(OnCronPeriod.Second, 0)
+            .On(OnCronPeriod.Minute, 0)
+            .On(OnCronPeriod.Hour, 0)
+            .On(OnCronPeriod.DayOfMonth, 1)
+            .On(MonthOfYear.January)
+            .WithTimeZone(timeZoneId);
+
+        var schedule = DaprJobSchedule.FromCronExpression(cronSchedule);
+        Assert.Equal(timeZoneId, schedule.TimeZone);
+
+        await daprJobsClient.ScheduleJobAsync(jobName, schedule, overwrite: true, cancellationToken: TestContext.Current.CancellationToken);
+
+        var jobDetails = await daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(jobDetails);
+        Assert.Equal(timeZoneId, jobDetails.Schedule.TimeZone);
+        Assert.Contains($"CRON_TZ={timeZoneId}", jobDetails.Schedule.ExpressionValue);
+        Assert.True(jobDetails.Schedule.IsCronExpression);
+
+        await daprJobsClient.DeleteJobAsync(jobName, TestContext.Current.CancellationToken);
+    }
 }
