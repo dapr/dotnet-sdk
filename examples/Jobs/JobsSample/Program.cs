@@ -16,14 +16,24 @@ using System.Text;
 using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // AddDaprJobsClient registers both the HTTP callback endpoint and the gRPC
-// AppCallbackAlpha service, and configures Kestrel for HTTP/1 + HTTP/2 so the
-// sidecar can deliver job triggers over whichever protocol it is configured for.
-// No code changes are needed to switch between HTTP and gRPC — just update the
-// `dapr run` command (see README.md).
+// AppCallbackAlpha service, so the sidecar can deliver job triggers over
+// whichever protocol it is configured for.
+//
+// When using gRPC callbacks (--app-protocol grpc) over plaintext, Kestrel must
+// be configured for HTTP/2 because HTTP/2 requires either TLS with ALPN or
+// explicit HTTP/2-only endpoint configuration. Http1AndHttp2 does not support
+// HTTP/2 over plaintext. For the default HTTP mode (--app-protocol http),
+// no Kestrel configuration is needed.
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ConfigureEndpointDefaults(listen => listen.Protocols = HttpProtocols.Http2);
+});
+
 builder.Services.AddDaprJobsClient();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();

@@ -22,6 +22,8 @@ using Dapr.Testcontainers.Common.Testing;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Testcontainers.Xunit.Attributes;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -35,14 +37,46 @@ namespace Dapr.IntegrationTest.Jobs;
 /// the Dapr sidecar invokes whichever protocol it is configured for (via its
 /// <c>--app-protocol</c> flag) and the other remains idle.
 /// </summary>
+/// <remarks>
+/// gRPC over plaintext requires Kestrel to be configured for <see cref="HttpProtocols.Http2"/>
+/// because HTTP/2 needs either TLS+ALPN or explicit HTTP/2-only endpoint configuration.
+/// The gRPC test helper configures this via <c>ConfigureKestrel</c>; the HTTP tests use the
+/// default Kestrel configuration (HTTP/1).
+/// </remarks>
 public sealed class JobGrpcCallbackTests
 {
     /// <summary>
-    /// Shared service configuration used by every test. <c>AddDaprJobsClient</c> internally
-    /// configures Kestrel for HTTP/1+HTTP/2 and registers the gRPC <c>AppCallbackAlpha</c>
-    /// service infrastructure, so no manual Kestrel or port configuration is required.
+    /// Configures services for gRPC job callbacks, including the required Kestrel HTTP/2
+    /// configuration for plaintext gRPC (h2c).
     /// </summary>
-    private static void ConfigureJobServices(WebApplicationBuilder builder) =>
+    private static void ConfigureGrpcJobServices(WebApplicationBuilder builder)
+    {
+        // HTTP/2 is required for gRPC over plaintext (h2c). Http1AndHttp2 does NOT work
+        // because HTTP/2 negotiation requires TLS+ALPN. With Http2-only, the sidecar's
+        // gRPC calls connect via HTTP/2 prior knowledge.
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.ConfigureEndpointDefaults(listen => listen.Protocols = HttpProtocols.Http2);
+        });
+
+        builder.Services.AddDaprJobsClient(configure: (sp, clientBuilder) =>
+        {
+            var config = sp.GetRequiredService<IConfiguration>();
+            var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+            var httpEndpoint = config["DAPR_HTTP_ENDPOINT"];
+
+            if (!string.IsNullOrEmpty(grpcEndpoint))
+                clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+            if (!string.IsNullOrEmpty(httpEndpoint))
+                clientBuilder.UseHttpEndpoint(httpEndpoint);
+        });
+    }
+
+    /// <summary>
+    /// Configures services for HTTP job callbacks (the default). No Kestrel configuration
+    /// is needed — the default HTTP/1 protocol works for the HTTP callback endpoint.
+    /// </summary>
+    private static void ConfigureHttpJobServices(WebApplicationBuilder builder) =>
         builder.Services.AddDaprJobsClient(configure: (sp, clientBuilder) =>
         {
             var config = sp.GetRequiredService<IConfiguration>();
@@ -88,7 +122,7 @@ public sealed class JobGrpcCallbackTests
             .BuildJobs();
 
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
-            .ConfigureServices(ConfigureJobServices)
+            .ConfigureServices(ConfigureGrpcJobServices)
             .ConfigureApp(app =>
             {
                 app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> payload,
@@ -133,7 +167,7 @@ public sealed class JobGrpcCallbackTests
             .BuildJobs();
 
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
-            .ConfigureServices(ConfigureJobServices)
+            .ConfigureServices(ConfigureGrpcJobServices)
             .ConfigureApp(app =>
             {
                 app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> payload,
@@ -176,7 +210,7 @@ public sealed class JobGrpcCallbackTests
             .BuildJobs();
 
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
-            .ConfigureServices(ConfigureJobServices)
+            .ConfigureServices(ConfigureGrpcJobServices)
             .ConfigureApp(app =>
             {
                 app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> payload,
@@ -226,7 +260,7 @@ public sealed class JobGrpcCallbackTests
             .BuildJobs();
 
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
-            .ConfigureServices(ConfigureJobServices)
+            .ConfigureServices(ConfigureGrpcJobServices)
             .ConfigureApp(app =>
             {
                 app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> _,
@@ -280,7 +314,7 @@ public sealed class JobGrpcCallbackTests
             .BuildJobs();
 
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
-            .ConfigureServices(ConfigureJobServices)
+            .ConfigureServices(ConfigureGrpcJobServices)
             .ConfigureApp(app =>
             {
                 app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> _,
@@ -337,7 +371,7 @@ public sealed class JobGrpcCallbackTests
             .BuildJobs();
 
         await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
-            .ConfigureServices(ConfigureJobServices)
+            .ConfigureServices(ConfigureHttpJobServices)
             .ConfigureApp(app =>
             {
                 app.MapDaprScheduledJobHandler((string incomingJobName, ReadOnlyMemory<byte> _,
