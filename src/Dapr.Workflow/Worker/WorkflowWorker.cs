@@ -96,6 +96,21 @@ internal sealed class WorkflowWorker(
             string? serializedInput = null;
             string? appId = null;
 
+            // TaskExecutionId derivation needs a per-execution seed. Older
+            // sidecars leave ExecutionId unset on the request, so recover the
+            // runtime-minted execution ID persisted in the
+            // ExecutionStartedEvent: it is stable across replays of one
+            // execution and fresh for each execution of a recreated instance
+            // ID. Without it, two executions of the same instance ID derive
+            // colliding TaskExecutionIds, and the runtime's activity
+            // de-duplication can treat the second execution's activity as a
+            // duplicate of the first, leaving the workflow stuck in Running.
+            // It seeds ONLY the TaskExecutionId namespace (see the context
+            // constructor): the NewGuid / child-instance-ID namespace keeps
+            // its historical seeding so in-flight executions replay
+            // identically across an SDK upgrade.
+            string? historyExecutionId = null;
+
             if (request.RequiresHistoryStreaming)
             {
                 var streamRequest = new GetInstanceHistoryRequest { InstanceId = request.InstanceId };
@@ -157,6 +172,8 @@ internal sealed class WorkflowWorker(
                 {
                     workflowName = e.ExecutionStarted.Name;
                     serializedInput = e.ExecutionStarted.Input;
+
+                    historyExecutionId = e.ExecutionStarted.WorkflowInstance?.ExecutionId;
 
                     // Try pulling the app ID out of the target first, then the source if not available
                     if (!string.IsNullOrEmpty(e.Router?.TargetAppID))
@@ -328,7 +345,8 @@ internal sealed class WorkflowWorker(
             var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime,
                 _serializer, loggerFactory, versionTracker, appId, request.ExecutionId,
                 allPastEvents,
-                incomingPropagatedHistory);
+                incomingPropagatedHistory,
+                historyExecutionId);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)

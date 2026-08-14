@@ -2086,6 +2086,73 @@ public class WorkflowWorkerTests
         Assert.Contains(response.Actions, a => a.ScheduleTask != null);
     }
 
+    [Fact]
+    public async Task HandleWorkflowResponseAsync_ShouldDeriveDistinctTaskExecutionIds_AcrossExecutionsOfSameInstanceId()
+    {
+        // Models a completed-then-recreated instance: same instance ID, two
+        // executions. The request-level ExecutionId is unset (older sidecars never
+        // populate it), so the per-execution guid seed must come from the
+        // runtime-minted execution ID persisted in the ExecutionStartedEvent.
+        // If both executions derive the same TaskExecutionId for task 0, the
+        // runtime's activity de-duplication treats the second execution's activity
+        // as a redelivery of the first (already completed) one and never runs it,
+        // stranding the recreated workflow in Running.
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(object),
+            run: async (ctx, _) =>
+            {
+                await ctx.CallActivityAsync<int>("step");
+                return null;
+            }));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp);
+
+        static WorkflowRequest RequestForExecution(string executionId) => new()
+        {
+            InstanceId = "i",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent
+                    {
+                        Name = "wf",
+                        Input = "",
+                        WorkflowInstance = new WorkflowInstance
+                        {
+                            InstanceId = "i",
+                            ExecutionId = executionId
+                        }
+                    }
+                }
+            }
+        };
+
+        var firstRun = await InvokeHandleWorkflowResponseAsync(worker, RequestForExecution("exec-1"));
+        var secondRun = await InvokeHandleWorkflowResponseAsync(worker, RequestForExecution("exec-2"));
+        var firstRunReplay = await InvokeHandleWorkflowResponseAsync(worker, RequestForExecution("exec-1"));
+
+        var firstTask = Assert.Single(firstRun.Actions, a => a.ScheduleTask != null).ScheduleTask!;
+        var secondTask = Assert.Single(secondRun.Actions, a => a.ScheduleTask != null).ScheduleTask!;
+        var replayTask = Assert.Single(firstRunReplay.Actions, a => a.ScheduleTask != null).ScheduleTask!;
+
+        Assert.False(string.IsNullOrWhiteSpace(firstTask.TaskExecutionId));
+        Assert.False(string.IsNullOrWhiteSpace(secondTask.TaskExecutionId));
+
+        // Distinct executions must not collide; replays of one execution must be stable.
+        Assert.NotEqual(firstTask.TaskExecutionId, secondTask.TaskExecutionId);
+        Assert.Equal(firstTask.TaskExecutionId, replayTask.TaskExecutionId);
+    }
+
     // -------------------------------------------------------------------------
     // Inner exception path (workflow returns a faulted Task)
     // -------------------------------------------------------------------------
