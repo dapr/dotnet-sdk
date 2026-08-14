@@ -18,6 +18,12 @@ using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// AddDaprJobsClient registers both the HTTP callback endpoint and the gRPC
+// AppCallbackAlpha service, and configures Kestrel for HTTP/1 + HTTP/2 so the
+// sidecar can deliver job triggers over whichever protocol it is configured for.
+// No code changes are needed to switch between HTTP and gRPC — just update the
+// `dapr run` command (see README.md).
 builder.Services.AddDaprJobsClient();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();

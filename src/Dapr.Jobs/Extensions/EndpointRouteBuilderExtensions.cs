@@ -13,6 +13,7 @@
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Jobs.Extensions;
 
@@ -25,6 +26,12 @@ public static class EndpointRouteBuilderExtensions
     /// Provides for a handler to be provided that allows the user to dictate how various jobs should be handled without
     /// necessarily knowing the name of the job at build time.
     /// </summary>
+    /// <remarks>
+    /// Both the HTTP POST endpoint (<c>/job/{jobName}</c>) and the gRPC <c>AppCallbackAlpha.OnJobEventAlpha1</c>
+    /// callback service are registered simultaneously. The Dapr sidecar invokes whichever protocol it is configured
+    /// for (via its <c>--app-protocol</c> flag); the other handler remains idle. This allows switching the sidecar
+    /// between HTTP and gRPC callbacks without any application code changes.
+    /// </remarks>
     /// <param name="endpoints">The <see cref="IEndpointRouteBuilder"/> to add the route to.</param>
     /// <param name="action">The asynchronous action provided by the developer that handles any inbound requests. The first two
     /// parameters must be a <see cref="string"/> for the jobName and the originally registered ReadOnlyMemory&lt;byte&gt; with the
@@ -36,6 +43,19 @@ public static class EndpointRouteBuilderExtensions
         ArgumentNullException.ThrowIfNull(endpoints, nameof(endpoints));
         ArgumentNullException.ThrowIfNull(action, nameof(action));
 
+        // Register the gRPC AppCallbackAlpha service so the sidecar can deliver job
+        // triggers over gRPC when configured with --app-protocol grpc. The handler
+        // registry is populated by AddDaprJobsClient; if it is not present the gRPC
+        // service is skipped (e.g., AddDaprJobsClient was not called).
+        if (endpoints.ServiceProvider.GetService<DaprJobsHandlerRegistry>() is { } registry)
+        {
+            registry.Handler = action;
+            registry.Timeout = timeout;
+            endpoints.MapGrpcService<DaprJobsAppCallbackService>();
+        }
+
+        // Register the HTTP callback endpoint so the sidecar can deliver job triggers
+        // over HTTP when using the default --app-protocol http.
         endpoints.MapPost("/job/{jobName}", async context =>
         {
             //Retrieve the name of the job from the request path

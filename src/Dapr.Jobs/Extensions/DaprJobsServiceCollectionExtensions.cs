@@ -12,7 +12,9 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Common.Extensions;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Dapr.Jobs.Extensions;
 
@@ -31,10 +33,36 @@ public static class DaprJobsServiceCollectionExtensions
     public static IDaprJobsBuilder AddDaprJobsClient(
         this IServiceCollection services,
         Action<IServiceProvider, DaprJobsClientBuilder>? configure = null,
-        ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
-        services.AddDaprClient<DaprJobsClient, DaprJobsGrpcClient, DaprJobsBuilder, DaprJobsClientBuilder>(
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    {
+        // Register gRPC server infrastructure so MapDaprScheduledJobHandler can map the
+        // AppCallbackAlpha service for gRPC callbacks from the Dapr runtime.
+        // AddGrpc uses TryAdd internally, so this is safe even if the user already called it.
+        services.AddGrpc();
+
+        // Configure Kestrel to accept both HTTP/1.x and HTTP/2 on the same port.
+        // HTTP/2 is required for gRPC over plaintext (used by the sidecar when --app-protocol grpc
+        // is set), while HTTP/1.x continues to serve the HTTP callback endpoint and any other
+        // middleware the app registers. This is backward-compatible with the default Kestrel
+        // configuration and uses OptionsConfiguration so a user's own Kestrel configuration
+        // applied later still takes precedence.
+        services.Configure<KestrelServerOptions>(options =>
+        {
+            options.ConfigureEndpointDefaults(listen => listen.Protocols = HttpProtocols.Http1AndHttp2);
+        });
+
+        // The handler registry holds the user-supplied delegate and timeout; it is populated
+        // by MapDaprScheduledJobHandler at endpoint configuration time and consumed by the
+        // gRPC callback service at runtime.
+        services.TryAddSingleton<DaprJobsHandlerRegistry>();
+
+        // The AppCallbackAlpha service is resolved per-request by MapGrpcService.
+        services.TryAddTransient<DaprJobsAppCallbackService>();
+
+        return services.AddDaprClient<DaprJobsClient, DaprJobsGrpcClient, DaprJobsBuilder, DaprJobsClientBuilder>(
             config => new DaprJobsClientBuilder(config),
             svc => new DaprJobsBuilder(svc),
             configure,
             lifetime);
+    }
 }
