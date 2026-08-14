@@ -1203,6 +1203,58 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
+    public async Task CallActivityAsync_ShouldMatchLegacySeededCompletion_AfterSdkUpgrade()
+    {
+        // Upgrade-replay: an execution scheduled its activity under the old
+        // instance-seeded derivation, then the SDK upgraded and now seeds
+        // TaskExecutionId per execution (historyExecutionId). Replay re-derives a
+        // DIFFERENT id, but history's TaskScheduled event carries the id the
+        // completion actually references, so correlation must follow history: the
+        // mismatched-TaskScheduledId path matches by execution ID alone.
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var now = new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc);
+
+        WorkflowOrchestrationContext Context(string? historyExecutionId) => new(
+            "wf", "same-instance", now, serializer, NullLoggerFactory.Instance,
+            new WorkflowVersionTracker([]), historyExecutionId: historyExecutionId);
+
+        // The id the legacy (pre-upgrade, instance-seeded) SDK persisted at
+        // scheduling time.
+        var legacyContext = Context(null);
+        _ = legacyContext.CallActivityAsync<string>("Any");
+        var legacyId = Assert.Single(legacyContext.PendingActions).ScheduleTask!.TaskExecutionId;
+
+        // Post-upgrade replay of that same execution.
+        var upgraded = Context("exec-1");
+        var task = upgraded.CallActivityAsync<string>("Any");
+
+        var history = new[]
+        {
+            new HistoryEvent
+            {
+                EventId = 0,
+                TaskScheduled = new TaskScheduledEvent { Name = "Any", TaskExecutionId = legacyId }
+            },
+            new HistoryEvent
+            {
+                TaskCompleted = new TaskCompletedEvent
+                {
+                    TaskScheduledId = 123,
+                    TaskExecutionId = legacyId,
+                    Result = "\"ok\""
+                }
+            }
+        };
+
+        upgraded.ProcessEvents(history, true);
+
+        // Bounded await: without history-authoritative correlation the completion
+        // never matches and the task parks forever, exactly the production hang.
+        var result = await task.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        Assert.Equal("ok", result);
+    }
+
+    [Fact]
     public void NewGuid_ShouldBeDeterministic_ForNonGuidInstanceId()
     {
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));

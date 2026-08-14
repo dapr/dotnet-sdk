@@ -48,6 +48,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private readonly Dictionary<string, Queue<TaskCompletionSource<HistoryEvent>>> _externalEventSources = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<int, TaskCompletionSource<HistoryEvent>> _openTasks = [];
     private readonly Dictionary<int, string> _taskIdToExecutionId = [];
+    // TaskExecutionIds as persisted on replayed TaskScheduled events: the
+    // scheduling-time truth. Re-derivation can drift across SDK upgrades (the
+    // seed gained per-execution inputs), and completions that arrive with a
+    // mismatched TaskScheduledId correlate by execution ID alone, so replayed
+    // tasks must use what history recorded rather than what the current
+    // derivation produces.
+    private readonly Dictionary<int, string> _persistedTaskExecutionIds = [];
     private readonly Dictionary<string, int> _executionIdToTaskId = new(StringComparer.Ordinal);
     private readonly SortedDictionary<int, WorkflowAction> _pendingActions = [];
     private readonly IDaprSerializer _workflowSerializer;
@@ -177,6 +184,15 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         var taskId = _sequenceNumber++;
         var taskExecutionId = CreateTaskExecutionId(taskId, name);
+
+        // If history already scheduled this task, its persisted TaskExecutionId is
+        // authoritative: an execution scheduled under a different derivation seed
+        // (older SDK, no per-execution seeding) must keep correlating by the ID its
+        // completions actually carry.
+        if (_persistedTaskExecutionIds.TryGetValue(taskId, out var persistedExecutionId))
+        {
+            taskExecutionId = persistedExecutionId;
+        }
 
         var router = CreateRouter(options?.TargetAppId);
         
@@ -678,6 +694,24 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var eventId = historyEvent.EventId;
         TryDropOptionalTimerAt(eventId);
         _pendingActions.Remove(eventId);
+
+        // Record the scheduling-time TaskExecutionId and, when the workflow code
+        // already re-registered this task under a re-derived ID, re-point the
+        // mapping at the persisted value so legacy completions still match.
+        var persisted = historyEvent.TaskScheduled?.TaskExecutionId;
+        if (string.IsNullOrEmpty(persisted))
+        {
+            return;
+        }
+        _persistedTaskExecutionIds[eventId] = persisted;
+
+        if (_taskIdToExecutionId.TryGetValue(eventId, out var derived) &&
+            !string.Equals(derived, persisted, StringComparison.Ordinal))
+        {
+            _executionIdToTaskId.Remove(derived);
+            _taskIdToExecutionId[eventId] = persisted;
+            _executionIdToTaskId[persisted] = eventId;
+        }
     }
 
     /// <summary>
