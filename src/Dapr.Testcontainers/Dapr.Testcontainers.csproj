@@ -10,6 +10,9 @@
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <PackageReference Include="Testcontainers" />
+        <!-- Direct reference solely to lift the transitive SSH.NET above the
+             GHSA-q939-rpr3-3284 vulnerable range. -->
+        <PackageReference Include="SSH.NET" />
     </ItemGroup>
 
 </Project>
