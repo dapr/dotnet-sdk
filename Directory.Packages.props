@@ -59,6 +59,10 @@
     <PackageVersion Include="System.Net.ServerSentEvents" Version="10.0.8" />
     <PackageVersion Include="System.Text.Json" Version="10.0.8" />
     <PackageVersion Include="Testcontainers" Version="4.9.0" />
+    <!-- Transitive of Testcontainers; pinned directly until Testcontainers ships
+         a release depending on the patched line. SSH.NET <= 2025.1.0 carries
+         GHSA-q939-rpr3-3284 (high), which NU1903 promotes to a build error. -->
+    <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="xunit.v3.extensibility.core" Version="3.2.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
