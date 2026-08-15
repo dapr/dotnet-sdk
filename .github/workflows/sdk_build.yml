@@ -226,7 +226,7 @@ jobs:
           fi
 
           dotnets='[
-            {"dotnet-version":"11.0", "display-name":".NET 11.0", "framework":"net11.0", "prefix":"net11", "install-version":"11.0.x", "upload_coverage": false}
+            {"dotnet-version":"11.0", "display-name":".NET 11.0", "framework":"net11.0", "prefix":"net11", "install-version":"11.0.x"}
           ]'
           oss='["ubuntu-latest"]'
 
@@ -460,7 +460,7 @@ jobs:
       env:
         DaprEnableNet11: 'true'
       id: tests
-      continue-on-error: true
+      continue-on-error: false
       run: |
         dotnet test "${{ matrix.project }}"  \
         --configuration release \
@@ -474,9 +474,6 @@ jobs:
         /p:CoverletOutputFormat=opencover \
         /p:GITHUB_ACTIONS=false
       timeout-minutes: 60
-    - name: Check test failure in PR
-      if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
-      run: exit 1
     - name: Parse Trx files
       uses: NasAmin/trx-parser@v0.2.0
       id: trx-parser
