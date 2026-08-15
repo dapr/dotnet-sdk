@@ -11,16 +11,18 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Next.Abstractions.Options;
+using CommunityToolkit.Aspire.Hosting.Dapr;
 
-/// <summary>
-/// Describes an actor type explicitly requested by the app.
-/// </summary>
-public sealed record DaprActorRegistration(Type ActorImplementationType, string? ActorTypeName)
-{
-    /// <summary>
-    /// Gets the runtime overrides for this actor type; <see langword="null"/> fields inherit
-    /// the app-wide <see cref="DaprActorsOptions"/> values.
-    /// </summary>
-    public DaprActorTypeOptions? TypeOptions { get; init; }
-}
+var builder = DistributedApplication.CreateBuilder(args);
+
+// The actor callback stream is app-initiated over gRPC: the sidecar needs the
+// HTTP/2 app channel configured in the project's appsettings.json (port 5057).
+builder.AddProject<Projects.Store_Next_Example07>("store")
+    .WithDaprSidecar(new DaprSidecarOptions
+    {
+        AppId = "actors-example-07",
+        AppPort = 5057,
+        AppProtocol = "grpc",
+    });
+
+builder.Build().Run();

@@ -273,6 +273,66 @@ public sealed class ActorsNextAnalyzerTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public Task Explicit_registration_alias_with_type_options_disambiguates_shared_interface_actor_names()
+    {
+        const string source = """
+            using System;
+            using System.Threading.Tasks;
+            using Dapr.Actors.Next.Abstractions;
+            using Dapr.Actors.Next.Abstractions.Attributes;
+            using Dapr.Actors.Next.Abstractions.Options;
+
+            namespace Contracts
+            {
+                [GenerateActorClient]
+                public interface ICartActor : IActor
+                {
+                    Task Save();
+                }
+            }
+
+            namespace StoreA
+            {
+                using Contracts;
+
+                [DaprActor]
+                public sealed class CartActor : Actor, ICartActor
+                {
+                    protected override ActorId Id => ActorId.Create("a");
+                    protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+                    public Task Save() => Task.CompletedTask;
+                }
+            }
+
+            namespace StoreB
+            {
+                using Contracts;
+
+                [DaprActor]
+                public sealed class CartActor : Actor, ICartActor
+                {
+                    protected override ActorId Id => ActorId.Create("b");
+                    protected override Dapr.Actors.Next.Abstractions.State.IActorStateAccessor State => throw new NotImplementedException();
+                    public Task Save() => Task.CompletedTask;
+                }
+            }
+
+            namespace Host
+            {
+                public static class Registration
+                {
+                    public static void Configure(DaprActorsOptions options)
+                    {
+                        options.Actors.RegisterActor<StoreB.CartActor>("StoreBCart", typeOptions => typeOptions.IdleTimeout = TimeSpan.FromMinutes(1));
+                    }
+                }
+            }
+            """;
+
+        return AnalyzerTest.VerifyAnalyzerAsync(source);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public Task Mutable_actor_fields_are_reported_with_injected_client_allowlist()
     {
         const string source = """

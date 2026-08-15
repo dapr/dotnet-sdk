@@ -203,7 +203,8 @@ public sealed class ActorRuntime(
             serializer,
             stateFaultInjector,
             stateMigrator,
-            options.Value.DisableStateMigration || registration.Options?.DisableStateMigration == true);
+            registration.TypeOptions?.DisableStateMigration
+                ?? (options.Value.DisableStateMigration || registration.Options?.DisableStateMigration == true));
         var activationContext = new ActorActivationContext(actorId, state);
 
         // The activation service provider layers the activation built-ins over a per-activation DI scope that
