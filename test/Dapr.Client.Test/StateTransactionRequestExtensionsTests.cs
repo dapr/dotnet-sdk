@@ -83,13 +83,19 @@ public class StateTransactionRequestExtensionsTests
             source: "orders",
             type: "OrderPlaced",
             subject: "order/42",
-            dataContentType: "application/json");
+            dataContentType: "application/json",
+            traceId: "00-113ad9c4e42b27583ae98ba698d54255-e3743e35ff56f219-01",
+            traceParent: "00-113ad9c4e42b27583ae98ba698d54255-e3743e35ff56f219-01",
+            traceState: "key=value");
 
         enriched.Metadata![DaprOutboxMetadata.CloudEventId].ShouldBe("evt-1");
         enriched.Metadata![DaprOutboxMetadata.CloudEventSource].ShouldBe("orders");
         enriched.Metadata![DaprOutboxMetadata.CloudEventType].ShouldBe("OrderPlaced");
         enriched.Metadata![DaprOutboxMetadata.CloudEventSubject].ShouldBe("order/42");
         enriched.Metadata![DaprOutboxMetadata.CloudEventDataContentType].ShouldBe("application/json");
+        enriched.Metadata![DaprOutboxMetadata.CloudEventTraceId].ShouldBe("00-113ad9c4e42b27583ae98ba698d54255-e3743e35ff56f219-01");
+        enriched.Metadata![DaprOutboxMetadata.CloudEventTraceParent].ShouldBe("00-113ad9c4e42b27583ae98ba698d54255-e3743e35ff56f219-01");
+        enriched.Metadata![DaprOutboxMetadata.CloudEventTraceState].ShouldBe("key=value");
     }
 
     [Fact]

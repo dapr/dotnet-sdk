@@ -36,7 +36,8 @@ internal class CloudEventsMiddleware
     private static readonly string[] ExcludedPropertiesFromHeaders =
     {
         CloudEventPropertyNames.DataContentType, CloudEventPropertyNames.Data,
-        CloudEventPropertyNames.DataBase64, "pubsubname", "traceparent"
+        CloudEventPropertyNames.DataBase64, CloudEventPropertyNames.PubSubName,
+        CloudEventPropertyNames.TraceParent
     };
 
     private readonly RequestDelegate next;
