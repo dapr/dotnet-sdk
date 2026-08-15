@@ -16,10 +16,14 @@ using Dapr;
 namespace Dapr.Messaging.PublishSubscribe;
 
 /// <summary>
-/// A delegate that handles errors occurring during the subscription lifecycle after a successful initial connection.
+/// A delegate that handles errors occurring during an active subscription.
 /// </summary>
-/// <param name="exception">The exception that occurred.</param>
-/// <returns>A task representing the asynchronous error handling operation.</returns>
+/// <param name="exception">The <see cref="DaprException"/> wrapping the original error.</param>
+/// <remarks>
+/// Invoked on a thread pool thread; implementations should be thread-safe.
+/// If the returned task faults, the handler's exception is combined with the original fault and
+/// surfaced as an <see cref="AggregateException"/> on <see cref="IDaprSubscription.Completion"/>.
+/// </remarks>
 public delegate Task SubscriptionErrorHandler(DaprException exception);
 
 /// <summary>
@@ -51,11 +55,11 @@ public sealed record DaprSubscriptionOptions(MessageHandlingPolicy MessageHandli
     public TimeSpan MaximumCleanupTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
-    /// An optional error handler that is invoked when background tasks (sidecar streaming, acknowledgement processing,
-    /// message processing) fault after a successful initial subscription. If not configured, exceptions will become
-    /// unobserved task exceptions following the default .NET behavior, which may terminate the application depending on
-    /// runtime configuration. If the error handler itself throws, those exceptions are suppressed to prevent cascading
-    /// failures.
+    /// An optional callback invoked when background tasks (sidecar streaming, acknowledgement processing,
+    /// message processing) fault after a successful initial subscription. If not set, the fault propagates
+    /// to <see cref="IDaprSubscription.Completion"/> as a <see cref="DaprException"/>. If the handler itself
+    /// throws, both the original fault and the handler failure are surfaced as an <see cref="AggregateException"/>
+    /// on <see cref="IDaprSubscription.Completion"/>.
     /// </summary>
     public SubscriptionErrorHandler? ErrorHandler { get; init; }
 }
