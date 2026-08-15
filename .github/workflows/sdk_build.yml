@@ -58,7 +58,7 @@ jobs:
           set -euo pipefail
   
           PROJECTS_JSON=$(
-            find test -name "Dapr.IntegrationTest.*.csproj" ! -name "*E2E*" -print0 \
+            find test \( -name "Dapr.IntegrationTest.*.csproj" -o -name "Dapr.IntegrationTest.*.fsproj" \) ! -name "*E2E*" -print0 \
             | jq -Rs -c '
               split("\u0000")[:-1]
               | map({
@@ -83,8 +83,8 @@ jobs:
       - uses: actions/checkout@v6
       - id: set-matrix
         run: |
-          # Find all csproj files matching the pattern recursively
-          PROJECTS=$(find test -name "Dapr.*.Test.csproj" ! -name "*E2E*" | jq -R -s -c 'split("\n")[:-1]')
+          # Find all csproj/fsproj files matching the pattern recursively
+          PROJECTS=$(find test \( -name "Dapr.*.Test.csproj" -o -name "Dapr.*.Test.fsproj" \) ! -name "*E2E*" | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
 
   get-dapr-versions:

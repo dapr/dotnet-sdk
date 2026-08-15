@@ -13,6 +13,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -42,6 +44,7 @@ public sealed class StateStoreSourceGenerator : IIncrementalGenerator
 {
     private const string StateStoreAttributeFqn = "Dapr.StateManagement.StateStoreAttribute";
     private const string IDaprStateStoreClientFqn = "Dapr.StateManagement.IDaprStateStoreClient";
+    private const string ScanReferencesPropertyName = "build_property.DaprStateManagementScanReferences";
 
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -51,6 +54,11 @@ public sealed class StateStoreSourceGenerator : IIncrementalGenerator
             new KnownSymbols(
                 StateStoreAttribute: c.GetTypeByMetadataName(StateStoreAttributeFqn),
                 IDaprStateStoreClient: c.GetTypeByMetadataName(IDaprStateStoreClientFqn)));
+
+        // Read the ScanReferences MSBuild property.
+        var scanReferences = context.AnalyzerConfigOptionsProvider.Select(static (options, _) =>
+            options.GlobalOptions.TryGetValue(ScanReferencesPropertyName, out var value)
+            && string.Equals(value, "true", StringComparison.OrdinalIgnoreCase));
 
         // 2. Emit a diagnostic when the attribute assembly is not referenced.
         context.RegisterSourceOutput(knownSymbols, static (spc, known) =>
@@ -77,10 +85,61 @@ public sealed class StateStoreSourceGenerator : IIncrementalGenerator
                 ctx.SemanticModel.GetDeclaredSymbol(ctx.Node) as INamedTypeSymbol)
             .Where(static s => s is not null)!;
 
-        // 4. Combine with known symbols and emit generated source.
-        var combined = candidateInterfaces.Combine(knownSymbols);
+        // 4. Referenced-assembly pipeline: when ScanReferences is enabled, enumerate interfaces
+        //    from referenced assemblies so types authored in F# (or other non-C# languages) are
+        //    discovered by the generator.
+        var referencedInterfaces = context.CompilationProvider
+            .Combine(knownSymbols)
+            .Combine(scanReferences)
+            .SelectMany(static (input, _) =>
+            {
+                var ((compilation, known), scan) = input;
+                if (!scan || known.StateStoreAttribute is null || known.IDaprStateStoreClient is null)
+                    return ImmutableArray<INamedTypeSymbol>.Empty;
+
+                var list = new List<INamedTypeSymbol>();
+                foreach (var assembly in compilation.SourceModule.ReferencedAssemblySymbols)
+                {
+                    foreach (var type in EnumerateTypes(assembly.GlobalNamespace))
+                    {
+                        if (type.TypeKind == TypeKind.Interface)
+                            list.Add(type);
+                    }
+                }
+                return list.ToImmutableArray();
+            });
+
+        // 5. Merge syntax-discovered and reference-discovered candidates, deduplicating by symbol identity.
+        var allCandidates = candidateInterfaces.Collect()
+            .Combine(referencedInterfaces.Collect())
+            .Select(static (input, _) =>
+            {
+                var (fromSyntax, fromReferences) = input;
+                var seen = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+                var result = new List<INamedTypeSymbol>();
+                foreach (var s in fromSyntax)
+                {
+                    if (s is not null && seen.Add(s))
+                        result.Add(s);
+                }
+                foreach (var r in fromReferences)
+                {
+                    if (seen.Add(r))
+                        result.Add(r);
+                }
+                return result.ToImmutableArray();
+            });
+
+        // 6. Combine with known symbols and emit generated source for each unique interface.
+        var combined = allCandidates.Combine(knownSymbols);
         context.RegisterSourceOutput(combined, static (spc, pair) =>
-            Execute(spc, pair.Left!, pair.Right));
+        {
+            var (interfaces, known) = pair;
+            foreach (var iface in interfaces)
+            {
+                Execute(spc, iface, known);
+            }
+        });
     }
 
     private static void Execute(
@@ -334,6 +393,41 @@ public sealed class StateStoreSourceGenerator : IIncrementalGenerator
                 hash *= 16777619u;
             }
             return hash;
+        }
+    }
+
+    /// <summary>
+    /// Recursively enumerates all named types in a namespace and its child namespaces, including nested types.
+    /// </summary>
+    private static IEnumerable<INamedTypeSymbol> EnumerateTypes(INamespaceSymbol ns)
+    {
+        foreach (var type in ns.GetTypeMembers())
+        {
+            yield return type;
+            foreach (var nested in EnumerateNestedTypes(type))
+            {
+                yield return nested;
+            }
+        }
+
+        foreach (var child in ns.GetNamespaceMembers())
+        {
+            foreach (var type in EnumerateTypes(child))
+            {
+                yield return type;
+            }
+        }
+    }
+
+    private static IEnumerable<INamedTypeSymbol> EnumerateNestedTypes(INamedTypeSymbol type)
+    {
+        foreach (var nested in type.GetTypeMembers())
+        {
+            yield return nested;
+            foreach (var child in EnumerateNestedTypes(nested))
+            {
+                yield return child;
+            }
         }
     }
 }

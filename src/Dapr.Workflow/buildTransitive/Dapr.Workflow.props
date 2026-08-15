@@ -1,0 +1,8 @@
+<Project>
+  <ItemGroup>
+    <CompilerVisibleProperty Include="DaprWorkflowVersioningScanReferences" />
+  </ItemGroup>
+  <PropertyGroup>
+    <DaprWorkflowVersioningScanReferences Condition="'$(DaprWorkflowVersioningScanReferences)' == ''">false</DaprWorkflowVersioningScanReferences>
+  </PropertyGroup>
+</Project>
