@@ -11,16 +11,23 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-namespace Dapr.Actors.Next.Abstractions.Options;
+#if !NET9_0_OR_GREATER
+using System.ComponentModel;
+
+namespace System.Runtime.CompilerServices;
 
 /// <summary>
-/// Describes an actor type explicitly requested by the app.
+/// Shim for the .NET 9+ <c>OverloadResolutionPriorityAttribute</c> that the C# 13 compiler
+/// consults during overload resolution. Compiled only into the net8.0 build; later target
+/// frameworks use the BCL type. Reserved for compiler use.
 /// </summary>
-public sealed record DaprActorRegistration(Type ActorImplementationType, string? ActorTypeName)
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
+[EditorBrowsable(EditorBrowsableState.Never)]
+internal sealed class OverloadResolutionPriorityAttribute(int priority) : Attribute
 {
     /// <summary>
-    /// Gets the runtime overrides for this actor type; <see langword="null"/> fields inherit
-    /// the app-wide <see cref="DaprActorsOptions"/> values.
+    /// Gets the priority of the attributed member relative to its sibling overloads.
     /// </summary>
-    public DaprActorTypeOptions? TypeOptions { get; init; }
+    public int Priority { get; } = priority;
 }
+#endif

@@ -35,9 +35,10 @@ public sealed class ActorRuntimeRegistrationBuilder
         Func<IServiceProvider, ActorId, IActor> factory,
         IActorDispatcher dispatcher,
         ActorLifecycle? lifecycle = null,
-        DaprActorsOptions? options = null)
+        DaprActorsOptions? options = null,
+        DaprActorTypeOptions? typeOptions = null)
     {
-        registrations.Add(new ActorRuntimeRegistration(actorType, interfaceType, implementationType, factory, dispatcher, lifecycle, options));
+        registrations.Add(new ActorRuntimeRegistration(actorType, interfaceType, implementationType, factory, dispatcher, lifecycle, options, typeOptions));
         return this;
     }
 
@@ -51,9 +52,10 @@ public sealed class ActorRuntimeRegistrationBuilder
         Func<IServiceProvider, ActorId, IActor> factory,
         Func<IServiceProvider, IActorDispatcher> dispatcherFactory,
         ActorLifecycle? lifecycle = null,
-        DaprActorsOptions? options = null)
+        DaprActorsOptions? options = null,
+        DaprActorTypeOptions? typeOptions = null)
     {
-        registrations.Add(new ActorRuntimeRegistration(actorType, interfaceType, implementationType, factory, dispatcherFactory, lifecycle, options));
+        registrations.Add(new ActorRuntimeRegistration(actorType, interfaceType, implementationType, factory, dispatcherFactory, lifecycle, options, typeOptions));
         return this;
     }
 
