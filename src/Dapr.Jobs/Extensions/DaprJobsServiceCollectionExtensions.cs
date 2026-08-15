@@ -13,6 +13,7 @@
 
 using Dapr.Common.Extensions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Dapr.Jobs.Extensions;
 
@@ -31,10 +32,25 @@ public static class DaprJobsServiceCollectionExtensions
     public static IDaprJobsBuilder AddDaprJobsClient(
         this IServiceCollection services,
         Action<IServiceProvider, DaprJobsClientBuilder>? configure = null,
-        ServiceLifetime lifetime = ServiceLifetime.Singleton) =>
-        services.AddDaprClient<DaprJobsClient, DaprJobsGrpcClient, DaprJobsBuilder, DaprJobsClientBuilder>(
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    {
+        // Register gRPC server infrastructure so MapDaprScheduledJobHandler can map the
+        // AppCallbackAlpha service for gRPC callbacks from the Dapr runtime.
+        // AddGrpc uses TryAdd internally, so this is safe even if the user already called it.
+        services.AddGrpc();
+
+        // The handler registry holds the user-supplied delegate and timeout; it is populated
+        // by MapDaprScheduledJobHandler at endpoint configuration time and consumed by the
+        // gRPC callback service at runtime.
+        services.TryAddSingleton<DaprJobsHandlerRegistry>();
+
+        // The AppCallbackAlpha service is resolved per-request by MapGrpcService.
+        services.TryAddTransient<DaprJobsAppCallbackService>();
+
+        return services.AddDaprClient<DaprJobsClient, DaprJobsGrpcClient, DaprJobsBuilder, DaprJobsClientBuilder>(
             config => new DaprJobsClientBuilder(config),
             svc => new DaprJobsBuilder(svc),
             configure,
             lifetime);
+    }
 }

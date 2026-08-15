@@ -13,6 +13,7 @@
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Jobs.Extensions;
 
@@ -25,6 +26,26 @@ public static class EndpointRouteBuilderExtensions
     /// Provides for a handler to be provided that allows the user to dictate how various jobs should be handled without
     /// necessarily knowing the name of the job at build time.
     /// </summary>
+    /// <remarks>
+    /// Both the HTTP POST endpoint (<c>/job/{jobName}</c>) and the gRPC <c>AppCallbackAlpha.OnJobEventAlpha1</c>
+    /// callback service are registered simultaneously. The Dapr sidecar invokes whichever protocol it is configured
+    /// for (via its <c>--app-protocol</c> flag); the other handler remains idle.
+    /// <para>
+    /// <b>Kestrel configuration for gRPC:</b> When using gRPC callbacks (<c>--app-protocol grpc</c>) over plaintext
+    /// (non-TLS), Kestrel must be configured for <see cref="Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http2"/>
+    /// because HTTP/2 requires either TLS with ALPN or explicit HTTP/2-only endpoint configuration. This is a
+    /// Kestrel limitation — <c>Http1AndHttp2</c> cannot negotiate HTTP/2 without TLS.
+    /// </para>
+    /// <code>
+    /// builder.WebHost.ConfigureKestrel(options =>
+    /// {
+    ///     options.ConfigureEndpointDefaults(listen =&gt; listen.Protocols = HttpProtocols.Http2);
+    /// });
+    /// </code>
+    /// <para>
+    /// For the default HTTP mode (<c>--app-protocol http</c>), no Kestrel configuration is needed.
+    /// </para>
+    /// </remarks>
     /// <param name="endpoints">The <see cref="IEndpointRouteBuilder"/> to add the route to.</param>
     /// <param name="action">The asynchronous action provided by the developer that handles any inbound requests. The first two
     /// parameters must be a <see cref="string"/> for the jobName and the originally registered ReadOnlyMemory&lt;byte&gt; with the
@@ -36,6 +57,24 @@ public static class EndpointRouteBuilderExtensions
         ArgumentNullException.ThrowIfNull(endpoints, nameof(endpoints));
         ArgumentNullException.ThrowIfNull(action, nameof(action));
 
+        // Register the gRPC AppCallbackAlpha service so the sidecar can deliver job
+        // triggers over gRPC when configured with --app-protocol grpc. The handler
+        // registry is populated by AddDaprJobsClient; if it is not present the gRPC
+        // service is skipped (e.g., AddDaprJobsClient was not called).
+        //
+        // NOTE: gRPC over plaintext requires Kestrel to be configured for HttpProtocols.Http2.
+        // See the XML doc above for details. This is NOT done automatically because
+        // Http2-only would break HTTP/1 endpoints, and Http1AndHttp2 does not support
+        // HTTP/2 over plaintext (only over TLS with ALPN).
+        if (endpoints.ServiceProvider.GetService<DaprJobsHandlerRegistry>() is { } registry)
+        {
+            registry.Handler = action;
+            registry.Timeout = timeout;
+            endpoints.MapGrpcService<DaprJobsAppCallbackService>();
+        }
+
+        // Register the HTTP callback endpoint so the sidecar can deliver job triggers
+        // over HTTP when using the default --app-protocol http.
         endpoints.MapPost("/job/{jobName}", async context =>
         {
             //Retrieve the name of the job from the request path

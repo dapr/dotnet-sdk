@@ -38,3 +38,29 @@ public sealed class CrossAppWorkflowV2 : Workflow<string, string>
         return Task.FromResult($"v2:{input}");
     }
 }
+
+// Regression coverage for https://github.com/dapr/dotnet-sdk/issues/1859
+//
+// A public abstract open-generic workflow base class in a referenced assembly
+// must NOT be emitted into the consuming assembly's generated versioning
+// registry (it would produce CS0246 references to the unbound type parameters).
+// Only the concrete closed derivative is registered. The consuming project
+// (DaprWorkflowVersioningScanReferences=true) compiling is the regression test.
+
+public static class CrossAssemblyGenericBaseWorkflowConstants
+{
+    public const string CanonicalName = "CrossAppGenericWorkflow";
+}
+
+public abstract class GenericBaseWorkflow<TInput, TOutput> : Workflow<TInput, TOutput>
+{
+}
+
+[WorkflowVersion(CanonicalName = CrossAssemblyGenericBaseWorkflowConstants.CanonicalName, Version = "1")]
+public sealed class ConcreteCrossAppGenericWorkflow : GenericBaseWorkflow<string, string>
+{
+    public override Task<string> RunAsync(WorkflowContext context, string input)
+    {
+        return Task.FromResult($"generic:{input}");
+    }
+}

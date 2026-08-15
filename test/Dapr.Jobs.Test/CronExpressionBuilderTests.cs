@@ -377,9 +377,92 @@ public sealed class CronExpressionBuilderTests
     [InlineData("00-59 0-59 00-23 1-31 JAN-DEC SUN-SAT", true)]
     [InlineData("0-59 0-59 0-23 1-31 1-12 0-6", true)]
     [InlineData("*/1 2,4,5 * 2-9 JAN,FEB,DEC MON-WED", true)]
+    [InlineData("CRON_TZ=Europe/Rome 0 */5 * * * *", true)]
+    [InlineData("CRON_TZ=America/New_York 30 15 6 */4 JAN,APR,AUG WED-FRI", true)]
+    [InlineData("CRON_TZ=Asia/Kolkata 0 0 0 * * *", true)]
+    [InlineData("CRON_TZ=UTC * * * * * *", true)]
+    [InlineData("cron_tz=Europe/Rome 0 */5 * * * *", true)]
+    [InlineData("CRON_TZ=Europe/Rome 0 */5 * * *", false)]
+    [InlineData("CRON_TZ=Europe/Rome", false)]
+    [InlineData("CRON_TZ= 0 */5 * * * *", false)]
     public void ValidateCronExpression(string cronValue, bool isValid)
     {
         var result = CronExpressionBuilder.IsCronExpression(cronValue);
         Assert.Equal(result, isValid);
+    }
+
+    [Fact]
+    public void WithTimeZone_PrependsCronTzSegment()
+    {
+        var builder = new CronExpressionBuilder()
+            .Every(EveryCronPeriod.Minute, 5)
+            .WithTimeZone("Europe/Rome");
+
+        var result = builder.ToString();
+        Assert.Equal("CRON_TZ=Europe/Rome * */5 * * * *", result);
+    }
+
+    [Fact]
+    public void WithoutTimeZone_OmitsCronTzSegment()
+    {
+        var builder = new CronExpressionBuilder()
+            .Every(EveryCronPeriod.Minute, 5);
+
+        var result = builder.ToString();
+        Assert.Equal("* */5 * * * *", result);
+    }
+
+    [Fact]
+    public void WithTimeZone_PersistsTimeZoneProperty()
+    {
+        var builder = new CronExpressionBuilder()
+            .WithTimeZone("Europe/Rome");
+
+        Assert.Equal("Europe/Rome", builder.TimeZone);
+    }
+
+    [Fact]
+    public void WithTimeZone_FromTimeZoneInfo_PersistsId()
+    {
+        var builder = new CronExpressionBuilder()
+            .WithTimeZone(TimeZoneInfo.Utc);
+
+        Assert.Equal(TimeZoneInfo.Utc.Id, builder.TimeZone);
+        Assert.Equal($"CRON_TZ={TimeZoneInfo.Utc.Id} * * * * * *", builder.ToString());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void WithTimeZone_ThrowsWhenIdentifierIsMissing(string timeZoneId)
+    {
+        Assert.Throws<ArgumentException>(() => new CronExpressionBuilder().WithTimeZone(timeZoneId));
+    }
+
+    [Fact]
+    public void WithTimeZone_ThrowsWhenTimeZoneInfoIsNull()
+    {
+        Assert.Throws<ArgumentNullException>(() => new CronExpressionBuilder().WithTimeZone((TimeZoneInfo)null!));
+    }
+
+    [Fact]
+    public void TryStripCronTimeZone_ExtractsTimezoneAndRemainingExpression()
+    {
+        var remaining = CronExpressionBuilder.TryStripCronTimeZone(
+            "CRON_TZ=Europe/Rome 0 */5 * * * *", out var timeZone);
+
+        Assert.Equal("Europe/Rome", timeZone);
+        Assert.Equal("0 */5 * * * *", remaining);
+    }
+
+    [Fact]
+    public void TryStripCronTimeZone_ReturnsExpressionWhenNoTimezonePresent()
+    {
+        const string expression = "0 */5 * * * *";
+        var remaining = CronExpressionBuilder.TryStripCronTimeZone(expression, out var timeZone);
+
+        Assert.Null(timeZone);
+        Assert.Equal(expression, remaining);
     }
 }
