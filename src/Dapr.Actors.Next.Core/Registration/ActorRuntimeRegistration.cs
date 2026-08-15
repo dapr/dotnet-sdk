@@ -33,8 +33,9 @@ public sealed class ActorRuntimeRegistration
         Func<IServiceProvider, ActorId, IActor> factory,
         IActorDispatcher dispatcher,
         ActorLifecycle? lifecycle = null,
-        DaprActorsOptions? options = null)
-        : this(actorType, interfaceType, implementationType, factory, _ => dispatcher ?? throw new ArgumentNullException(nameof(dispatcher)), lifecycle, options)
+        DaprActorsOptions? options = null,
+        DaprActorTypeOptions? typeOptions = null)
+        : this(actorType, interfaceType, implementationType, factory, _ => dispatcher ?? throw new ArgumentNullException(nameof(dispatcher)), lifecycle, options, typeOptions)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
     }
@@ -49,7 +50,8 @@ public sealed class ActorRuntimeRegistration
         Func<IServiceProvider, ActorId, IActor> factory,
         Func<IServiceProvider, IActorDispatcher> dispatcherFactory,
         ActorLifecycle? lifecycle = null,
-        DaprActorsOptions? options = null)
+        DaprActorsOptions? options = null,
+        DaprActorTypeOptions? typeOptions = null)
     {
         ActorType = string.IsNullOrWhiteSpace(actorType) ? throw new ArgumentException("Actor type is required.", nameof(actorType)) : actorType;
         InterfaceType = interfaceType ?? throw new ArgumentNullException(nameof(interfaceType));
@@ -58,6 +60,7 @@ public sealed class ActorRuntimeRegistration
         DispatcherFactory = dispatcherFactory ?? throw new ArgumentNullException(nameof(dispatcherFactory));
         Lifecycle = lifecycle ?? ActorLifecycle.Empty;
         Options = options;
+        TypeOptions = typeOptions;
     }
 
     /// <summary>
@@ -94,6 +97,12 @@ public sealed class ActorRuntimeRegistration
     /// Gets the actor runtime options used by this actor type's stream.
     /// </summary>
     public DaprActorsOptions? Options { get; }
+
+    /// <summary>
+    /// Gets the per-type configuration overrides; <see langword="null"/> fields inherit
+    /// from <see cref="Options"/> or the app-wide options.
+    /// </summary>
+    public DaprActorTypeOptions? TypeOptions { get; }
 
     internal IActorDispatcher Dispatcher { get; private set; } = null!;
 

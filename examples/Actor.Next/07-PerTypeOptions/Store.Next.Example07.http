@@ -1,0 +1,19 @@
+@host = http://localhost:5007
+
+### 1. Add an item to a checkout session
+POST {{host}}/sessions/demo/items
+Content-Type: application/json
+
+{ "sku": "sku-1", "quantity": 2 }
+
+### 2. Read the session summary
+GET {{host}}/sessions/demo/summary
+
+### 3. Restock a SKU
+POST {{host}}/inventory/sku-1/adjust
+Content-Type: application/json
+
+{ "quantity": 10, "reason": "restock" }
+
+### 4. Read stock on hand
+GET {{host}}/inventory/sku-1

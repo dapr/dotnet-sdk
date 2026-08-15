@@ -13,6 +13,7 @@
 
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Exceptions;
+using Dapr.Actors.Next.Abstractions.Options;
 using Dapr.Actors.Next.Abstractions.Scheduling;
 using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Abstractions.State.Versioning;
@@ -408,6 +409,29 @@ public sealed class CoreEdgeCaseTests
         Assert.Throws<ArgumentNullException>(() => ActorProxy.Configure(null!));
         ActorProxy.Reset();
         Assert.Throws<InvalidOperationException>(() => ActorProxy.Create<ICounterActor>(ActorId.Create("x"), "Counter"));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void Registration_and_builder_expose_type_options()
+    {
+        using var services = new ServiceCollection().BuildServiceProvider();
+        var typeOptions = new DaprActorTypeOptions { IdleTimeout = TimeSpan.FromMinutes(2), MaxReentrantDepth = 4 };
+
+        var viaDispatcherInstance = new ActorRuntimeRegistration("CounterA", typeof(ICounterActor), typeof(CounterActor), (_, _) => new TestActor(), new CounterDispatcher(), typeOptions: typeOptions);
+        var viaDispatcherFactory = new ActorRuntimeRegistration("CounterB", typeof(ICounterActor), typeof(CounterActor), (_, _) => new TestActor(), _ => new CounterDispatcher(), typeOptions: typeOptions);
+        var withoutTypeOptions = new ActorRuntimeRegistration("CounterC", typeof(ICounterActor), typeof(CounterActor), (_, _) => new TestActor(), new CounterDispatcher());
+
+        Assert.Same(typeOptions, viaDispatcherInstance.TypeOptions);
+        Assert.Same(typeOptions, viaDispatcherFactory.TypeOptions);
+        Assert.Null(withoutTypeOptions.TypeOptions);
+
+        var builder = new ActorRuntimeRegistrationBuilder();
+        builder.Add("CounterD", typeof(ICounterActor), typeof(CounterActor), (_, _) => new TestActor(), new CounterDispatcher(), typeOptions: typeOptions);
+        builder.Add("CounterE", typeof(ICounterActor), typeof(CounterActor), (_, _) => new TestActor(), _ => new CounterDispatcher(), typeOptions: typeOptions);
+        var registry = builder.Build(services);
+
+        Assert.Same(typeOptions, registry.GetByActorType("CounterD").TypeOptions);
+        Assert.Same(typeOptions, registry.GetByActorType("CounterE").TypeOptions);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
