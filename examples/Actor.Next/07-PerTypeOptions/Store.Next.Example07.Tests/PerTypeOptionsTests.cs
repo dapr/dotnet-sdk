@@ -58,6 +58,7 @@ public sealed class PerTypeOptionsTests
         var session = registry.GetByActorType("CheckoutSession").TypeOptions;
         Assert.NotNull(session);
         Assert.Equal(TimeSpan.FromMinutes(5), session!.IdleTimeout);
+        Assert.True(session.DisableStateMigration);
         Assert.Null(session.DrainOngoingCallTimeout);
         Assert.Null(session.DrainRebalancedActors);
         Assert.Null(session.EnableReentrancy);
@@ -68,8 +69,11 @@ public sealed class PerTypeOptionsTests
         Assert.Equal(TimeSpan.FromHours(2), inventory!.IdleTimeout);
         Assert.True(inventory.EnableReentrancy);
         Assert.Equal(4, inventory.MaxReentrantDepth);
-        Assert.Null(inventory.DrainOngoingCallTimeout);
+        // DrainRebalancedActorsTimeout aliases DrainOngoingCallTimeout, so both report the override.
+        Assert.Equal(TimeSpan.FromSeconds(5), inventory.DrainRebalancedActorsTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(5), inventory.DrainOngoingCallTimeout);
         Assert.Null(inventory.DrainRebalancedActors);
+        Assert.Null(inventory.DisableStateMigration);
     }
 
     private static ActorTestRuntime CreateRuntime()
@@ -85,13 +89,17 @@ public sealed class PerTypeOptionsTests
         options.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(10);
 
         options.Actors.RegisterActor<CheckoutSessionActor>(o =>
-            o.IdleTimeout = TimeSpan.FromMinutes(5));
+        {
+            o.IdleTimeout = TimeSpan.FromMinutes(5);
+            o.DisableStateMigration = true;
+        });
 
         options.Actors.RegisterActor<InventoryActor>(o =>
         {
             o.IdleTimeout = TimeSpan.FromHours(2);
             o.EnableReentrancy = true;
             o.MaxReentrantDepth = 4;
+            o.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(5);
         });
     }
 }

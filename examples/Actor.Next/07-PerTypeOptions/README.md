@@ -4,26 +4,30 @@ Two actor types with different lifecycle profiles, configured per type from a si
 
 The app hosts:
 
-- `CheckoutSession` - ephemeral sessions that should be deactivated quickly once idle. Registered with a per-type `IdleTimeout` of 5 minutes.
-- `Inventory` - hot aggregates that should stay resident and accept reentrant call chains. Registered with a per-type `IdleTimeout` of 2 hours, `EnableReentrancy = true`, and `MaxReentrantDepth = 4`.
+- `CheckoutSession` - ephemeral sessions that should be deactivated quickly once idle. Registered with a per-type `IdleTimeout` of 5 minutes and `DisableStateMigration = true`, so their short-lived state is stored plainly without state-migration envelopes.
+- `Inventory` - hot aggregates that should stay resident and accept reentrant call chains. Registered with a per-type `IdleTimeout` of 2 hours, `EnableReentrancy = true`, `MaxReentrantDepth = 4`, and a `DrainRebalancedActorsTimeout` of 5 seconds.
 
 The configuration is the centerpiece of the sample and lives at the top of `Program.cs`:
 
 ```csharp
 options.ActorIdleTimeout = TimeSpan.FromMinutes(30);          // app-wide default
 
-options.Actors.RegisterActor<CheckoutSessionActor>(o =>
-    o.IdleTimeout = TimeSpan.FromMinutes(5));                 // per-type override
+options.Actors.RegisterActor<CheckoutSessionActor>(o =>       // per-type overrides
+{
+    o.IdleTimeout = TimeSpan.FromMinutes(5);
+    o.DisableStateMigration = true;
+});
 
 options.Actors.RegisterActor<InventoryActor>(o =>
 {
     o.IdleTimeout = TimeSpan.FromHours(2);
     o.EnableReentrancy = true;
     o.MaxReentrantDepth = 4;
+    o.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(5);
 });
 ```
 
-Only the fields set per type override the app-wide values; everything else is inherited. Both actor types keep the app-wide drain settings, and only `Inventory` opts into reentrancy. Each actor type is advertised to daprd on its own callback stream with its merged configuration, so daprd applies the 5-minute idle window to sessions and the 2-hour window to inventory.
+Only the fields set per type override the app-wide values; everything else is inherited. Each actor type is advertised to daprd on its own callback stream with its merged configuration, so daprd applies the 5-minute idle window to sessions and the 2-hour window to inventory. `DisableStateMigration` is the exception: it is applied locally by the runtime when persisting state, not advertised to daprd.
 
 ## Run with Aspire
 

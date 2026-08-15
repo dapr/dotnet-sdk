@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Runtime.CompilerServices;
 using Dapr.Actors.Next.Abstractions;
 
 namespace Dapr.Actors.Next.Abstractions.Options;
@@ -25,6 +26,7 @@ public sealed class DaprActorRegistrationCollection
     /// <summary>
     /// Registers an actor type for hosting.
     /// </summary>
+    [OverloadResolutionPriority(1)]
     public void RegisterActor<TActor>(string? actorTypeName = null)
         where TActor : IActor
     {

@@ -19,6 +19,7 @@ using Dapr.Actors.Next.Abstractions.Options;
 using Dapr.Actors.Next.Abstractions.Registry;
 using Dapr.Actors.Next.Abstractions.Scheduling;
 using Dapr.Actors.Next.Abstractions.State;
+using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.Client;
 using Dapr.Actors.Next.Core.DependencyInjection;
@@ -27,6 +28,7 @@ using Dapr.Actors.Next.Core.Registration;
 using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.State;
+using Dapr.Actors.Next.Core.State.Versioning;
 using Dapr.Actors.Next.Core.Transport;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -308,6 +310,21 @@ public sealed class CoreRuntimeTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public async Task Per_type_disable_state_migration_overrides_global_and_registration_options()
+    {
+        // Baseline: with a migrator registered for CounterState, state is stored enveloped.
+        Assert.Equal(ActorStateFormKind.Enveloped, await StoredCounterFormKindAsync(null, null, null));
+
+        // The global and per-type flags each force plain storage on their own.
+        Assert.Equal(ActorStateFormKind.Plain, await StoredCounterFormKindAsync(o => o.DisableStateMigration = true, null, null));
+        Assert.Equal(ActorStateFormKind.Plain, await StoredCounterFormKindAsync(null, null, new DaprActorTypeOptions { DisableStateMigration = true }));
+
+        // An explicit per-type false re-enables migration over the global and registration-level flags.
+        Assert.Equal(ActorStateFormKind.Enveloped, await StoredCounterFormKindAsync(o => o.DisableStateMigration = true, null, new DaprActorTypeOptions { DisableStateMigration = false }));
+        Assert.Equal(ActorStateFormKind.Enveloped, await StoredCounterFormKindAsync(null, new DaprActorsOptions { DisableStateMigration = true }, new DaprActorTypeOptions { DisableStateMigration = false }));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public void Serializer_adapter_owns_utf8_transcode()
     {
         var serializer = new ActorWireSerializer(new Dapr.Common.Serialization.JsonDaprSerializer());
@@ -502,6 +519,49 @@ public sealed class CoreRuntimeTests
         });
 
         return services.BuildServiceProvider(validateScopes: true);
+    }
+
+    private static async Task<ActorStateFormKind> StoredCounterFormKindAsync(
+        Action<DaprActorsOptions>? configureGlobal,
+        DaprActorsOptions? counterOptions,
+        DaprActorTypeOptions? counterTypeOptions)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(new List<string>());
+        services.AddScoped<ScopedProbe>();
+        services.AddInMemoryActorAdapters();
+        services.AddSingleton<IActorStateMigrator>(new ActorStateMigrationRegistry(
+        [
+            new ActorStateMigrationFamilyRegistration(
+                new ActorStateMigrationFamily(
+                    "CounterState",
+                    [new ActorStateMigrationNode(0, typeof(CounterState), "h1:counter-state-v1")],
+                    []),
+                [new ActorStateNodeDeserializer(0, static (payload, serializer) => serializer.DeserializeFromBytes<ActorStateEnvelope<CounterState>>(payload)?.Value)],
+                []),
+        ]));
+        if (configureGlobal is not null)
+        {
+            services.Configure(configureGlobal);
+        }
+
+        services.AddDaprActorsCore(registrations =>
+        {
+            registrations.Add("Counter", typeof(ICounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher(), options: counterOptions, typeOptions: counterTypeOptions);
+        });
+
+        await using var provider = services.BuildServiceProvider(validateScopes: true);
+        var runtime = provider.GetRequiredService<IActorRuntime>();
+        var store = provider.GetRequiredService<IActorStateStore>();
+        var serializer = provider.GetRequiredService<IActorWireSerializer>();
+
+        await runtime.InvokeAsync("Counter", "migration-flag", "Increment", System.Text.Encoding.UTF8.GetBytes("1"), new Dictionary<string, string>());
+        var bytes = await store.ReadAsync("Counter", "migration-flag", "state");
+
+        // Both envelope shapes share the header, so the plain envelope contract is enough to read FormKind.
+        var envelope = serializer.DeserializeFromBytes<ActorStatePlainEnvelope<CounterState>>(bytes!.Value);
+        return envelope!.Header.FormKind;
     }
 
     private static async Task<Dictionary<string, SubscribeActorEventsResponse>> ReceiveAdvertisementsAsync(

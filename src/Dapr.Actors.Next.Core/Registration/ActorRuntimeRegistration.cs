@@ -99,7 +99,7 @@ public sealed class ActorRuntimeRegistration
     public DaprActorsOptions? Options { get; }
 
     /// <summary>
-    /// Gets the per-type stream configuration overrides; <see langword="null"/> fields inherit
+    /// Gets the per-type configuration overrides; <see langword="null"/> fields inherit
     /// from <see cref="Options"/> or the app-wide options.
     /// </summary>
     public DaprActorTypeOptions? TypeOptions { get; }

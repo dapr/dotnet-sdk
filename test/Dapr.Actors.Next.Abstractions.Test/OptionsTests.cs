@@ -111,10 +111,11 @@ public sealed class OptionsTests
         options.Actors.RegisterActor<OptionsTestActor>(typeOptions =>
         {
             typeOptions.IdleTimeout = TimeSpan.FromMinutes(2);
-            typeOptions.DrainOngoingCallTimeout = TimeSpan.FromSeconds(10);
+            typeOptions.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(10);
             typeOptions.DrainRebalancedActors = false;
             typeOptions.EnableReentrancy = true;
             typeOptions.MaxReentrantDepth = 4;
+            typeOptions.DisableStateMigration = true;
         });
 
         var registration = options.Actors.Find(typeof(OptionsTestActor));
@@ -128,6 +129,35 @@ public sealed class OptionsTests
         Assert.False(typeOptions.DrainRebalancedActors);
         Assert.True(typeOptions.EnableReentrancy);
         Assert.Equal(4, typeOptions.MaxReentrantDepth);
+        Assert.True(typeOptions.DisableStateMigration);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void RegisterActor_NullLiteral_ResolvesToNameOverload()
+    {
+        var options = new DaprActorsOptions();
+
+        options.Actors.RegisterActor<OptionsTestActor>(null);
+
+        var registration = options.Actors.Find(typeof(OptionsTestActor));
+
+        Assert.NotNull(registration);
+        Assert.Null(registration!.ActorTypeName);
+        Assert.Null(registration.TypeOptions);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void TypeOptions_DrainRebalancedActorsTimeout_AliasesDrainOngoingCallTimeout()
+    {
+        var typeOptions = new DaprActorTypeOptions();
+
+        typeOptions.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(7);
+        Assert.Equal(TimeSpan.FromSeconds(7), typeOptions.DrainOngoingCallTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(7), typeOptions.DrainRebalancedActorsTimeout);
+
+        typeOptions.DrainRebalancedActorsTimeout = null;
+        Assert.Null(typeOptions.DrainOngoingCallTimeout);
+        Assert.Null(typeOptions.DrainRebalancedActorsTimeout);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -178,7 +208,7 @@ public sealed class OptionsTests
         options.Actors.RegisterActor<OptionsTestActor>(typeOptions =>
         {
             typeOptions.IdleTimeout = TimeSpan.FromSeconds(30);
-            typeOptions.DrainOngoingCallTimeout = TimeSpan.FromSeconds(5);
+            typeOptions.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(5);
             typeOptions.MaxReentrantDepth = 1;
         });
 
@@ -197,7 +227,7 @@ public sealed class OptionsTests
         options.Actors.RegisterActor<OptionsTestActor>(typeOptions =>
         {
             typeOptions.IdleTimeout = TimeSpan.Zero;
-            typeOptions.DrainOngoingCallTimeout = TimeSpan.FromSeconds(-1);
+            typeOptions.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(-1);
             typeOptions.MaxReentrantDepth = 0;
         });
 
@@ -209,7 +239,27 @@ public sealed class OptionsTests
         Assert.Contains("DefaultContractVersion must be greater than zero.", failures);
         Assert.Contains("IdleTimeout for actor type 'OptionsTestActor' must be greater than zero.", failures);
         Assert.Contains("DrainOngoingCallTimeout for actor type 'OptionsTestActor' must be greater than zero.", failures);
+        Assert.Contains("DrainRebalancedActorsTimeout for actor type 'OptionsTestActor' must be greater than zero.", failures);
         Assert.Contains("MaxReentrantDepth for actor type 'OptionsTestActor' must be greater than zero.", failures);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void Validator_UsesExplicitActorTypeNameInFailures()
+    {
+        var options = new DaprActorsOptions();
+        options.Actors.RegisterActor<OptionsTestActor>("Renamed", typeOptions =>
+        {
+            typeOptions.IdleTimeout = TimeSpan.Zero;
+            typeOptions.MaxReentrantDepth = 0;
+        });
+
+        var result = new DaprActorsOptionsValidator().Validate(null, options);
+
+        Assert.False(result.Succeeded);
+        Assert.NotNull(result.Failures);
+        var failures = result.Failures!;
+        Assert.Contains("IdleTimeout for actor type 'Renamed' must be greater than zero.", failures);
+        Assert.Contains("MaxReentrantDepth for actor type 'Renamed' must be greater than zero.", failures);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -245,7 +295,9 @@ public sealed class OptionsTests
         Assert.True(typeOptions.EnableReentrancy);
         Assert.Null(typeOptions.DrainOngoingCallTimeout);
         Assert.Null(typeOptions.DrainRebalancedActors);
+        Assert.Null(typeOptions.DrainRebalancedActorsTimeout);
         Assert.Null(typeOptions.MaxReentrantDepth);
+        Assert.Null(typeOptions.DisableStateMigration);
     }
 
     private sealed class OptionsTestActor : IActor;

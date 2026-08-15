@@ -16,9 +16,9 @@ namespace Dapr.Actors.Next.Abstractions.Options;
 /// <summary>
 /// Configures runtime overrides for a single actor type. Every property is optional;
 /// a <see langword="null"/> value inherits the corresponding app-wide value from
-/// <see cref="DaprActorsOptions"/>. These settings are advertised to the Dapr sidecar
-/// over the actor event stream, so they have no effect when
-/// <see cref="DaprActorsOptions.EnableSidecarTransport"/> is <see langword="false"/>.
+/// <see cref="DaprActorsOptions"/>. Unless a property documents otherwise, these settings
+/// are advertised to the Dapr sidecar over the actor event stream, so they have no effect
+/// when <see cref="DaprActorsOptions.EnableSidecarTransport"/> is <see langword="false"/>.
 /// </summary>
 public sealed class DaprActorTypeOptions
 {
@@ -32,13 +32,26 @@ public sealed class DaprActorTypeOptions
     /// Gets or sets the timeout used when draining ongoing calls for this actor type.
     /// <see langword="null"/> inherits <see cref="DaprActorsOptions.DrainOngoingCallTimeout"/>.
     /// </summary>
-    public TimeSpan? DrainOngoingCallTimeout { get; set; }
+    public TimeSpan? DrainOngoingCallTimeout { get; private set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether rebalanced actors of this type drain in-flight calls.
     /// <see langword="null"/> inherits <see cref="DaprActorsOptions.DrainRebalancedActors"/>.
     /// </summary>
     public bool? DrainRebalancedActors { get; set; }
+
+    /// <summary>
+    /// Gets or sets the timeout used when draining rebalanced actors of this type. This is an
+    /// alias for <see cref="DrainOngoingCallTimeout"/>, mirroring
+    /// <see cref="DaprActorsOptions.DrainRebalancedActorsTimeout"/>: the runtime advertises a
+    /// single drain timeout per actor type. <see langword="null"/> inherits
+    /// <see cref="DaprActorsOptions.DrainRebalancedActorsTimeout"/>.
+    /// </summary>
+    public TimeSpan? DrainRebalancedActorsTimeout
+    {
+        get => DrainOngoingCallTimeout;
+        set => DrainOngoingCallTimeout = value;
+    }
 
     /// <summary>
     /// Gets or sets a value indicating whether reentrant calls are allowed for this actor type.
@@ -51,4 +64,16 @@ public sealed class DaprActorTypeOptions
     /// <see langword="null"/> inherits <see cref="DaprActorsOptions.MaxReentrantDepth"/>.
     /// </summary>
     public int? MaxReentrantDepth { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether actor state migration is disabled for this actor
+    /// type and state is stored plainly. <see langword="null"/> inherits the app-wide
+    /// <see cref="DaprActorsOptions.DisableStateMigration"/> (or the registration-level options);
+    /// an explicit <see langword="false"/> re-enables migration for this type even when the
+    /// app-wide flag disables it. Unlike the other settings on this class, this value is applied
+    /// locally by the runtime at activation time and is not advertised over the actor event
+    /// stream, so it takes effect even when
+    /// <see cref="DaprActorsOptions.EnableSidecarTransport"/> is <see langword="false"/>.
+    /// </summary>
+    public bool? DisableStateMigration { get; set; }
 }

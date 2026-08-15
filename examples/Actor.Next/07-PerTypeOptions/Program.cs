@@ -24,16 +24,22 @@ builder.Services.AddDaprActors(options =>
     options.ActorIdleTimeout = TimeSpan.FromMinutes(30);
     options.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(10);
 
-    // Checkout sessions are ephemeral: release idle instances quickly.
+    // Checkout sessions are ephemeral: release idle instances quickly and store
+    // their short-lived state plainly, without state-migration envelopes.
     options.Actors.RegisterActor<CheckoutSessionActor>(o =>
-        o.IdleTimeout = TimeSpan.FromMinutes(5));
+    {
+        o.IdleTimeout = TimeSpan.FromMinutes(5);
+        o.DisableStateMigration = true;
+    });
 
-    // Inventory aggregates stay hot and allow reentrant call chains.
+    // Inventory aggregates stay hot, allow reentrant call chains, and drain
+    // faster than the app-wide default when rebalanced.
     options.Actors.RegisterActor<InventoryActor>(o =>
     {
         o.IdleTimeout = TimeSpan.FromHours(2);
         o.EnableReentrancy = true;
         o.MaxReentrantDepth = 4;
+        o.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(5);
     });
 });
 
@@ -96,10 +102,10 @@ static string HomePage() => """
          set per type override the app-wide defaults; everything else is inherited. Each actor type
          is advertised to daprd with its merged configuration.</p>
       <table>
-        <tr><th>Actor type</th><th>Idle timeout</th><th>Drain rebalanced</th><th>Reentrancy</th></tr>
-        <tr><td>App-wide defaults</td><td>30 min</td><td>10 s</td><td>off</td></tr>
-        <tr><td><code>CheckoutSession</code></td><td><strong>5 min</strong> (override)</td><td>10 s (inherited)</td><td>off (inherited)</td></tr>
-        <tr><td><code>Inventory</code></td><td><strong>2 h</strong> (override)</td><td>10 s (inherited)</td><td><strong>on, max depth 4</strong> (override)</td></tr>
+        <tr><th>Actor type</th><th>Idle timeout</th><th>Drain rebalanced</th><th>Reentrancy</th><th>State migration</th></tr>
+        <tr><td>App-wide defaults</td><td>30 min</td><td>10 s</td><td>off</td><td>on</td></tr>
+        <tr><td><code>CheckoutSession</code></td><td><strong>5 min</strong> (override)</td><td>10 s (inherited)</td><td>off (inherited)</td><td><strong>off</strong> (override)</td></tr>
+        <tr><td><code>Inventory</code></td><td><strong>2 h</strong> (override)</td><td><strong>5 s</strong> (override)</td><td><strong>on, max depth 4</strong> (override)</td><td>on (inherited)</td></tr>
       </table>
       <h2>Endpoints</h2>
       <ul>
