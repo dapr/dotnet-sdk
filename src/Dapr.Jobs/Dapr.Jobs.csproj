@@ -18,6 +18,7 @@
     <ItemGroup>
         <PackageReference Include="Google.Protobuf" />
         <PackageReference Include="Grpc.Net.Client" />
+        <PackageReference Include="Grpc.AspNetCore" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
         <PackageReference Include="Microsoft.Extensions.Http" />
     </ItemGroup>

@@ -182,4 +182,17 @@ public sealed class DaprJobsGrpcClientTests
         Assert.Null(jobDetails.DueTime);
         Assert.Equal(jobDetails.Schedule.ExpressionValue, schedule.ExpressionValue);
     }
+
+    [Fact]
+    public void ShouldDeserialize_CronTzExpression_PersistsTimezone()
+    {
+        const string scheduleText = "CRON_TZ=Europe/Rome 0 */5 * * * *";
+        var response = new GetJobResponse { Job = new Job { Name = "test", Schedule = scheduleText } };
+
+        var jobDetails = DaprJobsGrpcClient.DeserializeJobResponse(response);
+
+        Assert.Equal(scheduleText, jobDetails.Schedule.ExpressionValue);
+        Assert.Equal("Europe/Rome", jobDetails.Schedule.TimeZone);
+        Assert.True(jobDetails.Schedule.IsCronExpression);
+    }
 }
