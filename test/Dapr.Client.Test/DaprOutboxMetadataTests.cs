@@ -31,5 +31,23 @@ public class DaprOutboxMetadataTests
         DaprOutboxMetadata.CloudEventType.ShouldBe("cloudevent.type");
         DaprOutboxMetadata.CloudEventSubject.ShouldBe("cloudevent.subject");
         DaprOutboxMetadata.CloudEventDataContentType.ShouldBe("cloudevent.datacontenttype");
+        DaprOutboxMetadata.CloudEventTraceId.ShouldBe("cloudevent.traceid");
+        DaprOutboxMetadata.CloudEventTraceParent.ShouldBe("cloudevent.traceparent");
+        DaprOutboxMetadata.CloudEventTraceState.ShouldBe("cloudevent.tracestate");
+    }
+
+    [Fact]
+    public void CloudEventOverrideKeys_AreDerivedFromSharedPropertyNames()
+    {
+        // The cloudevent.* override keys must be the shared bare property names prefixed
+        // with "cloudevent.", tying the outbox contract to the single source of truth.
+        DaprOutboxMetadata.CloudEventId.ShouldBe("cloudevent." + CloudEventPropertyNames.Id);
+        DaprOutboxMetadata.CloudEventSource.ShouldBe("cloudevent." + CloudEventPropertyNames.Source);
+        DaprOutboxMetadata.CloudEventType.ShouldBe("cloudevent." + CloudEventPropertyNames.Type);
+        DaprOutboxMetadata.CloudEventSubject.ShouldBe("cloudevent." + CloudEventPropertyNames.Subject);
+        DaprOutboxMetadata.CloudEventDataContentType.ShouldBe("cloudevent." + CloudEventPropertyNames.DataContentType);
+        DaprOutboxMetadata.CloudEventTraceId.ShouldBe("cloudevent." + CloudEventPropertyNames.TraceId);
+        DaprOutboxMetadata.CloudEventTraceParent.ShouldBe("cloudevent." + CloudEventPropertyNames.TraceParent);
+        DaprOutboxMetadata.CloudEventTraceState.ShouldBe("cloudevent." + CloudEventPropertyNames.TraceState);
     }
 }

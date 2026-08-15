@@ -13,6 +13,8 @@
 
 #nullable enable
 
+using Dapr;
+
 namespace Dapr.Client;
 
 /// <summary>
@@ -20,11 +22,20 @@ namespace Dapr.Client;
 /// state transaction operations and by the <see cref="OutboxTransactionBuilder"/>.
 /// </summary>
 /// <remarks>
+/// The <c>cloudevent.*</c> keys override the corresponding CloudEvent attribute on the
+/// published outbox event and are derived from the shared <see cref="CloudEventPropertyNames"/>
+/// so there is a single source of truth for the wire-format names.
 /// See <a href="https://docs.dapr.io/developing-applications/building-blocks/state-management/howto-outbox/">
 /// How-To: Enable the transactional outbox pattern</a> for details.
 /// </remarks>
 public static class DaprOutboxMetadata
 {
+    /// <summary>
+    /// Prefix shared by every CloudEvent override metadata key. Centralized here so the
+    /// <c>cloudevent.*</c> keys below cannot drift from the documented prefix.
+    /// </summary>
+    private const string CloudEventMetadataPrefix = "cloudevent.";
+
     /// <summary>
     /// Marks a <see cref="StateTransactionRequest"/> as an outbox projection.
     /// The item is not written to the state store; its value is used as the payload
@@ -40,25 +51,52 @@ public static class DaprOutboxMetadata
     /// <summary>
     /// Overrides the CloudEvent <c>id</c> field on the published outbox event.
     /// </summary>
-    public const string CloudEventId = "cloudevent.id";
+    public const string CloudEventId = CloudEventMetadataPrefix + CloudEventPropertyNames.Id;
 
     /// <summary>
     /// Overrides the CloudEvent <c>source</c> field on the published outbox event.
     /// </summary>
-    public const string CloudEventSource = "cloudevent.source";
+    public const string CloudEventSource = CloudEventMetadataPrefix + CloudEventPropertyNames.Source;
 
     /// <summary>
     /// Overrides the CloudEvent <c>type</c> field on the published outbox event.
     /// </summary>
-    public const string CloudEventType = "cloudevent.type";
+    public const string CloudEventType = CloudEventMetadataPrefix + CloudEventPropertyNames.Type;
 
     /// <summary>
     /// Overrides the CloudEvent <c>subject</c> field on the published outbox event.
     /// </summary>
-    public const string CloudEventSubject = "cloudevent.subject";
+    public const string CloudEventSubject = CloudEventMetadataPrefix + CloudEventPropertyNames.Subject;
 
     /// <summary>
     /// Overrides the CloudEvent <c>datacontenttype</c> field on the published outbox event.
     /// </summary>
-    public const string CloudEventDataContentType = "cloudevent.datacontenttype";
+    public const string CloudEventDataContentType = CloudEventMetadataPrefix + CloudEventPropertyNames.DataContentType;
+
+    /// <summary>
+    /// Overrides the CloudEvent <c>traceid</c> field on the published outbox event.
+    /// </summary>
+    /// <remarks>
+    /// Overriding trace identifiers may interfere with distributed tracing and report
+    /// inconsistent results in tracing tools. Prefer OpenTelemetry for trace propagation.
+    /// </remarks>
+    public const string CloudEventTraceId = CloudEventMetadataPrefix + CloudEventPropertyNames.TraceId;
+
+    /// <summary>
+    /// Overrides the CloudEvent <c>traceparent</c> field on the published outbox event.
+    /// </summary>
+    /// <remarks>
+    /// Overriding trace identifiers may interfere with distributed tracing and report
+    /// inconsistent results in tracing tools. Prefer OpenTelemetry for trace propagation.
+    /// </remarks>
+    public const string CloudEventTraceParent = CloudEventMetadataPrefix + CloudEventPropertyNames.TraceParent;
+
+    /// <summary>
+    /// Overrides the CloudEvent <c>tracestate</c> field on the published outbox event.
+    /// </summary>
+    /// <remarks>
+    /// Overriding trace identifiers may interfere with distributed tracing and report
+    /// inconsistent results in tracing tools. Prefer OpenTelemetry for trace propagation.
+    /// </remarks>
+    public const string CloudEventTraceState = CloudEventMetadataPrefix + CloudEventPropertyNames.TraceState;
 }
