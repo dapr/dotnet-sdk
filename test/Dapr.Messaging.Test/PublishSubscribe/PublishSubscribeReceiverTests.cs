@@ -33,25 +33,16 @@ public class PublishSubscribeReceiverTests
             {
                 MaximumQueuedMessages = 100, MaximumCleanupTimeout = TimeSpan.FromSeconds(1)
             };
-        
+
         var messageHandler = new TopicMessageHandler((message, token) => Task.FromResult(TopicResponseAction.Success));
-        
-        //Mock the daprClient
+
         var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-        
-        //Create a mock AsyncDuplexStreamingCall
-        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
-        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
-        var mockCall =
-            new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-                mockRequestStream.Object, mockResponseStream.Object, Task.FromResult(new Metadata()),
-                () => new Status(), () => new Metadata(), () => { });
-        
-        //Setup the mock to return the mock call
+        var mockCall = CreateMockCall();
+
         mockDaprClient.Setup(client =>
                 client.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
             .Returns(mockCall);
-        
+
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, mockDaprClient.Object);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var subscribeTask = receiver.SubscribeAsync(TestContext.Current.CancellationToken);
@@ -70,10 +61,9 @@ public class PublishSubscribeReceiverTests
             {
                 MaximumQueuedMessages = 100, MaximumCleanupTimeout = TimeSpan.FromSeconds(1)
             };
-        
+
         var messageHandler = new TopicMessageHandler((message, token) => Task.FromResult(TopicResponseAction.Success));
-        
-        //Mock the daprClient
+
         var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         var receiver =
             new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, mockDaprClient.Object);
@@ -90,33 +80,23 @@ public class PublishSubscribeReceiverTests
             {
                 MaximumQueuedMessages = 100, MaximumCleanupTimeout = TimeSpan.FromSeconds(1)
             };
-        
-        // Mock the message handler
+
         var mockMessageHandler = new Mock<TopicMessageHandler>();
         mockMessageHandler
             .Setup(handler => handler(It.IsAny<TopicMessage>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(TopicResponseAction.Success);
-        
-        //Mock the daprClient
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-        // Create a mock AsyncDuplexStreamingCall
-        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
-        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object, Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
 
-        //Set up the mock to return the mock call
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(client => client.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall());
+
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, mockMessageHandler.Object, mockDaprClient.Object);
 
         await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
-        
-        //Write a message to the channel
+
         var message = new TopicMessage("id", "source", "type", "specVersion", "dataContentType", topicName, pubSubName);
         await receiver.WriteMessageToChannelAsync(message);
 
-        //Allow some time for the message to be processed
         await Task.Delay(100, TestContext.Current.CancellationToken);
 
         mockMessageHandler.Verify(handler => handler(It.IsAny<TopicMessage>(), It.IsAny<CancellationToken>()),
@@ -130,25 +110,19 @@ public class PublishSubscribeReceiverTests
         const string topicName = "testTopic";
         var options = new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(30), TopicResponseAction.Success))
         {
-            MaximumQueuedMessages = 100 // Example value, adjust as needed
+            MaximumQueuedMessages = 100
         };
 
-        // Mock the message handler
         var mockMessageHandler = new Mock<TopicMessageHandler>();
         mockMessageHandler
             .Setup(handler => handler(It.IsAny<TopicMessage>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(TopicResponseAction.Success);
 
-        // Mock the DaprClient
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-
-        // Create a mock AsyncDuplexStreamingCall
         var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
         var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object, Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
+        var mockCall = CreateMockCall(mockRequestStream, mockResponseStream);
 
-        // Setup the mock to return the mock call
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(client => client.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
             .Returns(mockCall);
 
@@ -156,8 +130,7 @@ public class PublishSubscribeReceiverTests
 
         await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
 
-        // Use reflection to access the private acknowledgementsChannel and write an acknowledgement
-        var acknowledgementsChannelField = typeof(PublishSubscribeReceiver).GetField("acknowledgementsChannel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        var acknowledgementsChannelField = typeof(PublishSubscribeReceiver).GetField("_acknowledgementsChannel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (acknowledgementsChannelField is null)
             Assert.Fail();
         var acknowledgementsChannel = (Channel<PublishSubscribeReceiver.TopicAcknowledgement>)acknowledgementsChannelField.GetValue(receiver)!;
@@ -165,10 +138,8 @@ public class PublishSubscribeReceiverTests
         var acknowledgement = new PublishSubscribeReceiver.TopicAcknowledgement("id", TopicEventResponse.Types.TopicEventResponseStatus.Success);
         await acknowledgementsChannel.Writer.WriteAsync(acknowledgement, TestContext.Current.CancellationToken);
 
-        // Allow some time for the acknowledgement to be processed
         await Task.Delay(100, TestContext.Current.CancellationToken);
 
-        // Verify that the request stream's WriteAsync method was called twice (initial request + acknowledgement)
         mockRequestStream.Verify(stream => stream.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
@@ -188,39 +159,9 @@ public class PublishSubscribeReceiverTests
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options, messageHandler, daprClient.Object);
 
         await receiver.DisposeAsync();
-        
+
         Assert.True(receiver.TopicMessagesChannelCompletion.IsCompleted);
         Assert.True(receiver.AcknowledgementsChannelCompletion.IsCompleted);
-    }
-    
-    [Fact]
-    public void HandleTaskCompletion_ShouldThrowException_WhenTaskHasException()
-    {
-        var task = Task.FromException(new InvalidOperationException("Test exception"));
-
-        var options = new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success));
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-        var receiver = new PublishSubscribeReceiver("testPubSub", "testTopic", options,
-            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
-
-        var exception = Assert.Throws<DaprException>(() =>
-            receiver.HandleTaskCompletion(task));
-
-        Assert.IsType<InvalidOperationException>(exception.InnerException);
-        Assert.Equal("Test exception", exception.InnerException.Message);
-    }
-
-    [Fact]
-    public void HandleTaskCompletion_SuccessfulTask_DoesNotThrow()
-    {
-        var task = Task.CompletedTask;
-        var options = new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success));
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-        var receiver = new PublishSubscribeReceiver("testPubSub", "testTopic", options,
-            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
-
-        // Should not throw for a completed (non-faulted) task
-        receiver.HandleTaskCompletion(task);
     }
 
     [Fact]
@@ -254,12 +195,7 @@ public class PublishSubscribeReceiverTests
 
         var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         var callCount = 0;
-
-        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
-        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
+        var mockCall = CreateMockCall();
 
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
             .Returns(() =>
@@ -273,46 +209,10 @@ public class PublishSubscribeReceiverTests
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
 
-        // First call fails
         await Assert.ThrowsAsync<DaprException>(() => receiver.SubscribeAsync(CancellationToken.None));
 
-        // Second call should succeed (hasInitialized was reset)
         await receiver.SubscribeAsync(CancellationToken.None);
         Assert.Equal(2, callCount);
-    }
-
-    [Fact]
-    public async Task HandleTaskCompletion_ShouldInvokeErrorHandler_WhenConfigured()
-    {
-        DaprException? capturedEx = null;
-        var tcs = new TaskCompletionSource();
-        var options = new DaprSubscriptionOptions(
-            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
-        {
-            ErrorHandler = ex =>
-            {
-                capturedEx = ex;
-                tcs.SetResult();
-                return Task.CompletedTask;
-            }
-        };
-
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-        var receiver = new PublishSubscribeReceiver("testPubSub", "testTopic", options,
-            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
-
-        var faultedTask = Task.FromException(new InvalidOperationException("background error"));
-
-        // Should not throw when error handler is provided
-        receiver.HandleTaskCompletion(faultedTask);
-
-        // Wait for the error handler to be invoked
-        await tcs.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-
-        Assert.NotNull(capturedEx);
-        Assert.IsType<InvalidOperationException>(capturedEx.InnerException);
-        Assert.Contains("background error", capturedEx.InnerException!.Message);
-        Assert.Contains("testTopic", capturedEx.Message);
     }
 
     [Fact]
@@ -325,22 +225,15 @@ public class PublishSubscribeReceiverTests
         { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
 
         var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
-        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
-
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall());
 
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
 
         await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
-        await receiver.SubscribeAsync(TestContext.Current.CancellationToken); // second call is a no-op
+        await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
 
-        // SubscribeTopicEventsAlpha1 should only be called once (for the first SubscribeAsync)
         mockDaprClient.Verify(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -354,23 +247,16 @@ public class PublishSubscribeReceiverTests
         { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
 
         var mockMessageHandler = new Mock<TopicMessageHandler>();
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
         var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
-
-        // Return a response whose EventMessage oneof case is not set → EventMessage is null
         var nullEventMessageResponse = new P.SubscribeTopicEventsResponseAlpha1();
         mockResponseStream.SetupSequence(s => s.MoveNext(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true)
             .ReturnsAsync(false);
         mockResponseStream.Setup(s => s.Current).Returns(nullEventMessageResponse);
 
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
-
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall(responseStream: mockResponseStream));
 
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             mockMessageHandler.Object, mockDaprClient.Object);
@@ -378,7 +264,6 @@ public class PublishSubscribeReceiverTests
 
         await Task.Delay(200, TestContext.Current.CancellationToken);
 
-        // Handler must never be invoked because there were no real event messages
         mockMessageHandler.Verify(h => h(It.IsAny<TopicMessage>(), It.IsAny<CancellationToken>()), Times.Never);
 
         await receiver.DisposeAsync();
@@ -394,8 +279,6 @@ public class PublishSubscribeReceiverTests
         { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
 
         var handlerCalled = new TaskCompletionSource<TopicMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
         var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
 
         var eventMessage = new TopicEventRequest
@@ -408,8 +291,6 @@ public class PublishSubscribeReceiverTests
             Topic = topicName,
             PubsubName = pubSubName,
             Data = Google.Protobuf.ByteString.CopyFromUtf8("hello from sidecar"),
-            // Extensions must be an initialized Struct; proto3 defaults it to null and
-            // PublishSubscribeReceiver accesses .Extensions.Fields which would throw NRE.
             Extensions = new Google.Protobuf.WellKnownTypes.Struct()
         };
         var streamResponse = new P.SubscribeTopicEventsResponseAlpha1 { EventMessage = eventMessage };
@@ -419,12 +300,9 @@ public class PublishSubscribeReceiverTests
             .ReturnsAsync(false);
         mockResponseStream.Setup(s => s.Current).Returns(streamResponse);
 
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
-
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall(responseStream: mockResponseStream));
 
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (msg, _) => { handlerCalled.TrySetResult(msg); return Task.FromResult(TopicResponseAction.Success); },
@@ -455,10 +333,8 @@ public class PublishSubscribeReceiverTests
             MaximumCleanupTimeout = TimeSpan.FromSeconds(1)
         };
 
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
         var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
-
         mockResponseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var capturedRequests = new List<P.SubscribeTopicEventsRequestAlpha1>();
@@ -467,12 +343,9 @@ public class PublishSubscribeReceiverTests
             .Callback<P.SubscribeTopicEventsRequestAlpha1, CancellationToken>((req, _) => capturedRequests.Add(req))
             .Returns(Task.CompletedTask);
 
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
-
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall(mockRequestStream, mockResponseStream));
 
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
@@ -498,22 +371,16 @@ public class PublishSubscribeReceiverTests
             new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
         { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
 
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
-        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
-
         var capturedRequests = new List<P.SubscribeTopicEventsRequestAlpha1>();
         mockRequestStream
             .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
             .Callback<P.SubscribeTopicEventsRequestAlpha1, CancellationToken>((req, _) => capturedRequests.Add(req))
             .Returns(Task.CompletedTask);
 
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
-
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall(mockRequestStream));
 
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (_, _) => Task.FromResult(TopicResponseAction.Retry), mockDaprClient.Object);
@@ -525,7 +392,6 @@ public class PublishSubscribeReceiverTests
 
         await Task.Delay(200, TestContext.Current.CancellationToken);
 
-        // capturedRequests[0] is the initial subscription; capturedRequests[1] is the acknowledgement
         Assert.True(capturedRequests.Count >= 2);
         var ack = capturedRequests[1].EventProcessed;
         Assert.NotNull(ack);
@@ -544,22 +410,16 @@ public class PublishSubscribeReceiverTests
             new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
         { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
 
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
-        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
-
         var capturedRequests = new List<P.SubscribeTopicEventsRequestAlpha1>();
         mockRequestStream
             .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
             .Callback<P.SubscribeTopicEventsRequestAlpha1, CancellationToken>((req, _) => capturedRequests.Add(req))
             .Returns(Task.CompletedTask);
 
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
-
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall(mockRequestStream));
 
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (_, _) => Task.FromResult(TopicResponseAction.Drop), mockDaprClient.Object);
@@ -594,23 +454,12 @@ public class PublishSubscribeReceiverTests
             (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
 
         await receiver.DisposeAsync();
-        // Second call should complete without error (isDisposed guard)
         await receiver.DisposeAsync();
 
         Assert.True(receiver.TopicMessagesChannelCompletion.IsCompleted);
         Assert.True(receiver.AcknowledgementsChannelCompletion.IsCompleted);
     }
 
-    // -------------------------------------------------------------------------
-    // WriteAcknowledgementToChannelAsync
-    // -------------------------------------------------------------------------
-
-    /// <summary>
-    /// WriteAcknowledgementToChannelAsync must place the acknowledgement on the internal channel so that
-    /// the background ProcessAcknowledgementChannelMessagesAsync loop writes it to the gRPC request stream.
-    /// This test uses the internal helper directly, avoiding the reflection used in the original
-    /// SubscribeAsync_ShouldProcessAcknowledgements test.
-    /// </summary>
     [Fact]
     public async Task WriteAcknowledgementToChannelAsync_AcknowledgementIsSentToRequestStream()
     {
@@ -620,7 +469,6 @@ public class PublishSubscribeReceiverTests
             new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
         { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
 
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
         var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
         mockResponseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>())).ReturnsAsync(false);
@@ -631,41 +479,29 @@ public class PublishSubscribeReceiverTests
             .Callback<P.SubscribeTopicEventsRequestAlpha1, CancellationToken>((req, _) => capturedRequests.Add(req))
             .Returns(Task.CompletedTask);
 
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall(mockRequestStream, mockResponseStream));
 
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
         await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
 
         var ack = new PublishSubscribeReceiver.TopicAcknowledgement(
-            "direct-ack-id", Dapr.AppCallback.Autogen.Grpc.v1.TopicEventResponse.Types.TopicEventResponseStatus.Retry);
+            "direct-ack-id", TopicEventResponse.Types.TopicEventResponseStatus.Retry);
         await receiver.WriteAcknowledgementToChannelAsync(ack);
 
         await Task.Delay(200, TestContext.Current.CancellationToken);
 
-        // capturedRequests[0] is the initial subscription request; [1] is the acknowledgement
         Assert.True(capturedRequests.Count >= 2);
         var sentAck = capturedRequests[1].EventProcessed;
         Assert.NotNull(sentAck);
         Assert.Equal("direct-ack-id", sentAck.Id);
-        Assert.Equal(Dapr.AppCallback.Autogen.Grpc.v1.TopicEventResponse.Types.TopicEventResponseStatus.Retry,
-            sentAck.Status.Status);
+        Assert.Equal(TopicEventResponse.Types.TopicEventResponseStatus.Retry, sentAck.Status.Status);
 
         await receiver.DisposeAsync();
     }
 
-    // -------------------------------------------------------------------------
-    // ProcessTopicChannelMessagesAsync — Success action (Retry/Drop are existing tests)
-    // -------------------------------------------------------------------------
-
-    /// <summary>
-    /// When the message handler returns Success, ProcessTopicChannelMessagesAsync must write a
-    /// Success acknowledgement back to the gRPC request stream via AcknowledgeMessageAsync.
-    /// </summary>
     [Fact]
     public async Task ProcessTopicChannelMessages_SuccessAction_WritesSuccessAcknowledgement()
     {
@@ -675,21 +511,16 @@ public class PublishSubscribeReceiverTests
             new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
         { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
 
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
-        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
-
         var capturedRequests = new List<P.SubscribeTopicEventsRequestAlpha1>();
         mockRequestStream
             .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
             .Callback<P.SubscribeTopicEventsRequestAlpha1, CancellationToken>((req, _) => capturedRequests.Add(req))
             .Returns(Task.CompletedTask);
 
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall(mockRequestStream));
 
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
@@ -704,23 +535,13 @@ public class PublishSubscribeReceiverTests
         var ack = capturedRequests[1].EventProcessed;
         Assert.NotNull(ack);
         Assert.Equal("success-id", ack.Id);
-        Assert.Equal(Dapr.AppCallback.Autogen.Grpc.v1.TopicEventResponse.Types.TopicEventResponseStatus.Success,
-            ack.Status.Status);
+        Assert.Equal(TopicEventResponse.Types.TopicEventResponseStatus.Success, ack.Status.Status);
 
         await receiver.DisposeAsync();
     }
 
-    // -------------------------------------------------------------------------
-    // AcknowledgeMessageAsync — unrecognised action faults the background task
-    // -------------------------------------------------------------------------
-
-    /// <summary>
-    /// When the message handler returns an unrecognised TopicResponseAction, AcknowledgeMessageAsync
-    /// throws InvalidOperationException, which causes the ProcessTopicChannelMessagesAsync background
-    /// task to fault and HandleTaskCompletion to re-throw the exception.
-    /// </summary>
     [Fact]
-    public async Task AcknowledgeMessageAsync_UnrecognisedAction_FaultsProcessingTask()
+    public async Task AcknowledgeMessageAsync_UnrecognisedAction_FaultsCompletion()
     {
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
@@ -729,52 +550,24 @@ public class PublishSubscribeReceiverTests
         { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
 
         var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
-        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
-        mockRequestStream
-            .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall());
 
-        // Capture the faulted continuation task so we can observe the exception.
-#pragma warning disable CS0219 // Variable is assigned but its value is never used
-        Task? faultedTask = null;
-#pragma warning restore CS0219 // Variable is assigned but its value is never used
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (_, _) => Task.FromResult((TopicResponseAction)99), mockDaprClient.Object);
 
         await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
 
-        // Writing the message triggers the handler which returns the invalid action.
         var msg = new TopicMessage("bad-action-id", "src", "type", "1.0", "text/plain", topicName, pubSubName);
         await receiver.WriteMessageToChannelAsync(msg);
 
-        // Allow the background task time to fault.
-        await Task.Delay(300, TestContext.Current.CancellationToken);
-
-        // Verify HandleTaskCompletion correctly re-throws when given the faulted task.
-        var faultedStub = Task.FromException(new InvalidOperationException("Unrecognized topic acknowledgement action: 99"));
-        var ex = Assert.Throws<DaprException>(() =>
-            receiver.HandleTaskCompletion(faultedStub));
-        Assert.IsType<InvalidOperationException>(ex.InnerException);
+        // Completion should fault with a DaprException wrapping the InvalidOperationException.
+        var ex = await Assert.ThrowsAsync<DaprException>(() => receiver.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
         Assert.Contains("99", ex.InnerException!.Message);
 
         await receiver.DisposeAsync();
     }
 
-    // -------------------------------------------------------------------------
-    // FetchDataFromSidecarAsync — DeadLetterTopic & multiple messages
-    // -------------------------------------------------------------------------
-
-    /// <summary>
-    /// When DeadLetterTopic is set in DaprSubscriptionOptions, FetchDataFromSidecarAsync must include
-    /// it in the initial subscription request sent to the sidecar.
-    /// </summary>
     [Fact]
     public async Task FetchDataFromSidecarAsync_WithDeadLetterTopic_IncludesDeadLetterTopicInInitialRequest()
     {
@@ -788,22 +581,19 @@ public class PublishSubscribeReceiverTests
             MaximumCleanupTimeout = TimeSpan.FromSeconds(1)
         };
 
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
         var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
         mockResponseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
+        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
         var capturedRequests = new List<P.SubscribeTopicEventsRequestAlpha1>();
         mockRequestStream
             .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
             .Callback<P.SubscribeTopicEventsRequestAlpha1, CancellationToken>((req, _) => capturedRequests.Add(req))
             .Returns(Task.CompletedTask);
 
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall(mockRequestStream, mockResponseStream));
 
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
@@ -817,10 +607,6 @@ public class PublishSubscribeReceiverTests
         await receiver.DisposeAsync();
     }
 
-    /// <summary>
-    /// FetchDataFromSidecarAsync must deliver every event message from the sidecar response stream
-    /// to the message handler, in order.
-    /// </summary>
     [Fact]
     public async Task FetchDataFromSidecarAsync_MultipleMessages_AllDeliveredToHandlerInOrder()
     {
@@ -830,9 +616,8 @@ public class PublishSubscribeReceiverTests
             new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
         { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
 
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
-        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
         var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
         mockRequestStream
             .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
@@ -840,7 +625,7 @@ public class PublishSubscribeReceiverTests
         static P.SubscribeTopicEventsResponseAlpha1 MakeResponse(string id) =>
             new()
             {
-                EventMessage = new Dapr.AppCallback.Autogen.Grpc.v1.TopicEventRequest
+                EventMessage = new TopicEventRequest
                 {
                     Id = id, Source = "src", Type = "type", SpecVersion = "1.0",
                     DataContentType = "text/plain", Topic = topicName, PubsubName = pubSubName,
@@ -859,11 +644,9 @@ public class PublishSubscribeReceiverTests
             .Returns(MakeResponse("msg-2"))
             .Returns(MakeResponse("msg-3"));
 
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall(mockRequestStream, mockResponseStream));
 
         var receivedIds = new List<string>();
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
@@ -878,53 +661,37 @@ public class PublishSubscribeReceiverTests
         await receiver.DisposeAsync();
     }
 
-    // -------------------------------------------------------------------------
-    // DisposeAsync — MaximumCleanupTimeout path
-    // -------------------------------------------------------------------------
-
-    /// <summary>
-    /// When there are unprocessed acknowledgements and MaximumCleanupTimeout elapses before they can
-    /// be drained, DisposeAsync must catch the resulting OperationCanceledException and still complete
-    /// promptly rather than hanging.
-    /// </summary>
     [Fact]
     public async Task DisposeAsync_AcknowledgementsDrainTimeout_CompletesWithinMaximumCleanupTimeout()
     {
         const string pubSubName = "testPubSub";
         const string topicName = "testTopic";
 
-        // Very short cleanup timeout to exercise the OperationCanceledException catch path.
         var options = new DaprSubscriptionOptions(
             new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
         { MaximumCleanupTimeout = TimeSpan.FromMilliseconds(50) };
 
-        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
         var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
 
-        // Block indefinitely so the acknowledgement channel reader never completes.
         mockRequestStream
             .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
             .Returns<P.SubscribeTopicEventsRequestAlpha1, CancellationToken>(
                 async (_, ct) => await Task.Delay(Timeout.Infinite, ct));
         mockResponseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
-        var mockCall = new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
-            mockRequestStream.Object, mockResponseStream.Object,
-            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
         mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
-            .Returns(mockCall);
+            .Returns(CreateMockCall(mockRequestStream, mockResponseStream));
 
         var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
             (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
         await receiver.SubscribeAsync(TestContext.Current.CancellationToken);
 
-        // Queue an acknowledgement that will never be processed because WriteAsync blocks forever.
         await receiver.WriteAcknowledgementToChannelAsync(
             new PublishSubscribeReceiver.TopicAcknowledgement(
-                "stuck-id", Dapr.AppCallback.Autogen.Grpc.v1.TopicEventResponse.Types.TopicEventResponseStatus.Success));
+                "stuck-id", TopicEventResponse.Types.TopicEventResponseStatus.Success));
 
-        // DisposeAsync should complete well within one second despite the stuck ack.
         var sw = System.Diagnostics.Stopwatch.StartNew();
         await receiver.DisposeAsync();
         sw.Stop();
@@ -933,5 +700,368 @@ public class PublishSubscribeReceiverTests
             $"DisposeAsync took {sw.ElapsedMilliseconds} ms — expected to honour MaximumCleanupTimeout of 50 ms.");
         Assert.True(receiver.TopicMessagesChannelCompletion.IsCompleted);
         Assert.True(receiver.AcknowledgementsChannelCompletion.IsCompleted);
+    }
+
+    // -------------------------------------------------------------------------
+    // Background-fault observation via Completion (supervisor pattern)
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// When a background task faults and no ErrorHandler is configured, Completion faults with DaprException.
+    /// </summary>
+    [Fact]
+    public async Task Completion_WhenBackgroundFaults_WithoutHandler_FaultsWithDaprException()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
+
+        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+        mockResponseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>()))
+            .Returns(() => Task.FromException<bool>(new InvalidOperationException("background fetch failed")));
+
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
+            .Returns(CreateMockCall(responseStream: mockResponseStream));
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        await receiver.SubscribeAsync(CancellationToken.None);
+
+        var ex = await Assert.ThrowsAsync<DaprException>(() => receiver.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        Assert.IsType<InvalidOperationException>(ex.InnerException);
+        Assert.Contains("background fetch failed", ex.InnerException!.Message);
+        Assert.Contains(topicName, ex.Message);
+        Assert.Contains(pubSubName, ex.Message);
+
+        await receiver.DisposeAsync();
+    }
+
+    /// <summary>
+    /// When a background task faults and an ErrorHandler is configured, the handler is invoked
+    /// exactly once and Completion completes normally.
+    /// </summary>
+    [Fact]
+    public async Task Completion_WhenBackgroundFaults_WithHandler_InvokesHandlerOnceAndCompletes()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var handlerCalls = 0;
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        {
+            MaximumCleanupTimeout = TimeSpan.FromSeconds(1),
+            ErrorHandler = _ => { Interlocked.Increment(ref handlerCalls); return Task.CompletedTask; }
+        };
+
+        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+        mockResponseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>()))
+            .Returns(() => Task.FromException<bool>(new InvalidOperationException("background fetch failed")));
+
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
+            .Returns(CreateMockCall(responseStream: mockResponseStream));
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        await receiver.SubscribeAsync(CancellationToken.None);
+
+        // Completion should complete normally (handler absorbed the error).
+        await receiver.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, handlerCalls);
+
+        await receiver.DisposeAsync();
+    }
+
+    /// <summary>
+    /// After a background fault, hasInitialized is reset so the caller can re-subscribe.
+    /// </summary>
+    [Fact]
+    public async Task Completion_AfterBackgroundFault_AllowsResubscribe()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
+
+        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
+        var callCount = 0;
+        mockRequestStream
+            .Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                callCount++;
+                var responseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+                if (callCount == 1)
+                {
+                    responseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>()))
+                        .Returns(() => Task.FromException<bool>(new InvalidOperationException("fetch failed")));
+                }
+                else
+                {
+                    responseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>())).ReturnsAsync(false);
+                }
+                return CreateMockCall(mockRequestStream, responseStream);
+            });
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        // First subscribe starts background tasks; the fetch faults.
+        await receiver.SubscribeAsync(CancellationToken.None);
+
+        // Wait for Completion to fault.
+        await Assert.ThrowsAsync<DaprException>(() => receiver.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        // Second subscribe should succeed (hasInitialized was reset by the supervisor).
+        await receiver.SubscribeAsync(CancellationToken.None);
+
+        mockDaprClient.Verify(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()), Times.Exactly(2));
+
+        await receiver.DisposeAsync();
+    }
+
+    /// <summary>
+    /// When the background task is cancelled (not faulted), Completion does not fault.
+    /// </summary>
+    [Fact]
+    public async Task Completion_WhenBackgroundCancelled_DoesNotFault()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
+
+        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+        mockResponseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>()))
+            .Returns(() => Task.FromException<bool>(new OperationCanceledException()));
+
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
+            .Returns(CreateMockCall(responseStream: mockResponseStream));
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        await receiver.SubscribeAsync(CancellationToken.None);
+
+        // Completion should not fault — cancellation is a clean shutdown.
+        await receiver.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        Assert.True(receiver.Completion.IsCompletedSuccessfully);
+
+        await receiver.DisposeAsync();
+    }
+
+    /// <summary>
+    /// When the user-supplied ErrorHandler throws, Completion faults with an AggregateException
+    /// containing both the original DaprException and the handler's exception.
+    /// </summary>
+    [Fact]
+    public async Task Completion_WhenErrorHandlerThrows_FaultsWithCombinedAggregateException()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        {
+            MaximumCleanupTimeout = TimeSpan.FromSeconds(1),
+            ErrorHandler = _ => throw new InvalidOperationException("handler bug")
+        };
+
+        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+        mockResponseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>()))
+            .Returns(() => Task.FromException<bool>(new InvalidOperationException("background fetch failed")));
+
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
+            .Returns(CreateMockCall(responseStream: mockResponseStream));
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        await receiver.SubscribeAsync(CancellationToken.None);
+
+        var ex = await Assert.ThrowsAsync<AggregateException>(() => receiver.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        Assert.Equal(2, ex.InnerExceptions.Count);
+        Assert.IsType<DaprException>(ex.InnerExceptions[0]);
+        Assert.IsType<InvalidOperationException>(ex.InnerExceptions[1]);
+        Assert.Contains("handler bug", ex.InnerExceptions[1].Message);
+
+        await receiver.DisposeAsync();
+    }
+
+    /// <summary>
+    /// When multiple background tasks fault with different non-cancellation exceptions, the DaprException's
+    /// InnerException is an AggregateException containing all of them.
+    /// </summary>
+    [Fact]
+    public async Task Completion_WhenMultipleTasksFault_SurfacesAggregateException()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
+
+        var mockRequestStream = new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
+        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+
+        // Coordinator: blocks MoveNext (second call) until the handler has thrown, so both tasks
+        // fault with non-OCE exceptions before the CTS cancellation propagates.
+        var handlerFaulted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var moveNextCallCount = 0;
+
+        mockResponseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                var callNum = Interlocked.Increment(ref moveNextCallCount);
+                if (callNum == 1)
+                    return Task.FromResult(true);
+                // Second call: wait for the handler to fault, then throw a different exception.
+                return WaitAndThrowAsync(handlerFaulted.Task, "fetch error");
+            });
+
+        var eventMessage = new TopicEventRequest
+        {
+            Id = "msg-1", Source = "src", Type = "type", SpecVersion = "1.0",
+            DataContentType = "text/plain", Topic = topicName, PubsubName = pubSubName,
+            Data = Google.Protobuf.ByteString.Empty,
+            Extensions = new Google.Protobuf.WellKnownTypes.Struct()
+        };
+        mockResponseStream.Setup(s => s.Current)
+            .Returns(new P.SubscribeTopicEventsResponseAlpha1 { EventMessage = eventMessage });
+
+        mockRequestStream.Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
+            .Returns(CreateMockCall(mockRequestStream, mockResponseStream));
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) =>
+            {
+                handlerFaulted.TrySetResult(true);
+                throw new InvalidOperationException("handler error");
+            },
+            mockDaprClient.Object);
+
+        await receiver.SubscribeAsync(CancellationToken.None);
+
+        var ex = await Assert.ThrowsAsync<DaprException>(() => receiver.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        Assert.IsType<AggregateException>(ex.InnerException);
+        var agg = (AggregateException)ex.InnerException;
+        Assert.Equal(2, agg.InnerExceptions.Count);
+        Assert.Contains(agg.InnerExceptions, e => e is InvalidOperationException && e.Message == "fetch error");
+        Assert.Contains(agg.InnerExceptions, e => e is InvalidOperationException && e.Message == "handler error");
+
+        await receiver.DisposeAsync();
+    }
+
+    /// <summary>
+    /// After the subscription is cancelled (not disposed), hasInitialized is reset and the caller can re-subscribe.
+    /// </summary>
+    [Fact]
+    public async Task Completion_AfterCancellation_AllowsResubscribe()
+    {
+        const string pubSubName = "testPubSub";
+        const string topicName = "testTopic";
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+        { MaximumCleanupTimeout = TimeSpan.FromSeconds(1) };
+
+        var mockResponseStream = new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+        mockResponseStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>()))
+            .Returns((CancellationToken ct) =>
+            {
+                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                ct.Register(() => tcs.TrySetCanceled(ct));
+                return tcs.Task;
+            });
+
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        mockDaprClient.Setup(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()))
+            .Returns(CreateMockCall(responseStream: mockResponseStream));
+
+        var receiver = new PublishSubscribeReceiver(pubSubName, topicName, options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        using var cts = new CancellationTokenSource();
+        await receiver.SubscribeAsync(cts.Token);
+
+        // Cancel — all three tasks get OCE, Completion completes without faulting.
+        cts.Cancel();
+        await receiver.Completion.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        Assert.True(receiver.Completion.IsCompletedSuccessfully);
+
+        // hasInitialized was reset in finally — re-subscribe should work.
+        await receiver.SubscribeAsync(CancellationToken.None);
+        mockDaprClient.Verify(c => c.SubscribeTopicEventsAlpha1(null, null, It.IsAny<CancellationToken>()), Times.Exactly(2));
+
+        await receiver.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Calling SubscribeAsync after DisposeAsync throws ObjectDisposedException.
+    /// </summary>
+    [Fact]
+    public async Task SubscribeAsync_AfterDispose_ThrowsObjectDisposedException()
+    {
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success));
+        var mockDaprClient = new Mock<P.Dapr.DaprClient>();
+        var receiver = new PublishSubscribeReceiver("pubsub", "topic", options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success), mockDaprClient.Object);
+
+        await receiver.DisposeAsync();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => receiver.SubscribeAsync(CancellationToken.None));
+    }
+
+    /// <summary>
+    /// Blocks until the handler has faulted, then throws — used to coordinate two simultaneous faults.
+    /// </summary>
+    private static async Task<bool> WaitAndThrowAsync(Task blocker, string message)
+    {
+        await blocker.ConfigureAwait(false);
+        throw new InvalidOperationException(message);
+    }
+
+    /// <summary>
+    /// Helper: creates a mock AsyncDuplexStreamingCall. Defaults (WriteAsync→Completed, MoveNext→false)
+    /// are only applied to mocks the helper creates itself; caller-provided mocks are left untouched.
+    /// </summary>
+    private static AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>
+        CreateMockCall(
+            Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>? requestStream = null,
+            Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>? responseStream = null)
+    {
+        var reqStream = requestStream ?? new Mock<IClientStreamWriter<P.SubscribeTopicEventsRequestAlpha1>>();
+        var respStream = responseStream ?? new Mock<IAsyncStreamReader<P.SubscribeTopicEventsResponseAlpha1>>();
+
+        if (requestStream is null)
+        {
+            reqStream.Setup(s => s.WriteAsync(It.IsAny<P.SubscribeTopicEventsRequestAlpha1>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+        }
+        if (responseStream is null)
+        {
+            respStream.Setup(s => s.MoveNext(It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        }
+
+        return new AsyncDuplexStreamingCall<P.SubscribeTopicEventsRequestAlpha1, P.SubscribeTopicEventsResponseAlpha1>(
+            reqStream.Object, respStream.Object,
+            Task.FromResult(new Metadata()), () => new Status(), () => new Metadata(), () => { });
     }
 }

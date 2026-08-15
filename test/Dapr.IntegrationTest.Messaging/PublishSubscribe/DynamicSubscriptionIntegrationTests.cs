@@ -479,6 +479,361 @@ public sealed class DynamicSubscriptionIntegrationTests : IAsyncLifetime
         }
     }
 
+    // -------------------------------------------------------------------------
+    // SubscribeAsync fault, cancellation, and reconnection integration tests
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// <summary>
+    /// Verifies that when the Dapr sidecar's gRPC endpoint is unreachable, the subscription's
+    /// Completion faults with a DaprException wrapping the underlying gRPC error.
+    /// </summary>
+    [Fact]
+    public async Task SubscribeAsync_WhenSidecarUnavailable_FaultsCompletionWithDaprException()
+    {
+        // Point the gRPC endpoint at the sidecar's HTTP port — the TCP connection succeeds but
+        // the HTTP/2 gRPC handshake fails quickly, producing an RpcException (not a timeout).
+        var badClient = new DaprPublishSubscribeClientBuilder()
+            .UseGrpcEndpoint($"http://127.0.0.1:{_harness!.DaprHttpPort}")
+            .UseHttpEndpoint($"http://127.0.0.1:{_harness.DaprHttpPort}")
+            .Build();
+
+        try
+        {
+            var options = new DaprSubscriptionOptions(
+                new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success))
+            { MaximumCleanupTimeout = TimeSpan.FromSeconds(5) };
+
+            // SubscribeAsync succeeds — gRPC returns a streaming call object lazily.
+            // The connection failure surfaces when background tasks try to use the stream.
+            var subscription = await badClient.SubscribeAsync(PubSubName, "unreachable-topic", options,
+                (_, _) => Task.FromResult(TopicResponseAction.Success), CancellationToken.None);
+
+            // The fault should surface on Completion as a DaprException.
+            var observable = (IDaprSubscription)subscription;
+            var ex = await Assert.ThrowsAsync<DaprException>(() =>
+                observable.Completion.WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None));
+
+            Assert.Contains("unreachable-topic", ex.Message);
+            Assert.Contains(PubSubName, ex.Message);
+
+            await subscription.DisposeAsync();
+        }
+        finally
+        {
+            badClient.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Verifies that when the message handler throws, the fault surfaces on Completion
+    /// as a DaprException (when no ErrorHandler is configured).
+    /// </summary>
+    [Fact]
+    public async Task Completion_WhenMessageHandlerThrows_FaultsWithDaprException()
+    {
+        using var cts = new CancellationTokenSource(TestTimeout);
+        var handlerInvoked = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Success));
+
+        var subscription = await _pubSubClient!.SubscribeAsync(
+            PubSubName,
+            "fault-handler-topic",
+            options,
+            (_, _) =>
+            {
+                handlerInvoked.TrySetResult(true);
+                throw new InvalidOperationException("Handler failure");
+            },
+            cts.Token);
+
+        await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
+        await PublishMessageAsync("fault-handler-topic", """{"faultTest":true}""", cts.Token);
+        await handlerInvoked.Task.WaitAsync(cts.Token);
+
+        // Completion should fault with DaprException wrapping the handler's exception.
+        var observable = (IDaprSubscription)subscription;
+        var ex = await Assert.ThrowsAsync<DaprException>(() =>
+            observable.Completion.WaitAsync(TimeSpan.FromSeconds(10), cts.Token));
+        Assert.IsType<InvalidOperationException>(ex.InnerException);
+        Assert.Contains("Handler failure", ex.InnerException!.Message);
+
+        await subscription.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies that when an ErrorHandler is configured, it is invoked exactly once when
+    /// the message handler throws, and Completion completes normally.
+    /// </summary>
+    [Fact]
+    public async Task Completion_WhenErrorHandlerConfigured_InvokesHandlerOnceAndCompletesNormally()
+    {
+        using var cts = new CancellationTokenSource(TestTimeout);
+        var handlerInvoked = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var errorHandlerCallCount = 0;
+        var errorHandlerInvoked = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Success))
+        {
+            ErrorHandler = ex =>
+            {
+                Interlocked.Increment(ref errorHandlerCallCount);
+                errorHandlerInvoked.TrySetResult(true);
+                return Task.CompletedTask;
+            }
+        };
+
+        var subscription = await _pubSubClient!.SubscribeAsync(
+            PubSubName,
+            "error-handler-topic",
+            options,
+            (_, _) =>
+            {
+                handlerInvoked.TrySetResult(true);
+                throw new InvalidOperationException("Handler failure");
+            },
+            cts.Token);
+
+        await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
+        await PublishMessageAsync("error-handler-topic", """{"errorHandlerTest":true}""", cts.Token);
+        await handlerInvoked.Task.WaitAsync(cts.Token);
+
+        // Wait for the error handler to be invoked.
+        await errorHandlerInvoked.Task.WaitAsync(TimeSpan.FromSeconds(10), cts.Token);
+        Assert.Equal(1, errorHandlerCallCount);
+
+        // Completion should complete normally (handler absorbed the fault).
+        var observable = (IDaprSubscription)subscription;
+        await observable.Completion.WaitAsync(TimeSpan.FromSeconds(10), cts.Token);
+        Assert.True(observable.Completion.IsCompletedSuccessfully);
+
+        await subscription.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies that when the ErrorHandler itself throws, Completion faults with an
+    /// AggregateException containing both the original DaprException and the handler's exception.
+    /// </summary>
+    [Fact]
+    public async Task Completion_WhenErrorHandlerThrows_FaultsWithAggregateException()
+    {
+        using var cts = new CancellationTokenSource(TestTimeout);
+        var handlerInvoked = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Success))
+        {
+            ErrorHandler = _ => throw new InvalidOperationException("Error handler bug")
+        };
+
+        var subscription = await _pubSubClient!.SubscribeAsync(
+            PubSubName,
+            "handler-throws-topic",
+            options,
+            (_, _) =>
+            {
+                handlerInvoked.TrySetResult(true);
+                throw new InvalidOperationException("Handler failure");
+            },
+            cts.Token);
+
+        await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
+        await PublishMessageAsync("handler-throws-topic", """{"handlerThrowsTest":true}""", cts.Token);
+        await handlerInvoked.Task.WaitAsync(cts.Token);
+
+        var observable = (IDaprSubscription)subscription;
+        var ex = await Assert.ThrowsAsync<AggregateException>(() =>
+            observable.Completion.WaitAsync(TimeSpan.FromSeconds(10), cts.Token));
+        Assert.Equal(2, ex.InnerExceptions.Count);
+        Assert.IsType<DaprException>(ex.InnerExceptions[0]);
+        Assert.IsType<InvalidOperationException>(ex.InnerExceptions[1]);
+        Assert.Contains("Error handler bug", ex.InnerExceptions[1].Message);
+
+        await subscription.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies that when the subscription is cancelled, Completion completes without faulting.
+    /// </summary>
+    [Fact]
+    public async Task Completion_WhenCancelled_CompletesWithoutFault()
+    {
+        using var subscribeCts = new CancellationTokenSource();
+        var firstDelivery = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Success));
+
+        var subscription = await _pubSubClient!.SubscribeAsync(
+            PubSubName,
+            "cancellation-topic",
+            options,
+            (_, _) =>
+            {
+                firstDelivery.TrySetResult(true);
+                return Task.FromResult(TopicResponseAction.Success);
+            },
+            subscribeCts.Token);
+
+        await Task.Delay(TimeSpan.FromSeconds(2), subscribeCts.Token);
+        await PublishMessageAsync("cancellation-topic", """{"cancelTest":true}""", subscribeCts.Token);
+        await firstDelivery.Task.WaitAsync(TestTimeout, subscribeCts.Token);
+
+        // Cancel the subscription token — Completion should complete without faulting.
+        subscribeCts.Cancel();
+
+        var observable = (IDaprSubscription)subscription;
+        await observable.Completion.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken.None);
+        Assert.True(observable.Completion.IsCompletedSuccessfully);
+
+        await subscription.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies that after the subscription is cancelled and Completion completes, the caller can
+    /// re-subscribe (on a new receiver) and receive new messages.
+    /// </summary>
+    [Fact]
+    public async Task SubscribeAsync_AfterCancellation_AllowsResubscribeAndReceivesMessages()
+    {
+        using var subscribeCts = new CancellationTokenSource();
+        var firstDelivery = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Success));
+
+        // First subscription — will be cancelled.
+        var firstSubscription = await _pubSubClient!.SubscribeAsync(
+            PubSubName,
+            "cancel-first-topic",
+            options,
+            (_, _) =>
+            {
+                firstDelivery.TrySetResult(true);
+                return Task.FromResult(TopicResponseAction.Success);
+            },
+            subscribeCts.Token);
+
+        await Task.Delay(TimeSpan.FromSeconds(2), subscribeCts.Token);
+        await PublishMessageAsync("cancel-first-topic", """{"first":true}""", subscribeCts.Token);
+        await firstDelivery.Task.WaitAsync(TestTimeout, subscribeCts.Token);
+
+        subscribeCts.Cancel();
+        var firstObservable = (IDaprSubscription)firstSubscription;
+        await firstObservable.Completion.WaitAsync(TimeSpan.FromSeconds(10), CancellationToken.None);
+        await firstSubscription.DisposeAsync();
+
+        // Second subscription — use a different topic to avoid sidecar subscription cleanup races.
+        var received = new TaskCompletionSource<TopicMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondSubscription = await _pubSubClient!.SubscribeAsync(
+            PubSubName,
+            "cancel-second-topic",
+            options,
+            (message, _) =>
+            {
+                received.TrySetResult(message);
+                return Task.FromResult(TopicResponseAction.Success);
+            },
+            CancellationToken.None);
+
+        await Task.Delay(TimeSpan.FromSeconds(3), CancellationToken.None);
+        await PublishMessageAsync("cancel-second-topic", """{"second":true}""", CancellationToken.None);
+
+        var msg = await received.Task.WaitAsync(TestTimeout, CancellationToken.None);
+        Assert.Contains("second", Encoding.UTF8.GetString(msg.Data.Span));
+
+        await secondSubscription.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies that after a handler fault causes Completion to fault, the caller can
+    /// re-subscribe and receive new messages.
+    /// </summary>
+    [Fact]
+    public async Task SubscribeAsync_AfterHandlerFault_AllowsResubscribeAndReceivesMessages()
+    {
+        using var cts = new CancellationTokenSource(TestTimeout);
+        var firstHandlerInvoked = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Success));
+
+        // First subscription — handler throws on first message.
+        var firstSubscription = await _pubSubClient!.SubscribeAsync(
+            PubSubName,
+            "resubscribe-after-fault-topic",
+            options,
+            (_, _) =>
+            {
+                firstHandlerInvoked.TrySetResult(true);
+                throw new InvalidOperationException("Intentional fault");
+            },
+            cts.Token);
+
+        await Task.Delay(TimeSpan.FromSeconds(2), cts.Token);
+        await PublishMessageAsync("resubscribe-after-fault-topic", """{"first":true}""", cts.Token);
+        await firstHandlerInvoked.Task.WaitAsync(cts.Token);
+
+        // Wait for Completion to fault.
+        var firstObservable = (IDaprSubscription)firstSubscription;
+        await Assert.ThrowsAsync<DaprException>(() =>
+            firstObservable.Completion.WaitAsync(TimeSpan.FromSeconds(10), cts.Token));
+        await firstSubscription.DisposeAsync();
+
+        // Second subscription — use a different topic to avoid sidecar subscription cleanup races.
+        var received = new TaskCompletionSource<TopicMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondSubscription = await _pubSubClient!.SubscribeAsync(
+            PubSubName,
+            "resubscribe-after-fault-second-topic",
+            options,
+            (message, _) =>
+            {
+                received.TrySetResult(message);
+                return Task.FromResult(TopicResponseAction.Success);
+            },
+            CancellationToken.None);
+
+        await Task.Delay(TimeSpan.FromSeconds(3), CancellationToken.None);
+        await PublishMessageAsync("resubscribe-after-fault-second-topic", """{"second":true}""", CancellationToken.None);
+
+        var msg = await received.Task.WaitAsync(TestTimeout, CancellationToken.None);
+        Assert.Contains("second", Encoding.UTF8.GetString(msg.Data.Span));
+
+        await secondSubscription.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Verifies that after the subscription is disposed, Completion is completed and
+    /// a second DisposeAsync call is a no-op.
+    /// </summary>
+    [Fact]
+    public async Task DisposeAsync_CompletesSubscriptionAndIsIdempotent()
+    {
+        var options = new DaprSubscriptionOptions(
+            new MessageHandlingPolicy(TimeSpan.FromSeconds(5), TopicResponseAction.Success));
+
+        var subscription = await _pubSubClient!.SubscribeAsync(
+            PubSubName,
+            "dispose-idempotent-topic",
+            options,
+            (_, _) => Task.FromResult(TopicResponseAction.Success),
+            CancellationToken.None);
+
+        await Task.Delay(TimeSpan.FromSeconds(2), CancellationToken.None);
+
+        await subscription.DisposeAsync();
+
+        // Completion should be completed after disposal.
+        var observable = (IDaprSubscription)subscription;
+        Assert.True(observable.Completion.IsCompleted);
+
+        // Second dispose should be a no-op (no exception).
+        await subscription.DisposeAsync();
+    }
+
     /// <summary>
     /// Publishes a message to the specified topic via the Dapr HTTP API.
     /// </summary>
