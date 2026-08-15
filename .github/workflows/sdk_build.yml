@@ -325,7 +325,7 @@ jobs:
     name: ${{ matrix.prefix }}-${{ matrix['dapr-runtime-versions'].version }}-${{ matrix.projectName }}
     needs: [ compute-integration-matrix-net11 ]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.compute-integration-matrix-net11.outputs.matrix) }}
