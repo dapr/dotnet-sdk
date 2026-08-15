@@ -59,6 +59,9 @@ public static class StateTransactionRequestExtensions
     /// <param name="type">The CloudEvent <c>type</c> field, or <see langword="null"/> to leave unchanged.</param>
     /// <param name="subject">The CloudEvent <c>subject</c> field, or <see langword="null"/> to leave unchanged.</param>
     /// <param name="dataContentType">The CloudEvent <c>datacontenttype</c> field, or <see langword="null"/> to leave unchanged.</param>
+    /// <param name="traceId">The CloudEvent <c>traceid</c> field, or <see langword="null"/> to leave unchanged.</param>
+    /// <param name="traceParent">The CloudEvent <c>traceparent</c> field, or <see langword="null"/> to leave unchanged.</param>
+    /// <param name="traceState">The CloudEvent <c>tracestate</c> field, or <see langword="null"/> to leave unchanged.</param>
     /// <returns>A new <see cref="StateTransactionRequest"/> with the CloudEvent metadata merged in.</returns>
     public static StateTransactionRequest WithCloudEventOverrides(
         this StateTransactionRequest request,
@@ -66,11 +69,14 @@ public static class StateTransactionRequestExtensions
         string? source = null,
         string? type = null,
         string? subject = null,
-        string? dataContentType = null)
+        string? dataContentType = null,
+        string? traceId = null,
+        string? traceParent = null,
+        string? traceState = null)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var overrides = new List<KeyValuePair<string, string>>(capacity: 5);
+        var overrides = new List<KeyValuePair<string, string>>(capacity: 8);
         if (id is not null)
         {
             overrides.Add(new KeyValuePair<string, string>(DaprOutboxMetadata.CloudEventId, id));
@@ -90,6 +96,18 @@ public static class StateTransactionRequestExtensions
         if (dataContentType is not null)
         {
             overrides.Add(new KeyValuePair<string, string>(DaprOutboxMetadata.CloudEventDataContentType, dataContentType));
+        }
+        if (traceId is not null)
+        {
+            overrides.Add(new KeyValuePair<string, string>(DaprOutboxMetadata.CloudEventTraceId, traceId));
+        }
+        if (traceParent is not null)
+        {
+            overrides.Add(new KeyValuePair<string, string>(DaprOutboxMetadata.CloudEventTraceParent, traceParent));
+        }
+        if (traceState is not null)
+        {
+            overrides.Add(new KeyValuePair<string, string>(DaprOutboxMetadata.CloudEventTraceState, traceState));
         }
 
         if (overrides.Count == 0)

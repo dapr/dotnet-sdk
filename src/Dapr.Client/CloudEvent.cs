@@ -23,22 +23,70 @@ namespace Dapr;
 public class CloudEvent
 {
     /// <summary>
-    /// CloudEvent 'source' attribute.
+    /// CloudEvent 'id' attribute (required by the CloudEvents 1.0 spec). When omitted on
+    /// publish, Dapr generates a value for the envelope.
     /// </summary>
-    [JsonPropertyName("source")]
+    [JsonPropertyName(CloudEventPropertyNames.Id)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string Id { get; init; }
+
+    /// <summary>
+    /// CloudEvent 'source' attribute (required by the CloudEvents 1.0 spec).
+    /// </summary>
+    [JsonPropertyName(CloudEventPropertyNames.Source)]
     public Uri Source { get; init; }
 
     /// <summary>
-    /// CloudEvent 'type' attribute.
+    /// CloudEvent 'specversion' attribute (required by the CloudEvents 1.0 spec). When
+    /// omitted on publish, Dapr populates the envelope with the spec version in use.
     /// </summary>
-    [JsonPropertyName("type")]
+    [JsonPropertyName(CloudEventPropertyNames.SpecVersion)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string SpecVersion { get; init; }
+
+    /// <summary>
+    /// CloudEvent 'type' attribute (required by the CloudEvents 1.0 spec).
+    /// </summary>
+    [JsonPropertyName(CloudEventPropertyNames.Type)]
     public string Type { get; init; }
+
+    /// <summary>
+    /// CloudEvent 'time' attribute. When omitted on publish, Dapr stamps the envelope
+    /// with the time of the publish operation.
+    /// </summary>
+    [JsonPropertyName(CloudEventPropertyNames.Time)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? Time { get; init; }
 
     /// <summary>
     /// CloudEvent 'subject' attribute.
     /// </summary>
-    [JsonPropertyName("subject")]
+    [JsonPropertyName(CloudEventPropertyNames.Subject)]
     public string Subject { get; init; }
+
+    /// <summary>
+    /// W3C 'traceid' attribute as carried on the Dapr CloudEvent envelope. When omitted on
+    /// publish, Dapr propagates the ambient trace identifier.
+    /// </summary>
+    [JsonPropertyName(CloudEventPropertyNames.TraceId)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string TraceId { get; init; }
+
+    /// <summary>
+    /// W3C 'traceparent' attribute as carried on the Dapr CloudEvent envelope. When omitted
+    /// on publish, Dapr propagates the ambient traceparent.
+    /// </summary>
+    [JsonPropertyName(CloudEventPropertyNames.TraceParent)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string TraceParent { get; init; }
+
+    /// <summary>
+    /// W3C 'tracestate' attribute as carried on the Dapr CloudEvent envelope. When omitted
+    /// on publish, Dapr propagates the ambient tracestate.
+    /// </summary>
+    [JsonPropertyName(CloudEventPropertyNames.TraceState)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string TraceState { get; init; }
 }
 
 /// <summary>
@@ -49,11 +97,12 @@ public class CloudEvent<TData>(TData data) : CloudEvent
     /// <summary>
     /// CloudEvent 'data' content.
     /// </summary>
+    [JsonPropertyName(CloudEventPropertyNames.Data)]
     public TData Data { get; } = data;
 
     /// <summary>
     /// Gets event data.
     /// </summary>
-    [JsonPropertyName("datacontenttype")]
+    [JsonPropertyName(CloudEventPropertyNames.DataContentType)]
     public string DataContentType { get; } = Constants.ContentTypeApplicationJson;
 }
