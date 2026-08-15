@@ -1,5 +1,6 @@
-﻿
-using System.Text;
+﻿using System.Text;
+using System.Text.Json;
+using Dapr;
 using Dapr.Messaging.PublishSubscribe;
 using Dapr.Messaging.PublishSubscribe.Extensions;
 
@@ -7,59 +8,82 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDaprPubSubClient();
 var app = builder.Build();
 
-//Process each message returned from the subscription
-Task<TopicResponseAction> HandleMessageAsync(TopicMessage message, CancellationToken cancellationToken = default)
+// The message handler processes each topic message and returns the action the sidecar should take.
+// Returning Retry asks Dapr to redeliver the message; Success acknowledges it; Drop discards it.
+// Catch specific exceptions rather than swallowing everything — an unparseable message, for
+// example, should be dropped (not retried) to avoid a poison-message loop.
+Task<TopicResponseAction> HandleMessageAsync(TopicMessage message, CancellationToken cancellationToken)
 {
     try
     {
-        //Do something with the message
-        Console.WriteLine(Encoding.UTF8.GetString(message.Data.Span));
+        var body = Encoding.UTF8.GetString(message.Data.Span);
+        Console.WriteLine($"Received: {body}");
         return Task.FromResult(TopicResponseAction.Success);
     }
-    catch
+    catch (JsonException)
     {
+        // Malformed payload — don't retry, drop it.
+        return Task.FromResult(TopicResponseAction.Drop);
+    }
+    catch (Exception ex)
+    {
+        // Transient failure — let Dapr redeliver.
+        Console.WriteLine($"Message handler error: {ex.Message}");
         return Task.FromResult(TopicResponseAction.Retry);
     }
 }
 
 var messagingClient = app.Services.GetRequiredService<DaprPublishSubscribeClient>();
 
-//Create a dynamic streaming subscription and subscribe with a timeout of 30 seconds and 10 seconds for message handling
-var cancellationTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
 
-// The reconnection loop re-establishes the subscription after a stream termination (sidecar disconnect,
-// unparseable message, etc.). HandleMessageAsync handles message-level retry via TopicResponseAction.Retry,
-// but stream-level reconnection requires re-calling SubscribeAsync. The supervisor resets hasInitialized
-// on any termination, so re-subscription is always possible.
-while (!cancellationTokenSource.Token.IsCancellationRequested)
+// Reconnection loop: re-establishes the subscription after any stream termination
+// (sidecar restart, network blip, background-task fault, etc.). The supervisor
+// resets its state on every termination, so re-calling SubscribeAsync always works.
+while (!cts.Token.IsCancellationRequested)
 {
-    var subscription = await messagingClient.SubscribeAsync("pubsub", "myTopic",
-        new DaprSubscriptionOptions(new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Retry)),
-        HandleMessageAsync, cancellationTokenSource.Token);
-
-    // Log disconnects if the developer wants observability. The returned IAsyncDisposable also
-    // implements IDaprSubscription; cast to access Completion. Completion faults only when the
-    // ErrorHandler is absent (or itself throws); a handled fault completes normally.
-    if (subscription is IDaprSubscription observable)
+    var options = new DaprSubscriptionOptions(
+        new MessageHandlingPolicy(TimeSpan.FromSeconds(10), TopicResponseAction.Retry))
     {
-        _ = observable.Completion.ContinueWith(t =>
+        // The ErrorHandler receives background faults (e.g. the gRPC stream drops).
+        // If configured, it is invoked once per fault and Completion completes
+        // normally — the loop continues and re-subscribes. If the handler itself
+        // throws, Completion faults with an AggregateException (caught below).
+        ErrorHandler = ex =>
         {
-            if (t.IsFaulted)
-                Console.WriteLine($"Subscription terminated: {t.Exception?.InnerException?.Message}");
-        }, TaskScheduler.Default);
-    }
-
-    // Wait for the subscription to terminate (fault, clean stream end, or cancellation).
-    if (subscription is IDaprSubscription awaitable)
-    {
-        try { await awaitable.Completion.WaitAsync(cancellationTokenSource.Token); }
-        catch (OperationCanceledException) { break; }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            Console.WriteLine($"Subscription faulted: {ex.Message}. Reconnecting...");
+            Console.WriteLine($"Subscription error: {ex.InnerException?.Message ?? ex.Message}");
+            return Task.CompletedTask;
         }
+    };
+
+    await using var subscription = await messagingClient.SubscribeAsync(
+        "pubsub", "myTopic", options, HandleMessageAsync, cts.Token);
+
+    // The returned IAsyncDisposable also implements IDaprSubscription.
+    // Await Completion to block until the subscription terminates.
+    var completion = ((IDaprSubscription)subscription).Completion;
+
+    try
+    {
+        await completion.WaitAsync(cts.Token);
+    }
+    catch (OperationCanceledException)
+    {
+        // Caller cancelled — exit the loop.
+        break;
+    }
+    catch (AggregateException ex)
+    {
+        // The ErrorHandler itself threw — its exception is combined with the original DaprException.
+        Console.WriteLine($"Subscription faulted (handler error): {ex.Flatten().InnerException?.Message}");
+    }
+    catch (DaprException ex)
+    {
+        // No ErrorHandler was configured, or the fault could not be handled.
+        Console.WriteLine($"Subscription faulted: {ex.InnerException?.Message ?? ex.Message}");
     }
 
-    await subscription.DisposeAsync();
+    // Brief delay before reconnecting to avoid a tight loop if the sidecar is down.
+    try { await Task.Delay(TimeSpan.FromSeconds(3), cts.Token); }
+    catch (OperationCanceledException) { break; }
 }
-
