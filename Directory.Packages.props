@@ -38,14 +38,20 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.0.0" />
     <PackageVersion Include="Microsoft.Extensions.AI.Abstractions" Version="10.6.0" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.8" Condition="'$(TargetFramework)' != 'net11.0'" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="11.0.0-preview.7.26381.103" Condition="'$(TargetFramework)' == 'net11.0'" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.8" Condition="'$(TargetFramework)' != 'net11.0'" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="11.0.0-preview.7.26381.103" Condition="'$(TargetFramework)' == 'net11.0'" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" Condition="'$(TargetFramework)' != 'net11.0'" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.7.26381.103" Condition="'$(TargetFramework)' == 'net11.0'" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" Condition="'$(TargetFramework)' != 'net11.0'" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0-preview.7.26381.103" Condition="'$(TargetFramework)' == 'net11.0'" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" Condition="'$(TargetFramework)' != 'net11.0'" />
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="11.0.0-preview.7.26381.103" Condition="'$(TargetFramework)' == 'net11.0'" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.8" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.8" Condition="'$(TargetFramework)' != 'net11.0'" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="11.0.0-preview.7.26381.103" Condition="'$(TargetFramework)' == 'net11.0'" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" Condition="'$(TargetFramework)' != 'net11.0'" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0-preview.7.26381.103" Condition="'$(TargetFramework)' == 'net11.0'" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.8" Condition="'$(TargetFramework)' != 'net11.0'" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="11.0.0-preview.7.26381.103" Condition="'$(TargetFramework)' == 'net11.0'" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.8" />
