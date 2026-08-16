@@ -206,6 +206,8 @@ jobs:
 
   compute-integration-matrix-net11:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [ discover-integration-v2-tests, get-dapr-versions ]
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
@@ -325,6 +327,8 @@ jobs:
     name: ${{ matrix.prefix }}-${{ matrix['dapr-runtime-versions'].version }}-${{ matrix.projectName }}
     needs: [ compute-integration-matrix-net11 ]
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -443,6 +447,8 @@ jobs:
     name: Unit Tests .NET 11.0 / ${{ matrix.project }}
     needs: discover-unit-test-projects
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
