@@ -30,11 +30,16 @@ public class WorkflowGrpcClientTests
         var serializer = new StubSerializer { SerializeResult = "{\"x\":1}" };
 
         CreateInstanceRequest? capturedRequest = null;
+        CallOptions? capturedCallOptions = null;
 
         var grpcClientMock = CreateGrpcClientMock();
         grpcClientMock
             .Setup(x => x.StartInstanceAsync(It.IsAny<CreateInstanceRequest>(), It.IsAny<CallOptions>()))
-            .Callback<CreateInstanceRequest, CallOptions>((r, _) => capturedRequest = r)
+            .Callback<CreateInstanceRequest, CallOptions>((r, options) =>
+            {
+                capturedRequest = r;
+                capturedCallOptions = options;
+            })
             .Returns(CreateAsyncUnaryCall(new CreateInstanceResponse { InstanceId = "id-from-sidecar" }));
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
@@ -46,6 +51,7 @@ public class WorkflowGrpcClientTests
         Assert.Equal("instance-123", capturedRequest!.InstanceId);
         Assert.Equal("MyWorkflow", capturedRequest.Name);
         Assert.Equal("{\"x\":1}", capturedRequest.Input);
+        Assert.True(capturedCallOptions?.IsWaitForReady);
     }
 
     [Fact]
