@@ -46,6 +46,83 @@ jobs:
           name: packages
           path: ${{ env.NUPKG_OUTDIR }}
 
+  # Builds and tests the F# example projects and their companion C# "glue"
+  # projects (which apply the C#-only source generators on behalf of F#).
+  # The F# examples are pinned to net10.0 via their per-directory
+  # Directory.Build.props, so this job runs on .NET 10 only (no 8/9/10 matrix).
+  fsharp-examples:
+    name: F# Examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          clean: true
+      - name: Parse release version
+        run: python ./.github/scripts/get_release_version.py
+      - name: Setup .NET 10.0
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          dotnet-quality: 'ga'
+      - name: Restore F# projects
+        id: restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t projects < <(find examples -name "*.fsproj" -o -name "*.Glue.csproj" | sort)
+          if [ "${#projects[@]}" -eq 0 ]; then
+            echo "No F# example projects found" >&2
+            exit 1
+          fi
+          for proj in "${projects[@]}"; do
+            echo "Restoring $proj"
+            dotnet restore "$proj"
+          done
+      - name: Build F# projects
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t projects < <(find examples -name "*.fsproj" -o -name "*.Glue.csproj" | sort)
+          for proj in "${projects[@]}"; do
+            echo "Building $proj"
+            dotnet build "$proj" --configuration release --no-restore
+          done
+      - name: Test F# projects
+        id: tests
+        continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t projects < <(find examples -name "*.Tests.fsproj" | sort)
+          if [ "${#projects[@]}" -eq 0 ]; then
+            echo "No F# test projects found" >&2
+            exit 1
+          fi
+          for proj in "${projects[@]}"; do
+            echo "Testing $proj"
+            dotnet test "$proj" \
+              --configuration release \
+              --no-restore \
+              --logger "trx;LogFilePrefix=fsharp" \
+              --logger "GitHubActions;report-warnings=false" \
+              --logger "console;verbosity=detailed" \
+              --results-directory "${{ github.workspace }}/TestResults" \
+              /p:GITHUB_ACTIONS=false
+          done
+        timeout-minutes: 30
+      - name: Check test failure in PR
+        if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
+        run: exit 1
+      - name: Parse Trx files
+        uses: NasAmin/trx-parser@v0.2.0
+        id: trx-parser
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository # does not work on PRs from forks
+        with:
+          TRX_PATH: ${{ github.workspace }}/TestResults
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   discover-integration-v2-tests:
     runs-on: ubuntu-latest
     outputs:
@@ -337,7 +414,7 @@ jobs:
     uses: ./.github/workflows/itests.yml
   discover:
     name: 'Discover Packages'
-    needs: ['build', 'ci-unit-tests-gate', 'ci-integration-tests-gate']
+    needs: ['build', 'fsharp-examples', 'ci-unit-tests-gate', 'ci-integration-tests-gate']
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
