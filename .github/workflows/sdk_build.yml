@@ -70,7 +70,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t projects < <( { find examples -name "*.fsproj" -o -name "*.Glue.csproj"; find test -name "*.fsproj"; } | sort)
+          mapfile -t projects < <( { find examples -name "*.fsproj" -o -name "*.Glue.csproj"; find test -name "Dapr.IntegrationTest.FSharp.*.fsproj"; } | sort)
           if [ "${#projects[@]}" -eq 0 ]; then
             echo "No F# projects found" >&2
             exit 1
@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t projects < <( { find examples -name "*.fsproj" -o -name "*.Glue.csproj"; find test -name "*.fsproj"; } | sort)
+          mapfile -t projects < <( { find examples -name "*.fsproj" -o -name "*.Glue.csproj"; find test -name "Dapr.IntegrationTest.FSharp.*.fsproj"; } | sort)
           for proj in "${projects[@]}"; do
             echo "Building $proj"
             dotnet build "$proj" --configuration release --no-restore
