@@ -328,6 +328,7 @@ jobs:
     needs: [ compute-integration-matrix-net11 ]
     runs-on: ${{ matrix.os }}
     permissions:
+      checks: write
       contents: read
     timeout-minutes: 60
     strategy:
@@ -447,6 +448,7 @@ jobs:
     needs: discover-unit-test-projects
     runs-on: ubuntu-latest
     permissions:
+      checks: write
       contents: read
     strategy:
       fail-fast: false
