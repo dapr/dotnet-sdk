@@ -9,4 +9,5 @@ type ILocalSecrets =
     [<Secret("secret1")>]
     abstract member Secret1: string with get
 
+    [<Secret("secret2")>]
     abstract member Secret2: string with get
