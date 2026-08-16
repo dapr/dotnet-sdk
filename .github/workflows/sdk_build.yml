@@ -357,8 +357,6 @@ jobs:
           --logger "console;verbosity=detailed" \
           --results-directory "${{ github.workspace }}/TestResults" \
           /p:RuntimeIdentifier=linux-x64 \
-          /p:CollectCoverage=true \
-          /p:CoverletOutputFormat=opencover \
           /p:GITHUB_ACTIONS=false
         timeout-minutes: 60
       - name: Parse Trx files
@@ -476,8 +474,6 @@ jobs:
         --logger "console;verbosity=detailed" \
         --results-directory "${{ github.workspace }}/TestResults" \
         /p:RuntimeIdentifier=linux-x64 \
-        /p:CollectCoverage=true \
-        /p:CoverletOutputFormat=opencover \
         /p:GITHUB_ACTIONS=false
       timeout-minutes: 60
     - name: Parse Trx files
