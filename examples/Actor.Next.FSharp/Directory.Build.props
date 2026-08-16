@@ -7,4 +7,8 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+    <PackageReference Include="GitHubActionsTestLogger" />
+  </ItemGroup>
 </Project>
