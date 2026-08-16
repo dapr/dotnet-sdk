@@ -353,7 +353,6 @@ jobs:
           --configuration release \
           --framework ${{ matrix.framework }} \
           --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
-          --logger "GitHubActions;report-warnings=false" \
           --logger "console;verbosity=detailed" \
           --results-directory "${{ github.workspace }}/TestResults" \
           /p:RuntimeIdentifier=linux-x64 \
@@ -472,7 +471,6 @@ jobs:
         --configuration release \
         --framework net11.0 \
         --logger "trx;LogFilePrefix=net11" \
-        --logger "GitHubActions;report-warnings=false" \
         --logger "console;verbosity=detailed" \
         --results-directory "${{ github.workspace }}/TestResults" \
         /p:RuntimeIdentifier=linux-x64 \
