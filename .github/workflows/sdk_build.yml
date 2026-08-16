@@ -92,25 +92,61 @@ jobs:
             echo "Building $proj"
             dotnet build "$proj" --configuration release --no-restore
           done
-      - name: Test F# projects
-        id: tests
+      - name: Test lightweight F# generator smoke projects
+        id: lightweight-tests
         continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
         shell: bash
         run: |
           set -euo pipefail
-          # F# test projects: example unit tests (*.Tests.fsproj) and the
-          # testcontainer-based integration tests (Dapr.IntegrationTest.FSharp.*).
-          mapfile -t projects < <( { find examples -name "*.Tests.fsproj"; find test -name "Dapr.IntegrationTest.FSharp.*.fsproj"; } | sort)
+          mapfile -t projects < <(
+            {
+              find examples -name "*.Tests.fsproj"
+              printf '%s\n' \
+                test/Dapr.IntegrationTest.FSharp.Actors.Next/Dapr.IntegrationTest.FSharp.Actors.Next.fsproj \
+                test/Dapr.IntegrationTest.FSharp.Workflow.Versioning/Dapr.IntegrationTest.FSharp.Workflow.Versioning.fsproj
+            } | sort
+          )
           if [ "${#projects[@]}" -eq 0 ]; then
-            echo "No F# test projects found" >&2
+            echo "No lightweight F# generator smoke projects found" >&2
             exit 1
           fi
           for proj in "${projects[@]}"; do
             echo "Testing $proj"
+            project_name="$(basename "$proj" .fsproj)"
             dotnet test "$proj" \
               --configuration release \
+              --no-build \
               --no-restore \
-              --logger "trx;LogFilePrefix=fsharp" \
+              --logger "trx;LogFilePrefix=$project_name" \
+              --logger "GitHubActions;report-warnings=false" \
+              --logger "console;verbosity=detailed" \
+              --results-directory "${{ github.workspace }}/TestResults" \
+              /p:GITHUB_ACTIONS=false
+          done
+        timeout-minutes: 30
+      - name: Test container-backed F# integration smoke projects
+        id: container-tests
+        continue-on-error: true # proceed if tests fail to allow for the report generation in master or next step failure in PR
+        shell: bash
+        run: |
+          set -euo pipefail
+          projects=(
+            test/Dapr.IntegrationTest.FSharp.AI/Dapr.IntegrationTest.FSharp.AI.fsproj
+            test/Dapr.IntegrationTest.FSharp.Cryptography/Dapr.IntegrationTest.FSharp.Cryptography.fsproj
+            test/Dapr.IntegrationTest.FSharp.DistributedLock/Dapr.IntegrationTest.FSharp.DistributedLock.fsproj
+            test/Dapr.IntegrationTest.FSharp.Jobs/Dapr.IntegrationTest.FSharp.Jobs.fsproj
+            test/Dapr.IntegrationTest.FSharp.SecretsManagement/Dapr.IntegrationTest.FSharp.SecretsManagement.fsproj
+            test/Dapr.IntegrationTest.FSharp.StateManagement/Dapr.IntegrationTest.FSharp.StateManagement.fsproj
+            test/Dapr.IntegrationTest.FSharp.Workflow/Dapr.IntegrationTest.FSharp.Workflow.fsproj
+          )
+          for proj in "${projects[@]}"; do
+            echo "Testing $proj"
+            project_name="$(basename "$proj" .fsproj)"
+            dotnet test "$proj" \
+              --configuration release \
+              --no-build \
+              --no-restore \
+              --logger "trx;LogFilePrefix=$project_name" \
               --logger "GitHubActions;report-warnings=false" \
               --logger "console;verbosity=detailed" \
               --results-directory "${{ github.workspace }}/TestResults" \
@@ -118,7 +154,7 @@ jobs:
           done
         timeout-minutes: 30
       - name: Check test failure in PR
-        if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
+        if: github.event_name == 'pull_request' && (steps.lightweight-tests.outcome != 'success' || steps.container-tests.outcome != 'success')
         run: exit 1
       - name: Parse Trx files
         uses: NasAmin/trx-parser@v0.2.0
