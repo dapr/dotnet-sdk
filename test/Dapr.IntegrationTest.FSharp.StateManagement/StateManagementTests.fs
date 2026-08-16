@@ -54,7 +54,10 @@ type StateManagementTests() =
             Assert.Equal("medium", loaded.Size)
             Assert.Equal("blue", loaded.Color)
 
-        do! store.DeleteStateAsync(key, cancellationToken = TestContext.Current.CancellationToken)
-            let! deleted = store.GetStateAsync<Widget>(key, cancellationToken = TestContext.Current.CancellationToken)
-            Assert.Null(box deleted)
+        do!
+            store.DeleteStateAsync(key, cancellationToken = TestContext.Current.CancellationToken)
+            |> Async.AwaitTask
+
+        let! deleted = store.GetStateAsync<Widget>(key, cancellationToken = TestContext.Current.CancellationToken)
+        Assert.Null(box deleted)
     }
