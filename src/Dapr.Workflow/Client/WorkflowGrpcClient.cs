@@ -348,7 +348,8 @@ internal sealed class WorkflowGrpcClient(
     }
 
     private CallOptions CreateCallOptions(CancellationToken cancellationToken) =>
-        DaprClientUtilities.ConfigureGrpcCallOptions(typeof(DaprWorkflowClient).Assembly, daprApiToken, cancellationToken);
+        DaprClientUtilities.ConfigureGrpcCallOptions(typeof(DaprWorkflowClient).Assembly, daprApiToken, cancellationToken)
+            .WithWaitForReady();
 
     private static readonly TimeSpan MinWaitRetryDelay = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan MaxWaitRetryDelay = TimeSpan.FromSeconds(15);
