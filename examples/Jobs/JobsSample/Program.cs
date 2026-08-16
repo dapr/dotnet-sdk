@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-#pragma warning disable CS0618 // Type or member is obsolete
 using System.Text;
 using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
@@ -62,6 +61,21 @@ await daprJobsClient.ScheduleJobAsync("myJob", DaprJobSchedule.FromDuration(Time
     Encoding.UTF8.GetBytes("This is a test"), repeats: 10);
 logger.LogInformation("Scheduled one-time job 'myJob'");
 
+// List all jobs currently registered for this app ID and log their names/schedules.
+var registeredJobs = await daprJobsClient.ListJobsAsync();
+logger.LogInformation("Found {count} registered job(s) for this app ID", registeredJobs.Count);
+foreach (var registered in registeredJobs)
+{
+    logger.LogInformation("  - '{name}' (schedule: {schedule})",
+        registered.Name, registered.Schedule.ExpressionValue);
+}
+
+// Purge all jobs for this app ID. The prefix overload lets you target jobs by name prefix;
+// passing null (or PurgeAllJobsAsync) instructs the runtime to delete every job for the app.
+// Uncomment the lines below to exercise the purge path while running the sample.
+//
+// await daprJobsClient.PurgeAllJobsAsync();
+// logger.LogInformation("Purged all jobs for this app ID");
+
 app.Run();
 
-#pragma warning restore CS0618 // Type or member is obsolete
