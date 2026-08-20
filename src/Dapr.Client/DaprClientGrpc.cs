@@ -349,6 +349,11 @@ internal class DaprClientGrpc : DaprClient
         }
 
         var options = CreateCallOptions(headers: null, cancellationToken);
+
+        // The sidecar forwards this call's metadata verbatim into the output binding component's metadata
+        // (e.g. Azure Blob/Service Bus properties), which must be valid UTF-8 text, so strip any binary
+        // ("-bin" suffixed) gRPC metadata such as grpc-trace-bin before it can be misrouted there.
+        RemoveBinaryMetadata(options.Headers);
         try
         {
             return await client.InvokeBindingAsync(envelope, options);
@@ -2306,6 +2311,17 @@ internal class DaprClientGrpc : DaprClient
         }
 
         return options;
+    }
+
+    private static void RemoveBinaryMetadata(Metadata headers)
+    {
+        for (var i = headers.Count - 1; i >= 0; i--)
+        {
+            if (headers[i].Key.EndsWith("-bin", StringComparison.OrdinalIgnoreCase))
+            {
+                headers.RemoveAt(i);
+            }
+        }
     }
 
     /// <summary>
