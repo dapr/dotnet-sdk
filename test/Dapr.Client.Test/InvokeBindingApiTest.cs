@@ -16,6 +16,7 @@ namespace Dapr.Client.Test;
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -156,6 +157,36 @@ public class InvokeBindingApiTest
             });
     }
 
+    [Fact]
+    public async Task InvokeBindingAsync_StripsBinaryHeadersButKeepsTraceparent()
+    {
+        await using var client = TestClient.CreateForDaprClient();
+
+        var previousActivity = Activity.Current;
+        using var activity = new Activity("test-binding");
+        activity.SetIdFormat(ActivityIdFormat.W3C);
+        activity.Start();
+
+        try
+        {
+            var invokeRequest = new InvokeRequest() { RequestParameter = "Hello " };
+            var request = await client.CaptureGrpcRequestAsync(async daprClient =>
+            {
+                await daprClient.InvokeBindingAsync<InvokeRequest>("test", "create", invokeRequest);
+            });
+
+            request.Dismiss();
+
+            // The runtime copies InvokeBinding call metadata into string binding component metadata,
+            // which must be valid text, so binary (-bin) gRPC metadata must not be sent on this call.
+            request.Request.Headers.Any(h => h.Key.EndsWith("-bin", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
+            request.Request.Headers.Contains("traceparent").ShouldBeTrue();
+        }
+        finally
+        {
+            Activity.Current = previousActivity;
+        }
+    }
 
     [Fact]
     public async Task InvokeBindingAsync_WithCancelledToken()

@@ -349,6 +349,7 @@ internal class DaprClientGrpc : DaprClient
         }
 
         var options = CreateCallOptions(headers: null, cancellationToken);
+        RemoveBinaryMetadata(options.Headers);
         try
         {
             return await client.InvokeBindingAsync(envelope, options);
@@ -2306,6 +2307,28 @@ internal class DaprClientGrpc : DaprClient
         }
 
         return options;
+    }
+
+    /// <summary>
+    /// Removes binary gRPC metadata entries (keys ending in "-bin", such as grpc-trace-bin) because
+    /// the runtime copies InvokeBinding call metadata into string binding component metadata, where
+    /// raw bytes break components that require text values. Trace context still propagates via the
+    /// traceparent and tracestate headers.
+    /// </summary>
+    private static void RemoveBinaryMetadata(Metadata headers)
+    {
+        if (headers is null)
+        {
+            return;
+        }
+
+        for (var i = headers.Count - 1; i >= 0; i--)
+        {
+            if (headers[i].Key.EndsWith("-bin", StringComparison.OrdinalIgnoreCase))
+            {
+                headers.RemoveAt(i);
+            }
+        }
     }
 
     /// <summary>
