@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cart.Next.FSharp.Example01.Actors\Cart.Next.FSharp.Example01.Actors.fsproj" />
+    <ProjectReference Include="..\Cart.Next.FSharp.Example01.Glue\Cart.Next.FSharp.Example01.Glue.csproj" />
+  </ItemGroup>
+
+</Project>

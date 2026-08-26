@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Actors.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Dapr.Actors.Next.Abstractions\Dapr.Actors.Next.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Actors.Next.Core\Dapr.Actors.Next.Core.csproj" />
+  </ItemGroup>
+
+</Project>

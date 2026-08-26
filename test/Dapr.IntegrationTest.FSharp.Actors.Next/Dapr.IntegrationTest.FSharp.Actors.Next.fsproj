@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\examples\Actor.Next.FSharp\01-Cart\Cart.Next.FSharp.Example01.Actors\Cart.Next.FSharp.Example01.Actors.fsproj" />
+    <ProjectReference Include="..\..\examples\Actor.Next.FSharp\01-Cart\Cart.Next.FSharp.Example01.Glue\Cart.Next.FSharp.Example01.Glue.csproj" />
+    <ProjectReference Include="..\..\src\Dapr.Actors.Next.Core\Dapr.Actors.Next.Core.csproj" />
+    <ProjectReference Include="..\..\src\Dapr.Actors.Next.Testing\Dapr.Actors.Next.Testing.csproj" />
+    <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
+    <ProjectReference Include="..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="ActorRuntimeTests.fs" />
+  </ItemGroup>
+
+</Project>

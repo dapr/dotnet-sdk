@@ -3,14 +3,14 @@
   <Import Project="dapr_common.props" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <LangVersion>12.0</LangVersion>
+    <LangVersion Condition="'$(MSBuildProjectExtension)' == '.csproj'">12.0</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningLevel>4</WarningLevel>
     <WarnOnPackingNonPackableProject>false</WarnOnPackingNonPackableProject>
    </PropertyGroup>
 
    <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)\IsExternalInit.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)\IsExternalInit.cs" Condition="'$(MSBuildProjectExtension)' == '.csproj'" />
    </ItemGroup>
 
   <!-- Cls Compliant -->

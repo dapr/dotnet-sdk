@@ -166,6 +166,10 @@
     </Target>
 
     <ItemGroup>
+        <None Include="buildTransitive\Dapr.StateManagement.props" Pack="true" PackagePath="buildTransitive\Dapr.StateManagement.props" />
+    </ItemGroup>
+
+    <ItemGroup>
         <Folder Include="Properties\" />
     </ItemGroup>
 </Project>
