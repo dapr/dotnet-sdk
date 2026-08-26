@@ -126,6 +126,13 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
                         Diagnostic: (string?)$"Rejected '{symbolName}': does not inherit from Workflow<,> (base type: {baseTypeInfo})");
                 }
 
+                // Abstract or open-generic types cannot be instantiated; skip them.
+                if (symbol.IsAbstract || symbol.TypeParameters.Length > 0)
+                {
+                    return (Workflow: (DiscoveredWorkflow?)null,
+                        Diagnostic: (string?)$"Rejected '{symbolName}': abstract or open-generic workflow types are not registered.");
+                }
+
                 // Look for [WorkflowVersion] by symbol identity
                 AttributeData? attrData = null;
                 if (ks.WorkflowVersionAttribute is not null)
@@ -408,6 +415,10 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
                 continue;
 
             if (!InheritsFromWorkflow(type, knownSymbols.WorkflowBase))
+                continue;
+
+            // Skip abstract types and open generics — they can't be instantiated.
+            if (type.IsAbstract || type.TypeParameters.Length > 0)
                 continue;
 
             AttributeData? attrData = null;
