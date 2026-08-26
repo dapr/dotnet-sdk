@@ -247,8 +247,9 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             return null;
         }
 
+        var interfaceType = TypeName(symbol);
         var methods = GetActorMethods(symbol)
-            .Select(method => BuildMethod(method, known))
+            .Select(method => BuildMethod(method, known, interfaceType))
             .Where(method => method is not null)
             .Cast<ActorMethodModel>()
             .OrderBy(method => method.Name, StringComparer.Ordinal)
@@ -263,7 +264,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             Methods: methods);
     }
 
-    private static ActorMethodModel? BuildMethod(IMethodSymbol method, KnownSymbols known)
+    private static ActorMethodModel? BuildMethod(IMethodSymbol method, KnownSymbols known, string interfaceType)
     {
         if (method.MethodKind != MethodKind.Ordinary)
         {
@@ -297,6 +298,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             TypeName(method.ReturnType),
             returnKind,
             returnType,
+            interfaceType,
             parameters,
             payloadParameters,
             "__" + method.Name + "Args");
@@ -977,14 +979,15 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         }
 
         var arguments = string.Join(", ", method.Parameters.Select(parameter => parameter.IsCancellationToken ? "cancellationToken" : parameter.Name));
+        var typedRef = $"(({method.InterfaceType})typed)";
         if (method.ReturnKind is MethodReturnKind.Task or MethodReturnKind.ValueTask)
         {
-            sb.AppendLine($"                    return CompleteVoidAsync(typed.{method.Name}({arguments}));");
+            sb.AppendLine($"                    return CompleteVoidAsync({typedRef}.{method.Name}({arguments}));");
         }
         else
         {
             var resultType = method.ReturnType.Substring(method.ReturnType.IndexOf('<') + 1).TrimEnd('>');
-            sb.AppendLine($"                    return CompleteResultAsync<{resultType}>(typed.{method.Name}({arguments}));");
+            sb.AppendLine($"                    return CompleteResultAsync<{resultType}>({typedRef}.{method.Name}({arguments}));");
         }
     }
 
@@ -1496,6 +1499,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         string ReturnType,
         MethodReturnKind ReturnKind,
         string ReturnTypeExpression,
+        string InterfaceType,
         ImmutableArray<ActorParameterModel> Parameters,
         ImmutableArray<ActorParameterModel> PayloadParameters,
         string ArgsTypeName);

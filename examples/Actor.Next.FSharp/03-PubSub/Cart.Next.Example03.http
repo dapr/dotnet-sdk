@@ -1,0 +1,47 @@
+@host = http://localhost:5000
+@cartId = demo
+@otherCartId = other
+@sku = sku-1
+
+### Reset demo cart
+DELETE {{host}}/carts/{{cartId}}
+
+### Reset other cart
+DELETE {{host}}/carts/{{otherCartId}}
+
+### Mark demo cart item unavailable
+POST {{host}}/carts/{{cartId}}/unavailable
+Content-Type: application/json
+
+{
+  "sku": "{{sku}}"
+}
+
+### Mark other cart item unavailable
+POST {{host}}/carts/{{otherCartId}}/unavailable
+Content-Type: application/json
+
+{
+  "sku": "{{sku}}"
+}
+
+### Read demo cart before restock
+GET {{host}}/carts/{{cartId}}
+
+### Publish restock event for demo cart
+POST {{host}}/inventory/restocked
+Content-Type: application/json
+
+{
+  "cartId": "{{cartId}}",
+  "sku": "{{sku}}"
+}
+
+### Read demo cart after restock
+GET {{host}}/carts/{{cartId}}
+
+### Check demo cart item availability
+GET {{host}}/carts/{{cartId}}/items/{{sku}}/availability
+
+### Check other cart item availability
+GET {{host}}/carts/{{otherCartId}}/items/{{sku}}/availability

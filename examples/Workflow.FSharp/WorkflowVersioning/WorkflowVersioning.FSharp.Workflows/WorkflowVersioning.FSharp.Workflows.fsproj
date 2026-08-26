@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Models.fs" />
+    <Compile Include="Services.fs" />
+    <Compile Include="Activities.fs" />
+    <Compile Include="Workflows.fs" />
+    <Compile Include="Versioning.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Workflow.Versioning.Abstractions\Dapr.Workflow.Versioning.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

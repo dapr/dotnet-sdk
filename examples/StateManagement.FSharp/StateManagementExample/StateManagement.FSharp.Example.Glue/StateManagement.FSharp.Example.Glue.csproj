@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <DaprStateManagementScanReferences>true</DaprStateManagementScanReferences>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <CompilerVisibleProperty Include="DaprStateManagementScanReferences" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\StateManagement.FSharp.Example.Types\StateManagement.FSharp.Example.Types.fsproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.StateManagement.Abstractions\Dapr.StateManagement.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.StateManagement.Runtime\Dapr.StateManagement.Runtime.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.StateManagement.Generators\Dapr.StateManagement.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+  </ItemGroup>
+
+</Project>

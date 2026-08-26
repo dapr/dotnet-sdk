@@ -110,6 +110,10 @@
     </ItemGroup>
   </Target>
 
+  <ItemGroup>
+    <None Include="buildTransitive\Dapr.Workflow.props" Pack="true" PackagePath="buildTransitive\Dapr.Workflow.props" />
+  </ItemGroup>
+
   <!-- ── Build and embed both source generators under analyzers/dotnet/cs/ (once, on first TFM) ── -->
   <ItemGroup>
     <_WorkflowGeneratorProj Include="..\Dapr.Workflow.Analyzers\Dapr.Workflow.Analyzers.csproj" />

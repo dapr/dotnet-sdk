@@ -1,0 +1,8 @@
+<Project>
+  <ItemGroup>
+    <CompilerVisibleProperty Include="DaprStateManagementScanReferences" />
+  </ItemGroup>
+  <PropertyGroup>
+    <DaprStateManagementScanReferences Condition="'$(DaprStateManagementScanReferences)' == ''">false</DaprStateManagementScanReferences>
+  </PropertyGroup>
+</Project>

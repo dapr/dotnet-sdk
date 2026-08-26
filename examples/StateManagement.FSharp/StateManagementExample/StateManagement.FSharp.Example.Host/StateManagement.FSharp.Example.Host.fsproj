@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks></TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\StateManagement.FSharp.Example.Types\StateManagement.FSharp.Example.Types.fsproj" />
+    <ProjectReference Include="..\StateManagement.FSharp.Example.Glue\StateManagement.FSharp.Example.Glue.csproj" />
+  </ItemGroup>
+
+</Project>

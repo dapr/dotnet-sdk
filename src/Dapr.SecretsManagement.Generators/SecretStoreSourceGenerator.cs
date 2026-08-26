@@ -34,6 +34,7 @@ public sealed class SecretStoreSourceGenerator : IIncrementalGenerator
 {
     private const string SecretStoreAttributeFullName = "Dapr.SecretsManagement.Abstractions.SecretStoreAttribute";
     private const string SecretAttributeFullName = "Dapr.SecretsManagement.Abstractions.SecretAttribute";
+    private const string ScanReferencesPropertyName = "build_property.DaprSecretsManagementScanReferences";
 
     /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -43,6 +44,11 @@ public sealed class SecretStoreSourceGenerator : IIncrementalGenerator
             new KnownSymbols(
                 SecretStoreAttribute: c.GetTypeByMetadataName(SecretStoreAttributeFullName),
                 SecretAttribute: c.GetTypeByMetadataName(SecretAttributeFullName)));
+
+        // Read the ScanReferences MSBuild property.
+        var scanReferences = context.AnalyzerConfigOptionsProvider.Select((options, _) =>
+            options.GlobalOptions.TryGetValue(ScanReferencesPropertyName, out var value)
+            && string.Equals(value, "true", StringComparison.OrdinalIgnoreCase));
 
         // Report diagnostic if the attribute types are not found.
         context.RegisterSourceOutput(known, (spc, ks) =>
@@ -73,80 +79,136 @@ public sealed class SecretStoreSourceGenerator : IIncrementalGenerator
             })
             .Where(static s => s is not null)!;
 
-        // Combine candidates with known symbols and generate.
-        var combined = candidates.Combine(known);
+        // Referenced-assembly pipeline: when ScanReferences is enabled, enumerate interfaces
+        // from referenced assemblies so types authored in F# (or other non-C# languages) are
+        // discovered by the generator.
+        var referencedInterfaces = context.CompilationProvider
+            .Combine(known)
+            .Combine(scanReferences)
+            .SelectMany((input, _) =>
+            {
+                var ((compilation, ks), scan) = input;
+                if (!scan || ks.SecretStoreAttribute is null)
+                    return ImmutableArray<INamedTypeSymbol>.Empty;
+
+                var list = new List<INamedTypeSymbol>();
+                foreach (var assembly in compilation.SourceModule.ReferencedAssemblySymbols)
+                {
+                    foreach (var type in EnumerateTypes(assembly.GlobalNamespace))
+                    {
+                        if (type.TypeKind == TypeKind.Interface)
+                            list.Add(type);
+                    }
+                }
+                return list.ToImmutableArray();
+            });
+
+        // Merge syntax-discovered and reference-discovered candidates, deduplicating by symbol identity.
+        var allCandidates = candidates.Collect()
+            .Combine(referencedInterfaces.Collect())
+            .Select((input, _) =>
+            {
+                var (fromSyntax, fromReferences) = input;
+                var seen = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+                var result = new List<INamedTypeSymbol>();
+                foreach (var s in fromSyntax)
+                {
+                    if (s is not null && seen.Add(s))
+                        result.Add(s);
+                }
+                foreach (var r in fromReferences)
+                {
+                    if (seen.Add(r))
+                        result.Add(r);
+                }
+                return result.ToImmutableArray();
+            });
+
+        // Combine merged candidates with known symbols and generate for each unique interface.
+        var combined = allCandidates.Combine(known);
 
         context.RegisterSourceOutput(combined, (spc, pair) =>
         {
-            var (interfaceSymbol, ks) = pair;
-            if (ks.SecretStoreAttribute is null || interfaceSymbol is null)
+            var (interfaces, ks) = pair;
+            if (ks.SecretStoreAttribute is null)
                 return;
 
-            // Check if the interface has [SecretStore] attribute.
-            var storeAttrData = interfaceSymbol.GetAttributes().FirstOrDefault(a =>
-                SymbolEqualityComparer.Default.Equals(a.AttributeClass, ks.SecretStoreAttribute));
-
-            if (storeAttrData is null)
-                return;
-
-            // Extract the store name from the constructor argument.
-            if (storeAttrData.ConstructorArguments.Length < 1 ||
-                storeAttrData.ConstructorArguments[0].Value is not string storeName)
-                return;
-
-            // Collect properties and their secret key mappings.
-            var properties = new List<(string PropertyName, string SecretKey, string PropertyType)>();
-
-            foreach (var member in interfaceSymbol.GetMembers())
+            foreach (var interfaceSymbol in interfaces)
             {
-                if (member is not IPropertySymbol prop)
-                    continue;
+                ProcessInterface(spc, interfaceSymbol, ks);
+            }
+        });
+    }
 
-                if (prop.GetMethod is null)
-                    continue;
+    private static void ProcessInterface(
+        SourceProductionContext spc,
+        INamedTypeSymbol interfaceSymbol,
+        KnownSymbols ks)
+    {
+        // Check if the interface has [SecretStore] attribute.
+        var storeAttrData = interfaceSymbol.GetAttributes().FirstOrDefault(a =>
+            SymbolEqualityComparer.Default.Equals(a.AttributeClass, ks.SecretStoreAttribute));
 
-                var secretKey = prop.Name;
+        if (storeAttrData is null)
+            return;
 
-                // Check for [Secret("key")] override.
-                if (ks.SecretAttribute is not null)
+        // Extract the store name from the constructor argument.
+        if (storeAttrData.ConstructorArguments.Length < 1 ||
+            storeAttrData.ConstructorArguments[0].Value is not string storeName)
+            return;
+
+        // Collect properties and their secret key mappings.
+        var properties = new List<(string PropertyName, string SecretKey, string PropertyType)>();
+
+        foreach (var member in interfaceSymbol.GetMembers())
+        {
+            if (member is not IPropertySymbol prop)
+                continue;
+
+            if (prop.GetMethod is null)
+                continue;
+
+            var secretKey = prop.Name;
+
+            // Check for [Secret("key")] override.
+            if (ks.SecretAttribute is not null)
+            {
+                var secretAttrData = prop.GetAttributes().FirstOrDefault(a =>
+                    SymbolEqualityComparer.Default.Equals(a.AttributeClass, ks.SecretAttribute));
+
+                if (secretAttrData is not null &&
+                    secretAttrData.ConstructorArguments.Length > 0 &&
+                    secretAttrData.ConstructorArguments[0].Value is string overrideName)
                 {
-                    var secretAttrData = prop.GetAttributes().FirstOrDefault(a =>
-                        SymbolEqualityComparer.Default.Equals(a.AttributeClass, ks.SecretAttribute));
-
-                    if (secretAttrData is not null &&
-                        secretAttrData.ConstructorArguments.Length > 0 &&
-                        secretAttrData.ConstructorArguments[0].Value is string overrideName)
-                    {
-                        secretKey = overrideName;
-                    }
+                    secretKey = overrideName;
                 }
-
-                properties.Add((prop.Name, secretKey, prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
             }
 
-            if (properties.Count == 0)
-                return;
+            properties.Add((prop.Name, secretKey, prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)));
+        }
 
-            // Resolve naming.
-            var interfaceName = interfaceSymbol.Name;
-            var namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
-                ? null
-                : interfaceSymbol.ContainingNamespace.ToDisplayString();
+        if (properties.Count == 0)
+            return;
 
-            // Implementation class name: strip leading 'I' from interface name, append "SecretStoreClient".
-            var implName = interfaceName.StartsWith("I", StringComparison.Ordinal) && interfaceName.Length > 1 && char.IsUpper(interfaceName[1])
-                ? interfaceName.Substring(1) + "SecretStoreClient"
-                : interfaceName + "SecretStoreClient";
+        // Resolve naming.
+        var interfaceName = interfaceSymbol.Name;
+        var namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
+            ? null
+            : interfaceSymbol.ContainingNamespace.ToDisplayString();
 
-            var source = GenerateSource(
-                namespaceName, interfaceName, implName, storeName,
-                interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                properties);
+        // Implementation class name: strip leading 'I' from interface name, append "SecretStoreClient".
+        var implName = interfaceName.StartsWith("I", StringComparison.Ordinal) && interfaceName.Length > 1 && char.IsUpper(interfaceName[1])
+            ? interfaceName.Substring(1) + "SecretStoreClient"
+            : interfaceName + "SecretStoreClient";
 
-            var fqn = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            var hintName = implName + "_" + GetStableHash(fqn).ToString("X8") + ".g.cs";
-            spc.AddSource(hintName, source);
-        });
+        var source = GenerateSource(
+            namespaceName, interfaceName, implName, storeName,
+            interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            properties);
+
+        var fqn = interfaceSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var hintName = implName + "_" + GetStableHash(fqn).ToString("X8") + ".g.cs";
+        spc.AddSource(hintName, source);
     }
 
     private static string GenerateSource(
@@ -303,6 +365,41 @@ public sealed class SecretStoreSourceGenerator : IIncrementalGenerator
                 hash = (hash ^ ch) * 16777619;
             }
             return hash;
+        }
+    }
+
+    /// <summary>
+    /// Recursively enumerates all named types in a namespace and its child namespaces, including nested types.
+    /// </summary>
+    private static IEnumerable<INamedTypeSymbol> EnumerateTypes(INamespaceSymbol ns)
+    {
+        foreach (var type in ns.GetTypeMembers())
+        {
+            yield return type;
+            foreach (var nested in EnumerateNestedTypes(type))
+            {
+                yield return nested;
+            }
+        }
+
+        foreach (var child in ns.GetNamespaceMembers())
+        {
+            foreach (var type in EnumerateTypes(child))
+            {
+                yield return type;
+            }
+        }
+    }
+
+    private static IEnumerable<INamedTypeSymbol> EnumerateNestedTypes(INamedTypeSymbol type)
+    {
+        foreach (var nested in type.GetTypeMembers())
+        {
+            yield return nested;
+            foreach (var child in EnumerateNestedTypes(nested))
+            {
+                yield return child;
+            }
         }
     }
 }
