@@ -164,6 +164,7 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         builder.Services.AddDaprActors(options =>
         {
             options.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(1);
+            options.DrainRebalancedActors = true;
             options.EnableReentrancy = true;
             options.MaxReentrantDepth = 8;
         });
