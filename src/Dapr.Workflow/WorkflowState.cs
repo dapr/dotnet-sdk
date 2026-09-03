@@ -19,7 +19,7 @@ namespace Dapr.Workflow;
 /// <summary>
 /// Represents a snapshot of a workflow instance's current state, including runtime status.
 /// </summary>
-public sealed class WorkflowState
+public sealed class WorkflowState : IWorkflowState
 {
     private readonly WorkflowMetadata? _metadata;
 

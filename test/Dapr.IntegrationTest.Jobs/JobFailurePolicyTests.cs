@@ -76,9 +76,26 @@ public sealed class JobFailurePolicyTests
         var received = await invocationTcs.Task.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
         Assert.Equal(jobName, received);
 
-        var ex = await Assert.ThrowsAnyAsync<DaprException>(() => daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken));
-        Assert.NotNull(ex.InnerException);
-        Assert.Contains("job not found", ex.InnerException.Message);
+        // The runtime removes a completed job (repeats: 1) asynchronously after the
+        // handler returns, so GetJobAsync may succeed briefly after the trigger fires.
+        // Poll until the runtime reports the job as gone.
+        DaprException? notFoundEx = null;
+        for (var attempt = 0; attempt < 15; attempt++)
+        {
+            try
+            {
+                await daprJobsClient.GetJobAsync(jobName, TestContext.Current.CancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken);
+            }
+            catch (DaprException ex)
+            {
+                notFoundEx = ex;
+                break;
+            }
+        }
+        Assert.NotNull(notFoundEx);
+        Assert.NotNull(notFoundEx!.InnerException);
+        Assert.Contains("job not found", notFoundEx.InnerException.Message);
     }
     
     [MinimumDaprRuntimeFact("1.17")]

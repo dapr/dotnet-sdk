@@ -15,9 +15,11 @@ using System.Diagnostics;
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Dispatching;
 using Dapr.Actors.Next.Abstractions.Filters;
+using Dapr.Actors.Next.Abstractions.Options;
 using Dapr.Actors.Next.Abstractions.Registry;
 using Dapr.Actors.Next.Abstractions.Scheduling;
 using Dapr.Actors.Next.Abstractions.State;
+using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.Client;
 using Dapr.Actors.Next.Core.DependencyInjection;
@@ -26,6 +28,7 @@ using Dapr.Actors.Next.Core.Registration;
 using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.State;
+using Dapr.Actors.Next.Core.State.Versioning;
 using Dapr.Actors.Next.Core.Transport;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -97,6 +100,101 @@ public sealed class CoreRuntimeTests
         Assert.DoesNotContain(advertised, static value => value.Contains('\n', StringComparison.Ordinal));
         Assert.Equal("DynamicCounter", System.Text.Encoding.UTF8.GetString(dynamicAdvertisement.Payload.Span));
         Assert.DoesNotContain("DynamicCounter", registry.ActorTypes);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Stream_advertises_global_defaults_in_initial_config()
+    {
+        var harness = new InMemoryTransportHarness();
+        await using var provider = CreateProvider(harness, out _);
+        var service = provider.GetServices<IHostedService>().OfType<SubscribeActorEventsStreamManager>().Single();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        await service.StartAsync(cts.Token);
+        var stream = await harness.WaitForStreamAsync(cts.Token);
+        var advertisement = await stream.ReceiveAsync(cts.Token);
+        await service.StopAsync(cts.Token);
+
+        var config = advertisement.InitialConfig;
+        Assert.NotNull(config);
+        Assert.Null(config!.ActorIdleTimeout);
+        Assert.Null(config.DrainOngoingCallTimeout);
+        Assert.Null(config.DrainRebalancedActors);
+        Assert.Null(config.EnableReentrancy);
+        Assert.Null(config.MaxReentrantDepth);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Stream_advertises_merged_type_options_per_type()
+    {
+        var harness = new InMemoryTransportHarness();
+        await using var provider = CreateConfiguredMultiTypeProvider(
+            harness,
+            configureGlobal: options =>
+            {
+                options.ActorIdleTimeout = TimeSpan.FromMinutes(10);
+                options.MaxReentrantDepth = 8;
+            },
+            counterOptions: null,
+            counterTypeOptions: new DaprActorTypeOptions
+            {
+                IdleTimeout = TimeSpan.FromMinutes(2),
+                EnableReentrancy = true,
+            });
+        var service = provider.GetRequiredService<SubscribeActorEventsStreamManager>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        await service.StartAsync(cts.Token);
+        var advertisements = await ReceiveAdvertisementsAsync(harness, 2, cts.Token);
+        await service.StopAsync(cts.Token);
+
+        var overridden = advertisements["Counter"].InitialConfig;
+        Assert.NotNull(overridden);
+        Assert.Equal(TimeSpan.FromMinutes(2), overridden!.ActorIdleTimeout);
+        Assert.Null(overridden.DrainOngoingCallTimeout);
+        Assert.Null(overridden.DrainRebalancedActors);
+        Assert.True(overridden.EnableReentrancy);
+        Assert.Equal(8, overridden.MaxReentrantDepth);
+
+        var inherited = advertisements["OtherCounter"].InitialConfig;
+        Assert.NotNull(inherited);
+        Assert.Equal(TimeSpan.FromMinutes(10), inherited!.ActorIdleTimeout);
+        Assert.Null(inherited.DrainOngoingCallTimeout);
+        Assert.Null(inherited.DrainRebalancedActors);
+        Assert.Null(inherited.EnableReentrancy);
+        Assert.Equal(8, inherited.MaxReentrantDepth);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Type_options_override_registration_full_options()
+    {
+        var registrationOptions = new DaprActorsOptions
+        {
+            ActorIdleTimeout = TimeSpan.FromMinutes(5),
+            DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(7),
+            DrainRebalancedActors = false,
+            MaxReentrantDepth = 3,
+        };
+        var harness = new InMemoryTransportHarness();
+        await using var provider = CreateConfiguredMultiTypeProvider(
+            harness,
+            configureGlobal: null,
+            counterOptions: registrationOptions,
+            counterTypeOptions: new DaprActorTypeOptions { IdleTimeout = TimeSpan.FromMinutes(1) });
+        var service = provider.GetRequiredService<SubscribeActorEventsStreamManager>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        await service.StartAsync(cts.Token);
+        var advertisements = await ReceiveAdvertisementsAsync(harness, 2, cts.Token);
+        await service.StopAsync(cts.Token);
+
+        var merged = advertisements["Counter"].InitialConfig;
+        Assert.NotNull(merged);
+        Assert.Equal(TimeSpan.FromMinutes(1), merged!.ActorIdleTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(7), merged.DrainOngoingCallTimeout);
+        Assert.False(merged.DrainRebalancedActors);
+        Assert.Null(merged.EnableReentrancy);
+        Assert.Equal(3, merged.MaxReentrantDepth);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -209,6 +307,21 @@ public sealed class CoreRuntimeTests
         Assert.Equal(ActorStateFormKind.Plain, envelope!.Header.FormKind);
         Assert.Equal(5, envelope.Value.Value);
         Assert.Equal("5", System.Text.Encoding.UTF8.GetString(read!.AsSpan()));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Per_type_disable_state_migration_overrides_global_and_registration_options()
+    {
+        // Baseline: with a migrator registered for CounterState, state is stored enveloped.
+        Assert.Equal(ActorStateFormKind.Enveloped, await StoredCounterFormKindAsync(null, null, null));
+
+        // The global and per-type flags each force plain storage on their own.
+        Assert.Equal(ActorStateFormKind.Plain, await StoredCounterFormKindAsync(o => o.DisableStateMigration = true, null, null));
+        Assert.Equal(ActorStateFormKind.Plain, await StoredCounterFormKindAsync(null, null, new DaprActorTypeOptions { DisableStateMigration = true }));
+
+        // An explicit per-type false re-enables migration over the global and registration-level flags.
+        Assert.Equal(ActorStateFormKind.Enveloped, await StoredCounterFormKindAsync(o => o.DisableStateMigration = true, null, new DaprActorTypeOptions { DisableStateMigration = false }));
+        Assert.Equal(ActorStateFormKind.Enveloped, await StoredCounterFormKindAsync(null, new DaprActorsOptions { DisableStateMigration = true }, new DaprActorTypeOptions { DisableStateMigration = false }));
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -380,6 +493,91 @@ public sealed class CoreRuntimeTests
         });
 
         return services.BuildServiceProvider(validateScopes: true);
+    }
+
+    private static ServiceProvider CreateConfiguredMultiTypeProvider(
+        InMemoryTransportHarness harness,
+        Action<DaprActorsOptions>? configureGlobal,
+        DaprActorsOptions? counterOptions,
+        DaprActorTypeOptions? counterTypeOptions)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(new List<string>());
+        services.AddScoped<ScopedProbe>();
+        services.AddInMemoryActorAdapters();
+        services.AddSingleton<ISubscribeActorEventsTransport>(harness);
+        if (configureGlobal is not null)
+        {
+            services.Configure(configureGlobal);
+        }
+
+        services.AddDaprActorsCore(registrations =>
+        {
+            registrations.Add("Counter", typeof(ICounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher(), options: counterOptions, typeOptions: counterTypeOptions);
+            registrations.Add("OtherCounter", typeof(IOtherCounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher());
+        });
+
+        return services.BuildServiceProvider(validateScopes: true);
+    }
+
+    private static async Task<ActorStateFormKind> StoredCounterFormKindAsync(
+        Action<DaprActorsOptions>? configureGlobal,
+        DaprActorsOptions? counterOptions,
+        DaprActorTypeOptions? counterTypeOptions)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(new List<string>());
+        services.AddScoped<ScopedProbe>();
+        services.AddInMemoryActorAdapters();
+        services.AddSingleton<IActorStateMigrator>(new ActorStateMigrationRegistry(
+        [
+            new ActorStateMigrationFamilyRegistration(
+                new ActorStateMigrationFamily(
+                    "CounterState",
+                    [new ActorStateMigrationNode(0, typeof(CounterState), "h1:counter-state-v1")],
+                    []),
+                [new ActorStateNodeDeserializer(0, static (payload, serializer) => serializer.DeserializeFromBytes<ActorStateEnvelope<CounterState>>(payload)?.Value)],
+                []),
+        ]));
+        if (configureGlobal is not null)
+        {
+            services.Configure(configureGlobal);
+        }
+
+        services.AddDaprActorsCore(registrations =>
+        {
+            registrations.Add("Counter", typeof(ICounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher(), options: counterOptions, typeOptions: counterTypeOptions);
+        });
+
+        await using var provider = services.BuildServiceProvider(validateScopes: true);
+        var runtime = provider.GetRequiredService<IActorRuntime>();
+        var store = provider.GetRequiredService<IActorStateStore>();
+        var serializer = provider.GetRequiredService<IActorWireSerializer>();
+
+        await runtime.InvokeAsync("Counter", "migration-flag", "Increment", System.Text.Encoding.UTF8.GetBytes("1"), new Dictionary<string, string>());
+        var bytes = await store.ReadAsync("Counter", "migration-flag", "state");
+
+        // Both envelope shapes share the header, so the plain envelope contract is enough to read FormKind.
+        var envelope = serializer.DeserializeFromBytes<ActorStatePlainEnvelope<CounterState>>(bytes!.Value);
+        return envelope!.Header.FormKind;
+    }
+
+    private static async Task<Dictionary<string, SubscribeActorEventsResponse>> ReceiveAdvertisementsAsync(
+        InMemoryTransportHarness harness,
+        int streamCount,
+        CancellationToken cancellationToken)
+    {
+        var advertisements = new Dictionary<string, SubscribeActorEventsResponse>();
+        for (var i = 0; i < streamCount; i++)
+        {
+            var stream = await harness.WaitForStreamAsync(cancellationToken);
+            var advertisement = await stream.ReceiveAsync(cancellationToken);
+            advertisements[System.Text.Encoding.UTF8.GetString(advertisement.Payload.Span)] = advertisement;
+        }
+
+        return advertisements;
     }
 
     private static IActor CreateCounterActor(IServiceProvider sp, ActorId _) =>

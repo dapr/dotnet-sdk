@@ -20,6 +20,15 @@ namespace Dapr.Jobs.Models.Responses;
 public sealed record DaprJobDetails(DaprJobSchedule Schedule)
 {
     /// <summary>
+    /// The unique name of the job, when available from the runtime.
+    /// </summary>
+    /// <remarks>
+    /// Populated by <see cref="DaprJobsClient.GetJobAsync"/> and <see cref="DaprJobsClient.ListJobsAsync"/>.
+    /// May be <c>null</c> for instances constructed manually or returned by older runtime paths.
+    /// </remarks>
+    public string? Name { get; init; } = null;
+
+    /// <summary>
     /// Allows for jobs with fixed repeat counts.
     /// </summary>
     public int? RepeatCount { get; init; } = null;

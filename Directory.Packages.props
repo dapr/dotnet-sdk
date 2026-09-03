@@ -13,7 +13,7 @@
     <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.4" />
     <PackageVersion Include="Google.Api.CommonProtos" Version="2.17.0" />
     <PackageVersion Include="Google.Protobuf" Version="3.35.0" />
-    <PackageVersion Include="Grpc.AspNetCore" Version="2.76.0" />
+    <PackageVersion Include="Grpc.AspNetCore" Version="2.80.0" />
     <PackageVersion Include="Grpc.Core.Testing" Version="2.46.6" />
     <PackageVersion Include="Grpc.Net.Client" Version="2.80.0" />
     <PackageVersion Include="Grpc.Net.ClientFactory" Version="2.80.0" />
@@ -59,6 +59,10 @@
     <PackageVersion Include="System.Net.ServerSentEvents" Version="10.0.8" />
     <PackageVersion Include="System.Text.Json" Version="10.0.8" />
     <PackageVersion Include="Testcontainers" Version="4.9.0" />
+    <!-- Transitive of Testcontainers; pinned directly until Testcontainers ships
+         a release depending on the patched line. SSH.NET <= 2025.1.0 carries
+         GHSA-q939-rpr3-3284 (high), which NU1903 promotes to a build error. -->
+    <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="xunit.v3.extensibility.core" Version="3.2.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />

@@ -26,10 +26,24 @@ public sealed class DaprActorsOptionsValidator : IValidateOptions<DaprActorsOpti
         List<string>? failures = null;
 
         AddFailureIf(options.DefaultContractVersion <= 0, "DefaultContractVersion must be greater than zero.", ref failures);
-        AddFailureIf(options.ActorIdleTimeout <= TimeSpan.Zero, "ActorIdleTimeout must be greater than zero.", ref failures);
-        AddFailureIf(options.DrainOngoingCallTimeout <= TimeSpan.Zero, "DrainOngoingCallTimeout must be greater than zero.", ref failures);
-        AddFailureIf(options.DrainRebalancedActorsTimeout <= TimeSpan.Zero, "DrainRebalancedActorsTimeout must be greater than zero.", ref failures);
-        AddFailureIf(options.MaxReentrantDepth <= 0, "MaxReentrantDepth must be greater than zero.", ref failures);
+        AddFailureIf(options.ActorIdleTimeout is { } globalIdleTimeout && globalIdleTimeout <= TimeSpan.Zero, "ActorIdleTimeout must be greater than zero.", ref failures);
+        AddFailureIf(options.DrainOngoingCallTimeout is { } globalDrainTimeout && globalDrainTimeout <= TimeSpan.Zero, "DrainOngoingCallTimeout must be greater than zero.", ref failures);
+        AddFailureIf(options.DrainRebalancedActorsTimeout is { } globalDrainRebalancedTimeout && globalDrainRebalancedTimeout <= TimeSpan.Zero, "DrainRebalancedActorsTimeout must be greater than zero.", ref failures);
+        AddFailureIf(options.MaxReentrantDepth is { } globalMaxDepth && globalMaxDepth <= 0, "MaxReentrantDepth must be greater than zero.", ref failures);
+
+        foreach (var registration in options.Actors.Registrations)
+        {
+            if (registration.TypeOptions is not { } typeOptions)
+            {
+                continue;
+            }
+
+            var actorName = registration.ActorTypeName ?? registration.ActorImplementationType.Name;
+            AddFailureIf(typeOptions.IdleTimeout is { } idleTimeout && idleTimeout <= TimeSpan.Zero, $"IdleTimeout for actor type '{actorName}' must be greater than zero.", ref failures);
+            AddFailureIf(typeOptions.DrainOngoingCallTimeout is { } drainTimeout && drainTimeout <= TimeSpan.Zero, $"DrainOngoingCallTimeout for actor type '{actorName}' must be greater than zero.", ref failures);
+            AddFailureIf(typeOptions.DrainRebalancedActorsTimeout is { } drainRebalancedTimeout && drainRebalancedTimeout <= TimeSpan.Zero, $"DrainRebalancedActorsTimeout for actor type '{actorName}' must be greater than zero.", ref failures);
+            AddFailureIf(typeOptions.MaxReentrantDepth is { } maxDepth && maxDepth <= 0, $"MaxReentrantDepth for actor type '{actorName}' must be greater than zero.", ref failures);
+        }
 
         return failures is null ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }

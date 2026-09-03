@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Store.Next.Example07": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:53142;http://localhost:53143"
+    }
+  }
+}

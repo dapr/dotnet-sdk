@@ -163,8 +163,8 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         builder.Services.AddSingleton<Probe>();
         builder.Services.AddDaprActors(options =>
         {
-            options.ActorIdleTimeout = TimeSpan.FromSeconds(2);
             options.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(1);
+            options.DrainRebalancedActors = true;
             options.EnableReentrancy = true;
             options.MaxReentrantDepth = 8;
         });
@@ -187,7 +187,8 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
                     static (actor, ct) => ((ProtocolActor)actor).ActivateAsync(ct),
                     static (actor, ct) => ((ProtocolActor)actor).DeactivateAsync(ct),
                     static (_, _, _) => ValueTask.CompletedTask,
-                    static (_, _, _, _) => ValueTask.CompletedTask));
+                    static (_, _, _, _) => ValueTask.CompletedTask),
+                typeOptions: new DaprActorTypeOptions { IdleTimeout = TimeSpan.FromSeconds(2) });
         });
     }
 
@@ -279,6 +280,28 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         await client!.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "Echo", JsonSerializer.SerializeToUtf8Bytes(new ProtocolRequest("idle", 1))), cancellationToken: cts.Token);
 
         await WaitUntilAsync(() => Probe.Deactivated.Contains(actorId), cts.Token, () => $"deactivated=[{string.Join(",", Probe.Deactivated)}]");
+    }
+
+    /// <summary>
+    /// Verifies the per-type overrides merged with the global options are advertised to the real sidecar.
+    /// </summary>
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Per_type_initial_config_is_advertised_to_sidecar()
+    {
+        using var cts = new CancellationTokenSource(Timeout);
+
+        await WaitUntilAsync(
+            () => Probe.InitialConfigs.Any(entry => entry.Payload == "ProtocolActor"),
+            cts.Token,
+            () => $"initialConfigs=[{string.Join(",", Probe.InitialConfigs.Select(entry => entry.Payload))}]");
+
+        var (_, config) = Probe.InitialConfigs.First(entry => entry.Payload == "ProtocolActor");
+
+        Assert.Equal(TimeSpan.FromSeconds(2), config.ActorIdleTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(1), config.DrainOngoingCallTimeout);
+        Assert.True(config.DrainRebalancedActors);
+        Assert.True(config.EnableReentrancy);
+        Assert.Equal(8, config.MaxReentrantDepth);
     }
 
     /// <summary>
@@ -451,6 +474,11 @@ public sealed class Probe
     public static ConcurrentBag<string> Advertisements { get; } = [];
 
     /// <summary>
+    /// Gets the initial configurations advertised to the sidecar, keyed by advertisement payload.
+    /// </summary>
+    public static ConcurrentBag<(string Payload, SubscribeActorEventsInitialConfig Config)> InitialConfigs { get; } = [];
+
+    /// <summary>
     /// Clears all probe observations.
     /// </summary>
     public static void Reset()
@@ -472,6 +500,10 @@ public sealed class Probe
         }
 
         while (Advertisements.TryTake(out _))
+        {
+        }
+
+        while (InitialConfigs.TryTake(out _))
         {
         }
     }
@@ -542,7 +574,12 @@ public sealed class RecordingActorEventsTransport(P.Dapr.DaprClient client) : IS
         {
             if (response.Kind == SubscribeActorEventsFrameKind.RegisteredActors)
             {
-                Probe.Advertisements.Add(Encoding.UTF8.GetString(response.Payload.Span));
+                var payload = Encoding.UTF8.GetString(response.Payload.Span);
+                Probe.Advertisements.Add(payload);
+                if (response.InitialConfig is { } initialConfig)
+                {
+                    Probe.InitialConfigs.Add((payload, initialConfig));
+                }
             }
 
             try

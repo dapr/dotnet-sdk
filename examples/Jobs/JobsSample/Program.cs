@@ -11,13 +11,28 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-#pragma warning disable CS0618 // Type or member is obsolete
 using System.Text;
 using Dapr.Jobs;
 using Dapr.Jobs.Extensions;
 using Dapr.Jobs.Models;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// AddDaprJobsClient registers both the HTTP callback endpoint and the gRPC
+// AppCallbackAlpha service, so the sidecar can deliver job triggers over
+// whichever protocol it is configured for.
+//
+// When using gRPC callbacks (--app-protocol grpc) over plaintext, Kestrel must
+// be configured for HTTP/2 because HTTP/2 requires either TLS with ALPN or
+// explicit HTTP/2-only endpoint configuration. Http1AndHttp2 does not support
+// HTTP/2 over plaintext. For the default HTTP mode (--app-protocol http),
+// no Kestrel configuration is needed.
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ConfigureEndpointDefaults(listen => listen.Protocols = HttpProtocols.Http2);
+});
+
 builder.Services.AddDaprJobsClient();
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -46,6 +61,21 @@ await daprJobsClient.ScheduleJobAsync("myJob", DaprJobSchedule.FromDuration(Time
     Encoding.UTF8.GetBytes("This is a test"), repeats: 10);
 logger.LogInformation("Scheduled one-time job 'myJob'");
 
+// List all jobs currently registered for this app ID and log their names/schedules.
+var registeredJobs = await daprJobsClient.ListJobsAsync();
+logger.LogInformation("Found {count} registered job(s) for this app ID", registeredJobs.Count);
+foreach (var registered in registeredJobs)
+{
+    logger.LogInformation("  - '{name}' (schedule: {schedule})",
+        registered.Name, registered.Schedule.ExpressionValue);
+}
+
+// Purge all jobs for this app ID. The prefix overload lets you target jobs by name prefix;
+// passing null (or PurgeAllJobsAsync) instructs the runtime to delete every job for the app.
+// Uncomment the lines below to exercise the purge path while running the sample.
+//
+// await daprJobsClient.PurgeAllJobsAsync();
+// logger.LogInformation("Purged all jobs for this app ID");
+
 app.Run();
 
-#pragma warning restore CS0618 // Type or member is obsolete

@@ -16,4 +16,11 @@ namespace Dapr.Actors.Next.Abstractions.Options;
 /// <summary>
 /// Describes an actor type explicitly requested by the app.
 /// </summary>
-public sealed record DaprActorRegistration(Type ActorImplementationType, string? ActorTypeName);
+public sealed record DaprActorRegistration(Type ActorImplementationType, string? ActorTypeName)
+{
+    /// <summary>
+    /// Gets the runtime overrides for this actor type; <see langword="null"/> fields inherit
+    /// the app-wide <see cref="DaprActorsOptions"/> values.
+    /// </summary>
+    public DaprActorTypeOptions? TypeOptions { get; init; }
+}

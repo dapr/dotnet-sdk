@@ -35,6 +35,11 @@ public sealed class StartupOrderTests
 
         Assert.True(harness.DaprHttpPort > 0);
         Assert.True(harness.DaprGrpcPort > 0);
+
+        harness.SetPorts(3501, 50002);
+
+        Assert.Equal(3501, harness.DaprHttpPort);
+        Assert.Equal(50002, harness.DaprGrpcPort);
     }
 
     [Fact]
@@ -62,7 +67,7 @@ public sealed class StartupOrderTests
         
         Assert.Equal(0, harness.DaprHttpPort);
     }
-    
+
     // Concrete implementation for testing BaseHarness
     private class TestHarness : BaseHarness
     {
