@@ -2,7 +2,7 @@ using System.Xml.Linq;
 
 namespace Dapr.Packaging.Test;
 
-#if NET10_0
+#if NET10_0_OR_GREATER
 public sealed class AggregatorPackageTests
 {
     public static TheoryData<PackageContractCase> PackagesWithBundledAssets => new()
