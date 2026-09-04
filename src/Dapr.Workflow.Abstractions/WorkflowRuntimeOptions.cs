@@ -32,6 +32,37 @@ public sealed class WorkflowRuntimeOptions
     public GrpcChannelOptions? GrpcChannelOptions { get; private set; }
 
     /// <summary>
+    /// Gets or sets a value disabling the stateful-history optimization, in which the worker caches each
+    /// instance's committed history per work-item stream so the sidecar can send only the new events (the
+    /// delta) each turn instead of the full history. Disabled workers always receive the full history.
+    /// Defaults to <c>false</c> (the optimization is on). A cache miss is always recovered safely via the
+    /// GetInstanceHistory RPC, so this only affects per-turn bandwidth, never correctness.
+    /// </summary>
+    public bool DisableStatefulHistory { get; set; }
+
+    /// <summary>
+    /// Gets or sets the sliding time-to-live for cached instance histories. An instance's entry is reclaimed
+    /// when it has gone idle (no turn) for longer than this. <c>null</c> (the default) uses the built-in
+    /// default of one hour. Ignored when <see cref="DisableStatefulHistory"/> is <c>true</c>.
+    /// </summary>
+    public TimeSpan? HistoryCacheTtl { get; set; }
+
+    /// <summary>
+    /// Gets or sets the maximum number of per-instance histories retained on a single work-item stream;
+    /// least-recently-used entries are evicted beyond it. <c>0</c> (the default) uses the built-in default.
+    /// Ignored when <see cref="DisableStatefulHistory"/> is <c>true</c>.
+    /// </summary>
+    public int HistoryCacheMaxInstances { get; set; }
+
+    /// <summary>
+    /// Gets or sets the byte budget for cached histories on a single work-item stream; least-recently-used
+    /// entries are evicted beyond it. <c>0</c> (the default) means unlimited (bounded only by
+    /// <see cref="HistoryCacheMaxInstances"/> and <see cref="HistoryCacheTtl"/>). Ignored when
+    /// <see cref="DisableStatefulHistory"/> is <c>true</c>.
+    /// </summary>
+    public long HistoryCacheMaxBytes { get; set; }
+
+    /// <summary>
     /// Gets the maximum number of concurrent workflow instances that can be executed at the same time.
     /// </summary>
     [Obsolete("This property is obsolete and no longer does anything - please use the options on the Dapr runtime instead. This property will be removed in a future SDK release.")]
