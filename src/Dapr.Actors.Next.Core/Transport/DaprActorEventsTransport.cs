@@ -240,17 +240,38 @@ public sealed class DaprActorEventsTransport : ISubscribeActorEventsTransport
                 return request;
             }
 
-            var entityConfig = new P.ActorEntityConfig
+            // Only assign fields the app configured; unset fields keep their
+            // Dapr runtime defaults.
+            var entityConfig = new P.ActorEntityConfig();
+
+            if (config.ActorIdleTimeout is { } idleTimeout)
             {
-                ActorIdleTimeout = Duration.FromTimeSpan(config.ActorIdleTimeout),
-                DrainOngoingCallTimeout = Duration.FromTimeSpan(config.DrainOngoingCallTimeout),
-                DrainRebalancedActors = config.DrainRebalancedActors,
-                Reentrancy = new P.ActorReentrancyConfig
+                entityConfig.ActorIdleTimeout = Duration.FromTimeSpan(idleTimeout);
+            }
+
+            if (config.DrainOngoingCallTimeout is { } drainTimeout)
+            {
+                entityConfig.DrainOngoingCallTimeout = Duration.FromTimeSpan(drainTimeout);
+            }
+
+            if (config.DrainRebalancedActors is { } drainRebalanced)
+            {
+                entityConfig.DrainRebalancedActors = drainRebalanced;
+            }
+
+            if (config.EnableReentrancy is not null || config.MaxReentrantDepth is not null)
+            {
+                var reentrancy = new P.ActorReentrancyConfig
                 {
-                    Enabled = config.EnableReentrancy,
-                    MaxStackDepth = config.MaxReentrantDepth,
-                },
-            };
+                    Enabled = config.EnableReentrancy ?? false,
+                };
+                if (config.MaxReentrantDepth is { } maxDepth)
+                {
+                    reentrancy.MaxStackDepth = maxDepth;
+                }
+                entityConfig.Reentrancy = reentrancy;
+            }
+
             entityConfig.Entities.Add(request.Entities);
             request.EntitiesConfig.Add(entityConfig);
             return request;

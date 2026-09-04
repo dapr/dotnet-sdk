@@ -117,11 +117,11 @@ public sealed class CoreRuntimeTests
 
         var config = advertisement.InitialConfig;
         Assert.NotNull(config);
-        Assert.Equal(TimeSpan.FromMinutes(60), config!.ActorIdleTimeout);
-        Assert.Equal(TimeSpan.FromSeconds(30), config.DrainOngoingCallTimeout);
-        Assert.True(config.DrainRebalancedActors);
-        Assert.False(config.EnableReentrancy);
-        Assert.Equal(32, config.MaxReentrantDepth);
+        Assert.Null(config!.ActorIdleTimeout);
+        Assert.Null(config.DrainOngoingCallTimeout);
+        Assert.Null(config.DrainRebalancedActors);
+        Assert.Null(config.EnableReentrancy);
+        Assert.Null(config.MaxReentrantDepth);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -151,17 +151,17 @@ public sealed class CoreRuntimeTests
         var overridden = advertisements["Counter"].InitialConfig;
         Assert.NotNull(overridden);
         Assert.Equal(TimeSpan.FromMinutes(2), overridden!.ActorIdleTimeout);
-        Assert.Equal(TimeSpan.FromSeconds(30), overridden.DrainOngoingCallTimeout);
-        Assert.True(overridden.DrainRebalancedActors);
+        Assert.Null(overridden.DrainOngoingCallTimeout);
+        Assert.Null(overridden.DrainRebalancedActors);
         Assert.True(overridden.EnableReentrancy);
         Assert.Equal(8, overridden.MaxReentrantDepth);
 
         var inherited = advertisements["OtherCounter"].InitialConfig;
         Assert.NotNull(inherited);
         Assert.Equal(TimeSpan.FromMinutes(10), inherited!.ActorIdleTimeout);
-        Assert.Equal(TimeSpan.FromSeconds(30), inherited.DrainOngoingCallTimeout);
-        Assert.True(inherited.DrainRebalancedActors);
-        Assert.False(inherited.EnableReentrancy);
+        Assert.Null(inherited.DrainOngoingCallTimeout);
+        Assert.Null(inherited.DrainRebalancedActors);
+        Assert.Null(inherited.EnableReentrancy);
         Assert.Equal(8, inherited.MaxReentrantDepth);
     }
 
@@ -193,7 +193,7 @@ public sealed class CoreRuntimeTests
         Assert.Equal(TimeSpan.FromMinutes(1), merged!.ActorIdleTimeout);
         Assert.Equal(TimeSpan.FromSeconds(7), merged.DrainOngoingCallTimeout);
         Assert.False(merged.DrainRebalancedActors);
-        Assert.False(merged.EnableReentrancy);
+        Assert.Null(merged.EnableReentrancy);
         Assert.Equal(3, merged.MaxReentrantDepth);
     }
 
