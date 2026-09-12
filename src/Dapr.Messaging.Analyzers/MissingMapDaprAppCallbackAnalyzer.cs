@@ -68,7 +68,7 @@ public sealed class MissingMapDaprAppCallbackAnalyzer : DiagnosticAnalyzer
 
                 if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
                 {
-                    if (memberAccess.Name.Identifier.Text == "MapDaprAppCallback")
+                    if (memberAccess.Name.Identifier.Text is "MapDaprAppCallback" or "MapDaprMessaging")
                     {
                         lock (syncLock)
                         {

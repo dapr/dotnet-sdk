@@ -63,6 +63,7 @@ public sealed class UnusedDaprSubscriberRegistrationAnalyzer : DiagnosticAnalyze
             var addGeneratedSubscribersInvocations = new List<InvocationExpressionSyntax>();
             var mapDaprAppCallbackInvocations = new List<InvocationExpressionSyntax>();
             var mapDaprHttpSubscriptionsInvocations = new List<InvocationExpressionSyntax>();
+            var mapDaprMessagingInvocations = new List<InvocationExpressionSyntax>();
             var syncLock = new object();
 
             compilationStartContext.RegisterSyntaxNodeAction(syntaxContext =>
@@ -98,6 +99,13 @@ public sealed class UnusedDaprSubscriberRegistrationAnalyzer : DiagnosticAnalyze
                     lock (syncLock)
                     {
                         mapDaprHttpSubscriptionsInvocations.Add(invocation);
+                    }
+                }
+                else if (IsDaprInvocation(syntaxContext, invocation, "MapDaprMessaging", "DaprMessagingEndpointRouteBuilderExtensions"))
+                {
+                    lock (syncLock)
+                    {
+                        mapDaprMessagingInvocations.Add(invocation);
                     }
                 }
             }, SyntaxKind.InvocationExpression);
@@ -154,6 +162,15 @@ public sealed class UnusedDaprSubscriberRegistrationAnalyzer : DiagnosticAnalyze
                             mapDaprHttpSubscriptionsInvocations,
                             "MapDaprHttpSubscriptions()",
                             "HTTP Dapr topic subscribers");
+                    }
+
+                    if (!hasProgrammaticSubscriber && !hasHttpSubscriber)
+                    {
+                        Report(
+                            compilationEndContext,
+                            mapDaprMessagingInvocations,
+                            "MapDaprMessaging()",
+                            "HTTP or programmatic Dapr topic subscribers");
                     }
 
                     if (!hasAnySubscriber)

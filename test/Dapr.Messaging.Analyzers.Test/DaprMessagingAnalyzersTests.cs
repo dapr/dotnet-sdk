@@ -386,6 +386,36 @@ public class OrderHandler : ITopicHandler<Order>
     }
 
     [Fact]
+    public async Task DAPR1613_DoesNotFireWhenMapDaprMessagingIsPresent()
+    {
+        var source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDaprMessaging().AddDaprSubscriber();
+var app = builder.Build();
+app.MapDaprMessaging();
+app.Run();
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Programmatic)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var diagnostics = await RunAsync(new MissingMapDaprAppCallbackAnalyzer(), source);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1613");
+    }
+
+    [Fact]
     public async Task DAPR1613_DoesNotFireForStreamingOnly()
     {
         var source = """
@@ -732,6 +762,87 @@ app.MapDaprHttpSubscriptions();
 public class Order { public string Id { get; set; } = string.Empty; }
 
 [DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Http)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1615");
+    }
+
+    [Fact]
+    public async Task DAPR1615_FiresForMapDaprMessagingWhenNoHttpOrProgrammaticSubscribersExist()
+    {
+        var source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+using Microsoft.AspNetCore.Builder;
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+app.MapDaprMessaging();
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Streaming)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1615" && d.GetMessage().Contains("MapDaprMessaging()"));
+    }
+
+    [Fact]
+    public async Task DAPR1615_DoesNotFireForMapDaprMessagingWhenHttpSubscriberExists()
+    {
+        var source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+using Microsoft.AspNetCore.Builder;
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+app.MapDaprMessaging();
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Http)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1615");
+    }
+
+    [Fact]
+    public async Task DAPR1615_DoesNotFireForMapDaprMessagingWhenProgrammaticSubscriberExists()
+    {
+        var source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+using Microsoft.AspNetCore.Builder;
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+app.MapDaprMessaging();
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Programmatic)]
 public class OrderHandler : ITopicHandler<Order>
 {
     public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
