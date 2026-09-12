@@ -411,6 +411,8 @@ public class OrderHandler : ITopicHandler<Order>
     public async Task DAPR1613_CodeFix_InsertsMapDaprAppCallback()
     {
         var source = """
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Dapr.Messaging;
@@ -419,6 +421,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDaprMessaging().AddDaprSubscriber();
 var app = builder.Build();
 app.Run();
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Programmatic)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
 """;
 
         var references = AppDomain.CurrentDomain.GetAssemblies()
@@ -604,5 +615,159 @@ public class OrderHandler : ITopicHandler<Order>
         var newSource = (await newDoc.GetTextAsync(TestContext.Current.CancellationToken)).ToString();
 
         Assert.Contains("AddDaprSubscriber().AddGeneratedSubscribers()", newSource);
+    }
+
+    // -----------------------------------------------------------------------
+    //  DAPR1615: Unused Subscriber Registration Analyzer
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task DAPR1615_FiresForAddDaprSubscriberWhenNoProgrammaticSubscribersExist()
+    {
+        var source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+using Microsoft.Extensions.DependencyInjection;
+
+var services = new ServiceCollection();
+services.AddDaprMessaging().AddDaprSubscriber();
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Http)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1615" && d.GetMessage().Contains("AddDaprSubscriber()"));
+    }
+
+    [Fact]
+    public async Task DAPR1615_DoesNotFireForAddDaprSubscriberWhenProgrammaticSubscriberExists()
+    {
+        var source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+using Microsoft.Extensions.DependencyInjection;
+
+var services = new ServiceCollection();
+services.AddDaprMessaging().AddDaprSubscriber();
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Programmatic)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1615");
+    }
+
+    [Fact]
+    public async Task DAPR1615_FiresForMapDaprAppCallbackWhenNoProgrammaticSubscribersExist()
+    {
+        var source = """
+using Dapr.Messaging;
+using Microsoft.AspNetCore.Builder;
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+app.MapDaprAppCallback();
+""";
+
+        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1615" && d.GetMessage().Contains("MapDaprAppCallback()"));
+    }
+
+    [Fact]
+    public async Task DAPR1615_FiresForMapDaprHttpSubscriptionsWhenNoHttpSubscribersExist()
+    {
+        var source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+using Microsoft.AspNetCore.Builder;
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+app.MapDaprHttpSubscriptions();
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Programmatic)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1615" && d.GetMessage().Contains("MapDaprHttpSubscriptions()"));
+    }
+
+    [Fact]
+    public async Task DAPR1615_DoesNotFireForMapDaprHttpSubscriptionsWhenHttpSubscriberExists()
+    {
+        var source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+using Microsoft.AspNetCore.Builder;
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+app.MapDaprHttpSubscriptions();
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Http)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1615");
+    }
+
+    [Fact]
+    public async Task DAPR1615_FiresForAddGeneratedSubscribersWhenNoTopicSubscribersExist()
+    {
+        var source = """
+using Dapr.Messaging;
+using Microsoft.Extensions.DependencyInjection;
+
+public class Startup
+{
+    public void Configure(IServiceCollection services)
+    {
+        services.AddDaprMessaging().AddGeneratedSubscribers();
+    }
+}
+
+namespace Microsoft.Extensions.DependencyInjection
+{
+    public static class DaprMessagingGeneratedExtensions
+    {
+        public static global::Dapr.Messaging.IDaprMessagingBuilder AddGeneratedSubscribers(this global::Dapr.Messaging.IDaprMessagingBuilder builder) => builder;
+    }
+}
+""";
+
+        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1615" && d.GetMessage().Contains("AddGeneratedSubscribers()"));
     }
 }

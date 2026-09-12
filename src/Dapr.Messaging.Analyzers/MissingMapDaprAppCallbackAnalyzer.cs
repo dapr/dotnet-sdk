@@ -22,8 +22,8 @@ namespace Dapr.Messaging.Analyzers;
 
 /// <summary>
 /// Reports DAPR1613 when an application registers programmatic Dapr subscribers
-/// (via <c>AddDaprSubscriber</c> or <c>[DaprTopic(Delivery = DeliveryMode.Programmatic)]</c>)
-/// but omits calling <c>app.MapDaprAppCallback()</c> on the endpoint routing pipeline.
+/// via <c>[DaprTopic(Delivery = DeliveryMode.Programmatic)]</c> but omits calling
+/// <c>app.MapDaprAppCallback()</c> on the endpoint routing pipeline.
 /// </summary>
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class MissingMapDaprAppCallbackAnalyzer : DiagnosticAnalyzer
@@ -127,14 +127,14 @@ public sealed class MissingMapDaprAppCallbackAnalyzer : DiagnosticAnalyzer
             {
                 lock (syncLock)
                 {
-                    if (!hasMapDaprAppCallback)
+                    if (!hasMapDaprAppCallback && programmaticHandlerLocation is not null)
                     {
                         if (addDaprSubscriberInvocation is not null)
                         {
                             compilationEndContext.ReportDiagnostic(
                                 Diagnostic.Create(Rule, addDaprSubscriberInvocation.GetLocation()));
                         }
-                        else if (programmaticHandlerLocation is not null)
+                        else
                         {
                             compilationEndContext.ReportDiagnostic(
                                 Diagnostic.Create(Rule, programmaticHandlerLocation));
