@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
         <Description>This package contains the reference assemblies for developing messaging services using Dapr.</Description>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
@@ -15,8 +16,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
-      <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+      <ProjectReference Include="..\Dapr.Messaging.Runtime\Dapr.Messaging.Runtime.csproj" />
     </ItemGroup>
 
 </Project>

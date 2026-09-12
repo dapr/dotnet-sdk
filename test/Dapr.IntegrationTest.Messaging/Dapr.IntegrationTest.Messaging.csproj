@@ -13,9 +13,11 @@
         </PackageReference>
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="Microsoft.Extensions.Configuration" />
+        <PackageReference Include="Moq" />
         <PackageReference Include="xunit.v3" />
         <PackageReference Include="xunit.v3.extensibility.core" />
         <PackageReference Include="xunit.runner.visualstudio" />
+        <PackageReference Include="Microsoft.AspNetCore.TestHost" />
     </ItemGroup>
 
     <ItemGroup>
@@ -24,6 +26,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\src\Dapr.Messaging\Dapr.Messaging.csproj" />
+      <ProjectReference Include="..\..\src\Dapr.Messaging.Generators\Dapr.Messaging.Generators.csproj"
+                        OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
       <ProjectReference Include="..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
     </ItemGroup>
 

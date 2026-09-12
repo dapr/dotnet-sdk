@@ -29,6 +29,7 @@
         <PackageReference Include="protobuf-net.Grpc.AspNetCore" />
         <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+        <PackageReference Include="Microsoft.AspNetCore.TestHost" />
     </ItemGroup>
 
     <ItemGroup>
