@@ -15,6 +15,7 @@ using System.ComponentModel;
 using Dapr.Messaging.PublishSubscribe;
 using Dapr.Messaging.PublishSubscribe.Extensions;
 using Dapr.Messaging.Subscribe.AppCallback;
+using Dapr.Messaging.Subscribe.Streaming;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -60,6 +61,11 @@ public static class DaprMessagingRegistration
         ArgumentNullException.ThrowIfNull(services);
 
         AddPublisher(services, configure);
+
+        // Registered unconditionally: streaming subscriptions require no ASP.NET Core/gRPC server
+        // hosting or routing, only a background client-initiated gRPC stream. When the generated
+        // registry contains no Streaming descriptors, the hosted service is a no-op at startup.
+        services.AddHostedService<StreamingSubscriberHostedService>();
 
         if (features.HasFlag(DaprMessagingFeatures.ProgrammaticSubscriptions))
         {

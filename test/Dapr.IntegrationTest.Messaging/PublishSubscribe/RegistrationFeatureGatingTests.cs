@@ -14,8 +14,10 @@
 using Dapr.Messaging;
 using Dapr.Messaging.PublishSubscribe;
 using Dapr.Messaging.Subscribe.AppCallback;
+using Dapr.Messaging.Subscribe.Streaming;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Xunit;
 
 namespace Dapr.IntegrationTest.Messaging.PublishSubscribe;
@@ -47,6 +49,10 @@ public class RegistrationFeatureGatingTests
     private static bool HasRouting(IServiceCollection services) =>
         services.Any(d => d.ServiceType == typeof(EndpointDataSource));
 
+    private static bool HasStreamingHostedService(IServiceCollection services) =>
+        services.Any(d => d.ServiceType == typeof(IHostedService) &&
+                           d.ImplementationType == typeof(StreamingSubscriberHostedService));
+
     [Fact]
     public void Register_WithNoFeatures_RegistersPublisherButNoHostingServices()
     {
@@ -60,6 +66,10 @@ public class RegistrationFeatureGatingTests
         Assert.DoesNotContain(services, d => d.ServiceType == typeof(DaprAppCallbackService));
         Assert.False(HasGrpcServerHosting(services));
         Assert.False(HasRouting(services));
+
+        // The streaming hosted service is registered unconditionally, since streaming subscriptions
+        // require no ASP.NET Core/gRPC server hosting features to opt into.
+        Assert.True(HasStreamingHostedService(services));
     }
 
     [Fact]
@@ -97,6 +107,23 @@ public class RegistrationFeatureGatingTests
         Assert.True(HasRouting(services));
     }
 
+    /// <summary>
+    /// The streaming hosted service must be registered regardless of which feature flags are supplied,
+    /// since it is the only mechanism that hosts <see cref="DeliveryMode.Streaming"/> subscriptions.
+    /// </summary>
+    [Theory]
+    [InlineData(DaprMessagingFeatures.None)]
+    [InlineData(DaprMessagingFeatures.ProgrammaticSubscriptions)]
+    [InlineData(DaprMessagingFeatures.HttpSubscriptions)]
+    [InlineData(DaprMessagingFeatures.ProgrammaticSubscriptions | DaprMessagingFeatures.HttpSubscriptions)]
+    public void Register_AlwaysRegistersStreamingHostedService(DaprMessagingFeatures features)
+    {
+        var services = CreateServices();
+        DaprMessagingRegistration.Register(services, null, features);
+
+        Assert.True(HasStreamingHostedService(services));
+    }
+
     [Fact]
     public void Register_AppliesSuppliedOptions()
     {
@@ -131,6 +158,7 @@ public class RegistrationFeatureGatingTests
         Assert.Contains(services, d => d.ServiceType == typeof(DaprAppCallbackService));
         Assert.True(HasGrpcServerHosting(services));
         Assert.True(HasRouting(services));
+        Assert.True(HasStreamingHostedService(services));
     }
 
     /// <summary>

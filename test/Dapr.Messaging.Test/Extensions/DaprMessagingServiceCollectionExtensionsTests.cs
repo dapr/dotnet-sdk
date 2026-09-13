@@ -12,7 +12,9 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Messaging.PublishSubscribe;
+using Dapr.Messaging.Subscribe.Streaming;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace Dapr.Messaging.Test.Extensions;
@@ -98,6 +100,20 @@ public class DaprMessagingServiceCollectionExtensionsTests
         Assert.DoesNotContain(
             services,
             d => d.ServiceType.FullName?.Contains("Grpc.AspNetCore.Server", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
+    public void AddDaprMessaging_RegistersStreamingHostedService()
+    {
+        // Streaming subscriptions must be hosted regardless of which delivery modes are present in
+        // the consuming assembly (this test assembly declares no [DaprTopic] handlers at all).
+        var services = new ServiceCollection();
+        services.AddDaprMessaging();
+
+        Assert.Contains(
+            services,
+            d => d.ServiceType == typeof(IHostedService) &&
+                 d.ImplementationType == typeof(StreamingSubscriberHostedService));
     }
 
     [Fact]
