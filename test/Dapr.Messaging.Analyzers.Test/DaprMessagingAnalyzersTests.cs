@@ -714,4 +714,147 @@ public class OrderHandler : ITopicHandler<Order>
         var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
         Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1615");
     }
+
+    // -----------------------------------------------------------------------
+    //  DAPR1616 / DAPR1617: Topic Option Consistency Analyzer
+    // -----------------------------------------------------------------------
+
+    private static string TopicSource(string attributeArgs) => $$"""
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+
+namespace MyApp;
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", {{attributeArgs}})]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+    [Fact]
+    public async Task DAPR1616_FiresWhenBulkSubscribeMissingBothCompanionProperties()
+    {
+        var diagnostics = await RunAsync(
+            new TopicOptionConsistencyAnalyzer(),
+            TopicSource("Delivery = DeliveryMode.Http, Route = \"/orders\", BulkSubscribe = true"));
+
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1616"
+            && d.GetMessage().Contains("MaxMessagesCount or MaxAwaitDurationMs"));
+    }
+
+    [Fact]
+    public async Task DAPR1616_FiresWhenBulkSubscribeMissingAwaitDuration()
+    {
+        var diagnostics = await RunAsync(
+            new TopicOptionConsistencyAnalyzer(),
+            TopicSource("Delivery = DeliveryMode.Http, Route = \"/orders\", BulkSubscribe = true, MaxMessagesCount = 50"));
+
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1616" && d.GetMessage().Contains("MaxAwaitDurationMs"));
+    }
+
+    [Fact]
+    public async Task DAPR1616_DoesNotFireWhenBulkSubscribeFullyConfigured()
+    {
+        var diagnostics = await RunAsync(
+            new TopicOptionConsistencyAnalyzer(),
+            TopicSource("Delivery = DeliveryMode.Http, Route = \"/orders\", BulkSubscribe = true, MaxMessagesCount = 50, MaxAwaitDurationMs = 200"));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1616");
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1617");
+    }
+
+    [Fact]
+    public async Task DAPR1617_FiresWhenBulkOptionsSetWithoutBulkSubscribe()
+    {
+        var diagnostics = await RunAsync(
+            new TopicOptionConsistencyAnalyzer(),
+            TopicSource("MaxMessagesCount = 50, MaxAwaitDurationMs = 200"));
+
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1617"
+            && d.GetMessage().Contains("BulkSubscribe is not enabled"));
+    }
+
+    [Fact]
+    public async Task DAPR1617_FiresWhenBulkSubscribeUsedWithStreamingDelivery()
+    {
+        var diagnostics = await RunAsync(
+            new TopicOptionConsistencyAnalyzer(),
+            TopicSource("Delivery = DeliveryMode.Streaming, BulkSubscribe = true, MaxMessagesCount = 50, MaxAwaitDurationMs = 200"));
+
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1617"
+            && d.GetMessage().Contains("DeliveryMode.Programmatic"));
+    }
+
+    [Fact]
+    public async Task DAPR1617_FiresWhenPrioritySetWithoutMatch()
+    {
+        var diagnostics = await RunAsync(
+            new TopicOptionConsistencyAnalyzer(),
+            TopicSource("Delivery = DeliveryMode.Http, Route = \"/orders\", Priority = 1"));
+
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1617"
+            && d.GetMessage().Contains("no Match expression is declared"));
+    }
+
+    [Fact]
+    public async Task DAPR1617_FiresWhenRouteSetForNonHttpDelivery()
+    {
+        var diagnostics = await RunAsync(
+            new TopicOptionConsistencyAnalyzer(),
+            TopicSource("Delivery = DeliveryMode.Streaming, Route = \"/orders\""));
+
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1617" && d.GetMessage().Contains("Route"));
+    }
+
+    [Fact]
+    public async Task DAPR1617_FiresWhenMatchSetForNonHttpDelivery()
+    {
+        var diagnostics = await RunAsync(
+            new TopicOptionConsistencyAnalyzer(),
+            TopicSource("Delivery = DeliveryMode.Programmatic, Match = \"event.type == 'v1'\", Priority = 1"));
+
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1617"
+            && d.GetMessage().Contains("routing rules are only applied"));
+    }
+
+    [Fact]
+    public async Task DAPR1617_DoesNotFireForHttpDeliveryWithMatchAndPriority()
+    {
+        var diagnostics = await RunAsync(
+            new TopicOptionConsistencyAnalyzer(),
+            TopicSource("Delivery = DeliveryMode.Http, Route = \"/orders\", Match = \"event.type == 'v1'\", Priority = 1"));
+
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1617");
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1616");
+    }
+
+    [Fact]
+    public async Task DAPR1616_And_1617_DoNotFireOnMinimalTopic()
+    {
+        var source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+
+namespace MyApp;
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders")]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var diagnostics = await RunAsync(new TopicOptionConsistencyAnalyzer(), source);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1616");
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1617");
+    }
 }
