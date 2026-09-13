@@ -37,8 +37,8 @@ public class HttpSubscriptionIntegrationTests
         builder.Services.AddLogging();
         builder.Services.AddSingleton(notifState);
         builder.Services.AddSingleton(bulkState);
+        builder.Services.AddSingleton<IntegrationOrderState>();
         builder.Services.AddDaprMessaging();
-        builder.Services.AddRouting();
 
         var app = builder.Build();
         app.UseRouting();

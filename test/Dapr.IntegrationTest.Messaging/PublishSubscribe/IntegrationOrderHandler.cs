@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Collections.Concurrent;
 using Dapr.Messaging;
 using Dapr.Messaging.PublishSubscribe;
 
@@ -21,9 +22,32 @@ namespace Dapr.IntegrationTest.Messaging.PublishSubscribe;
 
 public record IntegrationOrder(string Id, int Total);
 
+/// <summary>
+/// Records the orders delivered to <see cref="IntegrationOrderHandler"/> so that tests driving a real
+/// Dapr sidecar can assert the message actually reached the handler.
+/// </summary>
+public sealed class IntegrationOrderState
+{
+    private readonly ConcurrentQueue<(IntegrationOrder Order, TopicContext Context)> _received = new();
+
+    public IReadOnlyCollection<(IntegrationOrder Order, TopicContext Context)> Received => _received;
+
+    public void Add(IntegrationOrder order, TopicContext context) => _received.Enqueue((order, context));
+}
+
 [DaprTopic("pubsub", "integration-orders", Delivery = DeliveryMode.Programmatic)]
 public class IntegrationOrderHandler : ITopicHandler<IntegrationOrder>
 {
+    private readonly IntegrationOrderState _state;
+
+    public IntegrationOrderHandler(IntegrationOrderState state)
+    {
+        _state = state;
+    }
+
     public Task<TopicResponseAction> HandleAsync(IntegrationOrder message, TopicContext context, CancellationToken cancellationToken)
-        => Task.FromResult(TopicResponseAction.Success);
+    {
+        _state.Add(message, context);
+        return Task.FromResult(TopicResponseAction.Success);
+    }
 }

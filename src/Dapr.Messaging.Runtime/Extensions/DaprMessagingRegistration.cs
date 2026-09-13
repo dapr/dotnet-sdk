@@ -22,32 +22,64 @@ using Microsoft.Extensions.Options;
 namespace Dapr.Messaging;
 
 /// <summary>
-/// Registration primitives consumed by the source-generated <c>AddDaprMessaging</c> extension emitted
+/// Registration entry point consumed by the source-generated <c>AddDaprMessaging</c> extension emitted
 /// by <c>Dapr.Messaging.Generators</c>.
 /// </summary>
 /// <remarks>
-/// These helpers live in the runtime assembly (which carries the ASP.NET Core framework reference and
-/// the gRPC server packages) so the generated code emitted into a consumer's assembly does not have to
-/// reference <c>Grpc.AspNetCore</c> or <c>Microsoft.AspNetCore.App</c> directly. This type is public
-/// only so generated code can call it; it is not intended to be used directly from application code.
+/// <para>
+/// This helper lives in the runtime assembly (which carries the ASP.NET Core framework reference and the
+/// gRPC server packages) so the generated code emitted into a consumer's assembly does not have to
+/// reference <c>Grpc.AspNetCore</c> or <c>Microsoft.AspNetCore.App</c> directly. The type is public only
+/// so generated code can call it; it is not intended to be used directly from application code, and
+/// doing so is reported by analyzer rule <c>DAPR1614</c>.
+/// </para>
+/// <para>
+/// A single atomic <see cref="Register"/> method is exposed deliberately. Splitting registration across
+/// several independently callable methods would make a partially registered messaging stack
+/// representable; keeping it atomic means the only choice available to generated code is which optional
+/// hosting features to opt into, expressed as <see cref="DaprMessagingFeatures"/>.
+/// </para>
 /// </remarks>
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static class DaprMessagingRegistration
 {
     /// <summary>
-    /// Registers <see cref="DaprMessagingOptions"/> and the publisher surface
-    /// (<see cref="DaprPublishSubscribeClient"/> and <see cref="IDaprPublishSubscribeClient"/>).
+    /// Registers the complete Dapr messaging stack: options, the publishing client, the subscriber
+    /// registry seam, and the hosting services required by <paramref name="features"/>.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">Optional configuration of <see cref="DaprMessagingOptions"/>.</param>
-    /// <returns>The service collection.</returns>
+    /// <param name="features">The optional hosting features required by the discovered subscriptions.</param>
+    /// <returns>A builder allowing further Dapr messaging registration.</returns>
     [EditorBrowsable(EditorBrowsableState.Never)]
-    public static IServiceCollection AddPublisher(
+    public static IDaprMessagingBuilder Register(
         IServiceCollection services,
-        Action<DaprMessagingOptions>? configure)
+        Action<DaprMessagingOptions>? configure,
+        DaprMessagingFeatures features)
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        AddPublisher(services, configure);
+
+        if (features.HasFlag(DaprMessagingFeatures.ProgrammaticSubscriptions))
+        {
+            // The sidecar pushes events to the application's AppCallback gRPC service, so ASP.NET Core
+            // gRPC server hosting and the callback service itself are required.
+            services.AddGrpc();
+            services.TryAddTransient<DaprAppCallbackService>();
+        }
+
+        if (features.HasFlag(DaprMessagingFeatures.HttpSubscriptions))
+        {
+            // The /dapr/subscribe discovery endpoint and the delivery routes require routing support.
+            services.AddRouting();
+        }
+
+        return new DaprMessagingBuilder(services);
+    }
+
+    private static void AddPublisher(IServiceCollection services, Action<DaprMessagingOptions>? configure)
+    {
         services.AddOptions<DaprMessagingOptions>().Configure(options => configure?.Invoke(options));
 
         services.AddDaprPubSubClient(configure: (sp, b) =>
@@ -67,55 +99,6 @@ public static class DaprMessagingRegistration
         });
 
         services.TryAddSingleton<IDaprPublishSubscribeClient>(sp => sp.GetRequiredService<DaprPublishSubscribeClient>());
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers ASP.NET Core gRPC server hosting and the Dapr <c>AppCallback</c> push service. Called by
-    /// generated code only when at least one <see cref="DeliveryMode.Programmatic"/> subscription exists.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The service collection.</returns>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public static IServiceCollection AddProgrammaticSubscriptions(IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        services.AddGrpc();
-        services.TryAddTransient<DaprAppCallbackService>();
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers ASP.NET Core routing support used by the HTTP subscription discovery and delivery
-    /// endpoints. Called by generated code only when at least one <see cref="DeliveryMode.Http"/>
-    /// subscription exists.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The service collection.</returns>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public static IServiceCollection AddHttpSubscriptions(IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        services.AddRouting();
-
-        return services;
-    }
-
-    /// <summary>
-    /// Creates the <see cref="IDaprMessagingBuilder"/> returned from the generated
-    /// <c>AddDaprMessaging</c> extension.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The builder.</returns>
-    [EditorBrowsable(EditorBrowsableState.Never)]
-    public static IDaprMessagingBuilder CreateBuilder(IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        return new DaprMessagingBuilder(services);
     }
 
     private sealed class DaprMessagingBuilder(IServiceCollection services) : IDaprMessagingBuilder

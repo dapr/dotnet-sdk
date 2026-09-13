@@ -477,7 +477,8 @@ public class OrderHandler : ITopicHandler<Order>
         var (generated, diagnostics) = await RunAsync(source);
 
         Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-        Assert.Contains("AddProgrammaticSubscriptions(services)", generated);
+        Assert.Contains("DaprMessagingFeatures.ProgrammaticSubscriptions", generated);
+        Assert.DoesNotContain("DaprMessagingFeatures.HttpSubscriptions", generated);
     }
 
     [Fact]
@@ -503,8 +504,9 @@ public class OrderHandler : ITopicHandler<Order>
         var (generated, diagnostics) = await RunAsync(source);
 
         Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-        Assert.DoesNotContain("AddProgrammaticSubscriptions(services)", generated);
-        Assert.DoesNotContain("AddHttpSubscriptions(services)", generated);
+        Assert.Contains("DaprMessagingFeatures.None", generated);
+        Assert.DoesNotContain("DaprMessagingFeatures.ProgrammaticSubscriptions", generated);
+        Assert.DoesNotContain("DaprMessagingFeatures.HttpSubscriptions", generated);
     }
 
     [Fact]
@@ -530,8 +532,8 @@ public class OrderHandler : ITopicHandler<Order>
         var (generated, diagnostics) = await RunAsync(source);
 
         Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-        Assert.Contains("AddHttpSubscriptions(services)", generated);
-        Assert.DoesNotContain("AddProgrammaticSubscriptions(services)", generated);
+        Assert.Contains("DaprMessagingFeatures.HttpSubscriptions", generated);
+        Assert.DoesNotContain("DaprMessagingFeatures.ProgrammaticSubscriptions", generated);
     }
 
     [Fact]
@@ -546,10 +548,43 @@ public class NoHandler { }
         var (generated, diagnostics) = await RunAsync(source);
 
         Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
-        Assert.Contains("AddPublisher(services, configure)", generated);
+        Assert.Contains("DaprMessagingRegistration.Register(services, configure,", generated);
         Assert.Contains("IDaprMessagingSubscriberRegistry, DaprMessagingSubscriberRegistry", generated);
-        Assert.DoesNotContain("AddProgrammaticSubscriptions(services)", generated);
-        Assert.DoesNotContain("AddHttpSubscriptions(services)", generated);
+        Assert.Contains("DaprMessagingFeatures.None", generated);
+    }
+
+    [Fact]
+    public async Task ProgrammaticAndHttpDelivery_EmitsBothFeatureFlags()
+    {
+        const string source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+
+namespace MyApp;
+
+public class Order { public string Id { get; set; } = string.Empty; }
+public class Invoice { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Programmatic)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken cancellationToken)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+
+[DaprTopic("pubsub", "invoices", Delivery = DeliveryMode.Http)]
+public class InvoiceHandler : ITopicHandler<Invoice>
+{
+    public Task<TopicResponseAction> HandleAsync(Invoice message, TopicContext context, CancellationToken cancellationToken)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var (generated, diagnostics) = await RunAsync(source);
+
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        Assert.Contains("DaprMessagingFeatures.ProgrammaticSubscriptions | global::Dapr.Messaging.DaprMessagingFeatures.HttpSubscriptions", generated);
     }
 
     [Fact]

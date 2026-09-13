@@ -548,9 +548,6 @@ public sealed class TopicHandlerSourceGenerator : IIncrementalGenerator
         sb.AppendLine("            this IServiceCollection services,");
         sb.AppendLine("            Action<global::Dapr.Messaging.DaprMessagingOptions>? configure = null)");
         sb.AppendLine("        {");
-        sb.AppendLine("            // Options + the publishing surface are always registered.");
-        sb.AppendLine("            global::Dapr.Messaging.DaprMessagingRegistration.AddPublisher(services, configure);");
-        sb.AppendLine();
 
         if (hasSubscribers)
         {
@@ -569,22 +566,35 @@ public sealed class TopicHandlerSourceGenerator : IIncrementalGenerator
         sb.AppendLine("            services.TryAddSingleton<IDaprMessagingSubscriberRegistry, DaprMessagingSubscriberRegistry>();");
         sb.AppendLine();
 
+        var featureFlags = new List<string>();
+        if (hasProgrammatic)
+        {
+            featureFlags.Add("global::Dapr.Messaging.DaprMessagingFeatures.ProgrammaticSubscriptions");
+        }
+
+        if (hasHttp)
+        {
+            featureFlags.Add("global::Dapr.Messaging.DaprMessagingFeatures.HttpSubscriptions");
+        }
+
+        var features = featureFlags.Count == 0
+            ? "global::Dapr.Messaging.DaprMessagingFeatures.None"
+            : string.Join(" | ", featureFlags);
+
         if (hasProgrammatic)
         {
             sb.AppendLine("            // At least one subscription uses the programmatic (AppCallback push) delivery mode,");
             sb.AppendLine("            // so gRPC server hosting and the AppCallback service are registered.");
-            sb.AppendLine("            global::Dapr.Messaging.DaprMessagingRegistration.AddProgrammaticSubscriptions(services);");
-            sb.AppendLine();
         }
 
         if (hasHttp)
         {
             sb.AppendLine("            // At least one subscription uses HTTP delivery, so routing/endpoint support is registered.");
-            sb.AppendLine("            global::Dapr.Messaging.DaprMessagingRegistration.AddHttpSubscriptions(services);");
-            sb.AppendLine();
         }
 
-        sb.AppendLine("            return global::Dapr.Messaging.DaprMessagingRegistration.CreateBuilder(services);");
+        sb.AppendLine("            // Options, the publishing surface, and the hosting services required by the");
+        sb.AppendLine("            // delivery modes declared above are registered as a single atomic operation.");
+        sb.AppendLine($"            return global::Dapr.Messaging.DaprMessagingRegistration.Register(services, configure, {features});");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine("}");

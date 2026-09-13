@@ -39,6 +39,14 @@ public class DaprMessagingAnalyzersTests
         references.Add(AbstractionsReference());
         references.Add(RuntimeReference());
 
+        // DaprMessagingRegistration.Register takes an IServiceCollection, so binding that call
+        // requires the DI abstractions assembly to be referenced.
+        var diPath = typeof(Microsoft.Extensions.DependencyInjection.IServiceCollection).Assembly.Location;
+        if (!string.IsNullOrEmpty(diPath) && references.OfType<PortableExecutableReference>().All(r => r.FilePath != diPath))
+        {
+            references.Add(MetadataReference.CreateFromFile(diPath));
+        }
+
         // Ensure System.Text.Json is referenced (it may not be loaded yet).
         var stjPath = typeof(System.Text.Json.JsonSerializer).Assembly.Location;
         if (!string.IsNullOrEmpty(stjPath) && references.OfType<PortableExecutableReference>().All(r => r.FilePath != stjPath))
@@ -499,6 +507,57 @@ public class OrderHandler : ITopicHandler<Order>
         var newSource = (await newDoc.GetTextAsync(TestContext.Current.CancellationToken)).ToString();
 
         Assert.Contains("app.MapDaprAppCallback();", newSource);
+    }
+
+    // -----------------------------------------------------------------------
+    //  DAPR1614: Direct DaprMessagingRegistration Usage Analyzer
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task DAPR1614_FiresWhenRegistrationCalledDirectly()
+    {
+        var source = """
+using Dapr.Messaging;
+using Microsoft.Extensions.DependencyInjection;
+
+public static class Startup
+{
+    public static void Configure(IServiceCollection services)
+    {
+        DaprMessagingRegistration.Register(services, null, DaprMessagingFeatures.None);
+    }
+}
+""";
+
+        var diagnostics = await RunAsync(new DirectRegistrationUsageAnalyzer(), source);
+        Assert.Contains(diagnostics, d => d.Id == "DAPR1614" && d.GetMessage().Contains("AddDaprMessaging()"));
+    }
+
+    [Fact]
+    public async Task DAPR1614_DoesNotFireWhenRegistrationIsNotUsed()
+    {
+        var source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+using Microsoft.AspNetCore.Builder;
+
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+app.MapDaprAppCallback();
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Programmatic)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var diagnostics = await RunAsync(new DirectRegistrationUsageAnalyzer(), source);
+        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1614");
     }
 
     // -----------------------------------------------------------------------

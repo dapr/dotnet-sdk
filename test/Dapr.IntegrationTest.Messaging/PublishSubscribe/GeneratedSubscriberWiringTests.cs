@@ -35,6 +35,7 @@ public class GeneratedSubscriberWiringTests
         services.AddLogging();
         services.AddSingleton<HttpNotificationState>();
         services.AddSingleton<HttpBulkState>();
+        services.AddSingleton<IntegrationOrderState>();
         services.AddDaprMessaging();
         return services.BuildServiceProvider(validateScopes: true);
     }
