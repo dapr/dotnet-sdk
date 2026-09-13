@@ -11,8 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Messaging;
-using Dapr.Messaging.PublishSubscribe;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;

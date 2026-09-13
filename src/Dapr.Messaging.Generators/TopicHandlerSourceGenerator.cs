@@ -11,9 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using System.Text;
 using Dapr.Messaging.Generators.Models;
 using Microsoft.CodeAnalysis;

@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System.Text.Json;
-using Dapr.Messaging;
 
 namespace Dapr.Messaging.Test.Messaging;
 

@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Messaging;
 using Dapr.Messaging.PublishSubscribe;
 using Dapr.Messaging.Subscribe.AppCallback;
 using Grpc.Core;

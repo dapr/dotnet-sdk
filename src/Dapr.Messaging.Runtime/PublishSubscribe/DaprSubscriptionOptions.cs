@@ -11,8 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr;
-
 namespace Dapr.Messaging.PublishSubscribe;
 
 /// <summary>

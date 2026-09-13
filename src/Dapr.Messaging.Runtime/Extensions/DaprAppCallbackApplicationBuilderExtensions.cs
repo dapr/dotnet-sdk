@@ -13,7 +13,6 @@
 
 using Dapr.Messaging.Subscribe.AppCallback;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
 namespace Dapr.Messaging;

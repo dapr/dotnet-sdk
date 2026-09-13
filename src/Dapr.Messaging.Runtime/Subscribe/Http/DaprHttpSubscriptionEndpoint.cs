@@ -7,7 +7,6 @@
 // ------------------------------------------------------------------------
 
 using System.Text.Json;
-using Dapr.Messaging;
 using Dapr.Messaging.PublishSubscribe;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;

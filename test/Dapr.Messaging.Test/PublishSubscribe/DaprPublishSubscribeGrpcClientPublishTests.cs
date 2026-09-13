@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Common;
-using Dapr.Messaging;
 using Dapr.Messaging.PublishSubscribe;
 using Google.Protobuf;
 using Grpc.Core;

@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Messaging.PublishSubscribe;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Messaging;
 

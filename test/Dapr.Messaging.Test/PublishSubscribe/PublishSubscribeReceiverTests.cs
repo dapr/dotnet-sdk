@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System.Threading.Channels;
-using Dapr;
 using Dapr.AppCallback.Autogen.Grpc.v1;
 using Dapr.Messaging.PublishSubscribe;
 using Grpc.Core;

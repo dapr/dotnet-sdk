@@ -11,10 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.IO;
 using System.Text;
 using System.Text.Json;
-using Dapr.Messaging;
 using Dapr.Messaging.PublishSubscribe;
 using Dapr.Messaging.Subscribe.Http;
 using Microsoft.AspNetCore.Http;
