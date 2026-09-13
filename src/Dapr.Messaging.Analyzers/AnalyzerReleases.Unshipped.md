@@ -9,5 +9,4 @@ DAPR1610 | Dapr.Messaging.Analyzers | Error | Topic registered for both Streamin
 DAPR1611 | Dapr.Messaging.Analyzers | Error | [DaprTopic] on a class not implementing ITopicHandler<T>
 DAPR1612 | Dapr.Messaging.Analyzers | Warning | Message type not registered in a JsonSerializerContext
 DAPR1613 | Dapr.Messaging.Analyzers | Warning | Programmatic subscription missing MapDaprAppCallback call
-DAPR1614 | Dapr.Messaging.Analyzers | Warning | AddDaprSubscriber called without AddGeneratedSubscribers
-DAPR1615 | Dapr.Messaging.Analyzers | Warning | Subscriber registration or endpoint mapping call has no matching subscribers
+DAPR1615 | Dapr.Messaging.Analyzers | Warning | Endpoint mapping call has no matching subscribers

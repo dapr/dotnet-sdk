@@ -54,11 +54,11 @@ public sealed class MissingMapDaprAppCallbackAnalyzer : DiagnosticAnalyzer
             var topicAttr = compilationStartContext.Compilation.GetTypeByMetadataName(DaprTopicAttributeFqn);
 
             bool hasMapDaprAppCallback = false;
-            InvocationExpressionSyntax? addDaprSubscriberInvocation = null;
+            InvocationExpressionSyntax? addDaprMessagingInvocation = null;
             Location? programmaticHandlerLocation = null;
             var syncLock = new object();
 
-            // 1. Syntax action to locate AddDaprSubscriber and MapDaprAppCallback invocations
+            // 1. Syntax action to locate AddDaprMessaging and MapDaprAppCallback invocations
             compilationStartContext.RegisterSyntaxNodeAction(syntaxContext =>
             {
                 if (syntaxContext.Node is not InvocationExpressionSyntax invocation)
@@ -75,11 +75,11 @@ public sealed class MissingMapDaprAppCallbackAnalyzer : DiagnosticAnalyzer
                             hasMapDaprAppCallback = true;
                         }
                     }
-                    else if (memberAccess.Name.Identifier.Text == "AddDaprSubscriber")
+                    else if (memberAccess.Name.Identifier.Text == "AddDaprMessaging")
                     {
                         lock (syncLock)
                         {
-                            addDaprSubscriberInvocation ??= invocation;
+                            addDaprMessagingInvocation ??= invocation;
                         }
                     }
                 }
@@ -129,10 +129,10 @@ public sealed class MissingMapDaprAppCallbackAnalyzer : DiagnosticAnalyzer
                 {
                     if (!hasMapDaprAppCallback && programmaticHandlerLocation is not null)
                     {
-                        if (addDaprSubscriberInvocation is not null)
+                        if (addDaprMessagingInvocation is not null)
                         {
                             compilationEndContext.ReportDiagnostic(
-                                Diagnostic.Create(Rule, addDaprSubscriberInvocation.GetLocation()));
+                                Diagnostic.Create(Rule, addDaprMessagingInvocation.GetLocation()));
                         }
                         else
                         {

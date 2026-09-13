@@ -13,14 +13,14 @@
 
 using Dapr.Messaging;
 using Dapr.Messaging.PublishSubscribe;
-using Dapr.Messaging.Subscribe.AppCallback;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Dapr.Messaging.Test.Extensions;
 
 /// <summary>
-/// Unit tests for the DI registration extensions in <c>Dapr.Messaging.Runtime</c>.
+/// Unit tests for the single-call <c>AddDaprMessaging</c> registration emitted by
+/// <c>Dapr.Messaging.Generators</c> into this assembly, plus the runtime builder extensions.
 /// </summary>
 public class DaprMessagingServiceCollectionExtensionsTests
 {
@@ -63,10 +63,10 @@ public class DaprMessagingServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddDaprPubSub_RegistersDaprPublishSubscribeClient()
+    public void AddDaprMessaging_RegistersPublishSubscribeClient()
     {
         var services = new ServiceCollection();
-        services.AddDaprMessaging().AddDaprPubSub();
+        services.AddDaprMessaging();
 
         using var provider = services.BuildServiceProvider();
         var client = provider.GetService<DaprPublishSubscribeClient>();
@@ -78,28 +78,39 @@ public class DaprMessagingServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddDaprSubscriber_RegistersAppCallbackService()
+    public void AddDaprMessaging_RegistersSubscriberRegistry()
     {
         var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddDaprMessaging().AddDaprPubSub().AddDaprSubscriber();
-
-        // Register a minimal registry so DaprAppCallbackService can be constructed.
-        services.AddSingleton<IDaprMessagingSubscriberRegistry, EmptyRegistry>();
+        services.AddDaprMessaging();
 
         using var provider = services.BuildServiceProvider();
-        var svc = provider.GetService<DaprAppCallbackService>();
-        Assert.NotNull(svc);
+        var registry = provider.GetService<IDaprMessagingSubscriberRegistry>();
+        Assert.NotNull(registry);
     }
 
     [Fact]
-    public void AddDaprSubscriber_RegistersGrpcServerServices()
+    public void AddDaprMessaging_WithNoSubscribers_DoesNotRegisterGrpcServerHosting()
+    {
+        // This test assembly declares no [DaprTopic] handlers, so the generated registration must
+        // not opt into gRPC server hosting or the AppCallback push service.
+        var services = new ServiceCollection();
+        services.AddDaprMessaging();
+
+        Assert.DoesNotContain(
+            services,
+            d => d.ServiceType.FullName?.Contains("Grpc.AspNetCore.Server", StringComparison.Ordinal) == true);
+    }
+
+    [Fact]
+    public void AddDaprMessaging_IsIdempotentForRegistryAndClient()
     {
         var services = new ServiceCollection();
-        services.AddDaprMessaging().AddDaprSubscriber();
+        services.AddDaprMessaging();
+        services.AddDaprMessaging();
 
-        // AddGrpc() registers gRPC server infrastructure (marker/options/service providers)
-        Assert.Contains(services, d => d.ServiceType.FullName?.Contains("Grpc") == true);
+        using var provider = services.BuildServiceProvider();
+        Assert.NotNull(provider.GetService<IDaprMessagingSubscriberRegistry>());
+        Assert.NotNull(provider.GetService<IDaprPublishSubscribeClient>());
     }
 
     [Fact]
@@ -136,11 +147,5 @@ public class DaprMessagingServiceCollectionExtensionsTests
     {
         public Task<TopicResponseAction> HandleAsync(string message, TopicContext context, CancellationToken cancellationToken)
             => Task.FromResult(TopicResponseAction.Success);
-    }
-
-    private sealed class EmptyRegistry : IDaprMessagingSubscriberRegistry
-    {
-        public IReadOnlyList<TopicSubscriptionDescriptor> Descriptors { get; } = Array.Empty<TopicSubscriptionDescriptor>();
-        public ITopicDispatcher? Resolve(string pubsubName, string topicName, DeliveryMode mode) => null;
     }
 }

@@ -56,11 +56,8 @@ public sealed class UnusedDaprSubscriberRegistrationAnalyzer : DiagnosticAnalyze
             var topicHandler = compilationStartContext.Compilation.GetTypeByMetadataName(ITopicHandlerFqn);
             var topicHandlerWithResult = compilationStartContext.Compilation.GetTypeByMetadataName(ITopicHandlerResultFqn);
 
-            bool hasAnySubscriber = false;
             bool hasProgrammaticSubscriber = false;
             bool hasHttpSubscriber = false;
-            var addDaprSubscriberInvocations = new List<InvocationExpressionSyntax>();
-            var addGeneratedSubscribersInvocations = new List<InvocationExpressionSyntax>();
             var mapDaprAppCallbackInvocations = new List<InvocationExpressionSyntax>();
             var mapDaprHttpSubscriptionsInvocations = new List<InvocationExpressionSyntax>();
             var mapDaprMessagingInvocations = new List<InvocationExpressionSyntax>();
@@ -73,21 +70,7 @@ public sealed class UnusedDaprSubscriberRegistrationAnalyzer : DiagnosticAnalyze
                     return;
                 }
 
-                if (IsDaprInvocation(syntaxContext, invocation, "AddDaprSubscriber", "DaprMessagingServiceCollectionExtensions"))
-                {
-                    lock (syncLock)
-                    {
-                        addDaprSubscriberInvocations.Add(invocation);
-                    }
-                }
-                else if (IsDaprInvocation(syntaxContext, invocation, "AddGeneratedSubscribers", "DaprMessagingGeneratedExtensions"))
-                {
-                    lock (syncLock)
-                    {
-                        addGeneratedSubscribersInvocations.Add(invocation);
-                    }
-                }
-                else if (IsDaprInvocation(syntaxContext, invocation, "MapDaprAppCallback", "DaprAppCallbackApplicationBuilderExtensions"))
+                if (IsDaprInvocation(syntaxContext, invocation, "MapDaprAppCallback", "DaprAppCallbackApplicationBuilderExtensions"))
                 {
                     lock (syncLock)
                     {
@@ -129,7 +112,6 @@ public sealed class UnusedDaprSubscriberRegistrationAnalyzer : DiagnosticAnalyze
                         var delivery = GetDeliveryMode(attr);
                         lock (syncLock)
                         {
-                            hasAnySubscriber = true;
                             hasProgrammaticSubscriber |= delivery == "Programmatic" || delivery == "1";
                             hasHttpSubscriber |= delivery == "Http" || delivery == "2";
                         }
@@ -143,11 +125,6 @@ public sealed class UnusedDaprSubscriberRegistrationAnalyzer : DiagnosticAnalyze
                 {
                     if (!hasProgrammaticSubscriber)
                     {
-                        Report(
-                            compilationEndContext,
-                            addDaprSubscriberInvocations,
-                            "AddDaprSubscriber()",
-                            "programmatic Dapr topic subscribers");
                         Report(
                             compilationEndContext,
                             mapDaprAppCallbackInvocations,
@@ -171,15 +148,6 @@ public sealed class UnusedDaprSubscriberRegistrationAnalyzer : DiagnosticAnalyze
                             mapDaprMessagingInvocations,
                             "MapDaprMessaging()",
                             "HTTP or programmatic Dapr topic subscribers");
-                    }
-
-                    if (!hasAnySubscriber)
-                    {
-                        Report(
-                            compilationEndContext,
-                            addGeneratedSubscribersInvocations,
-                            "AddGeneratedSubscribers()",
-                            "Dapr topic subscribers");
                     }
                 }
             });

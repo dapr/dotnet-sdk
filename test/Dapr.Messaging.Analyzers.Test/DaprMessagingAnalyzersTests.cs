@@ -337,7 +337,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDaprMessaging().AddDaprSubscriber();
+builder.Services.AddDaprMessaging();
 var app = builder.Build();
 app.Run();
 
@@ -366,7 +366,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDaprMessaging().AddDaprSubscriber();
+builder.Services.AddDaprMessaging();
 var app = builder.Build();
 app.MapDaprAppCallback();
 app.Run();
@@ -396,7 +396,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDaprMessaging().AddDaprSubscriber();
+builder.Services.AddDaprMessaging();
 var app = builder.Build();
 app.MapDaprMessaging();
 app.Run();
@@ -448,7 +448,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Dapr.Messaging;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDaprMessaging().AddDaprSubscriber();
+builder.Services.AddDaprMessaging();
 var app = builder.Build();
 app.Run();
 
@@ -509,199 +509,8 @@ public class OrderHandler : ITopicHandler<Order>
     }
 
     // -----------------------------------------------------------------------
-    //  DAPR1614: Missing AddGeneratedSubscribers Analyzer & CodeFix
-    // -----------------------------------------------------------------------
-
-    [Fact]
-    public async Task DAPR1614_FiresWhenHandlerPresentButAddGeneratedSubscribersMissing()
-    {
-        var source = """
-using System.Threading;
-using System.Threading.Tasks;
-using Dapr.Messaging;
-using Microsoft.Extensions.DependencyInjection;
-
-var services = new ServiceCollection();
-services.AddDaprMessaging().AddDaprSubscriber();
-
-public class Order { public string Id { get; set; } = string.Empty; }
-
-[DaprTopic("pubsub", "orders")]
-public class OrderHandler : ITopicHandler<Order>
-{
-    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
-        => Task.FromResult(TopicResponseAction.Success);
-}
-""";
-
-        var diagnostics = await RunAsync(new MissingAddGeneratedSubscribersAnalyzer(), source);
-        Assert.Contains(diagnostics, d => d.Id == "DAPR1614");
-    }
-
-    [Fact]
-    public async Task DAPR1614_DoesNotFireWhenAddGeneratedSubscribersIsPresent()
-    {
-        var source = """
-using System.Threading;
-using System.Threading.Tasks;
-using Dapr.Messaging;
-using Microsoft.Extensions.DependencyInjection;
-
-var services = new ServiceCollection();
-services.AddDaprMessaging().AddDaprSubscriber().AddGeneratedSubscribers();
-
-public class Order { public string Id { get; set; } = string.Empty; }
-
-[DaprTopic("pubsub", "orders")]
-public class OrderHandler : ITopicHandler<Order>
-{
-    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
-        => Task.FromResult(TopicResponseAction.Success);
-}
-""";
-
-        var diagnostics = await RunAsync(new MissingAddGeneratedSubscribersAnalyzer(), source);
-        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1614");
-    }
-
-    [Fact]
-    public async Task DAPR1614_DoesNotFireWhenNoDaprTopicHandlersExist()
-    {
-        var source = """
-using Dapr.Messaging;
-using Microsoft.Extensions.DependencyInjection;
-
-var services = new ServiceCollection();
-services.AddDaprMessaging().AddDaprSubscriber();
-""";
-
-        var diagnostics = await RunAsync(new MissingAddGeneratedSubscribersAnalyzer(), source);
-        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1614");
-    }
-
-    [Fact]
-    public async Task DAPR1614_CodeFix_AppendsAddGeneratedSubscribers()
-    {
-        var source = """
-using System.Threading;
-using System.Threading.Tasks;
-using Dapr.Messaging;
-using Microsoft.Extensions.DependencyInjection;
-
-var services = new ServiceCollection();
-services.AddDaprMessaging().AddDaprSubscriber();
-
-public class Order { public string Id { get; set; } = string.Empty; }
-
-[DaprTopic("pubsub", "orders")]
-public class OrderHandler : ITopicHandler<Order>
-{
-    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
-        => Task.FromResult(TopicResponseAction.Success);
-}
-""";
-
-        var references = AppDomain.CurrentDomain.GetAssemblies()
-            .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
-            .Select(a => (MetadataReference?)MetadataReference.CreateFromFile(a.Location))
-            .Where(r => r is not null)
-            .Cast<MetadataReference>()
-            .ToList();
-        references.Add(AbstractionsReference());
-        references.Add(RuntimeReference());
-
-        var projectId = ProjectId.CreateNewId();
-        var documentId = DocumentId.CreateNewId(projectId);
-        using var workspace = new AdhocWorkspace();
-        var solution = workspace.CurrentSolution
-            .AddProject(projectId, "TestProject", "TestProject", LanguageNames.CSharp)
-            .AddMetadataReferences(projectId, references)
-            .AddDocument(documentId, "Program.cs", source);
-
-        var document = solution.GetDocument(documentId)!;
-        var compilation = await document.Project.GetCompilationAsync(TestContext.Current.CancellationToken);
-        var analyzer = new MissingAddGeneratedSubscribersAnalyzer();
-        var driver = compilation!.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(analyzer));
-        var diagnostics = await driver.GetAnalyzerDiagnosticsAsync(TestContext.Current.CancellationToken);
-
-        var diagnostic = Assert.Single(diagnostics.Where(d => d.Id == "DAPR1614"));
-
-        var actions = new List<CodeAction>();
-        var context = new CodeFixContext(
-            document,
-            diagnostic,
-            (a, _) => actions.Add(a),
-            TestContext.Current.CancellationToken);
-
-        var codeFixProvider = new AddGeneratedSubscribersCodeFixProvider();
-        await codeFixProvider.RegisterCodeFixesAsync(context);
-
-        var action = Assert.Single(actions);
-        Assert.Equal("Call .AddGeneratedSubscribers()", action.Title);
-
-        var operations = await action.GetOperationsAsync(TestContext.Current.CancellationToken);
-        var applyOp = operations.OfType<ApplyChangesOperation>().Single();
-        var newDoc = applyOp.ChangedSolution.GetDocument(documentId)!;
-        var newSource = (await newDoc.GetTextAsync(TestContext.Current.CancellationToken)).ToString();
-
-        Assert.Contains("AddDaprSubscriber().AddGeneratedSubscribers()", newSource);
-    }
-
-    // -----------------------------------------------------------------------
     //  DAPR1615: Unused Subscriber Registration Analyzer
     // -----------------------------------------------------------------------
-
-    [Fact]
-    public async Task DAPR1615_FiresForAddDaprSubscriberWhenNoProgrammaticSubscribersExist()
-    {
-        var source = """
-using System.Threading;
-using System.Threading.Tasks;
-using Dapr.Messaging;
-using Microsoft.Extensions.DependencyInjection;
-
-var services = new ServiceCollection();
-services.AddDaprMessaging().AddDaprSubscriber();
-
-public class Order { public string Id { get; set; } = string.Empty; }
-
-[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Http)]
-public class OrderHandler : ITopicHandler<Order>
-{
-    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
-        => Task.FromResult(TopicResponseAction.Success);
-}
-""";
-
-        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
-        Assert.Contains(diagnostics, d => d.Id == "DAPR1615" && d.GetMessage().Contains("AddDaprSubscriber()"));
-    }
-
-    [Fact]
-    public async Task DAPR1615_DoesNotFireForAddDaprSubscriberWhenProgrammaticSubscriberExists()
-    {
-        var source = """
-using System.Threading;
-using System.Threading.Tasks;
-using Dapr.Messaging;
-using Microsoft.Extensions.DependencyInjection;
-
-var services = new ServiceCollection();
-services.AddDaprMessaging().AddDaprSubscriber();
-
-public class Order { public string Id { get; set; } = string.Empty; }
-
-[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Programmatic)]
-public class OrderHandler : ITopicHandler<Order>
-{
-    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken ct)
-        => Task.FromResult(TopicResponseAction.Success);
-}
-""";
-
-        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
-        Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1615");
-    }
 
     [Fact]
     public async Task DAPR1615_FiresForMapDaprAppCallbackWhenNoProgrammaticSubscribersExist()
@@ -852,33 +661,5 @@ public class OrderHandler : ITopicHandler<Order>
 
         var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
         Assert.DoesNotContain(diagnostics, d => d.Id == "DAPR1615");
-    }
-
-    [Fact]
-    public async Task DAPR1615_FiresForAddGeneratedSubscribersWhenNoTopicSubscribersExist()
-    {
-        var source = """
-using Dapr.Messaging;
-using Microsoft.Extensions.DependencyInjection;
-
-public class Startup
-{
-    public void Configure(IServiceCollection services)
-    {
-        services.AddDaprMessaging().AddGeneratedSubscribers();
-    }
-}
-
-namespace Microsoft.Extensions.DependencyInjection
-{
-    public static class DaprMessagingGeneratedExtensions
-    {
-        public static global::Dapr.Messaging.IDaprMessagingBuilder AddGeneratedSubscribers(this global::Dapr.Messaging.IDaprMessagingBuilder builder) => builder;
-    }
-}
-""";
-
-        var diagnostics = await RunAsync(new UnusedDaprSubscriberRegistrationAnalyzer(), source);
-        Assert.Contains(diagnostics, d => d.Id == "DAPR1615" && d.GetMessage().Contains("AddGeneratedSubscribers()"));
     }
 }

@@ -19,8 +19,8 @@ namespace Microsoft.Extensions.DependencyInjection;
 /// <summary>
 /// Explicit (non-source-generated) topic registration extensions for the <c>Dapr.Messaging</c> stack.
 /// Prefer annotating <see cref="Dapr.Messaging.ITopicHandler{TMessage}"/> implementations with
-/// <c>[DaprTopic]</c> and calling <c>AddGeneratedSubscribers</c>; these methods are provided for
-/// runtime-only registrations.
+/// <c>[DaprTopic]</c> and calling the source-generated <c>AddDaprMessaging</c>; these methods are
+/// provided for runtime-only registrations.
 /// </summary>
 public static class DaprMessagingBuilderExtensions
 {

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ namespace Dapr.Messaging.Generators;
 ///   <item>An assembly-wide <c>IDaprMessagingSubscriberRegistry</c>.</item>
 ///   <item>A static subscription-manifest JSON string.</item>
 ///   <item>A source-generated <c>JsonSerializerContext</c> for all message types.</item>
-///   <item>A <c>DaprMessagingGeneratedExtensions.AddGeneratedSubscribers</c> DI extension.</item>
+///   <item>A <c>DaprMessagingGeneratedExtensions.AddDaprMessaging</c> DI extension.</item>
 /// </list>
 /// </summary>
 [Generator]
@@ -526,28 +526,67 @@ public sealed class TopicHandlerSourceGenerator : IIncrementalGenerator
 
     private static void EmitGeneratedExtensions(StringBuilder sb, List<TopicHandlerModel> handlers)
     {
+        var hasSubscribers = handlers.Count > 0;
+        var hasProgrammatic = handlers.Any(h => h.Delivery == "Programmatic" || h.Delivery == "1");
+        var hasHttp = handlers.Any(h => h.Delivery == "Http" || h.Delivery == "2");
+
         sb.AppendLine("namespace Microsoft.Extensions.DependencyInjection");
         sb.AppendLine("{");
         sb.AppendLine("    /// <summary>");
-        sb.AppendLine("    /// Source-generated DI registration for [DaprTopic]-annotated handlers.");
+        sb.AppendLine("    /// Source-generated dependency injection registration for the Dapr messaging stack.");
         sb.AppendLine("    /// </summary>");
         sb.AppendLine("    public static class DaprMessagingGeneratedExtensions");
         sb.AppendLine("    {");
         sb.AppendLine("        /// <summary>");
-        sb.AppendLine("        /// Registers all generated topic dispatchers, the subscriber registry, and the");
-        sb.AppendLine("        /// JSON serialization context discovered from [DaprTopic]-annotated handlers.");
+        sb.AppendLine("        /// Adds the complete Dapr messaging stack to the service collection: options, the publishing");
+        sb.AppendLine("        /// client, and - when [DaprTopic]-annotated handlers are present in this assembly - the");
+        sb.AppendLine("        /// generated dispatchers, subscriber registry, and the hosting services required by the");
+        sb.AppendLine("        /// delivery modes those handlers declare.");
         sb.AppendLine("        /// </summary>");
-        sb.AppendLine("        public static IDaprMessagingBuilder AddGeneratedSubscribers(this IDaprMessagingBuilder builder)");
+        sb.AppendLine("        /// <param name=\"services\">The service collection.</param>");
+        sb.AppendLine("        /// <param name=\"configure\">Optionally configures the Dapr messaging options.</param>");
+        sb.AppendLine("        /// <returns>A builder allowing further Dapr messaging registration.</returns>");
+        sb.AppendLine("        public static global::Dapr.Messaging.IDaprMessagingBuilder AddDaprMessaging(");
+        sb.AppendLine("            this IServiceCollection services,");
+        sb.AppendLine("            Action<global::Dapr.Messaging.DaprMessagingOptions>? configure = null)");
         sb.AppendLine("        {");
-        foreach (var m in handlers)
+        sb.AppendLine("            // Options + the publishing surface are always registered.");
+        sb.AppendLine("            global::Dapr.Messaging.DaprMessagingRegistration.AddPublisher(services, configure);");
+        sb.AppendLine();
+
+        if (hasSubscribers)
         {
-            sb.AppendLine($"            builder.Services.AddSingleton<ITopicDispatcher>(sp => new {m.DispatcherClassName}());");
-            // Register the handler type so the dispatcher can resolve it from DI.
-            sb.AppendLine($"            builder.Services.TryAddTransient<{m.HandlerFqn}>();");
+            sb.AppendLine("            // Generated dispatchers and their handler types.");
+            foreach (var m in handlers)
+            {
+                sb.AppendLine($"            services.AddSingleton<ITopicDispatcher>(sp => new {m.DispatcherClassName}());");
+                sb.AppendLine($"            services.TryAddTransient<{m.HandlerFqn}>();");
+            }
+            sb.AppendLine("            services.TryAddSingleton(DaprMessagingJsonContext.Default);");
+            sb.AppendLine();
         }
-        sb.AppendLine("            builder.Services.AddSingleton<IDaprMessagingSubscriberRegistry, DaprMessagingSubscriberRegistry>();");
-        sb.AppendLine("            builder.Services.AddSingleton(DaprMessagingJsonContext.Default);");
-        sb.AppendLine("            return builder;");
+
+        // The registry is always registered so endpoint mapping and the AppCallback service can
+        // resolve it even when this assembly declares no subscriptions.
+        sb.AppendLine("            services.TryAddSingleton<IDaprMessagingSubscriberRegistry, DaprMessagingSubscriberRegistry>();");
+        sb.AppendLine();
+
+        if (hasProgrammatic)
+        {
+            sb.AppendLine("            // At least one subscription uses the programmatic (AppCallback push) delivery mode,");
+            sb.AppendLine("            // so gRPC server hosting and the AppCallback service are registered.");
+            sb.AppendLine("            global::Dapr.Messaging.DaprMessagingRegistration.AddProgrammaticSubscriptions(services);");
+            sb.AppendLine();
+        }
+
+        if (hasHttp)
+        {
+            sb.AppendLine("            // At least one subscription uses HTTP delivery, so routing/endpoint support is registered.");
+            sb.AppendLine("            global::Dapr.Messaging.DaprMessagingRegistration.AddHttpSubscriptions(services);");
+            sb.AppendLine();
+        }
+
+        sb.AppendLine("            return global::Dapr.Messaging.DaprMessagingRegistration.CreateBuilder(services);");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
         sb.AppendLine("}");

@@ -17,7 +17,7 @@ using Dapr.Messaging.PublishSubscribe;
 namespace Dapr.IntegrationTest.Messaging.PublishSubscribe;
 
 // This handler is discovered at compile time by the Dapr.Messaging.Generators source generator,
-// which emits the AddGeneratedSubscribers extension exercised by GeneratedSubscriberWiringTests.
+// which emits the AddDaprMessaging extension exercised by GeneratedSubscriberWiringTests.
 
 public record IntegrationOrder(string Id, int Total);
 

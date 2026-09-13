@@ -33,7 +33,7 @@
         <ProjectReference Include="..\..\src\Dapr.Messaging.Analyzers\Dapr.Messaging.Analyzers.csproj" />
         <!-- Abstractions so ITopicHandler/DaprTopicAttribute resolve. -->
         <ProjectReference Include="..\..\src\Dapr.Messaging.Abstractions\Dapr.Messaging.Abstractions.csproj" />
-        <!-- Runtime so AddDaprSubscriber/MapDaprAppCallback resolve. -->
+        <!-- Runtime so AddDaprMessaging/MapDaprAppCallback resolve. -->
         <ProjectReference Include="..\..\src\Dapr.Messaging.Runtime\Dapr.Messaging.Runtime.csproj" />
     </ItemGroup>
 

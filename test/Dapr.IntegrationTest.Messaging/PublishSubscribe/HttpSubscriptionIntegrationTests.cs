@@ -37,10 +37,7 @@ public class HttpSubscriptionIntegrationTests
         builder.Services.AddLogging();
         builder.Services.AddSingleton(notifState);
         builder.Services.AddSingleton(bulkState);
-        builder.Services.AddDaprMessaging()
-            .AddDaprPubSub()
-            .AddDaprSubscriber()
-            .AddGeneratedSubscribers();
+        builder.Services.AddDaprMessaging();
         builder.Services.AddRouting();
 
         var app = builder.Build();

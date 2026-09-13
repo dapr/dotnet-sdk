@@ -87,7 +87,7 @@ public class OrderHandler : ITopicHandler<Order>
         Assert.True(generated.Length > 0, $"Generated source was empty. Diagnostics: {string.Join("; ", diagnostics.Select(d => d.ToString()))}");
         Assert.Contains("OrderHandler_pubsub_orders_Dispatcher", generated);
         Assert.Contains("DaprMessagingSubscriberRegistry", generated);
-        Assert.Contains("AddGeneratedSubscribers", generated);
+        Assert.Contains("AddDaprMessaging", generated);
         Assert.Contains("typeof(global::MyApp.Order)", generated);
         Assert.Contains("DaprMessagingJsonContext", generated);
     }
@@ -214,7 +214,7 @@ public class NoHandler { }
 
         Assert.Contains("DaprMessagingSubscriberRegistry", generated);
         Assert.Contains("Array.Empty<ITopicDispatcher>()", generated);
-        Assert.Contains("AddGeneratedSubscribers", generated);
+        Assert.Contains("AddDaprMessaging", generated);
     }
 
     [Fact]
@@ -452,6 +452,104 @@ public class OrderHandler : ITopicHandler<Order>
 
         Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
         Assert.Contains("EnableRawPayload = true", generated);
+    }
+
+    [Fact]
+    public async Task ProgrammaticDelivery_EmitsGrpcAndAppCallbackRegistration()
+    {
+        const string source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+
+namespace MyApp;
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Programmatic)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken cancellationToken)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var (generated, diagnostics) = await RunAsync(source);
+
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        Assert.Contains("AddProgrammaticSubscriptions(services)", generated);
+    }
+
+    [Fact]
+    public async Task StreamingDeliveryOnly_DoesNotEmitGrpcRegistration()
+    {
+        const string source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+
+namespace MyApp;
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Streaming)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken cancellationToken)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var (generated, diagnostics) = await RunAsync(source);
+
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        Assert.DoesNotContain("AddProgrammaticSubscriptions(services)", generated);
+        Assert.DoesNotContain("AddHttpSubscriptions(services)", generated);
+    }
+
+    [Fact]
+    public async Task HttpDelivery_EmitsHttpSubscriptionRegistration()
+    {
+        const string source = """
+using System.Threading;
+using System.Threading.Tasks;
+using Dapr.Messaging;
+
+namespace MyApp;
+
+public class Order { public string Id { get; set; } = string.Empty; }
+
+[DaprTopic("pubsub", "orders", Delivery = DeliveryMode.Http)]
+public class OrderHandler : ITopicHandler<Order>
+{
+    public Task<TopicResponseAction> HandleAsync(Order message, TopicContext context, CancellationToken cancellationToken)
+        => Task.FromResult(TopicResponseAction.Success);
+}
+""";
+
+        var (generated, diagnostics) = await RunAsync(source);
+
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        Assert.Contains("AddHttpSubscriptions(services)", generated);
+        Assert.DoesNotContain("AddProgrammaticSubscriptions(services)", generated);
+    }
+
+    [Fact]
+    public async Task AddDaprMessaging_AlwaysRegistersPublisherAndRegistry()
+    {
+        const string source = """
+namespace MyApp;
+
+public class NoHandler { }
+""";
+
+        var (generated, diagnostics) = await RunAsync(source);
+
+        Assert.DoesNotContain(diagnostics, d => d.Severity == DiagnosticSeverity.Error);
+        Assert.Contains("AddPublisher(services, configure)", generated);
+        Assert.Contains("IDaprMessagingSubscriberRegistry, DaprMessagingSubscriberRegistry", generated);
+        Assert.DoesNotContain("AddProgrammaticSubscriptions(services)", generated);
+        Assert.DoesNotContain("AddHttpSubscriptions(services)", generated);
     }
 
     [Fact]

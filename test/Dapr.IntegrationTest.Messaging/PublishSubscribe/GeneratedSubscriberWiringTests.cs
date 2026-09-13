@@ -24,9 +24,8 @@ namespace Dapr.IntegrationTest.Messaging.PublishSubscribe;
 
 /// <summary>
 /// Verifies the end-to-end wiring produced by the Dapr.Messaging.Generators source generator:
-/// AddDaprMessaging -> AddDaprPubSub -> AddDaprSubscriber -> AddGeneratedSubscribers produces a
-/// registry whose descriptors flow into the AppCallback push service. This is a no-sidecar wiring
-/// test; full end-to-end delivery against a real Dapr runtime is covered separately.
+/// AddDaprMessaging produces a registry whose descriptors flow into the AppCallback push service.
+/// This is a no-sidecar wiring test; full end-to-end delivery against a real Dapr runtime is covered separately.
 /// </summary>
 public class GeneratedSubscriberWiringTests
 {
@@ -36,15 +35,12 @@ public class GeneratedSubscriberWiringTests
         services.AddLogging();
         services.AddSingleton<HttpNotificationState>();
         services.AddSingleton<HttpBulkState>();
-        services.AddDaprMessaging()
-                .AddDaprPubSub()
-                .AddDaprSubscriber()
-                .AddGeneratedSubscribers();
+        services.AddDaprMessaging();
         return services.BuildServiceProvider(validateScopes: true);
     }
 
     [Fact]
-    public void AddGeneratedSubscribers_RegistersRegistryWithExpectedDescriptors()
+    public void AddDaprMessaging_RegistersRegistryWithExpectedDescriptors()
     {
         using var provider = BuildServices();
         var registry = provider.GetRequiredService<IDaprMessagingSubscriberRegistry>();
