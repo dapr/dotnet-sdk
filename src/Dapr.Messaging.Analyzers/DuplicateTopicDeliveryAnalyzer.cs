@@ -31,12 +31,12 @@ public sealed class DuplicateTopicDeliveryAnalyzer : DiagnosticAnalyzer
 
     internal static readonly DiagnosticDescriptor Rule = new(
         id: DiagnosticId,
-        title: "Duplicate topic with conflicting delivery modes",
-        messageFormat: "Topic '{0}/{1}' is registered for both Streaming and Programmatic delivery; choose one delivery mode per topic",
+        title: "Topic registered with multiple delivery modes",
+        messageFormat: "Topic '{0}/{1}' is registered for both Streaming and Programmatic delivery. While multiple subscriptions to the same topic are supported, combining delivery modes may be accidental; using a single delivery mode per topic is recommended.",
         category: "Dapr.Messaging.Analyzers",
-        defaultSeverity: DiagnosticSeverity.Error,
+        defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "A topic must not be covered by both Streaming and Programmatic delivery modes.");
+        description: "Multiple subscriptions to the same topic are supported, but using different delivery modes for the same topic may be unintentional. A single delivery mode per topic is recommended.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
 
