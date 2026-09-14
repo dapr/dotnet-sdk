@@ -19,6 +19,7 @@ using Dapr.Client;
 
 namespace Samples.Client;
 
+[Obsolete("Bulk publishing events via DaprClient is legacy. Use the Dapr.Messaging package and IDaprPublishSubscribeClient.BulkPublishEventAsync instead. See examples/Messaging/ for modern examples.")]
 public sealed class BulkPublishEventExample : Example
 {
     private const string PubsubName = "pubsub";
@@ -30,7 +31,7 @@ public sealed class BulkPublishEventExample : Example
         new { Id = "19", Amount = 30m }
     };
 
-    public override string DisplayName => "Bulk Publishing Events";
+    public override string DisplayName => "Bulk Publishing Events (Legacy DaprClient - see Dapr.Messaging for new applications)";
 
     public override async Task RunAsync(CancellationToken cancellationToken)
     {
