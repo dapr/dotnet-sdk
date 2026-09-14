@@ -23,10 +23,18 @@ namespace Dapr.Messaging.PublishSubscribe;
 public abstract class DaprPublishSubscribeClient(
     P.Dapr.DaprClient client,
     HttpClient httpClient,
-    JsonSerializerOptions jsonSerializerOptions,
+    JsonSerializerOptions? jsonSerializerOptions = null,
     string? daprApiToken = null) : IDaprClient, IDaprPublishSubscribeClient
 {
     private bool disposed;
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="DaprPublishSubscribeClient"/> with default JSON serializer options.
+    /// </summary>
+    protected DaprPublishSubscribeClient(P.Dapr.DaprClient client, HttpClient httpClient, string? daprApiToken)
+        : this(client, httpClient, new JsonSerializerOptions(JsonSerializerDefaults.Web), daprApiToken)
+    {
+    }
 
     /// <summary>
     /// The HTTP client used by the client for calling the Dapr runtime.
@@ -42,7 +50,7 @@ public abstract class DaprPublishSubscribeClient(
     /// <remarks>
     /// Property exposed for testing purposes.
     /// </remarks>
-    internal protected readonly JsonSerializerOptions JsonSerializerOptions = jsonSerializerOptions;
+    internal protected readonly JsonSerializerOptions JsonSerializerOptions = jsonSerializerOptions ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
 
     /// <summary>
     /// The Dapr API token value.
@@ -76,42 +84,42 @@ public abstract class DaprPublishSubscribeClient(
     // -----------------------------------------------------------------------
 
     /// <inheritdoc/>
-    public abstract Task PublishEventAsync<TData>(
+    public virtual Task PublishEventAsync<TData>(
         string pubsubName,
         string topicName,
         TData data,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
     /// <inheritdoc/>
-    public abstract Task PublishEventAsync<TData>(
+    public virtual Task PublishEventAsync<TData>(
         string pubsubName,
         string topicName,
         TData data,
         PublishOptions options,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
     /// <inheritdoc/>
-    public abstract Task PublishEventAsync(
+    public virtual Task PublishEventAsync(
         string pubsubName,
         string topicName,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
     /// <inheritdoc/>
-    public abstract Task PublishByteEventAsync(
+    public virtual Task PublishByteEventAsync(
         string pubsubName,
         string topicName,
         ReadOnlyMemory<byte> data,
         string dataContentType = MessagingConstants.ContentTypeApplicationJson,
         PublishOptions? options = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
     /// <inheritdoc/>
-    public abstract Task<BulkPublishResponse<TValue>> BulkPublishEventAsync<TValue>(
+    public virtual Task<BulkPublishResponse<TValue>> BulkPublishEventAsync<TValue>(
         string pubsubName,
         string topicName,
         IReadOnlyList<TValue> events,
         PublishOptions? options = null,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
     /// <inheritdoc />
     public void Dispose()
