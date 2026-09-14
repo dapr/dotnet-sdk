@@ -84,42 +84,42 @@ public abstract class DaprPublishSubscribeClient(
     // -----------------------------------------------------------------------
 
     /// <inheritdoc/>
-    public virtual Task PublishEventAsync<TData>(
+    public abstract Task PublishEventAsync<TData>(
         string pubsubName,
         string topicName,
         TData data,
-        CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
-    public virtual Task PublishEventAsync<TData>(
+    public abstract Task PublishEventAsync<TData>(
         string pubsubName,
         string topicName,
         TData data,
         PublishOptions options,
-        CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
-    public virtual Task PublishEventAsync(
+    public abstract Task PublishEventAsync(
         string pubsubName,
         string topicName,
-        CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
-    public virtual Task PublishByteEventAsync(
+    public abstract Task PublishByteEventAsync(
         string pubsubName,
         string topicName,
         ReadOnlyMemory<byte> data,
         string dataContentType = MessagingConstants.ContentTypeApplicationJson,
         PublishOptions? options = null,
-        CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
-    public virtual Task<BulkPublishResponse<TValue>> BulkPublishEventAsync<TValue>(
+    public abstract Task<BulkPublishResponse<TValue>> BulkPublishEventAsync<TValue>(
         string pubsubName,
         string topicName,
         IReadOnlyList<TValue> events,
         PublishOptions? options = null,
-        CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        CancellationToken cancellationToken = default);
 
     /// <inheritdoc />
     public void Dispose()
