@@ -1,21 +1,151 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-        <Description>This package contains the reference assemblies for developing messaging services using Dapr.</Description>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
+        <IsPackable>true</IsPackable>
         <PackageId>Dapr.Messaging</PackageId>
         <Title>Dapr Messaging SDK</Title>
         <Description>Dapr Messaging SDK for building applications that utilize messaging components.</Description>
+
+        <!-- Create the package on build -->
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+
+        <!-- This aggregator produces no own binaries -->
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+
+        <!-- Aggregator package has lib assets from bundled child projects -->
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+        <!-- Avoid creating an empty .snupkg -->
+        <IncludeSymbols>false</IncludeSymbols>
+
+        <!-- Per-TFM content hook (runs once per TFM) -->
+        <TargetsForTfmSpecificContentInPackage>
+            $(TargetsForTfmSpecificContentInPackage);
+            _BuildMessagingChildrenForCurrentTFM;
+            _CollectMessagingChildOutputsForCurrentTFM;
+            _AddMessagingAnalyzerOnce
+        </TargetsForTfmSpecificContentInPackage>
     </PropertyGroup>
 
+    <!-- Fail fast if TargetFrameworks from src/Directory.Build.props is not applied -->
+    <Target Name="_EnsureTargetFrameworks" BeforeTargets="Pack">
+        <PropertyGroup>
+            <_ExpectedDirectoryBuildProps>$(MSBuildProjectDirectory)\..\Directory.Build.props</_ExpectedDirectoryBuildProps>
+        </PropertyGroup>
+        <Error Condition="'$(TargetFrameworks)' == ''"
+               Text="TargetFrameworks is empty. This project relies on $(_ExpectedDirectoryBuildProps) for its TFM list. Ensure ImportDirectoryBuildProps is enabled and the file is imported." />
+    </Target>
+
+    <!-- Child projects whose outputs are bundled into this package but are NOT NuGet dependencies. -->
     <ItemGroup>
+        <_MessagingChildLib Include="..\Dapr.Messaging.Abstractions\Dapr.Messaging.Abstractions.csproj" />
+        <_MessagingChildLib Include="..\Dapr.Messaging.Runtime\Dapr.Messaging.Runtime.csproj" />
+
+        <ProjectReference Include="@(_MessagingChildLib)"
+                          PrivateAssets="all"
+                          ReferenceOutputAssembly="false" />
+
+        <!-- Tooling projects are bundled under analyzers/dotnet/cs instead of being
+             published as separate NuGet packages. -->
+        <_MessagingAnalyzerProject Include="..\Dapr.Messaging.Generators\Dapr.Messaging.Generators.csproj" />
+        <_MessagingAnalyzerProject Include="..\Dapr.Messaging.Analyzers\Dapr.Messaging.Analyzers.csproj" />
+
+        <ProjectReference Include="@(_MessagingAnalyzerProject)"
+                          PrivateAssets="all"
+                          ReferenceOutputAssembly="false"
+                          SetTargetFramework="TargetFramework=netstandard2.0" />
+
+        <!-- Dapr.Common remains a visible dependency because the bundled assemblies expose and use
+             its public types, and consumers need it as a compile/runtime asset. -->
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+    </ItemGroup>
+
+    <!-- Package references required by the bundled runtime assembly. These remain visible to
+         consumers because the runtime project is bundled privately instead of published separately. -->
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" />
+        <PackageReference Include="Grpc.AspNetCore" />
+        <PackageReference Include="Grpc.Net.Client" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Options" />
     </ItemGroup>
+
+    <!-- Build child libraries for the current TFM -->
+    <Target Name="_BuildMessagingChildrenForCurrentTFM">
+        <MSBuild Projects="@(_MessagingChildLib)"
+                 Targets="Build"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)"
+                 BuildInParallel="true" />
+    </Target>
+
+    <!-- Collect per-TFM child outputs and map them into lib/<tfm>/ -->
+    <Target Name="_CollectMessagingChildOutputsForCurrentTFM"
+            DependsOnTargets="_BuildMessagingChildrenForCurrentTFM">
+        <MSBuild Projects="@(_MessagingChildLib)"
+                 Targets="GetTargetPath"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)">
+            <Output TaskParameter="TargetOutputs" ItemName="_MessagingBuiltChildOutputs" />
+        </MSBuild>
+
+        <PropertyGroup>
+            <_MessagingEffectiveTfmFolder>$(NuGetTargetFrameworkFolderName)</_MessagingEffectiveTfmFolder>
+            <_MessagingEffectiveTfmFolder Condition="'$(_MessagingEffectiveTfmFolder)'==''">$(TargetFramework)</_MessagingEffectiveTfmFolder>
+        </PropertyGroup>
+
+        <ItemGroup>
+            <_MessagingChildDll Include="@(_MessagingBuiltChildOutputs)"
+                                Condition="'%(_MessagingBuiltChildOutputs.Extension)'=='.dll'" />
+            <_MessagingChildXml Include="%(_MessagingChildDll.RootDir)%(_MessagingChildDll.Directory)%(_MessagingChildDll.Filename).xml"
+                                Condition="Exists('%(_MessagingChildDll.RootDir)%(_MessagingChildDll.Directory)%(_MessagingChildDll.Filename).xml')" />
+            <_MessagingChildPdb Include="%(_MessagingChildDll.RootDir)%(_MessagingChildDll.Directory)%(_MessagingChildDll.Filename).pdb"
+                                Condition="Exists('%(_MessagingChildDll.RootDir)%(_MessagingChildDll.Directory)%(_MessagingChildDll.Filename).pdb')" />
+
+            <TfmSpecificPackageFile Include="@(_MessagingChildDll)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_MessagingEffectiveTfmFolder)/%(_MessagingChildDll.Filename)%(_MessagingChildDll.Extension)</PackagePath>
+            </TfmSpecificPackageFile>
+            <TfmSpecificPackageFile Include="@(_MessagingChildXml)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_MessagingEffectiveTfmFolder)/%(_MessagingChildXml.Filename).xml</PackagePath>
+            </TfmSpecificPackageFile>
+            <TfmSpecificPackageFile Include="@(_MessagingChildPdb)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_MessagingEffectiveTfmFolder)/%(_MessagingChildPdb.Filename).pdb</PackagePath>
+            </TfmSpecificPackageFile>
+        </ItemGroup>
+    </Target>
+
+    <!-- Build and embed both Messaging analyzers/source generators once. -->
+    <Target Name="_AddMessagingAnalyzerOnce">
+        <PropertyGroup>
+            <_MessagingIsFirstTfm Condition="'$(TargetFramework)' == 'net8.0'">true</_MessagingIsFirstTfm>
+        </PropertyGroup>
+
+        <MSBuild Condition="'$(_MessagingIsFirstTfm)' == 'true'"
+                 Projects="@(_MessagingAnalyzerProject)"
+                 Targets="Build"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0"
+                 BuildInParallel="true" />
+
+        <MSBuild Condition="'$(_MessagingIsFirstTfm)' == 'true'"
+                 Projects="@(_MessagingAnalyzerProject)"
+                 Targets="GetTargetPath"
+                 Properties="Configuration=$(Configuration);TargetFramework=netstandard2.0">
+            <Output TaskParameter="TargetOutputs" ItemName="_MessagingAnalyzerOutputs" />
+        </MSBuild>
+
+        <ItemGroup Condition="'$(_MessagingIsFirstTfm)' == 'true'">
+            <TfmSpecificPackageFile Include="@(_MessagingAnalyzerOutputs)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>analyzers/dotnet/cs/%(_MessagingAnalyzerOutputs.Filename)%(_MessagingAnalyzerOutputs.Extension)</PackagePath>
+            </TfmSpecificPackageFile>
+        </ItemGroup>
+    </Target>
 
     <ItemGroup>
-      <ProjectReference Include="..\Dapr.Messaging.Runtime\Dapr.Messaging.Runtime.csproj" />
+        <Folder Include="Properties\" />
     </ItemGroup>
-
 </Project>

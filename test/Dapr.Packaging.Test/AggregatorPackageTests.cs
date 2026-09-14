@@ -81,6 +81,36 @@ public sealed class AggregatorPackageTests
             IncludeBuildOutput: false),
 
         new PackageContractCase(
+            PackageId: "Dapr.Messaging",
+            ProjectPath: Path.Combine("src", "Dapr.Messaging", "Dapr.Messaging.csproj"),
+            RequiredProjectReferences:
+            [
+                "Dapr.Common.csproj",
+            ],
+            RequiredPackageReferences:
+            [
+                "Google.Protobuf",
+                "Grpc.AspNetCore",
+                "Grpc.Net.Client",
+                "Microsoft.Extensions.DependencyInjection",
+                "Microsoft.Extensions.DependencyInjection.Abstractions",
+                "Microsoft.Extensions.Hosting.Abstractions",
+                "Microsoft.Extensions.Logging.Abstractions",
+                "Microsoft.Extensions.Options",
+            ],
+            RequiredBundledProjects:
+            [
+                "Dapr.Messaging.Abstractions.csproj",
+                "Dapr.Messaging.Runtime.csproj",
+            ],
+            RequiredAnalyzerProjects:
+            [
+                "Dapr.Messaging.Generators.csproj",
+                "Dapr.Messaging.Analyzers.csproj",
+            ],
+            IncludeBuildOutput: false),
+
+        new PackageContractCase(
             PackageId: "Dapr.Workflow",
             ProjectPath: Path.Combine("src", "Dapr.Workflow", "Dapr.Workflow.csproj"),
             RequiredProjectReferences:
