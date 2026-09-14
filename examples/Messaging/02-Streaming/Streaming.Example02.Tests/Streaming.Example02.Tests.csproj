@@ -4,6 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +15,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Streaming.Example02.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Messaging\Dapr.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
   </ItemGroup>
 </Project>

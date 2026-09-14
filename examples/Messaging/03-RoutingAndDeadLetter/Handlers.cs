@@ -5,10 +5,10 @@ namespace Routing.Example03;
 
 /// <summary>
 /// Handles high-priority express shipments.
-/// Matched via CEL rule: event.data.PriorityTier == 'express' (Priority = 1).
+/// Matched via CEL rule: event.data.priorityTier == 'express' (Priority = 1).
 /// Undeliverable or dropped messages are routed to the configured DeadLetterTopic ("deadletter-shipments").
 /// </summary>
-[DaprTopic("pubsub", "express-shipments", Match = "event.data.PriorityTier == 'express'", Priority = 1, DeadLetterTopic = "deadletter-shipments")]
+[DaprTopic("pubsub", "express-shipments", Match = "event.data.priorityTier == 'express'", Priority = 1, DeadLetterTopic = "deadletter-shipments")]
 [DaprTopicMetadata("routingType", "express-tier")]
 public class ExpressShippingHandler : ITopicHandler<ShipmentPackage>
 {
@@ -37,9 +37,9 @@ public class ExpressShippingHandler : ITopicHandler<ShipmentPackage>
 
 /// <summary>
 /// Handles international shipments (destination outside the US).
-/// Matched via CEL rule: event.data.DestinationCountry != 'US' (Priority = 2).
+/// Matched via CEL rule: event.data.destinationCountry != 'US' (Priority = 2).
 /// </summary>
-[DaprTopic("pubsub", "international-shipments", Match = "event.data.DestinationCountry != 'US'", Priority = 1, DeadLetterTopic = "deadletter-shipments")]
+[DaprTopic("pubsub", "international-shipments", Match = "event.data.destinationCountry != 'US'", Priority = 1, DeadLetterTopic = "deadletter-shipments")]
 [DaprTopicMetadata("routingType", "international-customs")]
 public class InternationalShippingHandler : ITopicHandler<ShipmentPackage>
 {

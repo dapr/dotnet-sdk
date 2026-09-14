@@ -26,5 +26,31 @@ These are the worked examples for the Dapr.Messaging tutorial series demonstrati
 - .NET 10 SDK (or .NET 8/9 SDK)
 - Dapr runtime v1.18+ (for streaming subscription gRPC APIs)
 - Dapr CLI (`dapr init`)
+- Docker / Container runtime (for running the Testcontainers integration tests)
 
-Each unit test in these examples runs with **no sidecar, no state store, no broker, and no Docker**.
+## Testing Strategy for Dapr.Messaging
+
+The examples illustrate a recommended two-tier testing approach for production services built with `Dapr.Messaging`:
+
+### 1. Isolated Unit Tests (Fast, In-Memory)
+Because `ITopicHandler<TMessage>` handlers are pure C# classes with explicit dependency injection, you can test all message handling logic, validations, and response actions (`Success`, `Retry`, `Drop`) using standard unit testing libraries like `Moq` or `NSubstitute`.
+- **Zero infrastructure:** No Docker, no sidecar process, and no message broker needed.
+- **Fast execution:** Millisecond-level test runs.
+
+### 2. End-to-End Integration Tests (`Dapr.Testcontainers`)
+Each example test project includes an integration test class demonstrating how to use `Dapr.Testcontainers` (`PubSubHarness` and `DaprTestApplicationBuilder`) to validate your messaging services against real containerized Dapr sidecars and Redis message brokers:
+- **Delivery Mode Validation:** Verifies gRPC streaming pull (`DeliveryMode.Streaming`), gRPC push (`DeliveryMode.Programmatic`), and HTTP push (`DeliveryMode.Http`).
+- **CEL Routing & Dead-Letter Queues:** Verifies that CloudEvent attribute evaluation, topic matching rules, and DLQ redirects operate identically to production.
+- **Bulk Subscriptions & Custom Metadata:** Validates batching windows and delivery semantics against real Dapr components.
+
+To run all unit and integration tests across the examples:
+```bash
+dotnet test examples/Messaging/01-Publishing/Publishing.Example01.Tests/Publishing.Example01.Tests.csproj
+dotnet test examples/Messaging/02-Streaming/Streaming.Example02.Tests/Streaming.Example02.Tests.csproj
+dotnet test examples/Messaging/03-RoutingAndDeadLetter/Routing.Example03.Tests/Routing.Example03.Tests.csproj
+dotnet test examples/Messaging/04-BulkSubscribe/BulkSubscribe.Example04.Tests/BulkSubscribe.Example04.Tests.csproj
+dotnet test examples/Messaging/05-AppCallbackPush/AppCallback.Example05.Tests/AppCallback.Example05.Tests.csproj
+dotnet test examples/Messaging/06-HttpSubscription/HttpSubscription.Example06.Tests/HttpSubscription.Example06.Tests.csproj
+dotnet test examples/Messaging/07-DynamicStreaming/DynamicStreaming.Example07.Tests/DynamicStreaming.Example07.Tests.csproj
+```
+

@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Publishing.Example01.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Messaging\Dapr.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
   </ItemGroup>
 
 </Project>
