@@ -20,7 +20,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Routing.Example03.csproj" />
-    <ProjectReference Include="..\..\..\..\src\Dapr.Messaging\Dapr.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Messaging.Abstractions\Dapr.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Messaging.Runtime\Dapr.Messaging.Runtime.csproj" />
     <ProjectReference Include="..\..\..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
   </ItemGroup>
 </Project>

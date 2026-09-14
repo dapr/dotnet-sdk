@@ -8,7 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Dapr.Messaging\Dapr.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\src\Dapr.Messaging.Abstractions\Dapr.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\src\Dapr.Messaging.Runtime\Dapr.Messaging.Runtime.csproj" />
     <ProjectReference Include="..\..\..\src\Dapr.Messaging.Generators\Dapr.Messaging.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
