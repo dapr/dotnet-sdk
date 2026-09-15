@@ -52,18 +52,21 @@ public sealed class DaprActorsOptions
 
     /// <summary>
     /// Gets or sets the idle timeout for actor activations.
+    /// <see langword="null"/> leaves the value unset so the Dapr runtime default applies.
     /// </summary>
-    public TimeSpan ActorIdleTimeout { get; set; } = TimeSpan.FromMinutes(60);
+    public TimeSpan? ActorIdleTimeout { get; set; }
 
     /// <summary>
     /// Gets or sets the timeout used when draining ongoing actor calls.
+    /// <see langword="null"/> leaves the value unset so the Dapr runtime default applies.
     /// </summary>
-    public TimeSpan DrainOngoingCallTimeout { get; private set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan? DrainOngoingCallTimeout { get; set; }
 
     /// <summary>
     /// Gets or sets the timeout used when draining rebalanced actors.
+    /// <see langword="null"/> leaves the value unset so the Dapr runtime default applies.
     /// </summary>
-    public TimeSpan DrainRebalancedActorsTimeout
+    public TimeSpan? DrainRebalancedActorsTimeout
     {
         get => DrainOngoingCallTimeout;
         set => DrainOngoingCallTimeout = value;
@@ -71,13 +74,15 @@ public sealed class DaprActorsOptions
 
     /// <summary>
     /// Gets or sets a value indicating whether rebalanced actors drain in-flight calls.
+    /// <see langword="null"/> leaves the value unset so the Dapr runtime default applies.
     /// </summary>
-    public bool DrainRebalancedActors { get; set; } = true;
+    public bool? DrainRebalancedActors { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether reentrant actor calls are allowed.
+    /// <see langword="null"/> leaves the value unset so the Dapr runtime default applies.
     /// </summary>
-    public bool EnableReentrancy { get; set; }
+    public bool? EnableReentrancy { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether the sidecar (gRPC) transport is used for actor state,
@@ -90,8 +95,9 @@ public sealed class DaprActorsOptions
 
     /// <summary>
     /// Gets or sets the maximum reentrant call depth when reentrancy is enabled.
+    /// <see langword="null"/> leaves the value unset so the Dapr runtime default applies.
     /// </summary>
-    public int MaxReentrantDepth { get; set; } = 32;
+    public int? MaxReentrantDepth { get; set; }
 
     internal void CopyFrom(DaprActorsOptions source)
     {
