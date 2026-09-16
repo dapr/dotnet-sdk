@@ -4,7 +4,7 @@ One `[Subscribe]` attribute lets a cart react to restock events from the rest of
 
 Tutorial: [Part 3 - Dynamic pub/sub with actors](../../../docs/dotnet-actorsnext/tutorial/part-3.md).
 
-The old SDK pattern needed a separate subscriber service plus hand-rolled routing, retry, and idempotency. Here the stream runner forwards each event through the normal actor invocation path and only acknowledges the pub/sub message after the actor turn commits.
+The old SDK pattern needed a separate subscriber service plus hand-rolled routing, retry, and idempotency. Here `AddDaprActorStreams` uses the Dapr.Messaging streaming client, while the stream runner forwards each event through the normal actor invocation path and only acknowledges the pub/sub message after the actor turn commits.
 
 The local app exposes a small HTTP API that marks cart items as waiting for stock, publishes an inventory restock event through Dapr pub/sub, reads cart state, checks item availability, and clears the sample carts between runs.
 
