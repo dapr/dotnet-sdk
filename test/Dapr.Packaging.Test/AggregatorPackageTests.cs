@@ -266,7 +266,8 @@ public sealed class AggregatorPackageTests
         startInfo.ArgumentList.Add("Release");
         startInfo.ArgumentList.Add("--output");
         startInfo.ArgumentList.Add(outputDirectory);
-        startInfo.ArgumentList.Add("--no-restore");
+        // No --no-restore: CI only restores the test project's dependency graph before running
+        // tests, so the bundled src projects may not have assets files yet.
 
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Could not start dotnet pack.");

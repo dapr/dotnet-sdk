@@ -108,9 +108,8 @@ public sealed class StreamingSubscriptionIntegrationTests : IAsyncLifetime
         var state = _application!.GetRequiredService<StreamingOrderState>();
         var order = new IntegrationStreamingOrder("streaming-order-e2e-1", 400);
 
-        await PublishAsync(order, TestContext.Current.CancellationToken);
-
-        var received = await WaitForAsync(
+        var received = await PublishUntilDeliveredAsync(
+            order,
             () => state.Received.FirstOrDefault(r => r.Order.Id == order.Id),
             r => r.Order is not null,
             TestContext.Current.CancellationToken);
@@ -135,14 +134,9 @@ public sealed class StreamingSubscriptionIntegrationTests : IAsyncLifetime
             .Select(i => new IntegrationStreamingOrder($"streaming-order-batch-{i}", i * 10))
             .ToList();
 
-        foreach (var order in orders)
-        {
-            await PublishAsync(order, TestContext.Current.CancellationToken);
-        }
-
-        await WaitForAsync(
-            () => state.Received.Count(r => r.Order.Id.StartsWith("streaming-order-batch-", StringComparison.Ordinal)),
-            count => count >= orders.Count,
+        await PublishUntilDeliveredAsync(
+            orders,
+            order => state.Received.Any(r => r.Order.Id == order.Id),
             TestContext.Current.CancellationToken);
 
         foreach (var order in orders)
@@ -164,12 +158,20 @@ public sealed class StreamingSubscriptionIntegrationTests : IAsyncLifetime
         response.EnsureSuccessStatusCode();
     }
 
-    private static async Task<T> WaitForAsync<T>(
+    /// <summary>
+    /// Publishes <paramref name="order"/>, re-publishing on an interval until <paramref name="isSatisfied"/>
+    /// holds. The pub/sub component drops messages published before the sidecar has registered the
+    /// streaming subscription, and the hosted service opens that stream asynchronously at startup - so a
+    /// single up-front publish races stream establishment and flakes on slower environments.
+    /// </summary>
+    private async Task<T> PublishUntilDeliveredAsync<T>(
+        IntegrationStreamingOrder order,
         Func<T> read,
         Func<T, bool> isSatisfied,
         CancellationToken cancellationToken)
     {
         var stopwatch = Stopwatch.StartNew();
+        var nextPublishAt = TimeSpan.Zero;
 
         while (stopwatch.Elapsed < DeliveryTimeout)
         {
@@ -179,12 +181,50 @@ public sealed class StreamingSubscriptionIntegrationTests : IAsyncLifetime
                 return value;
             }
 
+            if (stopwatch.Elapsed >= nextPublishAt)
+            {
+                await PublishAsync(order, cancellationToken);
+                nextPublishAt = stopwatch.Elapsed + TimeSpan.FromSeconds(5);
+            }
+
             await Task.Delay(TimeSpan.FromMilliseconds(250), cancellationToken);
         }
 
-        throw new TimeoutException(
-            $"The expected message was not delivered through the streaming subscription within {DeliveryTimeout}. " +
+        throw NotDeliveredException();
+    }
+
+    /// <summary>
+    /// Re-publishes each not-yet-delivered order on an interval until every order has been received.
+    /// See <see cref="PublishUntilDeliveredAsync{T}"/> for why re-publishing is necessary.
+    /// </summary>
+    private async Task PublishUntilDeliveredAsync(
+        IReadOnlyCollection<IntegrationStreamingOrder> orders,
+        Func<IntegrationStreamingOrder, bool> isDelivered,
+        CancellationToken cancellationToken)
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        while (stopwatch.Elapsed < DeliveryTimeout)
+        {
+            var pending = orders.Where(order => !isDelivered(order)).ToList();
+            if (pending.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var order in pending)
+            {
+                await PublishAsync(order, cancellationToken);
+            }
+
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+        }
+
+        throw NotDeliveredException();
+    }
+
+    private static TimeoutException NotDeliveredException() =>
+        new($"The expected message was not delivered through the streaming subscription within {DeliveryTimeout}. " +
             "This usually means StreamingSubscriberHostedService was not registered in the service " +
             "collection, or failed to open the SubscribeTopicEventsAlpha1 stream.");
-    }
 }
