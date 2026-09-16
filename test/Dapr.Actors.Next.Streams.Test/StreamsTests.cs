@@ -15,6 +15,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Dapr.Actors.Next.Streams;
 using Dapr.Actors.Next.Core.Client;
+using Dapr.Messaging;
 using Dapr.Messaging.PublishSubscribe;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -350,6 +351,44 @@ public sealed class StreamsTests
             Disposables.Add(disposable);
             return Task.FromResult<IAsyncDisposable>(disposable);
         }
+
+        public override Task PublishEventAsync<TData>(
+            string pubsubName,
+            string topicName,
+            TData data,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public override Task PublishEventAsync<TData>(
+            string pubsubName,
+            string topicName,
+            TData data,
+            PublishOptions options,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public override Task PublishEventAsync(
+            string pubsubName,
+            string topicName,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public override Task PublishByteEventAsync(
+            string pubsubName,
+            string topicName,
+            ReadOnlyMemory<byte> data,
+            string dataContentType = MessagingConstants.ContentTypeApplicationJson,
+            PublishOptions? options = null,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public override Task<BulkPublishResponse<TValue>> BulkPublishEventAsync<TValue>(
+            string pubsubName,
+            string topicName,
+            IReadOnlyList<TValue> events,
+            PublishOptions? options = null,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class TrackingAsyncDisposable : IAsyncDisposable

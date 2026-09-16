@@ -1,0 +1,49 @@
+@baseUrl = http://localhost:5000
+
+### 1. Publish Express Shipment -> ExpressShippingHandler
+POST {{baseUrl}}/publish/express
+Content-Type: application/json
+
+{
+  "shipmentId": "SHIP-EXPRESS-01",
+  "priorityTier": "express",
+  "destinationCountry": "US",
+  "weightKg": 1.5,
+  "recipientEmail": "express-user@example.com"
+}
+
+### 2. Publish International Shipment -> InternationalShippingHandler
+POST {{baseUrl}}/publish/international
+Content-Type: application/json
+
+{
+  "shipmentId": "SHIP-INTL-02",
+  "priorityTier": "standard",
+  "destinationCountry": "DE",
+  "weightKg": 4.2,
+  "recipientEmail": "intl-user@example.de"
+}
+
+### 3. Publish Standard Domestic Shipment -> StandardShippingHandler
+POST {{baseUrl}}/publish/standard
+Content-Type: application/json
+
+{
+  "shipmentId": "SHIP-DOMESTIC-03",
+  "priorityTier": "standard",
+  "destinationCountry": "US",
+  "weightKg": 2.0,
+  "recipientEmail": "domestic-user@example.com"
+}
+
+### 4. Publish Invalid Shipment -> Dropped and routed to DeadLetterShipmentHandler
+POST {{baseUrl}}/publish/express
+Content-Type: application/json
+
+{
+  "shipmentId": "SHIP-INVALID-04",
+  "priorityTier": "express",
+  "destinationCountry": "US",
+  "weightKg": 0.0,
+  "recipientEmail": "bad-weight@example.com"
+}
