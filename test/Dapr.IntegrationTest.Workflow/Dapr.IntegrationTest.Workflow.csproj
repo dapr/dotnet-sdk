@@ -27,6 +27,10 @@
       <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
       <ProjectReference Include="..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
       <ProjectReference Include="..\..\src\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
+      <!-- Dapr.Workflow references this with PrivateAssets="all" so it does not flow transitively;
+           the stateful-history observer needs the generated WorkItem/WorkflowRequest types, the same
+           way Dapr.Workflow.Test references it directly. -->
+      <ProjectReference Include="..\..\src\Dapr.Workflow.Grpc\Dapr.Workflow.Grpc.csproj" />
       <ProjectReference Include="..\..\src\Dapr.Workflow\Dapr.Workflow.csproj" />
     </ItemGroup>
 
