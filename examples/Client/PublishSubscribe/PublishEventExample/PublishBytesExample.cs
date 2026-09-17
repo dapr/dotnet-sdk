@@ -21,9 +21,10 @@ using Dapr.Client;
 
 namespace Samples.Client;
 
+[Obsolete("Publishing events via DaprClient is legacy. Use the Dapr.Messaging package and IDaprPublishSubscribeClient instead. See examples/Messaging/ for modern examples.")]
 public class PublishBytesExample : Example
 {
-    public override string DisplayName => "Publish Bytes";
+    public override string DisplayName => "Publish Bytes (Legacy DaprClient - see Dapr.Messaging for new applications)";
 
     public async override Task RunAsync(CancellationToken cancellationToken)
     {

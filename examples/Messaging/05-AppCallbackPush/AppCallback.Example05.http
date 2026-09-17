@@ -1,0 +1,25 @@
+@baseUrl = http://localhost:5000
+
+### 1. Publish valid payment (Success)
+POST {{baseUrl}}/publish/payment
+Content-Type: application/json
+
+{
+  "paymentId": "PAY-8001",
+  "customerId": "CUST-101",
+  "amount": 250.00,
+  "currency": "USD",
+  "paymentMethod": "CreditCard"
+}
+
+### 2. Publish invalid payment (Drop - non-positive amount)
+POST {{baseUrl}}/publish/payment
+Content-Type: application/json
+
+{
+  "paymentId": "PAY-8002",
+  "customerId": "CUST-102",
+  "amount": 0.00,
+  "currency": "USD",
+  "paymentMethod": "PayPal"
+}

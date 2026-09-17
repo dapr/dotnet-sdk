@@ -1,0 +1,48 @@
+@baseUrl = http://localhost:5000
+
+### 1. Publish a valid order (Success)
+POST {{baseUrl}}/publish/order
+Content-Type: application/json
+
+{
+  "orderId": "ORD-1001",
+  "customerId": "CUST-42",
+  "amount": 149.99,
+  "itemSku": "WIDGET-PRO-1",
+  "quantity": 2
+}
+
+### 2. Publish an invalid order (Drop - non-positive quantity)
+POST {{baseUrl}}/publish/order
+Content-Type: application/json
+
+{
+  "orderId": "ORD-1002",
+  "customerId": "CUST-42",
+  "amount": 0.00,
+  "itemSku": "WIDGET-PRO-1",
+  "quantity": 0
+}
+
+### 3. Publish an order simulating transient inventory conflict (Retry)
+POST {{baseUrl}}/publish/order
+Content-Type: application/json
+
+{
+  "orderId": "ORD-1003",
+  "customerId": "CUST-99",
+  "amount": 99.00,
+  "itemSku": "RETRY-LIMITED-ITEM",
+  "quantity": 1
+}
+
+### 4. Publish an inventory reservation event
+POST {{baseUrl}}/publish/inventory
+Content-Type: application/json
+
+{
+  "reservationId": "RES-8801",
+  "orderId": "ORD-1001",
+  "itemSku": "WIDGET-PRO-1",
+  "quantityReserved": 2
+}
