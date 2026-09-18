@@ -108,6 +108,11 @@ internal static class AnalyzerTest
         test.ReferenceAssemblies = ReferenceAssemblies.Net.Net90;
 #elif NET10_0
         test.ReferenceAssemblies = ReferenceAssemblies.Net.Net100;
+#elif NET11_0
+        test.ReferenceAssemblies = new ReferenceAssemblies(
+            "net11.0",
+            new PackageIdentity("Microsoft.NETCore.App.Ref", "11.0.0-preview.7.26381.103"),
+            Path.Combine("ref", "net11.0"));
 #endif
         test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(Actor).Assembly.Location));
         test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(DaprActorAttribute).Assembly.Location));
@@ -124,6 +129,11 @@ internal static class AnalyzerTest
         test.ReferenceAssemblies = ReferenceAssemblies.Net.Net90;
 #elif NET10_0
         test.ReferenceAssemblies = ReferenceAssemblies.Net.Net100;
+#elif NET11_0
+        test.ReferenceAssemblies = new ReferenceAssemblies(
+            "net11.0",
+            new PackageIdentity("Microsoft.NETCore.App.Ref", "11.0.0-preview.7.26381.103"),
+            Path.Combine("ref", "net11.0"));
 #endif
         test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(Actor).Assembly.Location));
         test.TestState.AdditionalReferences.Add(MetadataReference.CreateFromFile(typeof(DaprActorAttribute).Assembly.Location));

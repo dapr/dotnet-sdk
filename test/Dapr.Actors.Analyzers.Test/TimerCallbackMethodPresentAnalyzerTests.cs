@@ -25,6 +25,11 @@ public class TimerCallbackMethodPresentAnalyzerTests
     private static readonly ReferenceAssemblies assemblies = ReferenceAssemblies.Net.Net90;
     #elif NET10_0
     private static readonly ReferenceAssemblies assemblies = ReferenceAssemblies.Net.Net100;
+    #elif NET11_0
+    private static readonly ReferenceAssemblies assemblies = new ReferenceAssemblies(
+        "net11.0",
+        new PackageIdentity("Microsoft.NETCore.App.Ref", "11.0.0-preview.7.26381.103"),
+        Path.Combine("ref", "net11.0"));
     #endif
     
     [Fact]

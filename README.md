@@ -64,7 +64,7 @@ It also builds the following packages which are not intended for public use and 
 
 ### Prerequisites
 
-Each project is a normal C# project. At minimum, you need [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) to build, test, and generate NuGet packages.
+Each project is a normal C# project. At minimum, you need [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) to build, test, and generate NuGet packages. The SDK multi-targets `net8.0`, `net9.0`, and `net10.0`; .NET 11 preview support is validated in CI via the `DaprEnableNet11` build property (requires the .NET 11 preview SDK with `global.json` removed).
 
 Also make sure to reference the [.NET SDK contribution guide](https://docs.dapr.io/contributing/sdk-contrib/dotnet-contributing/)
 

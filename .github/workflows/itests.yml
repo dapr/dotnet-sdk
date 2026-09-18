@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dotnet-version: ['8.0', '9.0', '10.0']
+        dotnet-version: ['8.0', '9.0', '10.0', '11.0']
         include:
         - dotnet-version: '8.0'
           display-name: '.NET 8.0'
@@ -30,6 +30,12 @@ jobs:
           prefix: 'net10'
           install-version: '10.0.x'
           upload_coverage: true
+        - dotnet-version: '11.0'
+          display-name: '.NET 11.0'
+          framework: 'net11.0'
+          prefix: 'net11'
+          install-version: '11.0.x'
+          upload_coverage: false
     env:
       NUPKG_OUTDIR: bin/Release/nugets
       GOVER: 1.20.3
@@ -96,28 +102,34 @@ jobs:
       - name: Parse release version
         run: python ./.github/scripts/get_release_version.py
       - name: Setup ${{ matrix.display-name }}
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ matrix.install-version }}
-          dotnet-quality: 'ga'  # Prefer a GA release, but use the RC if not available
+          dotnet-quality: ${{ matrix.framework == 'net11.0' && 'preview' || 'ga' }}
       - name: Setup .NET 8 (required)
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v5
         if: ${{ matrix.install-version != '8.0.x' }}
         with:
           dotnet-version: '8.0.x'
           dotnet-quality: 'ga'
       - name: Setup .NET 9 (required)
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v5
         if: ${{ matrix.install-version != '9.0.x' }}
         with:
           dotnet-version: '9.0.x'
           dotnet-quality: 'ga'
       - name: Setup .NET 10 (required)
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v5
         if: ${{ matrix.install-version != '10.0.x' }}
         with:
           dotnet-version: '10.0.x'
           dotnet-quality: 'ga'
+      - name: Remove global.json (use .NET 11 preview SDK)
+        if: matrix.framework == 'net11.0'
+        run: rm global.json
+      - name: Enable .NET 11 target framework
+        if: matrix.framework == 'net11.0'
+        run: echo "DaprEnableNet11=true" >> $GITHUB_ENV
       - name: Restore dependencies
         run: |
           dotnet restore ${{ github.workspace }}/test/Dapr.E2E.Test/Dapr.E2E.Test.csproj
