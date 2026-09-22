@@ -493,6 +493,11 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
             if (stateChangeList.Count > 0)
             {
                 await this.actor.Host.StateProvider.SaveStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateChangeList.AsReadOnly(), cancellationToken);
+
+                if (!ReferenceEquals(stateChangeTracker, this.defaultTracker))
+                {
+                    this.InvalidateDefaultTracker(stateChangeList);
+                }
             }
 
             // Remove the states from tracker whcih were marked for removal.
@@ -515,6 +520,21 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
         }
 
         return Task.CompletedTask;
+    }
+
+    // Writes made through a reentrancy-scoped tracker are invisible to the default
+    // tracker, which activation, reminders and timers read from. Drop its clean copies
+    // of the written keys so the next read reloads them instead of serving stale data.
+    private void InvalidateDefaultTracker(IEnumerable<ActorStateChange> stateChanges)
+    {
+        foreach (var stateChange in stateChanges)
+        {
+            if (this.defaultTracker.TryGetValue(stateChange.StateName, out var stateMetadata) &&
+                stateMetadata.ChangeKind == StateChangeKind.None)
+            {
+                this.defaultTracker.Remove(stateChange.StateName);
+            }
+        }
     }
 
     private bool IsStateMarkedForRemove(string stateName)
