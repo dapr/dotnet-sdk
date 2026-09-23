@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,13 @@ public class Startup
             // We force this to use a per-actor config as an easy way to validate that's working.
             options.ReentrancyConfig = new() { Enabled = false };
             options.Actors.RegisterActor<ReentrantActor>(typeOptions: new()
+            {
+                ReentrancyConfig = new()
+                {
+                    Enabled = true,
+                }
+            });
+            options.Actors.RegisterActor<ReentrantStateActor>(typeOptions: new()
             {
                 ReentrancyConfig = new()
                 {

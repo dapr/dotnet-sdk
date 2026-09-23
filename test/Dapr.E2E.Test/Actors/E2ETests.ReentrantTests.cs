@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2021 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,5 +73,40 @@ public class ReentrantTests : DaprTestAppLifecycle
                 Assert.True(enterRecords[i].Timestamp < exitRecords[j].Timestamp);
             }
         }
+    }
+
+    // Regression test for dapr/dapr#10532. With reentrancy enabled, an ordinary
+    // method call writes state through its own reentrancy-scoped tracker, while a
+    // reminder callback reads through the default tracker. The callback must see
+    // the method's write, not the value cached during activation.
+    [Fact]
+    public async Task ReminderSeesStateWrittenByReentrantCall()
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        var proxy = this.ProxyFactory.CreateActorProxy<IReentrantStateActor>(ActorId.CreateRandom(), "ReentrantStateActor");
+
+        await ActorRuntimeChecker.WaitForActorRuntimeAsync(this.AppId, this.Output, proxy, cts.Token);
+
+        // Activation has already cached the shared key on the default tracker.
+        // This call rewrites it through a reentrancy-scoped tracker.
+        await proxy.SetValue("written-by-method");
+        await proxy.StartReminder();
+
+        string seen;
+        while (true)
+        {
+            cts.Token.ThrowIfCancellationRequested();
+
+            seen = await proxy.GetValueSeenByReminder();
+            this.Output.WriteLine($"Value seen by reminder: '{seen}'");
+            if (!string.IsNullOrEmpty(seen))
+            {
+                break;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250), cts.Token);
+        }
+
+        Assert.Equal("written-by-method", seen);
     }
 }
