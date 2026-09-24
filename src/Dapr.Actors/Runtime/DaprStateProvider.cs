@@ -44,12 +44,11 @@ internal class DaprStateProvider
         this.daprInteractor = daprInteractor;
     }
 
-    public async Task<ConditionalValue<ActorStateResponse<T>>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
+    public async Task<(ActorStateResponse<T> Response, int HttpStatusCode)> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
     {
-        var result = new ConditionalValue<ActorStateResponse<T>>(false, default);
         var response = await this.daprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
 
-        if (response.Value.Length != 0 && (!response.TTLExpireTime.HasValue || response.TTLExpireTime.Value > DateTimeOffset.UtcNow))
+        if (response.HttpStatusCode == 200 && response.Value.Length != 0 && (!response.TTLExpireTime.HasValue || response.TTLExpireTime.Value > DateTimeOffset.UtcNow))
         {
             T typedResult;
 
@@ -64,10 +63,10 @@ internal class DaprStateProvider
                 typedResult = JsonSerializer.Deserialize<T>(response.Value, jsonSerializerOptions);
             }
 
-            result = new ConditionalValue<ActorStateResponse<T>>(true, new ActorStateResponse<T>(typedResult, response.TTLExpireTime));
+            return (new ActorStateResponse<T>(typedResult, response.TTLExpireTime, response.HttpStatusCode), response.HttpStatusCode);
         }
 
-        return result;
+        return (null, response.HttpStatusCode);
     }
 
     public async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)

@@ -83,12 +83,14 @@ internal sealed class DaprHttpInteractor : IDaprInteractor
             }
         }
 
-        return new ActorStateResponse<string>(stringResponse, ttlExpireTime);
+        return new ActorStateResponse<string>(stringResponse, ttlExpireTime, (int)response.StatusCode);
     }
 
     public Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default)
     {
         var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId);
+
+        return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
 
         HttpRequestMessage RequestFunc()
         {
@@ -100,8 +102,6 @@ internal sealed class DaprHttpInteractor : IDaprInteractor
 
             return request;
         }
-
-        return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
     }
 
     public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default)
@@ -376,7 +376,7 @@ internal sealed class DaprHttpInteractor : IDaprInteractor
     /// Disposes resources.
     /// </summary>
     /// <param name="disposing">False values indicates the method is being called by the runtime, true value indicates the method is called by the user code.</param>
-    protected virtual void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
         if (!this.disposed)
         {
