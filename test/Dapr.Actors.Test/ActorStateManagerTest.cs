@@ -180,10 +180,8 @@ public class ActorStateManagerTest
         Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
 
         // A reentrancy-scoped call writes the same key through its own (fresh, empty)
-        // tracker. SetStateAsync's own ContainsStateAsync existence check against the
-        // runtime, to decide Add vs Update, is call #2 - unrelated to defaultTracker and
-        // unavoidable, since the reentrant tracker starts empty and has no local record of
-        // the key yet.
+        // tracker. SetStateAsync stages an upsert without checking the runtime, so this
+        // does not add another GetStateAsync call.
         await mngr.SetStateContext("ctx1");
         await mngr.SetStateAsync("key1", "value2", token);
         await mngr.SaveStateAsync(token);
@@ -191,11 +189,11 @@ public class ActorStateManagerTest
 
         // The default tracker must reflect the new value without a further call to the
         // runtime - it already has the value the save above just confirmed was persisted.
-        // Total call count stays at 2; a naive reload-on-evict fix would make this 3.
+        // Total call count stays at 1; a naive reload-on-evict fix would make this 2.
         Assert.Equal("value2", await mngr.GetStateAsync<string>("key1", token));
         interactor.Verify(
             d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Exactly(2));
+            Times.Once);
     }
 
     [Fact]
