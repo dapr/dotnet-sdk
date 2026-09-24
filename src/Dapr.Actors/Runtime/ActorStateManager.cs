@@ -565,7 +565,7 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
         foreach (var stateChange in stateChanges)
         {
             if (this.defaultTracker.TryGetValue(stateChange.StateName, out var stateMetadata) &&
-                stateMetadata.ChangeKind == StateChangeKind.None)
+                stateMetadata.ChangeKind is StateChangeKind.None or StateChangeKind.NotFound)
             {
                 if (stateChange.ChangeKind == StateChangeKind.Remove)
                 {
