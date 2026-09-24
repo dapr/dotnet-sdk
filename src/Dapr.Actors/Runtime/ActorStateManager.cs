@@ -527,6 +527,11 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
             if (stateChangeList.Count > 0)
             {
                 await this.actor.Host.StateProvider.SaveStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateChangeList.AsReadOnly(), cancellationToken);
+
+                if (!ReferenceEquals(stateChangeTracker, this.defaultTracker))
+                {
+                    this.SyncDefaultTracker(stateChangeList);
+                }
             }
 
             // Remove the states from tracker which were marked for removal.
@@ -549,6 +554,32 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
         }
 
         return Task.CompletedTask;
+    }
+
+    // Writes made through a reentrancy-scoped tracker are invisible to the default
+    // tracker, which activation, reminders and timers read from. The save above has
+    // already confirmed these values are now persisted, so refresh the default
+    // tracker's clean copies in place with them rather than dropping them - that
+    // keeps it correct without forcing the next read to round-trip the state store
+    // for a value we already know.
+    private void SyncDefaultTracker(IEnumerable<ActorStateChange> stateChanges)
+    {
+        foreach (var stateChange in stateChanges)
+        {
+            if (this.defaultTracker.TryGetValue(stateChange.StateName, out var stateMetadata) &&
+                stateMetadata.ChangeKind == StateChangeKind.None)
+            {
+                if (stateChange.ChangeKind == StateChangeKind.Remove)
+                {
+                    this.defaultTracker.Remove(stateChange.StateName);
+                }
+                else
+                {
+                    this.defaultTracker[stateChange.StateName] =
+                        StateMetadata.CreateFromValueAndType(stateChange.Value, stateChange.Type, StateChangeKind.None, stateChange.TTLExpireTime);
+                }
+            }
+        }
     }
 
     private bool IsStateMarkedForRemove(string stateName)
@@ -626,6 +657,12 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
         public static StateMetadata Create<T>(T value, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime) =>
             new(value, typeof(T), changeKind, ttlExpireTime: ttlExpireTime);
+
+        // Non-generic counterpart to Create<T> for callers (like SyncDefaultTracker) that
+        // already have a boxed value and its runtime Type from an ActorStateChange, rather
+        // than a compile-time T.
+        public static StateMetadata CreateFromValueAndType(object value, Type type, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime) =>
+            new(value, type, changeKind, ttlExpireTime: ttlExpireTime);
 
         public static StateMetadata Create<T>(T value, StateChangeKind changeKind, TimeSpan? ttl) =>
             new(value, typeof(T), changeKind, ttl: ttl);

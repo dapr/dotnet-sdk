@@ -128,6 +128,110 @@ public class ActorStateManagerTest
     }
 
     [Fact]
+    public async Task ReentrantSaveInvalidatesDefaultTracker()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = new CancellationToken();
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value1\"", null)));
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // A read outside any reentrancy context caches the value in the default tracker.
+        Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
+
+        // A reentrancy-scoped call writes the same key through its own tracker.
+        await mngr.SetStateContext("ctx1");
+        await mngr.SetStateAsync("key1", "value2", token);
+        await mngr.SaveStateAsync(token);
+        await mngr.SetStateContext(null);
+
+        // The default tracker must reload the key instead of serving its stale copy.
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value2\"", null)));
+        Assert.Equal("value2", await mngr.GetStateAsync<string>("key1", token));
+    }
+
+    [Fact]
+    public async Task ReentrantSaveRefreshesDefaultTrackerWithoutRoundTrip()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = new CancellationToken();
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value1\"", null)));
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // A read outside any reentrancy context caches the value in the default tracker -
+        // call #1 to the runtime.
+        Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
+
+        // A reentrancy-scoped call writes the same key through its own (fresh, empty)
+        // tracker. SetStateAsync's own ContainsStateAsync existence check against the
+        // runtime, to decide Add vs Update, is call #2 - unrelated to defaultTracker and
+        // unavoidable, since the reentrant tracker starts empty and has no local record of
+        // the key yet.
+        await mngr.SetStateContext("ctx1");
+        await mngr.SetStateAsync("key1", "value2", token);
+        await mngr.SaveStateAsync(token);
+        await mngr.SetStateContext(null);
+
+        // The default tracker must reflect the new value without a further call to the
+        // runtime - it already has the value the save above just confirmed was persisted.
+        // Total call count stays at 2; a naive reload-on-evict fix would make this 3.
+        Assert.Equal("value2", await mngr.GetStateAsync<string>("key1", token));
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task ReentrantRemoveInvalidatesDefaultTracker()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = new CancellationToken();
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value1\"", null)));
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // A read outside any reentrancy context caches the value in the default tracker.
+        Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
+
+        // A reentrancy-scoped call removes the same key through its own tracker.
+        await mngr.SetStateContext("ctx1");
+        await mngr.RemoveStateAsync("key1", token);
+        await mngr.SaveStateAsync(token);
+        await mngr.SetStateContext(null);
+
+        // A removal can't be refreshed in place - the default tracker must drop its clean
+        // copy so the next read finds it gone rather than serving the stale value.
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Throws(new KeyNotFoundException());
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => mngr.GetStateAsync<string>("key1", token));
+    }
+
+    [Fact]
     public async Task StateDaprdExpireTime()
     {
         var interactor = new Mock<TestDaprInteractor>();
