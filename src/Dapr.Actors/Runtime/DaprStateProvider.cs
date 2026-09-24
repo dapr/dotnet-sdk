@@ -102,12 +102,12 @@ internal class DaprStateProvider
         ]
         */
         using var stream = new MemoryStream();
-        using var writer = new Utf8JsonWriter(stream);
+        await using var writer = new Utf8JsonWriter(stream);
         writer.WriteStartArray();
         foreach (var stateChange in stateChanges)
         {
             writer.WriteStartObject();
-            var operation = this.GetDaprStateOperation(stateChange.ChangeKind);
+            var operation = GetDaprStateOperation(stateChange.ChangeKind);
             writer.WriteString("operation", operation);
 
             // write the requestProperty
@@ -143,8 +143,6 @@ internal class DaprStateProvider
                     }
 
                     break;
-                default:
-                    break;
             }
 
             writer.WriteEndObject();  // end object for request property
@@ -153,12 +151,12 @@ internal class DaprStateProvider
 
         writer.WriteEndArray();
 
-        await writer.FlushAsync();
+        await writer.FlushAsync(cancellationToken);
         var content = Encoding.UTF8.GetString(stream.ToArray());
         await this.daprInteractor.SaveStateTransactionallyAsync(actorType, actorId, content, cancellationToken);
     }
 
-    private string GetDaprStateOperation(StateChangeKind changeKind)
+    private static string GetDaprStateOperation(StateChangeKind changeKind)
     {
         var operation = string.Empty;
 
@@ -170,8 +168,6 @@ internal class DaprStateProvider
             case StateChangeKind.Add:
             case StateChangeKind.Update:
                 operation = "upsert";
-                break;
-            default:
                 break;
         }
 
