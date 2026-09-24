@@ -199,6 +199,38 @@ public class DaprStateProviderTest
     }
 
     [Fact]
+    public async Task SaveStateAsync_AddAndUpdateEmitEquivalentUpserts()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var provider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var token = CancellationToken.None;
+        var capturedContents = new List<string>();
+
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, CancellationToken>((_, _, data, _) => capturedContents.Add(data))
+            .Returns(Task.CompletedTask);
+
+        await provider.SaveStateAsync(
+            "actorType",
+            "actorId",
+            new[] { new ActorStateChange("key1", typeof(string), "value", StateChangeKind.Add, null) },
+            token);
+        await provider.SaveStateAsync(
+            "actorType",
+            "actorId",
+            new[] { new ActorStateChange("key1", typeof(string), "value", StateChangeKind.Update, null) },
+            token);
+
+        Assert.Equal(2, capturedContents.Count);
+        Assert.Equal(capturedContents[0], capturedContents[1]);
+        Assert.Equal(
+            "[{\"operation\":\"upsert\",\"request\":{\"key\":\"key1\",\"value\":\"value\"}}]",
+            capturedContents[0]);
+    }
+
+    [Fact]
     public async Task TryLoadStateAsync_ReturnsFalseWhenTTLExpireTimeIsExactlyNow()
     {
         var interactor = new Mock<TestDaprInteractor>();

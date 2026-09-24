@@ -222,14 +222,13 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
                 stateMetadata.ChangeKind = StateChangeKind.Update;
             }
         }
-        else if (await this.actor.Host.StateProvider.ContainsStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateName, cancellationToken))
-        {
-            stateChangeTracker.Add(stateName, StateMetadata.Create(value, StateChangeKind.Update));
-        }
         else
         {
-            stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add);
+            // Add and Update are both upserts, while Update ensures a later remove stages a delete.
+            stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Update);
         }
+
+        await Task.CompletedTask;
     }
 
     public async Task SetStateAsync<T>(string stateName, T value, TimeSpan ttl, CancellationToken cancellationToken)
@@ -257,14 +256,13 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
                 stateMetadata.ChangeKind = StateChangeKind.Update;
             }
         }
-        else if (await this.actor.Host.StateProvider.ContainsStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateName, cancellationToken))
-        {
-            stateChangeTracker.Add(stateName, StateMetadata.Create(value, StateChangeKind.Update, ttl: ttl));
-        }
         else
         {
-            stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add, ttl: ttl);
+            // Add and Update are both upserts, while Update ensures a later remove stages a delete.
+            stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Update, ttl: ttl);
         }
+
+        await Task.CompletedTask;
     }
 
     public async Task RemoveStateAsync(string stateName, CancellationToken cancellationToken)

@@ -180,10 +180,8 @@ public class ActorStateManagerTest
         Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
 
         // A reentrancy-scoped call writes the same key through its own (fresh, empty)
-        // tracker. SetStateAsync's own ContainsStateAsync existence check against the
-        // runtime, to decide Add vs Update, is call #2 - unrelated to defaultTracker and
-        // unavoidable, since the reentrant tracker starts empty and has no local record of
-        // the key yet.
+        // tracker. SetStateAsync stages an upsert without checking the runtime, so this
+        // does not add another GetStateAsync call.
         await mngr.SetStateContext("ctx1");
         await mngr.SetStateAsync("key1", "value2", token);
         await mngr.SaveStateAsync(token);
@@ -191,11 +189,11 @@ public class ActorStateManagerTest
 
         // The default tracker must reflect the new value without a further call to the
         // runtime - it already has the value the save above just confirmed was persisted.
-        // Total call count stays at 2; a naive reload-on-evict fix would make this 3.
+        // Total call count stays at 1; a naive reload-on-evict fix would make this 2.
         Assert.Equal("value2", await mngr.GetStateAsync<string>("key1", token));
         interactor.Verify(
             d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Exactly(2));
+            Times.Once);
     }
 
     [Fact]
@@ -842,6 +840,89 @@ public class ActorStateManagerTest
         Assert.NotNull(capturedData);
         Assert.Contains("upsert", capturedData);
         Assert.Contains("ttlInSeconds", capturedData);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SetStateAsync_UnknownKeyDoesNotReadFromStateStore(bool useTtl)
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+        string capturedData = null;
+
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, CancellationToken>((_, _, data, _) => capturedData = data)
+            .Returns(Task.CompletedTask);
+
+        if (useTtl)
+        {
+            await mngr.SetStateAsync("k1", "value", TimeSpan.FromMinutes(5), token);
+        }
+        else
+        {
+            await mngr.SetStateAsync("k1", "value", token);
+        }
+
+        Assert.Equal("value", await mngr.GetStateAsync<string>("k1", token));
+        Assert.True(await mngr.ContainsStateAsync("k1", token));
+        Assert.False(await mngr.TryAddStateAsync("k1", "replacement", token));
+
+        await mngr.SaveStateAsync(token);
+
+        Assert.Contains("\"operation\":\"upsert\"", capturedData);
+        Assert.Contains("\"value\":\"value\"", capturedData);
+        Assert.Equal("value", await mngr.GetStateAsync<string>("k1", token));
+        Assert.True(await mngr.ContainsStateAsync("k1", token));
+
+        await mngr.SaveStateAsync(token);
+
+        interactor.Verify(
+            d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SetThenRemoveUnknownKeyStagesDeleteWithoutReadingStateStore(bool useTtl)
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+        string capturedData = null;
+
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, CancellationToken>((_, _, data, _) => capturedData = data)
+            .Returns(Task.CompletedTask);
+
+        if (useTtl)
+        {
+            await mngr.SetStateAsync("k1", "value", TimeSpan.FromMinutes(5), token);
+        }
+        else
+        {
+            await mngr.SetStateAsync("k1", "value", token);
+        }
+
+        Assert.True(await mngr.TryRemoveStateAsync("k1", token));
+        await mngr.SaveStateAsync(token);
+
+        Assert.Contains("\"operation\":\"delete\"", capturedData);
+        Assert.DoesNotContain("\"operation\":\"upsert\"", capturedData);
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     // ----- SetStateContext (reentrancy) -----
