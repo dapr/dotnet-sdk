@@ -86,9 +86,14 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
         var stateChangeTracker = GetContextualStateTracker();
 
-        if (stateChangeTracker.ContainsKey(stateName))
+        if (stateChangeTracker.TryGetValue(stateName, out var stateMetadata))
         {
-            var stateMetadata = stateChangeTracker[stateName];
+            // The state is known to not exist in the state store, so it can be added without consulting it again
+            if (stateMetadata.ChangeKind == StateChangeKind.NotFound)
+            {
+                stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add);
+                return true;
+            }
 
             // Check if the property was marked as remove or is expired in the cache
             if (stateMetadata.ChangeKind == StateChangeKind.Remove || (stateMetadata.TTLExpireTime.HasValue && stateMetadata.TTLExpireTime.Value <= DateTimeOffset.UtcNow))
@@ -117,9 +122,14 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
         var stateChangeTracker = GetContextualStateTracker();
 
-        if (stateChangeTracker.ContainsKey(stateName))
+        if (stateChangeTracker.TryGetValue(stateName, out var stateMetadata))
         {
-            var stateMetadata = stateChangeTracker[stateName];
+            // The state is known to not exist in the state store, so it can be added without consulting it again
+            if (stateMetadata.ChangeKind == StateChangeKind.NotFound)
+            {
+                stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add, ttl: ttl);
+                return true;
+            }
 
             // Check if the property was marked as remove in the cache or has been expired.
             if (stateMetadata.ChangeKind == StateChangeKind.Remove || (stateMetadata.TTLExpireTime.HasValue && stateMetadata.TTLExpireTime.Value <= DateTimeOffset.UtcNow))
@@ -162,12 +172,10 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
         var stateChangeTracker = GetContextualStateTracker();
 
-        if (stateChangeTracker.ContainsKey(stateName))
+        if (stateChangeTracker.TryGetValue(stateName, out var stateMetadata))
         {
-            var stateMetadata = stateChangeTracker[stateName];
-
-            // Check if the property was marked as remove in the cache or is expired
-            if (stateMetadata.ChangeKind == StateChangeKind.Remove || (stateMetadata.TTLExpireTime.HasValue && stateMetadata.TTLExpireTime.Value <= DateTimeOffset.UtcNow))
+            // Check if the property wasn't populated, was marked as remove in the cache or is expired
+            if (stateMetadata.ChangeKind == StateChangeKind.NotFound || stateMetadata.ChangeKind == StateChangeKind.Remove || (stateMetadata.TTLExpireTime.HasValue && stateMetadata.TTLExpireTime.Value <= DateTimeOffset.UtcNow))
             {
                 return new ConditionalValue<T>(false, default);
             }
@@ -175,13 +183,17 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
             return new ConditionalValue<T>(true, (T)stateMetadata.Value);
         }
 
-        var conditionalResult = await this.TryGetStateFromStateProviderAsync<T>(stateName, cancellationToken);
-        if (conditionalResult.HasValue)
+        var (response, httpStatusCode) = await this.TryGetStateFromStateProviderAsync<T>(stateName, cancellationToken);
+        if (httpStatusCode == 200 && response is not null) // HTTP status code == 200 OK
         {
-            stateChangeTracker.Add(stateName, StateMetadata.Create(conditionalResult.Value.Value, StateChangeKind.None, ttlExpireTime: conditionalResult.Value.TTLExpireTime));
-            return new ConditionalValue<T>(true, conditionalResult.Value.Value);
+            stateChangeTracker.Add(stateName, StateMetadata.Create(response.Value, StateChangeKind.None, ttlExpireTime: response.TTLExpireTime));
+            return new ConditionalValue<T>(true, response.Value);
         }
 
+        // Value isn't forthcoming at all
+        // Only other expected status codes are 204 (key not found, empty response), 400 (actor not found) and 500 (request failed) all of which are not
+        // transient value responses, so cache the absence of the value so subsequent lookups don't go back to the state store.
+        stateChangeTracker[stateName] = StateMetadata.CreateNotFound();
         return new ConditionalValue<T>(false, default);
     }
 
@@ -193,14 +205,19 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
         var stateChangeTracker = GetContextualStateTracker();
 
-        if (stateChangeTracker.ContainsKey(stateName))
+        if (stateChangeTracker.TryGetValue(stateName, out var stateMetadata))
         {
-            var stateMetadata = stateChangeTracker[stateName];
+            // The state is known to not exist in the state store, so this is an add rather than an update
+            if (stateMetadata.ChangeKind == StateChangeKind.NotFound)
+            {
+                stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add);
+                return;
+            }
+
             stateMetadata.Value = value;
             stateMetadata.TTLExpireTime = null;
 
-            if (stateMetadata.ChangeKind == StateChangeKind.None ||
-                stateMetadata.ChangeKind == StateChangeKind.Remove)
+            if (stateMetadata.ChangeKind is StateChangeKind.None or StateChangeKind.Remove)
             {
                 stateMetadata.ChangeKind = StateChangeKind.Update;
             }
@@ -223,14 +240,19 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
         var stateChangeTracker = GetContextualStateTracker();
 
-        if (stateChangeTracker.ContainsKey(stateName))
+        if (stateChangeTracker.TryGetValue(stateName, out var stateMetadata))
         {
-            var stateMetadata = stateChangeTracker[stateName];
+            // The state is known to not exist in the state store, so this is an add rather than an update
+            if (stateMetadata.ChangeKind == StateChangeKind.NotFound)
+            {
+                stateChangeTracker[stateName] = StateMetadata.Create(value, StateChangeKind.Add, ttl: ttl);
+                return;
+            }
+
             stateMetadata.Value = value;
             stateMetadata.TTLExpireTime = DateTimeOffset.UtcNow.Add(ttl);
 
-            if (stateMetadata.ChangeKind == StateChangeKind.None ||
-                stateMetadata.ChangeKind == StateChangeKind.Remove)
+            if (stateMetadata.ChangeKind is StateChangeKind.None or StateChangeKind.Remove)
             {
                 stateMetadata.ChangeKind = StateChangeKind.Update;
             }
@@ -263,9 +285,13 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
         var stateChangeTracker = GetContextualStateTracker();
 
-        if (stateChangeTracker.ContainsKey(stateName))
+        if (stateChangeTracker.TryGetValue(stateName, out var stateMetadata))
         {
-            var stateMetadata = stateChangeTracker[stateName];
+            // The state is known to not exist in the state store, so there's nothing to remove
+            if (stateMetadata.ChangeKind == StateChangeKind.NotFound)
+            {
+                return false;
+            }
 
             if (stateMetadata.TTLExpireTime.HasValue && stateMetadata.TTLExpireTime.Value <= DateTimeOffset.UtcNow)
             {
@@ -303,12 +329,10 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
         var stateChangeTracker = GetContextualStateTracker();
 
-        if (stateChangeTracker.ContainsKey(stateName))
+        if (stateChangeTracker.TryGetValue(stateName, out var stateMetadata))
         {
-            var stateMetadata = stateChangeTracker[stateName];
-
-            // Check if the property was marked as remove in the cache
-            return stateMetadata.ChangeKind != StateChangeKind.Remove;
+            // Check if the property is known to not exist or was marked as remove in the cache
+            return stateMetadata.ChangeKind is not (StateChangeKind.Remove or StateChangeKind.NotFound);
         }
 
         if (await this.actor.Host.StateProvider.ContainsStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateName, cancellationToken))
@@ -367,9 +391,14 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
         var stateChangeTracker = GetContextualStateTracker();
 
-        if (stateChangeTracker.ContainsKey(stateName))
+        if (stateChangeTracker.TryGetValue(stateName, out var stateMetadata))
         {
-            var stateMetadata = stateChangeTracker[stateName];
+            // The state is known to not exist in the state store, so add it without consulting the store again
+            if (stateMetadata.ChangeKind == StateChangeKind.NotFound)
+            {
+                stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Add);
+                return addValue;
+            }
 
             // Check if the property was marked as remove in the cache
             if (stateMetadata.ChangeKind == StateChangeKind.Remove)
@@ -389,10 +418,10 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
             return newValue;
         }
 
-        var conditionalResult = await this.TryGetStateFromStateProviderAsync<T>(stateName, cancellationToken);
-        if (conditionalResult.HasValue)
+        var (response, httpStatusCode) = await this.TryGetStateFromStateProviderAsync<T>(stateName, cancellationToken);
+        if (httpStatusCode == 200 && response is not null)
         {
-            var newValue = updateValueFactory.Invoke(stateName, conditionalResult.Value.Value);
+            var newValue = updateValueFactory.Invoke(stateName, response.Value);
             stateChangeTracker.Add(stateName, StateMetadata.Create(newValue, StateChangeKind.Update));
 
             return newValue;
@@ -415,9 +444,14 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
         var stateChangeTracker = GetContextualStateTracker();
 
-        if (stateChangeTracker.ContainsKey(stateName))
+        if (stateChangeTracker.TryGetValue(stateName, out var stateMetadata))
         {
-            var stateMetadata = stateChangeTracker[stateName];
+            // The state is known to not exist in the state store, so add it without consulting the store again
+            if (stateMetadata.ChangeKind == StateChangeKind.NotFound)
+            {
+                stateChangeTracker[stateName] = StateMetadata.Create(addValue, StateChangeKind.Add, ttl: ttl);
+                return addValue;
+            }
 
             // Check if the property was marked as remove in the cache
             if (stateMetadata.ChangeKind == StateChangeKind.Remove)
@@ -437,10 +471,10 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
             return newValue;
         }
 
-        var conditionalResult = await this.TryGetStateFromStateProviderAsync<T>(stateName, cancellationToken);
-        if (conditionalResult.HasValue)
+        var (response, httpStatusCode) = await this.TryGetStateFromStateProviderAsync<T>(stateName, cancellationToken);
+        if (httpStatusCode == 200 && response is not null)
         {
-            var newValue = updateValueFactory.Invoke(stateName, conditionalResult.Value.Value);
+            var newValue = updateValueFactory.Invoke(stateName, response.Value);
             stateChangeTracker.Add(stateName, StateMetadata.Create(newValue, StateChangeKind.Update, ttl: ttl));
 
             return newValue;
@@ -475,7 +509,7 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
             {
                 var stateMetadata = stateChangeTracker[stateName];
 
-                if (stateMetadata.ChangeKind != StateChangeKind.None)
+                if (stateMetadata.ChangeKind is not (StateChangeKind.None or StateChangeKind.NotFound))
                 {
                     stateChangeList.Add(
                         new ActorStateChange(stateName, stateMetadata.Type, stateMetadata.Value, stateMetadata.ChangeKind, stateMetadata.TTLExpireTime));
@@ -500,7 +534,7 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
                 }
             }
 
-            // Remove the states from tracker whcih were marked for removal.
+            // Remove the states from tracker which were marked for removal.
             foreach (var stateToRemove in statesToRemove)
             {
                 stateChangeTracker.Remove(stateToRemove);
@@ -561,7 +595,7 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
         return false;
     }
 
-    private Task<ConditionalValue<ActorStateResponse<T>>> TryGetStateFromStateProviderAsync<T>(string stateName, CancellationToken cancellationToken)
+    private Task<(ActorStateResponse<T> Response, int HttpStatusCode)> TryGetStateFromStateProviderAsync<T>(string stateName, CancellationToken cancellationToken)
     {
         EnsureStateProviderInitialized();
         return this.actor.Host.StateProvider.TryLoadStateAsync<T>(this.actorTypeName, this.actor.Id.ToString(), stateName, cancellationToken);
@@ -583,15 +617,14 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
         {
             return context.Value.tracker;
         }
-        else
-        {
-            return defaultTracker;
-        }
+
+        return defaultTracker;
     }
 
     private sealed class StateMetadata
     {
-        private StateMetadata(object value, Type type, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime = null, TimeSpan? ttl = null)
+        private StateMetadata(object value, Type type, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime = null,
+            TimeSpan? ttl = null)
         {
             this.Value = value;
             this.Type = type;
@@ -601,6 +634,7 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
             {
                 throw new ArgumentException("Cannot specify both TTLExpireTime and TTL");
             }
+
             if (ttl.HasValue)
             {
                 this.TTLExpireTime = DateTimeOffset.UtcNow.Add(ttl.Value);
@@ -619,32 +653,22 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
         public DateTimeOffset? TTLExpireTime { get; set; }
 
-        public static StateMetadata Create<T>(T value, StateChangeKind changeKind)
-        {
-            return new StateMetadata(value, typeof(T), changeKind);
-        }
+        public static StateMetadata Create<T>(T value, StateChangeKind changeKind) => new(value, typeof(T), changeKind);
 
-        public static StateMetadata Create<T>(T value, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime)
-        {
-            return new StateMetadata(value, typeof(T), changeKind, ttlExpireTime: ttlExpireTime);
-        }
+        public static StateMetadata Create<T>(T value, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime) =>
+            new(value, typeof(T), changeKind, ttlExpireTime: ttlExpireTime);
 
         // Non-generic counterpart to Create<T> for callers (like SyncDefaultTracker) that
         // already have a boxed value and its runtime Type from an ActorStateChange, rather
         // than a compile-time T.
-        public static StateMetadata CreateFromValueAndType(object value, Type type, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime)
-        {
-            return new StateMetadata(value, type, changeKind, ttlExpireTime: ttlExpireTime);
-        }
+        public static StateMetadata CreateFromValueAndType(object value, Type type, StateChangeKind changeKind, DateTimeOffset? ttlExpireTime) =>
+            new(value, type, changeKind, ttlExpireTime: ttlExpireTime);
 
-        public static StateMetadata Create<T>(T value, StateChangeKind changeKind, TimeSpan? ttl)
-        {
-            return new StateMetadata(value, typeof(T), changeKind, ttl: ttl);
-        }
+        public static StateMetadata Create<T>(T value, StateChangeKind changeKind, TimeSpan? ttl) =>
+            new(value, typeof(T), changeKind, ttl: ttl);
 
-        public static StateMetadata CreateForRemove()
-        {
-            return new StateMetadata(null, typeof(object), StateChangeKind.Remove);
-        }
+        public static StateMetadata CreateNotFound() => new(null, typeof(object), StateChangeKind.NotFound);
+
+        public static StateMetadata CreateForRemove() => new(null, typeof(object), StateChangeKind.Remove);
     }
 }

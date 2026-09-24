@@ -32,7 +32,7 @@ using System.Xml;
 /// <summary>
 /// Class to interact with Dapr runtime over http.
 /// </summary>
-internal class DaprHttpInteractor : IDaprInteractor
+internal sealed class DaprHttpInteractor : IDaprInteractor
 {
     private readonly JsonSerializerOptions jsonSerializerOptions = JsonSerializerDefaults.Web;
     private readonly string httpEndpoint;
@@ -71,7 +71,7 @@ internal class DaprHttpInteractor : IDaprInteractor
         }
 
         using var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
-        var stringResponse = await response.Content.ReadAsStringAsync();
+        var stringResponse = await response.Content.ReadAsStringAsync(cancellationToken);
 
         DateTimeOffset? ttlExpireTime = null;
         if (response.Headers.TryGetValues(Constants.TTLResponseHeaderName, out IEnumerable<string> headerValues))
@@ -83,12 +83,14 @@ internal class DaprHttpInteractor : IDaprInteractor
             }
         }
 
-        return new ActorStateResponse<string>(stringResponse, ttlExpireTime);
+        return new ActorStateResponse<string>(stringResponse, ttlExpireTime, (int)response.StatusCode);
     }
 
     public Task SaveStateTransactionallyAsync(string actorType, string actorId, string data, CancellationToken cancellationToken = default)
     {
         var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorStateRelativeUrlFormat, actorType, actorId);
+
+        return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
 
         HttpRequestMessage RequestFunc()
         {
@@ -100,8 +102,6 @@ internal class DaprHttpInteractor : IDaprInteractor
 
             return request;
         }
-
-        return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
     }
 
     public async Task<IActorResponseMessage> InvokeActorMethodWithRemotingAsync(ActorMessageSerializersManager serializersManager, IActorRequestMessage remotingRequestRequestMessage, CancellationToken cancellationToken = default)
@@ -116,8 +116,8 @@ internal class DaprHttpInteractor : IDaprInteractor
         var serializedHeader = serializersManager.GetHeaderSerializer()
             .SerializeRequestHeader(remotingRequestRequestMessage.GetHeader());
 
-        var msgBodySeriaizer = serializersManager.GetRequestMessageBodySerializer(interfaceId, methodName);
-        var serializedMsgBody = msgBodySeriaizer.Serialize(remotingRequestRequestMessage.GetBody());
+        var msgBodySerializer = serializersManager.GetRequestMessageBodySerializer(interfaceId, methodName);
+        var serializedMsgBody = msgBodySerializer.Serialize(remotingRequestRequestMessage.GetBody());
 
         // Send Request
         var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorMethodRelativeUrlFormat, actorType, actorId, methodName);
@@ -166,7 +166,7 @@ internal class DaprHttpInteractor : IDaprInteractor
         IActorResponseMessageBody actorResponseMessageBody = null;
         if (retval != null && retval.Content != null)
         {
-            var responseMessageBody = await retval.Content.ReadAsStreamAsync();
+            var responseMessageBody = await retval.Content.ReadAsStreamAsync(cancellationToken);
 
             // Deserialize Actor Response Message Body
             // Deserialize to ActorInvokeException when there is response header otherwise normal path
@@ -242,7 +242,7 @@ internal class DaprHttpInteractor : IDaprInteractor
         }
 
         var response = await this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
-        var stream = await response.Content.ReadAsStreamAsync();
+        var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         return stream;
     }
 
@@ -364,9 +364,9 @@ internal class DaprHttpInteractor : IDaprInteractor
         using var response = await this.SendAsyncHandleUnsuccessfulResponse(requestFunc, relativeUri, cancellationToken);
         var retValue = default(string);
 
-        if (response != null && response.Content != null)
+        if (response?.Content != null)
         {
-            retValue = await response.Content.ReadAsStringAsync();
+            retValue = await response.Content.ReadAsStringAsync(cancellationToken);
         }
 
         return retValue;
@@ -376,7 +376,7 @@ internal class DaprHttpInteractor : IDaprInteractor
     /// Disposes resources.
     /// </summary>
     /// <param name="disposing">False values indicates the method is being called by the runtime, true value indicates the method is called by the user code.</param>
-    protected virtual void Dispose(bool disposing)
+    private void Dispose(bool disposing)
     {
         if (!this.disposed)
         {
@@ -425,10 +425,10 @@ internal class DaprHttpInteractor : IDaprInteractor
 
             try
             {
-                var contentStream = await response.Content.ReadAsStreamAsync();
+                var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 if (contentStream.Length != 0)
                 {
-                    error = await JsonSerializer.DeserializeAsync<DaprError>(contentStream, jsonSerializerOptions);
+                    error = await JsonSerializer.DeserializeAsync<DaprError>(contentStream, jsonSerializerOptions, cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -505,7 +505,6 @@ internal class DaprHttpInteractor : IDaprInteractor
         if (!string.IsNullOrWhiteSpace(this.daprApiToken))
         {
             request.Headers.Add("dapr-api-token", this.daprApiToken);
-            return;
         }
     }
 }
