@@ -66,10 +66,12 @@ public sealed record SubscribeActorEventsResponse(
 
 /// <summary>
 /// Runtime options advertised with the initial actor event stream registration.
+/// A <see langword="null"/> value leaves that field unset on the wire so the
+/// Dapr runtime default applies.
 /// </summary>
 public sealed record SubscribeActorEventsInitialConfig(
-    TimeSpan ActorIdleTimeout,
-    TimeSpan DrainOngoingCallTimeout,
-    bool DrainRebalancedActors,
-    bool EnableReentrancy,
-    int MaxReentrantDepth);
+    TimeSpan? ActorIdleTimeout,
+    TimeSpan? DrainOngoingCallTimeout,
+    bool? DrainRebalancedActors,
+    bool? EnableReentrancy,
+    int? MaxReentrantDepth);

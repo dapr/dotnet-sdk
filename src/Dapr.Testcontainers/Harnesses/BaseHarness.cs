@@ -49,11 +49,11 @@ public abstract class BaseHarness : IAsyncContainerFixture
     /// <summary>
     /// The HTTP port used by the Daprd container.
     /// </summary>
-    public int DaprHttpPort => _daprd?.HttpPort ?? _daprHttpPortOverride ?? 0;
+    public int DaprHttpPort => _daprHttpPortOverride ?? _daprd?.HttpPort ?? 0;
     /// <summary>
     /// The gRPC port used by the Daprd container.
     /// </summary>
-    public int DaprGrpcPort => _daprd?.GrpcPort ?? _daprGrpcPortOverride ?? 0;
+    public int DaprGrpcPort => _daprGrpcPortOverride ?? _daprd?.GrpcPort ?? 0;
     
     private readonly string componentsDirectory;
     private readonly Func<int, Task>? startApp;

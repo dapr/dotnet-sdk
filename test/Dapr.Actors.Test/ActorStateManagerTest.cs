@@ -128,6 +128,142 @@ public class ActorStateManagerTest
     }
 
     [Fact]
+    public async Task ReentrantSaveInvalidatesDefaultTracker()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = new CancellationToken();
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value1\"", null)));
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // A read outside any reentrancy context caches the value in the default tracker.
+        Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
+
+        // A reentrancy-scoped call writes the same key through its own tracker.
+        await mngr.SetStateContext("ctx1");
+        await mngr.SetStateAsync("key1", "value2", token);
+        await mngr.SaveStateAsync(token);
+        await mngr.SetStateContext(null);
+
+        // The default tracker must reload the key instead of serving its stale copy.
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value2\"", null)));
+        Assert.Equal("value2", await mngr.GetStateAsync<string>("key1", token));
+    }
+
+    [Fact]
+    public async Task ReentrantSaveRefreshesDefaultTrackerWithoutRoundTrip()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = new CancellationToken();
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value1\"", null)));
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // A read outside any reentrancy context caches the value in the default tracker -
+        // call #1 to the runtime.
+        Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
+
+        // A reentrancy-scoped call writes the same key through its own (fresh, empty)
+        // tracker. SetStateAsync stages an upsert without checking the runtime, so this
+        // does not add another GetStateAsync call.
+        await mngr.SetStateContext("ctx1");
+        await mngr.SetStateAsync("key1", "value2", token);
+        await mngr.SaveStateAsync(token);
+        await mngr.SetStateContext(null);
+
+        // The default tracker must reflect the new value without a further call to the
+        // runtime - it already has the value the save above just confirmed was persisted.
+        // Total call count stays at 1; a naive reload-on-evict fix would make this 2.
+        Assert.Equal("value2", await mngr.GetStateAsync<string>("key1", token));
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ReentrantSaveUpdatesDefaultTrackerNotFoundEntry()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = new CancellationToken();
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("", null, 204)));
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Reminder/timer (default tracker) checks an absent key - "not found" is now cached.
+        Assert.False((await mngr.TryGetStateAsync<string>("key1", token)).HasValue);
+
+        // A reentrancy-scoped call creates the key through its own tracker.
+        await mngr.SetStateContext("ctx1");
+        await mngr.SetStateAsync("key1", "value2", token);
+        await mngr.SaveStateAsync(token);
+        await mngr.SetStateContext(null);
+
+        // The store now holds the key; the default tracker must not keep serving "not found".
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value2\"", null)));
+        var result = await mngr.TryGetStateAsync<string>("key1", token);
+        Assert.True(result.HasValue);
+        Assert.Equal("value2", result.Value);
+    }
+
+    [Fact]
+    public async Task ReentrantRemoveInvalidatesDefaultTracker()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = new CancellationToken();
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value1\"", null)));
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // A read outside any reentrancy context caches the value in the default tracker.
+        Assert.Equal("value1", await mngr.GetStateAsync<string>("key1", token));
+
+        // A reentrancy-scoped call removes the same key through its own tracker.
+        await mngr.SetStateContext("ctx1");
+        await mngr.RemoveStateAsync("key1", token);
+        await mngr.SaveStateAsync(token);
+        await mngr.SetStateContext(null);
+
+        // A removal can't be refreshed in place - the default tracker must drop its clean
+        // copy so the next read finds it gone rather than serving the stale value.
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Throws(new KeyNotFoundException());
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => mngr.GetStateAsync<string>("key1", token));
+    }
+
+    [Fact]
     public async Task StateDaprdExpireTime()
     {
         var interactor = new Mock<TestDaprInteractor>();
@@ -740,6 +876,89 @@ public class ActorStateManagerTest
         Assert.Contains("ttlInSeconds", capturedData);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SetStateAsync_UnknownKeyDoesNotReadFromStateStore(bool useTtl)
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+        string capturedData = null;
+
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, CancellationToken>((_, _, data, _) => capturedData = data)
+            .Returns(Task.CompletedTask);
+
+        if (useTtl)
+        {
+            await mngr.SetStateAsync("k1", "value", TimeSpan.FromMinutes(5), token);
+        }
+        else
+        {
+            await mngr.SetStateAsync("k1", "value", token);
+        }
+
+        Assert.Equal("value", await mngr.GetStateAsync<string>("k1", token));
+        Assert.True(await mngr.ContainsStateAsync("k1", token));
+        Assert.False(await mngr.TryAddStateAsync("k1", "replacement", token));
+
+        await mngr.SaveStateAsync(token);
+
+        Assert.Contains("\"operation\":\"upsert\"", capturedData);
+        Assert.Contains("\"value\":\"value\"", capturedData);
+        Assert.Equal("value", await mngr.GetStateAsync<string>("k1", token));
+        Assert.True(await mngr.ContainsStateAsync("k1", token));
+
+        await mngr.SaveStateAsync(token);
+
+        interactor.Verify(
+            d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SetThenRemoveUnknownKeyStagesDeleteWithoutReadingStateStore(bool useTtl)
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+        string capturedData = null;
+
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, CancellationToken>((_, _, data, _) => capturedData = data)
+            .Returns(Task.CompletedTask);
+
+        if (useTtl)
+        {
+            await mngr.SetStateAsync("k1", "value", TimeSpan.FromMinutes(5), token);
+        }
+        else
+        {
+            await mngr.SetStateAsync("k1", "value", token);
+        }
+
+        Assert.True(await mngr.TryRemoveStateAsync("k1", token));
+        await mngr.SaveStateAsync(token);
+
+        Assert.Contains("\"operation\":\"delete\"", capturedData);
+        Assert.DoesNotContain("\"operation\":\"upsert\"", capturedData);
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     // ----- SetStateContext (reentrancy) -----
 
     [Fact]
@@ -817,5 +1036,338 @@ public class ActorStateManagerTest
         Assert.Equal("from-ctx1", ctx1Result);
         Assert.Equal("from-ctx2", ctx2Result);
         Assert.False(ctx1Saw);
+    }
+
+    [Theory]
+    [InlineData(200)]
+    [InlineData(204)]
+    [InlineData(400)]
+    [InlineData(500)]
+    public async Task TryGetStateAsync_CachesMissingStateAndDoesNotRequeryStateProvider(int statusCode)
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("", null, statusCode)));
+
+        for (var i = 0; i < 100; i++)
+        {
+            Assert.False((await mngr.TryGetStateAsync<string>("missing", token)).HasValue);
+        }
+
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "missing", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task TryGetStateAsync_CachesLoadedStateAndDoesNotRequeryStateProvider()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "key", It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value\"", null)));
+
+        for (var i = 0; i < 100; i++)
+        {
+            var result = await mngr.TryGetStateAsync<string>("key", token);
+            Assert.True(result.HasValue);
+            Assert.Equal("value", result.Value);
+        }
+
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "key", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task MissingStateCacheIsScopedByStateName()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("", null, 204)));
+
+        Assert.False((await mngr.TryGetStateAsync<string>("missing-1", token)).HasValue);
+        Assert.False((await mngr.TryGetStateAsync<string>("missing-2", token)).HasValue);
+        Assert.False((await mngr.TryGetStateAsync<string>("missing-1", token)).HasValue);
+        Assert.False((await mngr.TryGetStateAsync<string>("missing-2", token)).HasValue);
+
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "missing-1", It.IsAny<CancellationToken>()),
+            Times.Once);
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "missing-2", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ClearCacheAsync_InvalidatesMissingStateCache()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+        var stateExists = false;
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => stateExists
+                ? new ActorStateResponse<string>("\"value\"", null)
+                : new ActorStateResponse<string>("", null, 204));
+
+        Assert.False((await mngr.TryGetStateAsync<string>("key", token)).HasValue);
+        stateExists = true;
+        Assert.False((await mngr.TryGetStateAsync<string>("key", token)).HasValue);
+
+        await mngr.ClearCacheAsync(token);
+
+        Assert.Equal("value", await mngr.GetStateAsync<string>("key", token));
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "key", It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task UnloadStateAsync_InvalidatesMissingStateCache()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+        var stateExists = false;
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "key", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => stateExists
+                ? new ActorStateResponse<string>("\"value\"", null)
+                : new ActorStateResponse<string>("", null, 204));
+
+        Assert.False((await mngr.TryGetStateAsync<string>("key", token)).HasValue);
+        stateExists = true;
+        Assert.False((await mngr.TryGetStateAsync<string>("key", token)).HasValue);
+
+        await mngr.UnloadStateAsync("key", cancellationToken: token);
+
+        Assert.Equal("value", await mngr.GetStateAsync<string>("key", token));
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "key", It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task MissingStateIsNotPersistedOnSave()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("", null, 204)));
+
+        Assert.False((await mngr.TryGetStateAsync<string>("missing", token)).HasValue);
+        await mngr.SaveStateAsync(token);
+
+        interactor.Verify(
+            d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task MissingStateIsReportedAsAbsentByContainsAndRemove()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("", null, 204)));
+
+        Assert.False((await mngr.TryGetStateAsync<string>("missing", token)).HasValue);
+
+        Assert.False(await mngr.ContainsStateAsync("missing", token));
+        Assert.False(await mngr.TryRemoveStateAsync("missing", token));
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => mngr.GetStateAsync<string>("missing", token));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MissingStateCanBeAddedAndIsPersistedAsAnAdd(bool useTtl)
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("", null, 204)));
+
+        string capturedContent = null;
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, CancellationToken>((_, _, content, _) => capturedContent = content)
+            .Returns(Task.CompletedTask);
+
+        Assert.False((await mngr.TryGetStateAsync<string>("missing", token)).HasValue);
+
+        if (useTtl)
+        {
+            Assert.True(await mngr.TryAddStateAsync("missing", "value1", TimeSpan.FromMinutes(5), token));
+        }
+        else
+        {
+            Assert.True(await mngr.TryAddStateAsync("missing", "value1", token));
+        }
+
+        Assert.Equal("value1", await mngr.GetStateAsync<string>("missing", token));
+        Assert.True(await mngr.ContainsStateAsync("missing", token));
+
+        await mngr.SaveStateAsync(token);
+        Assert.Contains("\"operation\":\"upsert\"", capturedContent);
+        Assert.Contains("\"value\":\"value1\"", capturedContent);
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "missing", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MissingStateCanBeSetAndIsPersisted(bool useTtl)
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("", null, 204)));
+
+        string capturedContent = null;
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, CancellationToken>((_, _, content, _) => capturedContent = content)
+            .Returns(Task.CompletedTask);
+
+        Assert.False((await mngr.TryGetStateAsync<string>("missing", token)).HasValue);
+
+        if (useTtl)
+        {
+            await mngr.SetStateAsync("missing", "value1", TimeSpan.FromMinutes(5), token);
+        }
+        else
+        {
+            await mngr.SetStateAsync("missing", "value1", token);
+        }
+
+        Assert.Equal("value1", await mngr.GetStateAsync<string>("missing", token));
+
+        await mngr.SaveStateAsync(token);
+        Assert.Contains("\"operation\":\"upsert\"", capturedContent);
+        Assert.Contains("\"value\":\"value1\"", capturedContent);
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "missing", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MissingStateIsAddedByAddOrUpdateWithoutInvokingUpdateFactory(bool useTtl)
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("", null, 204)));
+
+        Assert.False((await mngr.TryGetStateAsync<string>("missing", token)).HasValue);
+
+        var updateFactoryInvoked = false;
+        string result;
+        if (useTtl)
+        {
+            result = await mngr.AddOrUpdateStateAsync("missing", "added", (_, existing) =>
+            {
+                updateFactoryInvoked = true;
+                return existing;
+            }, TimeSpan.FromMinutes(5), token);
+        }
+        else
+        {
+            result = await mngr.AddOrUpdateStateAsync("missing", "added", (_, existing) =>
+            {
+                updateFactoryInvoked = true;
+                return existing;
+            }, token);
+        }
+
+        Assert.Equal("added", result);
+        Assert.False(updateFactoryInvoked);
+        Assert.Equal("added", await mngr.GetStateAsync<string>("missing", token));
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "missing", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MissingStateIsAddedByGetOrAdd(bool useTtl)
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = CancellationToken.None;
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("", null, 204)));
+
+        Assert.False((await mngr.TryGetStateAsync<string>("missing", token)).HasValue);
+
+        var value = useTtl
+            ? await mngr.GetOrAddStateAsync("missing", "added", TimeSpan.FromMinutes(5), token)
+            : await mngr.GetOrAddStateAsync("missing", "added", token);
+
+        Assert.Equal("added", value);
+        Assert.Equal("added", await mngr.GetStateAsync<string>("missing", token));
+        Assert.True(await mngr.ContainsStateAsync("missing", token));
+        interactor.Verify(
+            d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "missing", It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

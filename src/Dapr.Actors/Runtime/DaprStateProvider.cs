@@ -44,12 +44,11 @@ internal class DaprStateProvider
         this.daprInteractor = daprInteractor;
     }
 
-    public async Task<ConditionalValue<ActorStateResponse<T>>> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
+    public async Task<(ActorStateResponse<T> Response, int HttpStatusCode)> TryLoadStateAsync<T>(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
     {
-        var result = new ConditionalValue<ActorStateResponse<T>>(false, default);
         var response = await this.daprInteractor.GetStateAsync(actorType, actorId, stateName, cancellationToken);
 
-        if (response.Value.Length != 0 && (!response.TTLExpireTime.HasValue || response.TTLExpireTime.Value > DateTimeOffset.UtcNow))
+        if (response.HttpStatusCode == 200 && response.Value.Length != 0 && (!response.TTLExpireTime.HasValue || response.TTLExpireTime.Value > DateTimeOffset.UtcNow))
         {
             T typedResult;
 
@@ -64,10 +63,10 @@ internal class DaprStateProvider
                 typedResult = JsonSerializer.Deserialize<T>(response.Value, jsonSerializerOptions);
             }
 
-            result = new ConditionalValue<ActorStateResponse<T>>(true, new ActorStateResponse<T>(typedResult, response.TTLExpireTime));
+            return (new ActorStateResponse<T>(typedResult, response.TTLExpireTime, response.HttpStatusCode), response.HttpStatusCode);
         }
 
-        return result;
+        return (null, response.HttpStatusCode);
     }
 
     public async Task<bool> ContainsStateAsync(string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
@@ -102,12 +101,12 @@ internal class DaprStateProvider
         ]
         */
         using var stream = new MemoryStream();
-        using var writer = new Utf8JsonWriter(stream);
+        await using var writer = new Utf8JsonWriter(stream);
         writer.WriteStartArray();
         foreach (var stateChange in stateChanges)
         {
             writer.WriteStartObject();
-            var operation = this.GetDaprStateOperation(stateChange.ChangeKind);
+            var operation = GetDaprStateOperation(stateChange.ChangeKind);
             writer.WriteString("operation", operation);
 
             // write the requestProperty
@@ -143,8 +142,6 @@ internal class DaprStateProvider
                     }
 
                     break;
-                default:
-                    break;
             }
 
             writer.WriteEndObject();  // end object for request property
@@ -153,12 +150,12 @@ internal class DaprStateProvider
 
         writer.WriteEndArray();
 
-        await writer.FlushAsync();
+        await writer.FlushAsync(cancellationToken);
         var content = Encoding.UTF8.GetString(stream.ToArray());
         await this.daprInteractor.SaveStateTransactionallyAsync(actorType, actorId, content, cancellationToken);
     }
 
-    private string GetDaprStateOperation(StateChangeKind changeKind)
+    private static string GetDaprStateOperation(StateChangeKind changeKind)
     {
         var operation = string.Empty;
 
@@ -170,8 +167,6 @@ internal class DaprStateProvider
             case StateChangeKind.Add:
             case StateChangeKind.Update:
                 operation = "upsert";
-                break;
-            default:
                 break;
         }
 

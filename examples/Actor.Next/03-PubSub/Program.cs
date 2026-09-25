@@ -17,18 +17,16 @@ using Dapr.Actors.Next.Core.Client;
 using Dapr.Actors.Next.Examples.PubSub;
 using Dapr.Actors.Next.Streams;
 using Dapr.Client;
-using Dapr.Messaging.PublishSubscribe.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDaprActors();
 builder.Services.AddDaprActorStreams();
-builder.Services.AddDaprPubSubClient();
 builder.Services.AddSingleton(_ => new DaprClientBuilder().Build());
 
 var app = builder.Build();
 
-// This sample registers the same subscription declared by [Subscribe] on
-// RestockingCartActor.OnRestock so the hosted stream service opens it at startup.
+// Register the subscription declared by [Subscribe] on RestockingCartActor.OnRestock.
+// AddDaprActorStreams supplies the Dapr.Messaging streaming client.
 app.Services.GetRequiredService<ActorStreamSubscriptionRegistry>().Add(
     new ActorStreamSubscription(
         RestockingCartNames.PubsubName,

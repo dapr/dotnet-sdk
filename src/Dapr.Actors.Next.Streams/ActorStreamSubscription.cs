@@ -53,5 +53,15 @@ public sealed record ActorStreamSubscription(
         ArgumentException.ThrowIfNullOrWhiteSpace(ActorType);
         ArgumentException.ThrowIfNullOrWhiteSpace(MethodName);
         ArgumentException.ThrowIfNullOrWhiteSpace(RouteBy);
+
+        if (MessageTimeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MessageTimeout), MessageTimeout, "The message timeout must be positive.");
+        }
+
+        if (MaximumQueuedMessages is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaximumQueuedMessages), MaximumQueuedMessages, "The maximum queued message count must be positive.");
+        }
     }
 }

@@ -1,0 +1,34 @@
+### 1. Publish standard order event
+POST http://localhost:5000/orders
+Content-Type: application/json
+
+{
+  "orderId": "order-101",
+  "customerId": "cust-abc",
+  "amount": 99.50,
+  "items": [ "sku-keyboard", "sku-mouse" ]
+}
+
+### 2. Publish priority order event with custom CloudEvents metadata
+POST http://localhost:5000/orders/priority
+Content-Type: application/json
+
+{
+  "orderId": "order-999",
+  "customerId": "cust-vip",
+  "amount": 1499.00,
+  "tier": "Gold"
+}
+
+### 3. Bulk publish multiple orders in a single request
+POST http://localhost:5000/orders/bulk
+Content-Type: application/json
+
+[
+  { "orderId": "order-201", "amount": 25.00 },
+  { "orderId": "order-202", "amount": 50.00 },
+  { "orderId": "order-203", "amount": 75.00 }
+]
+
+### 4. Publish raw byte payload
+POST http://localhost:5000/orders/raw
