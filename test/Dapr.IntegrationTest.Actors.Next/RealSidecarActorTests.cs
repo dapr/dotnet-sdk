@@ -164,6 +164,7 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         builder.Services.AddDaprActors(options =>
         {
             options.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(1);
+            options.DrainRebalancedActors = true;
             options.EnableReentrancy = true;
             options.MaxReentrantDepth = 8;
         });
@@ -342,6 +343,31 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         Assert.Equal(3, final.SchemaVersion);
     }
 
+    /// <summary>
+    /// Verifies a reminder observes state written by a reentrant invocation on the same activation.
+    /// </summary>
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Reentrant_state_write_is_observed_by_reminder()
+    {
+        using var cts = new CancellationTokenSource(Timeout);
+        var actorId = $"reentrant-state-{Guid.NewGuid():N}";
+
+        await client!.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "StartStateReminder", ReadOnlyMemory<byte>.Empty), cancellationToken: cts.Token);
+        await WaitUntilAsync(
+            async () => await ReadReminderStateAsync(actorId, cts.Token) >= 1,
+            cts.Token,
+            () => "The initial reminder callback did not persist state.");
+
+        await client.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "WriteStateReentrantly", Encoding.UTF8.GetBytes("10")), cancellationToken: cts.Token);
+
+        await WaitUntilAsync(
+            async () => await ReadReminderStateAsync(actorId, cts.Token) >= 11,
+            cts.Token,
+            () => "A reminder did not observe the value persisted by the reentrant invocation.");
+
+        await client.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "StopStateReminder", ReadOnlyMemory<byte>.Empty), cancellationToken: cts.Token);
+    }
+
     private static P.InvokeActorRequest CreateInvoke(
         string actorType,
         string actorId,
@@ -390,9 +416,30 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         }
     }
 
+    private async Task<int> ReadReminderStateAsync(string actorId, CancellationToken cancellationToken)
+    {
+        var response = await client!.InvokeActorAsync(
+            CreateInvoke("ProtocolActor", actorId, "ReadReminderState", ReadOnlyMemory<byte>.Empty),
+            cancellationToken: cancellationToken);
+        return JsonSerializer.Deserialize<int>(response.Data.Span);
+    }
+
     private static async Task WaitUntilAsync(Func<bool> predicate, CancellationToken cancellationToken, Func<string> failure)
     {
         while (!predicate())
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException(failure());
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), CancellationToken.None);
+        }
+    }
+
+    private static async Task WaitUntilAsync(Func<Task<bool>> predicate, CancellationToken cancellationToken, Func<string> failure)
+    {
+        while (!await predicate())
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -744,10 +791,11 @@ public sealed class ProtocolActor(
     /// <summary>
     /// Handles a real Dapr reminder callback.
     /// </summary>
-    public Task ReminderAsync(CancellationToken cancellationToken)
+    public async Task ReminderAsync(CancellationToken cancellationToken)
     {
         Probe.Reminders.Add(Id.Value);
-        return Task.CompletedTask;
+        var state = await State.GetOrCreateAsync("reentrant-state", static () => 0, cancellationToken);
+        state.Value++;
     }
 
     /// <summary>
@@ -782,6 +830,62 @@ public sealed class ProtocolActor(
     }
 
     /// <summary>
+    /// Initializes state and schedules callbacks that read and increment it.
+    /// </summary>
+    public async Task StartStateReminderAsync(CancellationToken cancellationToken)
+    {
+        await State.SetAsync("reentrant-state", 0, cancellationToken);
+        await reminderScheduler.ScheduleAsync(
+            "ProtocolActor",
+            Id,
+            "state-reentrancy",
+            TimeSpan.FromMilliseconds(100),
+            TimeSpan.FromMilliseconds(100),
+            JsonSerializer.Serialize("state-reentrancy"),
+            overwrite: true,
+            cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a same-actor method through the runtime's reentrancy path.
+    /// </summary>
+    public async Task WriteStateReentrantlyAsync(int value, CancellationToken cancellationToken)
+    {
+        await runtime.InvokeAsync(
+            "ProtocolActor",
+            Id.Value,
+            "SetReminderState",
+            JsonSerializer.SerializeToUtf8Bytes(value),
+            new Dictionary<string, string>(),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Sets the state read by reminder callbacks.
+    /// </summary>
+    public async Task SetReminderStateAsync(int value, CancellationToken cancellationToken)
+    {
+        await State.SetAsync("reentrant-state", value, cancellationToken);
+    }
+
+    /// <summary>
+    /// Reads the state maintained by reminder callbacks.
+    /// </summary>
+    public async Task<int> ReadReminderStateAsync(CancellationToken cancellationToken)
+    {
+        var state = await State.GetOrCreateAsync("reentrant-state", static () => 0, cancellationToken);
+        return state.Value;
+    }
+
+    /// <summary>
+    /// Stops the reminder used by the reentrancy state test.
+    /// </summary>
+    public async Task StopStateReminderAsync(CancellationToken cancellationToken)
+    {
+        await reminderScheduler.CancelAsync("ProtocolActor", Id, "state-reentrancy", cancellationToken);
+    }
+
+    /// <summary>
     /// Forces deactivation through the runtime.
     /// </summary>
     public Task DeactivateAsync() => Task.CompletedTask;
@@ -811,9 +915,15 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
             "ManageReminders" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ManageRemindersAsync(cancellationToken))),
             "TimerFired" => await CompleteAsync(protocol.TimerFiredAsync(cancellationToken)),
             "reminder" => await CompleteAsync(protocol.ReminderAsync(cancellationToken)),
+            "state-reentrancy" => await CompleteAsync(protocol.ReminderAsync(cancellationToken)),
             "SeedLegacy" => await CompleteAsync(protocol.SeedLegacyAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),
             "ReadCurrent" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ReadCurrentAsync(cancellationToken))),
             "SaveProfileThenReadRaw" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.SaveProfileThenReadRawAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken))),
+            "StartStateReminder" => await CompleteAsync(protocol.StartStateReminderAsync(cancellationToken)),
+            "WriteStateReentrantly" => await CompleteAsync(protocol.WriteStateReentrantlyAsync(JsonSerializer.Deserialize<int>(request.Payload.Span), cancellationToken)),
+            "SetReminderState" => await CompleteAsync(protocol.SetReminderStateAsync(JsonSerializer.Deserialize<int>(request.Payload.Span), cancellationToken)),
+            "ReadReminderState" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ReadReminderStateAsync(cancellationToken))),
+            "StopStateReminder" => await CompleteAsync(protocol.StopStateReminderAsync(cancellationToken)),
             "Deactivate" => await CompleteAsync(protocol.ForceDeactivateAsync(cancellationToken)),
             _ => throw new InvalidOperationException($"Unknown method '{request.MethodName}'."),
         };

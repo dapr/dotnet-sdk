@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Moq" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BulkSubscribe.Example04.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Messaging.Abstractions\Dapr.Messaging.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Messaging.Runtime\Dapr.Messaging.Runtime.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
+  </ItemGroup>
+</Project>

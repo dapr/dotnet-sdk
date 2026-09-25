@@ -14,6 +14,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Dapr.Messaging.PublishSubscribe;
+using Dapr.Messaging.PublishSubscribe.Extensions;
 
 namespace Dapr.Actors.Next.Streams;
 
@@ -28,6 +30,13 @@ public static class DaprActorsStreamsServiceCollectionExtensions
     public static IServiceCollection AddDaprActorStreams(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        // Actor streams use the Dapr.Messaging streaming client directly. Keep this
+        // registration self-contained while preserving an explicitly configured client.
+        if (!services.Any(static descriptor => descriptor.ServiceType == typeof(DaprPublishSubscribeClient)))
+        {
+            services.AddDaprPubSubClient();
+        }
 
         services.TryAddSingleton<ActorStreamSubscriptionRegistry>();
         services.TryAddSingleton<IActorStreamSubscriptionRegistry>(sp => sp.GetRequiredService<ActorStreamSubscriptionRegistry>());

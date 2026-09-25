@@ -147,6 +147,21 @@ public sealed class OptionsTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public void Options_DrainRebalancedActorsTimeout_AliasesDrainOngoingCallTimeout()
+    {
+        var options = new DaprActorsOptions();
+        Assert.Null(options.DrainOngoingCallTimeout);
+        Assert.Null(options.DrainRebalancedActorsTimeout);
+
+        options.DrainRebalancedActorsTimeout = TimeSpan.FromSeconds(7);
+        Assert.Equal(TimeSpan.FromSeconds(7), options.DrainOngoingCallTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(7), options.DrainRebalancedActorsTimeout);
+
+        options.DrainOngoingCallTimeout = null;
+        Assert.Null(options.DrainRebalancedActorsTimeout);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public void TypeOptions_DrainRebalancedActorsTimeout_AliasesDrainOngoingCallTimeout()
     {
         var typeOptions = new DaprActorTypeOptions();

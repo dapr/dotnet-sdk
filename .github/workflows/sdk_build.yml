@@ -87,6 +87,18 @@ jobs:
           PROJECTS=$(find test -name "Dapr.*.Test.csproj" ! -name "*E2E*" | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
 
+  discover-example-test-projects:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: set-matrix
+        run: |
+          # Find all example test csproj files recursively
+          PROJECTS=$(find examples -name "*Tests.csproj" | sort | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
+
   get-dapr-versions:
     runs-on: ubuntu-latest
     outputs:
@@ -489,11 +501,61 @@ jobs:
     steps:
       - name: "All unit tests passed"
         run: echo "All unit tests passed"
+  example-tests:
+    name: Example Tests - ${{ matrix.project }}
+    needs: discover-example-test-projects
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.discover-example-test-projects.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Parse release version
+        run: python ./.github/scripts/get_release_version.py
+      - name: Setup .NET 10.0
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          dotnet-quality: 'ga'
+      - name: Test
+        id: tests
+        continue-on-error: true
+        run: |
+          dotnet test "${{ matrix.project }}" \
+          --configuration release \
+          --framework net10.0 \
+          --logger "trx;LogFilePrefix=examples" \
+          --logger "GitHubActions;report-warnings=false" \
+          --logger "console;verbosity=detailed" \
+          --results-directory "${{ github.workspace }}/TestResults" \
+          /p:RuntimeIdentifier=linux-x64 \
+          /p:GITHUB_ACTIONS=false
+        timeout-minutes: 15
+      - name: Check test failure in PR
+        if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
+        run: exit 1
+      - name: Check test failure on push
+        if: github.event_name != 'pull_request' && steps.tests.outcome != 'success'
+        run: exit 1
+      - name: Parse Trx files
+        uses: NasAmin/trx-parser@v0.2.0
+        id: trx-parser
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          TRX_PATH: ${{ github.workspace }}/TestResults
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ci-example-tests-gate:
+    runs-on: ubuntu-latest
+    needs: [example-tests]
+    steps:
+      - name: "All example tests passed"
+        run: echo "All example tests passed"
   integration-test:
     uses: ./.github/workflows/itests.yml
   discover:
     name: 'Discover Packages'
-    needs: ['build', 'ci-unit-tests-gate', 'ci-integration-tests-gate']
+    needs: ['build', 'ci-unit-tests-gate', 'ci-integration-tests-gate', 'ci-example-tests-gate']
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}

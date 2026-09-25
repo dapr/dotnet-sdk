@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="coverlet.collector">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+        <PackageReference Include="xunit.v3" />
+        <PackageReference Include="xunit.runner.visualstudio">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The analyzers under test (normal reference so the test can instantiate them). -->
+        <ProjectReference Include="..\..\src\Dapr.Messaging.Analyzers\Dapr.Messaging.Analyzers.csproj" />
+        <!-- Abstractions so ITopicHandler/DaprTopicAttribute resolve. -->
+        <ProjectReference Include="..\..\src\Dapr.Messaging.Abstractions\Dapr.Messaging.Abstractions.csproj" />
+        <!-- Runtime so AddDaprMessaging/MapDaprAppCallback resolve. -->
+        <ProjectReference Include="..\..\src\Dapr.Messaging.Runtime\Dapr.Messaging.Runtime.csproj" />
+    </ItemGroup>
+
+</Project>

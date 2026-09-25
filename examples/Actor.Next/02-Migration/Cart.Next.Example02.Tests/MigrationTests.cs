@@ -15,6 +15,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.Filters;
 using Dapr.Actors.Next.Abstractions.Options;
 using Dapr.Actors.Next.Abstractions.State;
@@ -118,7 +119,7 @@ public sealed class MigrationTests
         var read = cart.GetState();
         await runtime.RunToIdle();
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => read);
+        var exception = await Assert.ThrowsAsync<ActorStateMigrationException>(() => read);
         Assert.Contains("shape drift", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 

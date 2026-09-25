@@ -117,6 +117,32 @@ public sealed class GeneratedActorEventsTransportTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public async Task Transport_omits_unset_fields_in_initial_config()
+    {
+        var harness = new GeneratedActorEventsHarness();
+        var transport = new DaprActorEventsTransport(harness.Client);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        await using var stream = await transport.OpenStreamAsync(cts.Token);
+        await stream.WriteAsync(SubscribeActorEventsResponse.RegisteredActors(
+            ["Sparse"],
+            new SubscribeActorEventsInitialConfig(
+                null,
+                TimeSpan.FromSeconds(5),
+                null,
+                null,
+                null)), cts.Token);
+        var initial = await harness.ReceiveAsync(cts.Token);
+
+        var entityConfig = Assert.Single(initial.InitialRequest.EntitiesConfig);
+        Assert.Equal(new[] { "Sparse" }, entityConfig.Entities.ToArray());
+        Assert.Null(entityConfig.ActorIdleTimeout);
+        Assert.Equal(5, entityConfig.DrainOngoingCallTimeout.Seconds);
+        Assert.False(entityConfig.HasDrainRebalancedActors);
+        Assert.Null(entityConfig.Reentrancy);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Transport_maps_failures_and_non_invoke_callbacks()
     {
         var harness = new GeneratedActorEventsHarness();

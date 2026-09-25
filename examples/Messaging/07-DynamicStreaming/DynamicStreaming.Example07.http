@@ -1,0 +1,34 @@
+@baseUrl = http://localhost:5000
+
+### 1. Publish valid tenant event (Success)
+POST {{baseUrl}}/publish/tenant-event
+Content-Type: application/json
+
+{
+  "tenantId": "TENANT-ALFA-01",
+  "eventType": "UserProvisioned",
+  "payload": "{\"userId\":\"u-101\",\"role\":\"Admin\"}",
+  "timestamp": "2026-04-01T12:00:00Z"
+}
+
+### 2. Publish event simulating transient error (Retry)
+POST {{baseUrl}}/publish/tenant-event
+Content-Type: application/json
+
+{
+  "tenantId": "TENANT-BETA-02",
+  "eventType": "RETRY-SyncExternalDatabase",
+  "payload": "{\"operation\":\"sync\"}",
+  "timestamp": "2026-04-01T12:01:00Z"
+}
+
+### 3. Publish invalid event (Drop - missing tenantId)
+POST {{baseUrl}}/publish/tenant-event
+Content-Type: application/json
+
+{
+  "tenantId": "",
+  "eventType": "InvalidPayload",
+  "payload": "{}",
+  "timestamp": "2026-04-01T12:02:00Z"
+}
