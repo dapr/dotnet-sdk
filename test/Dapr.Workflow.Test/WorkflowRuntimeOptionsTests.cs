@@ -21,6 +21,54 @@ namespace Dapr.Workflow.Test;
 
 public class WorkflowRuntimeOptionsTests
 {
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(-1024)]
+    public void HistoryCacheMaxInstances_ShouldRejectNegativeValues(int value)
+    {
+        var options = new WorkflowRuntimeOptions();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.HistoryCacheMaxInstances = value);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(-1024)]
+    public void HistoryCacheMaxBytes_ShouldRejectNegativeValues(long value)
+    {
+        var options = new WorkflowRuntimeOptions();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.HistoryCacheMaxBytes = value);
+    }
+
+    [Fact]
+    public void HistoryCacheTtl_ShouldRejectNonPositiveValues()
+    {
+        var options = new WorkflowRuntimeOptions();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.HistoryCacheTtl = TimeSpan.Zero);
+        Assert.Throws<ArgumentOutOfRangeException>(() => options.HistoryCacheTtl = TimeSpan.FromSeconds(-1));
+    }
+
+    [Fact]
+    public void HistoryCacheOptions_ShouldAcceptDocumentedDefaultsAndPositiveValues()
+    {
+        var options = new WorkflowRuntimeOptions
+        {
+            HistoryCacheTtl = TimeSpan.FromMinutes(5),
+            HistoryCacheMaxInstances = 10,
+            HistoryCacheMaxBytes = 1024
+        };
+
+        Assert.Equal(TimeSpan.FromMinutes(5), options.HistoryCacheTtl);
+        Assert.Equal(10, options.HistoryCacheMaxInstances);
+        Assert.Equal(1024, options.HistoryCacheMaxBytes);
+
+        options.HistoryCacheTtl = null;
+        options.HistoryCacheMaxInstances = 0;
+        options.HistoryCacheMaxBytes = 0;
+    }
+
     [Fact]
     public void UseGrpcChannelOptions_ShouldThrowArgumentNullException_WhenNull()
     {
