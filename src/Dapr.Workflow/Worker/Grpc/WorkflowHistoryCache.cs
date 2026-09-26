@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,11 +38,13 @@ internal sealed class WorkflowHistoryCache
         /// <summary>Matches the width of the running total and the configured budget, so a large
         /// history cannot overflow and corrupt the accounting.</summary>
         public required long Bytes { get; init; }
+        public required LinkedListNode<string> RecencyNode { get; init; }
         public DateTime LastAccess { get; set; }
     }
 
     private readonly object _lock = new();
     private readonly Dictionary<string, Entry> _entries = new();
+    private readonly LinkedList<string> _recency = new();
     private readonly TimeSpan _ttl;
     private readonly int _maxInstances;
     private readonly long _maxBytes;
@@ -67,16 +69,24 @@ internal sealed class WorkflowHistoryCache
         }
     }
 
-    /// <summary>Initializes the cache. Non-positive ttl/maxInstances use defaults; maxBytes &lt;= 0 means unlimited.</summary>
+    /// <summary>Initializes the cache. Null ttl and zero maxInstances use defaults; zero maxBytes means unlimited.</summary>
     public WorkflowHistoryCache(
         TimeSpan? ttl = null,
         int maxInstances = 0,
         long maxBytes = 0,
         Func<DateTime>? clock = null)
     {
-        _ttl = ttl is { } configured && configured > TimeSpan.Zero ? configured : DefaultTtl;
-        _maxInstances = maxInstances > 0 ? maxInstances : DefaultMaxInstances;
-        _maxBytes = maxBytes > 0 ? maxBytes : 0;
+        if (ttl is { } configured && configured <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ttl), configured, "The history cache TTL must be positive.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(maxInstances);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxBytes);
+
+        _ttl = ttl ?? DefaultTtl;
+        _maxInstances = maxInstances == 0 ? DefaultMaxInstances : maxInstances;
+        _maxBytes = maxBytes;
         _clock = clock ?? (() => DateTime.UtcNow);
     }
 
@@ -90,7 +100,7 @@ internal sealed class WorkflowHistoryCache
                 return null;
             }
 
-            entry.LastAccess = _clock();
+            TouchLocked(entry);
             return entry.Events;
         }
     }
@@ -125,12 +135,20 @@ internal sealed class WorkflowHistoryCache
 
             if (_entries.TryGetValue(instanceId, out var existing))
             {
-                _totalBytes -= existing.Bytes;
+                _entries.Remove(instanceId);
+                RemoveEntryLocked(existing);
             }
 
-            _entries[instanceId] = new Entry { Events = snapshot, Bytes = bytes, LastAccess = _clock() };
+            var recencyNode = _recency.AddFirst(instanceId);
+            _entries[instanceId] = new Entry
+            {
+                Events = snapshot,
+                Bytes = bytes,
+                LastAccess = _clock(),
+                RecencyNode = recencyNode
+            };
             _totalBytes += bytes;
-            EvictToFit(instanceId);
+            EvictToFit();
         }
     }
 
@@ -161,6 +179,7 @@ internal sealed class WorkflowHistoryCache
         lock (_lock)
         {
             _entries.Clear();
+            _recency.Clear();
             _totalBytes = 0;
             _generation++;
         }
@@ -210,12 +229,25 @@ internal sealed class WorkflowHistoryCache
         }
     }
 
+    private void TouchLocked(Entry entry)
+    {
+        entry.LastAccess = _clock();
+        _recency.Remove(entry.RecencyNode);
+        _recency.AddFirst(entry.RecencyNode);
+    }
+
     private void RemoveLocked(string instanceId)
     {
         if (_entries.Remove(instanceId, out var entry))
         {
-            _totalBytes -= entry.Bytes;
+            RemoveEntryLocked(entry);
         }
+    }
+
+    private void RemoveEntryLocked(Entry entry)
+    {
+        _recency.Remove(entry.RecencyNode);
+        _totalBytes -= entry.Bytes;
     }
 
     /// <summary>
@@ -223,7 +255,7 @@ internal sealed class WorkflowHistoryCache
     /// just-touched entry so the active working set is never evicted; a lone entry over the byte
     /// budget is kept (a soft overage) rather than thrashing.
     /// </summary>
-    private void EvictToFit(string keep)
+    private void EvictToFit()
     {
         while (_entries.Count > 1)
         {
@@ -234,34 +266,13 @@ internal sealed class WorkflowHistoryCache
                 return;
             }
 
-            var victim = LeastRecentlyUsedExcept(keep);
+            var victim = _recency.Last;
             if (victim is null)
             {
                 return;
             }
 
-            RemoveLocked(victim);
+            RemoveLocked(victim.Value);
         }
-    }
-
-    private string? LeastRecentlyUsedExcept(string keep)
-    {
-        string? oldestId = null;
-        var oldestAccess = DateTime.MaxValue;
-        foreach (var (instanceId, entry) in _entries)
-        {
-            if (instanceId == keep)
-            {
-                continue;
-            }
-
-            if (oldestId is null || entry.LastAccess < oldestAccess)
-            {
-                oldestId = instanceId;
-                oldestAccess = entry.LastAccess;
-            }
-        }
-
-        return oldestId;
     }
 }

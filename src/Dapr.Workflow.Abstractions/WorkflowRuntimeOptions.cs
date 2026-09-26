@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2022 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,9 @@ public sealed class WorkflowRuntimeOptions
     private readonly List<Action<IWorkflowsFactory>> _registrationActions = [];
     private int _maxConcurrentWorkflows = 100;
     private int _maxConcurrentActivities = 100;
+    private TimeSpan? _historyCacheTtl;
+    private int _historyCacheMaxInstances;
+    private long _historyCacheMaxBytes;
 
     /// <summary>
     /// Gets or sets the gRPC channel options used for connecting to the Dapr sidecar.
@@ -45,14 +48,35 @@ public sealed class WorkflowRuntimeOptions
     /// when it has gone idle (no turn) for longer than this. <c>null</c> (the default) uses the built-in
     /// default of one hour. Ignored when <see cref="DisableStatefulHistory"/> is <c>true</c>.
     /// </summary>
-    public TimeSpan? HistoryCacheTtl { get; set; }
+    public TimeSpan? HistoryCacheTtl
+    {
+        get => _historyCacheTtl;
+        set
+        {
+            if (value is { } configured && configured <= TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), configured,
+                    "The history cache TTL must be positive.");
+            }
+
+            _historyCacheTtl = value;
+        }
+    }
 
     /// <summary>
     /// Gets or sets the maximum number of per-instance histories retained on a single work-item stream;
     /// least-recently-used entries are evicted beyond it. <c>0</c> (the default) uses the built-in default.
     /// Ignored when <see cref="DisableStatefulHistory"/> is <c>true</c>.
     /// </summary>
-    public int HistoryCacheMaxInstances { get; set; }
+    public int HistoryCacheMaxInstances
+    {
+        get => _historyCacheMaxInstances;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            _historyCacheMaxInstances = value;
+        }
+    }
 
     /// <summary>
     /// Gets or sets the byte budget for cached histories on a single work-item stream; least-recently-used
@@ -60,7 +84,15 @@ public sealed class WorkflowRuntimeOptions
     /// <see cref="HistoryCacheMaxInstances"/> and <see cref="HistoryCacheTtl"/>). Ignored when
     /// <see cref="DisableStatefulHistory"/> is <c>true</c>.
     /// </summary>
-    public long HistoryCacheMaxBytes { get; set; }
+    public long HistoryCacheMaxBytes
+    {
+        get => _historyCacheMaxBytes;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            _historyCacheMaxBytes = value;
+        }
+    }
 
     /// <summary>
     /// Gets the maximum number of concurrent workflow instances that can be executed at the same time.
