@@ -83,4 +83,3 @@ internal class VerifyAnalyzer(IReadOnlyList<MetadataReference> metadataReference
         }
     }
 }
-

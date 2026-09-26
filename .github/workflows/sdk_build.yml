@@ -218,6 +218,8 @@ jobs:
 
   compute-integration-matrix-net11:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [ discover-integration-v2-tests, get-dapr-versions ]
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
@@ -238,7 +240,7 @@ jobs:
           fi
 
           dotnets='[
-            {"dotnet-version":"11.0", "display-name":".NET 11.0", "framework":"net11.0", "prefix":"net11", "install-version":"11.0.x", "upload_coverage": false}
+            {"dotnet-version":"11.0", "display-name":".NET 11.0", "framework":"net11.0", "prefix":"net11", "install-version":"11.0.x"}
           ]'
           oss='["ubuntu-latest"]'
 
@@ -337,7 +339,10 @@ jobs:
     name: ${{ matrix.prefix }}-${{ matrix['dapr-runtime-versions'].version }}-${{ matrix.projectName }}
     needs: [ compute-integration-matrix-net11 ]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    permissions:
+      checks: write
+      contents: read
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.compute-integration-matrix-net11.outputs.matrix) }}
@@ -361,22 +366,18 @@ jobs:
           --configuration release \
           --framework ${{ matrix.framework }} \
           --logger "trx;LogFilePrefix=${{ matrix.prefix }}" \
-          --logger "GitHubActions;report-warnings=false" \
           --logger "console;verbosity=detailed" \
           --results-directory "${{ github.workspace }}/TestResults" \
           /p:RuntimeIdentifier=linux-x64 \
-          /p:CollectCoverage=true \
-          /p:CoverletOutputFormat=opencover \
           /p:GITHUB_ACTIONS=false
         timeout-minutes: 60
       - name: Parse Trx files
         uses: NasAmin/trx-parser@v0.2.0
         id: trx-parser
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository # does not work on PRs from forks
         with:
           TRX_PATH: ${{ github.workspace }}/TestResults
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   ci-integration-tests-gate:
     runs-on: ubuntu-latest
     needs: [integration-tests-v2, integration-test, integration-tests-net11]
@@ -456,6 +457,9 @@ jobs:
     name: Unit Tests .NET 11.0 / ${{ matrix.project }}
     needs: discover-unit-test-projects
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
@@ -473,31 +477,24 @@ jobs:
       env:
         DaprEnableNet11: 'true'
       id: tests
-      continue-on-error: true
+      continue-on-error: false
       run: |
         dotnet test "${{ matrix.project }}"  \
         --configuration release \
         --framework net11.0 \
         --logger "trx;LogFilePrefix=net11" \
-        --logger "GitHubActions;report-warnings=false" \
         --logger "console;verbosity=detailed" \
         --results-directory "${{ github.workspace }}/TestResults" \
         /p:RuntimeIdentifier=linux-x64 \
-        /p:CollectCoverage=true \
-        /p:CoverletOutputFormat=opencover \
         /p:GITHUB_ACTIONS=false
       timeout-minutes: 60
-    - name: Check test failure in PR
-      if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
-      run: exit 1
     - name: Parse Trx files
       uses: NasAmin/trx-parser@v0.2.0
       id: trx-parser
-      if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+      if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository # does not work on PRs from forks
       with:
         TRX_PATH: ${{ github.workspace }}/TestResults
         REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   ci-unit-tests-gate:
     runs-on: ubuntu-latest
     needs: [unit-tests, unit-tests-net11]

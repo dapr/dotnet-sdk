@@ -963,6 +963,7 @@ public class DaprSecretStoreConfigurationProviderTest
         var storeName = "store";
         var secretKey = "mySecret";
         var secretValue = "myValue";
+        var continueSecretFetch = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var daprClient = new Mock<DaprClient>();
         // Sidecar ready immediately
@@ -972,7 +973,11 @@ public class DaprSecretStoreConfigurationProviderTest
 
         daprClient
             .Setup(c => c.GetSecretAsync(storeName, secretKey, It.IsAny<Dictionary<string, string>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Dictionary<string, string> { { secretKey, secretValue } });
+            .Returns(async () =>
+            {
+                await continueSecretFetch.Task;
+                return new Dictionary<string, string> { { secretKey, secretValue } };
+            });
 
         var secretDescriptors = new[] { new DaprSecretDescriptor(secretKey) };
 
@@ -983,6 +988,7 @@ public class DaprSecretStoreConfigurationProviderTest
         // Wait for the reload token to fire, indicating background load completed
         var reloaded = new TaskCompletionSource<bool>();
         config.GetReloadToken().RegisterChangeCallback(_ => reloaded.TrySetResult(true), null);
+        continueSecretFetch.SetResult(true);
         await reloaded.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         config[secretKey].ShouldBe(secretValue);

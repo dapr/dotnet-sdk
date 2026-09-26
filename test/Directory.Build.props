@@ -19,7 +19,7 @@
   </PropertyGroup>
 
   <!-- Used to annotate PR with test failures: https://github.com/Tyrrrz/GitHubActionsTestLogger -->
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' != 'net11.0'">
     <PackageReference Include="GitHubActionsTestLogger" />
   </ItemGroup>
 </Project>

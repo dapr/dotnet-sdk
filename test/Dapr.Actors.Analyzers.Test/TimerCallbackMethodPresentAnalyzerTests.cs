@@ -146,9 +146,3 @@ public class TimerCallbackMethodPresentAnalyzerTests
         await context.RunAsync(TestContext.Current.CancellationToken);
     }
 }
-
-
-
-
-
-
