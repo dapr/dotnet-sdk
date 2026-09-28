@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -111,6 +111,21 @@ public sealed class WorkflowHistoryCacheTests
     }
 
     [Fact]
+    public void GetMovesEntryToMostRecentlyUsedPosition()
+    {
+        var cache = new WorkflowHistoryCache(maxInstances: 2);
+
+        cache.Put("a", Events(1), cache.Generation);
+        cache.Put("b", Events(1), cache.Generation);
+        Assert.NotNull(cache.Get("a"));
+        cache.Put("c", Events(1), cache.Generation);
+
+        Assert.NotNull(cache.Get("a"));
+        Assert.Null(cache.Get("b"));
+        Assert.NotNull(cache.Get("c"));
+    }
+
+    [Fact]
     public void ByteCapEvictsLeastRecentlyUsed()
     {
         var entryBytes = BytesOf(4);
@@ -189,12 +204,11 @@ public sealed class WorkflowHistoryCacheTests
     }
 
     [Fact]
-    public void NonPositiveConfigUsesDefaults()
+    public void ZeroConfigUsesDefaults()
     {
-        // ttl/maxInstances fall back to their (large) defaults; maxBytes becomes unlimited. None of these
+        // maxInstances falls back to its large default and maxBytes becomes unlimited. Neither
         // should evict the three modest entries below.
-        var cache = new WorkflowHistoryCache(
-            ttl: TimeSpan.Zero, maxInstances: -1, maxBytes: -5);
+        var cache = new WorkflowHistoryCache(maxInstances: 0, maxBytes: 0);
 
         cache.Put("a", Events(1), cache.Generation);
         cache.Put("b", Events(1), cache.Generation);
@@ -204,5 +218,69 @@ public sealed class WorkflowHistoryCacheTests
         Assert.NotNull(cache.Get("a"));
         Assert.NotNull(cache.Get("b"));
         Assert.NotNull(cache.Get("c"));
+    }
+
+    [Fact]
+    public void InvalidConfigThrows()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => new WorkflowHistoryCache(ttl: TimeSpan.Zero));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new WorkflowHistoryCache(ttl: TimeSpan.FromSeconds(-1)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new WorkflowHistoryCache(maxInstances: -1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new WorkflowHistoryCache(maxBytes: -1));
+    }
+
+    [Fact]
+    public async Task ConcurrentOperationsPreserveBoundsAndAccounting()
+    {
+        const int maxInstances = 16;
+        var entryBytes = BytesOf(3);
+        var cache = new WorkflowHistoryCache(
+            maxInstances: maxInstances,
+            maxBytes: entryBytes * maxInstances);
+
+        var tasks = Enumerable.Range(0, 8).Select(worker => Task.Run(() =>
+        {
+            for (var i = 0; i < 500; i++)
+            {
+                var instanceId = $"instance-{(worker * 500 + i) % 64}";
+                var generation = cache.Generation;
+                cache.Put(instanceId, Events(3), generation);
+                _ = cache.Get(instanceId);
+
+                if (i % 7 == 0)
+                {
+                    cache.Remove($"instance-{(i + 1) % 64}", generation);
+                }
+            }
+        }));
+
+        await Task.WhenAll(tasks);
+
+        Assert.InRange(cache.Count, 0, maxInstances);
+        Assert.InRange(cache.TotalBytes, 0, entryBytes * maxInstances);
+    }
+
+    [Fact]
+    public async Task ConcurrentResetRejectsRetiredWrites()
+    {
+        var cache = new WorkflowHistoryCache();
+        var retiredGeneration = cache.Generation;
+        using var start = new ManualResetEventSlim();
+
+        var writers = Enumerable.Range(0, 8).Select(worker => Task.Run(() =>
+        {
+            start.Wait();
+            for (var i = 0; i < 250; i++)
+            {
+                cache.Put($"retired-{worker}-{i}", Events(1), retiredGeneration);
+            }
+        })).ToArray();
+
+        cache.Reset();
+        start.Set();
+        await Task.WhenAll(writers);
+
+        Assert.Equal(0, cache.Count);
+        Assert.Equal(0, cache.TotalBytes);
     }
 }

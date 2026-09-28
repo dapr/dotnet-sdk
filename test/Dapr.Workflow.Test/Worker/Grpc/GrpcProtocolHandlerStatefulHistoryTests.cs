@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,6 +40,9 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
 
         return events;
     }
+
+    private static List<HistoryEvent> EventIds(params int[] eventIds) =>
+        eventIds.Select(eventId => new HistoryEvent { EventId = eventId }).ToList();
 
     [Fact]
     public async Task AdvertisesStatefulHistoryCapability_ByDefault()
@@ -125,7 +128,12 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
         var grpcClientMock = CreateGrpcClientMock();
 
         // A delta work item whose expected prefix the (cold) cache does not hold.
-        var delta = new WorkflowRequest { InstanceId = "i-1", PastEvents = { Events(1) } };
+        var delta = new WorkflowRequest
+        {
+            InstanceId = "i-1",
+            PastEvents = { EventIds(999) },
+            NewEvents = { EventIds(40, 50) }
+        };
         delta.CachedHistory = new CachedHistory { EventCount = 5 };
         var workItems = new[] { new WorkItem { WorkflowRequest = delta } };
         grpcClientMock
@@ -136,7 +144,7 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
         grpcClientMock
             .Setup(x => x.GetInstanceHistoryAsync(It.IsAny<GetInstanceHistoryRequest>(), It.IsAny<CallOptions>()))
             .Callback(() => Interlocked.Increment(ref fetchCount))
-            .Returns(CreateAsyncUnaryCall(new GetInstanceHistoryResponse { Events = { Events(7) } }));
+            .Returns(CreateAsyncUnaryCall(new GetInstanceHistoryResponse { Events = { EventIds(10, 20, 30) } }));
 
         var completed = 0;
         grpcClientMock
@@ -144,19 +152,22 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
             .Callback(() => Interlocked.Increment(ref completed))
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
-        var seenPastEvents = new ConcurrentQueue<int>();
+        IReadOnlyList<int>? seenPastEvents = null;
+        IReadOnlyList<int>? seenNewEvents = null;
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
 
         await RunHandlerUntilAsync(handler,
             workflowHandler: (req, _) =>
             {
-                seenPastEvents.Enqueue(req.PastEvents.Count);
+                seenPastEvents = req.PastEvents.Select(e => e.EventId).ToArray();
+                seenNewEvents = req.NewEvents.Select(e => e.EventId).ToArray();
                 return Task.FromResult(new WorkflowResponse { InstanceId = req.InstanceId });
             },
             NoActivityHandler,
             untilCondition: () => Volatile.Read(ref completed) >= 1, timeout: TimeSpan.FromSeconds(2));
 
-        Assert.Equal([7], seenPastEvents); // recovered the full history via GetInstanceHistory
+        Assert.Equal([10, 20, 30], seenPastEvents);
+        Assert.Equal([40, 50], seenNewEvents);
         Assert.Equal(1, Volatile.Read(ref fetchCount));
     }
 
@@ -168,7 +179,7 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
         // Turn 1 is a full send that warms the cache; turn 2 is a delta the cache can satisfy. Turn 2 is
         // gated on turn 1's completion so the post-turn cache update is guaranteed to have run first.
         var turn1 = new WorkItem { WorkflowRequest = new WorkflowRequest { InstanceId = "i-1", PastEvents = { Events(2) } } };
-        var delta = new WorkflowRequest { InstanceId = "i-1", PastEvents = { Events(1) } };
+        var delta = new WorkflowRequest { InstanceId = "i-1", PastEvents = { EventIds(3) } };
         delta.CachedHistory = new CachedHistory { EventCount = 2 };
         var turn2 = new WorkItem { WorkflowRequest = delta };
 
@@ -188,19 +199,19 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
             })
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
-        var seenPastEvents = new ConcurrentQueue<int>();
+        var seenPastEvents = new ConcurrentQueue<int[]>();
         var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
 
         await RunHandlerUntilAsync(handler,
             workflowHandler: (req, _) =>
             {
-                seenPastEvents.Enqueue(req.PastEvents.Count);
+                seenPastEvents.Enqueue(req.PastEvents.Select(e => e.EventId).ToArray());
                 return Task.FromResult(new WorkflowResponse { InstanceId = req.InstanceId });
             },
             NoActivityHandler,
             untilCondition: () => Volatile.Read(ref completed) >= 2, timeout: TimeSpan.FromSeconds(5));
 
-        Assert.Equal([2, 3], seenPastEvents); // turn 1 full (2); turn 2 cached prefix (2) + delta (1)
+        Assert.Equal([[1, 2], [1, 2, 3]], seenPastEvents);
         grpcClientMock.Verify(
             x => x.GetInstanceHistoryAsync(It.IsAny<GetInstanceHistoryRequest>(), It.IsAny<CallOptions>()),
             Times.Never);
@@ -249,8 +260,13 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
             Times.Never);
     }
 
-    [Fact]
-    public async Task CompletedWorkflow_EvictsCacheEntry_SoTheNextDeltaMisses()
+    [Theory]
+    [InlineData(OrchestrationStatus.Completed)]
+    [InlineData(OrchestrationStatus.Failed)]
+    [InlineData(OrchestrationStatus.Terminated)]
+    [InlineData(OrchestrationStatus.ContinuedAsNew)]
+    public async Task EndedWorkflow_EvictsCacheEntry_SoTheNextDeltaMisses(
+        OrchestrationStatus workflowStatus)
     {
         var grpcClientMock = CreateGrpcClientMock();
 
@@ -296,7 +312,10 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
                 // action, or the assertion below would pass for the wrong reason.
                 if (seenPastEvents.Count == 1)
                 {
-                    response.Actions.Add(new WorkflowAction { CompleteWorkflow = new CompleteWorkflowAction() });
+                    response.Actions.Add(new WorkflowAction
+                    {
+                        CompleteWorkflow = new CompleteWorkflowAction { WorkflowStatus = workflowStatus }
+                    });
                 }
 
                 return Task.FromResult(response);
@@ -306,6 +325,122 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
 
         Assert.Equal([2, 9], seenPastEvents); // turn 2 recovered the full history rather than reusing a stale prefix
         Assert.Equal(1, Volatile.Read(ref fetchCount));
+    }
+
+    [Fact]
+    public async Task RetiredStreamCannotOverwriteCurrentStreamCache()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+
+        var retiredTurn = new WorkItem
+        {
+            WorkflowRequest = new WorkflowRequest
+            {
+                InstanceId = "i-1",
+                PastEvents = { EventIds(1) }
+            }
+        };
+        var failingDelta = new WorkflowRequest
+        {
+            InstanceId = "force-reconnect",
+            PastEvents = { EventIds(2) },
+            CachedHistory = new CachedHistory { EventCount = 5 }
+        };
+        var currentTurn = new WorkItem
+        {
+            WorkflowRequest = new WorkflowRequest
+            {
+                InstanceId = "i-1",
+                PastEvents = { EventIds(10, 11) }
+            }
+        };
+        var currentDelta = new WorkflowRequest
+        {
+            InstanceId = "i-1",
+            PastEvents = { EventIds(12) },
+            CachedHistory = new CachedHistory { EventCount = 2 }
+        };
+
+        var neverCompletes = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var retiredHandlerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseRetiredHandler = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var retiredCompletionSent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        grpcClientMock
+            .SetupSequence(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateServerStreamingCallFromReader(new GatedStreamReader(
+            [
+                (retiredTurn, null),
+                (new WorkItem { WorkflowRequest = failingDelta }, null),
+                (new WorkItem(), neverCompletes.Task)
+            ])))
+            .Returns(CreateServerStreamingCallFromReader(new GatedStreamReader(
+            [
+                (currentTurn, null),
+                (new WorkItem { WorkflowRequest = currentDelta }, retiredCompletionSent.Task)
+            ])))
+            .Returns(CreateServerStreamingCall([]));
+
+        var unexpectedCurrentStreamFetches = 0;
+        grpcClientMock
+            .Setup(x => x.GetInstanceHistoryAsync(It.IsAny<GetInstanceHistoryRequest>(), It.IsAny<CallOptions>()))
+            .Returns<GetInstanceHistoryRequest, CallOptions>((request, _) =>
+            {
+                if (request.InstanceId == "force-reconnect")
+                {
+                    throw new RpcException(new Status(StatusCode.Unavailable, "force reconnect"));
+                }
+
+                Interlocked.Increment(ref unexpectedCurrentStreamFetches);
+                return CreateAsyncUnaryCall(new GetInstanceHistoryResponse { Events = { EventIds(90, 91) } });
+            });
+
+        var completed = 0;
+        grpcClientMock
+            .Setup(x => x.CompleteOrchestratorTaskAsync(It.IsAny<WorkflowResponse>(), It.IsAny<CallOptions>()))
+            .Callback<WorkflowResponse, CallOptions>((response, _) =>
+            {
+                Interlocked.Increment(ref completed);
+                if (response.CustomStatus == "current")
+                {
+                    releaseRetiredHandler.TrySetResult();
+                }
+                else if (response.CustomStatus == "retired")
+                {
+                    retiredCompletionSent.TrySetResult();
+                }
+            })
+            .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
+
+        IReadOnlyList<int>? reconstructedHistory = null;
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, NullLoggerFactory.Instance);
+
+        await RunHandlerUntilAsync(handler,
+            workflowHandler: async (request, _) =>
+            {
+                var eventIds = request.PastEvents.Select(e => e.EventId).ToArray();
+                if (eventIds.SequenceEqual([1]))
+                {
+                    retiredHandlerStarted.TrySetResult();
+                    await releaseRetiredHandler.Task;
+                    return new WorkflowResponse { InstanceId = request.InstanceId, CustomStatus = "retired" };
+                }
+
+                if (eventIds.SequenceEqual([10, 11]))
+                {
+                    await retiredHandlerStarted.Task;
+                    return new WorkflowResponse { InstanceId = request.InstanceId, CustomStatus = "current" };
+                }
+
+                reconstructedHistory = eventIds;
+                return new WorkflowResponse { InstanceId = request.InstanceId, CustomStatus = "delta" };
+            },
+            NoActivityHandler,
+            untilCondition: () => Volatile.Read(ref completed) >= 3,
+            timeout: TimeSpan.FromSeconds(20));
+
+        Assert.Equal([10, 11, 12], reconstructedHistory);
+        Assert.Equal(0, Volatile.Read(ref unexpectedCurrentStreamFetches));
     }
 
     [Fact]
