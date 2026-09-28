@@ -23,7 +23,7 @@ using Dapr.Workflow.Worker;
 using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-#if NET10_0
+#if NET10_0_OR_GREATER
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Xml.Linq;
@@ -90,7 +90,7 @@ public sealed class RegistrationOrderRegressionIntegrationTests
         Assert.Equal("v3:runtime", state.ReadOutputAs<string>());
     }
 
-#if NET10_0
+#if NET10_0_OR_GREATER
     [Fact]
     public void PackedDaprWorkflowPackageShouldExposeVersioningAndRouteCanonicalNameToLatest()
     {
@@ -274,7 +274,7 @@ public sealed class RegistrationOrderRegressionIntegrationTests
     private static bool IsTransientRpc(RpcException ex) =>
         ex.StatusCode is StatusCode.Unavailable or StatusCode.DeadlineExceeded;
 
-#if NET10_0
+#if NET10_0_OR_GREATER
     private static string FindRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

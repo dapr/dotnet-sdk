@@ -144,6 +144,7 @@ public class DaprTestApp
             ".NETCoreApp,Version=v8.0" => "net8.0",
             ".NETCoreApp,Version=v9.0" => "net9.0",
             ".NETCoreApp,Version=v10.0" => "net10.0",
+            ".NETCoreApp,Version=v11.0" => "net11.0",
             _ => throw new InvalidOperationException($"Unsupported target framework: {targetFrameworkName}")
         };
     }
