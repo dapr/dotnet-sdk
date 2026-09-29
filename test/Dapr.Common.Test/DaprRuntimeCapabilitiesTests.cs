@@ -60,7 +60,7 @@ public sealed class DaprRuntimeCapabilitiesTests
         var testCancellationToken = TestContext.Current.CancellationToken;
         var reflection = ReflectionService.Hanging();
         await using var server = await ReflectionTestServer.StartAsync(reflection, testCancellationToken);
-        var capabilities = server.CreateCapabilities(ReflectionTimeout);
+        var capabilities = server.CreateCapabilities(TimeSpan.FromSeconds(2));
 
         var calls = Enumerable.Range(0, 20)
             .Select(index => capabilities.GetMethodSupportAsync(
@@ -68,7 +68,8 @@ public sealed class DaprRuntimeCapabilitiesTests
                 testCancellationToken))
             .ToArray();
 
-        var results = await Task.WhenAll(calls).WaitAsync(TimeSpan.FromSeconds(2), testCancellationToken);
+        await reflection.RequestReceived.WaitAsync(TimeSpan.FromSeconds(1), testCancellationToken);
+        var results = await Task.WhenAll(calls).WaitAsync(TimeSpan.FromSeconds(3), testCancellationToken);
 
         Assert.All(results, result => Assert.Equal(DaprRuntimeSupport.Unknown, result));
         Assert.Equal(1, reflection.CallCount);
