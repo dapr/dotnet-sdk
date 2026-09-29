@@ -689,6 +689,78 @@ public class WorkflowWorkerTests
     }
 
     [Fact]
+    public async Task HandleWorkflowResponseAsync_ShouldNotRescheduleDetachedWorkflow_OnReplay()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var factory = new StubWorkflowsFactory();
+
+        factory.AddWorkflow("InitialWorkflow", new InlineWorkflow(
+            inputType: typeof(object),
+            run: async (ctx, _) =>
+            {
+                await ctx.ScheduleNewDetachedWorkflowAsync(
+                    "DetachedWorkflow", "detached-workflow-instance", 7);
+                await ctx.WaitForExternalEventAsync<string>("never");
+                return null;
+            }));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp);
+
+        var first = await InvokeHandleWorkflowResponseAsync(worker, new WorkflowRequest
+        {
+            InstanceId = "initial-workflow-instance",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent
+                    {
+                        Name = "InitialWorkflow",
+                        Input = ""
+                    }
+                }
+            }
+        });
+
+        var createAction = Assert.Single(first.Actions);
+        Assert.Equal("DetachedWorkflow", createAction.CreateDetachedWorkflow.Name);
+        Assert.Equal("detached-workflow-instance", createAction.CreateDetachedWorkflow.InstanceId);
+        Assert.Equal("7", createAction.CreateDetachedWorkflow.Input);
+
+        var replay = await InvokeHandleWorkflowResponseAsync(worker, new WorkflowRequest
+        {
+            InstanceId = "initial-workflow-instance",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent
+                    {
+                        Name = "InitialWorkflow",
+                        Input = ""
+                    }
+                },
+                new HistoryEvent
+                {
+                    EventId = createAction.Id,
+                    DetachedWorkflowInstanceCreated = new DetachedWorkflowInstanceCreatedEvent
+                    {
+                        InstanceId = "detached-workflow-instance"
+                    }
+                }
+            }
+        });
+
+        Assert.DoesNotContain(replay.Actions, action => action.CreateDetachedWorkflow is not null);
+    }
+
+    [Fact]
     public async Task CallChildWorkflowAsync_ShouldOnlyCompleteAfterCreation_WhenCompletionArrivesFirst()
     {
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));

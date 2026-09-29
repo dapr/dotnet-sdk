@@ -508,6 +508,50 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     }
 
     /// <inheritdoc />
+    public override Task<string> ScheduleNewDetachedWorkflowAsync(
+        string workflowName,
+        string? instanceId = null,
+        object? input = null,
+        DateTimeOffset? startTime = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
+
+        var detachedInstanceId = instanceId ?? NewGuid().ToString();
+        ArgumentException.ThrowIfNullOrWhiteSpace(detachedInstanceId, nameof(instanceId));
+
+        if (_pendingActions.Values.Any(action =>
+                string.Equals(
+                    action.CreateDetachedWorkflow?.InstanceId,
+                    detachedInstanceId,
+                    StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException(
+                $"A detached workflow with instance ID '{detachedInstanceId}' has already been scheduled in this execution.");
+        }
+
+        var taskId = _sequenceNumber++;
+        var action = new CreateDetachedWorkflowAction
+        {
+            Name = workflowName,
+            InstanceId = detachedInstanceId,
+            Input = _workflowSerializer.Serialize(input)
+        };
+
+        if (startTime is { } scheduledStart)
+        {
+            action.ScheduledStartTimestamp = Timestamp.FromDateTimeOffset(scheduledStart);
+        }
+
+        _pendingActions.Add(taskId, new WorkflowAction
+        {
+            Id = taskId,
+            CreateDetachedWorkflow = action
+        });
+
+        return Task.FromResult(detachedInstanceId);
+    }
+
+    /// <inheritdoc />
     public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true)
     {
         var action = new WorkflowAction
@@ -622,6 +666,10 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
                     HandleActionCompleted(historyEvent, failed.TaskScheduledId);
                     break;
 
+                case { DetachedWorkflowInstanceCreated: { } created }:
+                    HandleDetachedWorkflowCreated(historyEvent, created);
+                    break;
+
                 case { TimerCreated: { } timerCreated }:
                     OnTimerCreated(historyEvent, timerCreated);
                     break;
@@ -668,6 +716,33 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     {
         _pendingActions.Remove(historyEvent.EventId);
     }
+
+    private void HandleDetachedWorkflowCreated(
+        HistoryEvent historyEvent,
+        DetachedWorkflowInstanceCreatedEvent created)
+    {
+        var matchingAction = FindPendingDetachedWorkflowAction(created.InstanceId);
+        if (matchingAction is { } match &&
+            match.Key > historyEvent.EventId &&
+            TryDropOptionalTimerAt(historyEvent.EventId))
+        {
+            matchingAction = FindPendingDetachedWorkflowAction(created.InstanceId);
+        }
+
+        if (matchingAction is not null)
+        {
+            _pendingActions.Remove(matchingAction.Value.Key);
+        }
+    }
+
+    private KeyValuePair<int, WorkflowAction>? FindPendingDetachedWorkflowAction(string instanceId) =>
+        _pendingActions.FirstOrDefault(entry =>
+            string.Equals(
+                entry.Value.CreateDetachedWorkflow?.InstanceId,
+                instanceId,
+                StringComparison.Ordinal)) is { Value.CreateDetachedWorkflow: not null } match
+            ? match
+            : null;
 
     /// <summary>
     /// If the pending action at <paramref name="eventId"/> is an optional external event timer,
