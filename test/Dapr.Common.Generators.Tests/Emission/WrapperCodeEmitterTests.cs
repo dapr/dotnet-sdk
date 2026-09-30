@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,9 +77,11 @@ public sealed class WrapperCodeEmitterTests
         var groups = Analyze(StubCompilation.WithIdenticalTypeVariants());
         var source = WrapperCodeEmitter.EmitClass(groups!);
 
-        // Both variants must be checked
-        Assert.Contains("SupportsMethodAsync(\"dapr.proto.runtime.v1.Dapr/Foo\"", source);
-        Assert.Contains("SupportsMethodAsync(\"dapr.proto.runtime.v1.Dapr/FooAlpha1\"", source);
+        // Both variants must be present in the generated catalog and checked at runtime.
+        Assert.Contains("\"dapr.proto.runtime.v1.Dapr/Foo\"", source);
+        Assert.Contains("\"dapr.proto.runtime.v1.Dapr/FooAlpha1\"", source);
+        Assert.Contains("GetMethodSupportAsync(_fooMethodCatalog[0]", source);
+        Assert.Contains("GetMethodSupportAsync(_fooMethodCatalog[1]", source);
     }
 
     [Fact]
@@ -99,6 +101,27 @@ public sealed class WrapperCodeEmitterTests
 
         Assert.Contains("DaprFeatureNotAvailableException", source);
         Assert.Contains("\"Foo\"", source);
+    }
+
+    [Fact]
+    public void EmitClass_AutoCompatible_EmitsSuccessfulVariantCache()
+    {
+        var groups = Analyze(StubCompilation.WithIdenticalTypeVariants());
+        var source = WrapperCodeEmitter.EmitClass(groups!);
+
+        Assert.Contains("private int _fooSelectedVariant = -1;", source);
+        Assert.Contains("Volatile.Read(ref _fooSelectedVariant)", source);
+        Assert.Contains("Volatile.Write(ref _fooSelectedVariant, 0)", source);
+        Assert.Contains("Volatile.Write(ref _fooSelectedVariant, 1)", source);
+    }
+
+    [Fact]
+    public void EmitClass_SchemaDivergent_DoesNotCacheIncompatibleVariantSelection()
+    {
+        var groups = Analyze(StubCompilation.WithIncompatibleAlphaVariants());
+        var source = WrapperCodeEmitter.EmitClass(groups!);
+
+        Assert.DoesNotContain("_bazSelectedVariant", source);
     }
 
     // -------------------------------------------------------------------------
@@ -121,14 +144,12 @@ public sealed class WrapperCodeEmitterTests
         var groups = Analyze(StubCompilation.WithIncompatibleAlphaVariants());
         var source = WrapperCodeEmitter.EmitClass(groups!);
 
-        // The capability-check strings should appear in order: Alpha2 before Alpha1.
-        // For SchemaDivergent the fallback variant is not called (NotSupportedException is thrown),
-        // so we look at the SupportsMethodAsync capability-check strings.
+        // The generated catalog must preserve the build-time order: Alpha2 before Alpha1.
         var alpha2Pos = source.IndexOf("Dapr/BazAlpha2\"", StringComparison.Ordinal);
         var alpha1Pos = source.IndexOf("Dapr/BazAlpha1\"", StringComparison.Ordinal);
 
-        Assert.True(alpha2Pos >= 0, "SupportsMethodAsync check for BazAlpha2 should be present");
-        Assert.True(alpha1Pos >= 0, "SupportsMethodAsync check for BazAlpha1 should be present");
+        Assert.True(alpha2Pos >= 0, "Catalog entry for BazAlpha2 should be present");
+        Assert.True(alpha1Pos >= 0, "Catalog entry for BazAlpha1 should be present");
         Assert.True(alpha2Pos < alpha1Pos, "Alpha2 (most recent) capability check should appear before Alpha1");
     }
 
@@ -146,6 +167,19 @@ public sealed class WrapperCodeEmitterTests
         // so that a runtime which defines but doesn't implement the method falls through to Alpha1.
         Assert.Contains("StatusCode.Unimplemented", source);
         Assert.Contains("catch (global::Grpc.Core.RpcException __implEx)", source);
+    }
+
+    [Fact]
+    public void EmitClass_AutoCompatible_EveryCatalogVariant_ContainsUnavailableCatch()
+    {
+        var groups = Analyze(StubCompilation.WithMultipleFallbacks())!;
+        var source = WrapperCodeEmitter.EmitClass(groups);
+
+        Assert.Equal(
+            3,
+            source.Split(
+                "catch (global::Grpc.Core.RpcException __implEx) when (IsMethodUnavailable(__implEx))",
+                StringSplitOptions.None).Length - 1);
     }
 
     [Fact]
@@ -178,6 +212,7 @@ public sealed class WrapperCodeEmitterTests
 
         Assert.Contains("StatusCode.Unknown", source);
         Assert.Contains("dapr-callee-app-id or dapr-app-id not found", source);
+        Assert.Contains("missing dapr-callee-app-id or dapr-app-id metadata", source);
     }
 
     [Fact]
@@ -189,6 +224,18 @@ public sealed class WrapperCodeEmitterTests
 
         Assert.Contains("StatusCode.Unknown", source);
         Assert.Contains("dapr-callee-app-id or dapr-app-id not found", source);
+        Assert.Contains("missing dapr-callee-app-id or dapr-app-id metadata", source);
+    }
+
+    [Fact]
+    public void EmitClass_SchemaDivergent_UnknownDiscoveryDoesNotAssumeFallbackSupport()
+    {
+        var groups = Analyze(StubCompilation.WithIncompatibleAlphaVariants());
+        var source = WrapperCodeEmitter.EmitClass(groups!);
+
+        Assert.Contains("DaprRuntimeSupport.Unknown", source);
+        Assert.Contains("runtime method discovery is unavailable", source);
+        Assert.Contains("cannot safely determine", source);
     }
 
     // -------------------------------------------------------------------------
@@ -214,8 +261,10 @@ public sealed class WrapperCodeEmitterTests
         var groups = Analyze(StubCompilation.WithObsoleteAlphaVariant());
         var source = WrapperCodeEmitter.EmitClass(groups!);
 
-        Assert.Contains("SupportsMethodAsync(\"dapr.proto.runtime.v1.Dapr/Corf\"", source);
-        Assert.Contains("SupportsMethodAsync(\"dapr.proto.runtime.v1.Dapr/CorfAlpha1\"", source);
+        Assert.Contains("\"dapr.proto.runtime.v1.Dapr/Corf\"", source);
+        Assert.Contains("\"dapr.proto.runtime.v1.Dapr/CorfAlpha1\"", source);
+        Assert.Contains("GetMethodSupportAsync(_corfMethodCatalog[0]", source);
+        Assert.Contains("GetMethodSupportAsync(_corfMethodCatalog[1]", source);
         Assert.Contains("CorfAlpha1Async", source);
         Assert.Contains("async global::System.Threading.Tasks.Task", source);
     }
@@ -388,7 +437,7 @@ public sealed class WrapperCodeEmitterTests
         var groups = Analyze(StubCompilation.WithCompatibleDifferentTypes())!;
         var source = WrapperCodeEmitter.EmitClass(groups);
 
-        Assert.Contains("__convertedResponse.Result = __fallbackResponse.Result;", source);
+        Assert.Contains("__convertedResponse.Result = __response1.Result;", source);
     }
 
     [Fact]
@@ -405,20 +454,17 @@ public sealed class WrapperCodeEmitterTests
     }
 
     // -------------------------------------------------------------------------
-    // EmitRequestConversion – same-type inner short-circuit
-    // (sameRequest=true, sameResponse=false → else block runs, but request is not converted)
+    // Same request, different response
     // -------------------------------------------------------------------------
 
     [Fact]
-    public void EmitClass_SameRequestDifferentResponse_EmitsFallbackRequestEqualsRequest()
+    public void EmitClass_SameRequestDifferentResponse_UsesOriginalRequest()
     {
-        // When mostRecent and fallback share the same request type, EmitRequestConversion
-        // must emit the short-circuit form `var __fallbackRequest = request;` rather than
-        // creating a new object.
         var groups = Analyze(StubCompilation.WithSameRequestDifferentResponse())!;
         var source = WrapperCodeEmitter.EmitClass(groups);
 
-        Assert.Contains("var __fallbackRequest = request;", source);
+        Assert.Contains("XyzAlpha1Async(request, options)", source);
+        Assert.DoesNotContain("var __fallbackRequest = request;", source);
     }
 
     [Fact]
@@ -440,13 +486,12 @@ public sealed class WrapperCodeEmitterTests
         var source = WrapperCodeEmitter.EmitClass(groups);
 
         Assert.Contains("new global::Dapr.Client.Autogen.Grpc.v1.XyzResponse()", source);
-        Assert.Contains("__convertedResponse.Result = __fallbackResponse.Result;", source);
+        Assert.Contains("__convertedResponse.Result = __response1.Result;", source);
         Assert.Contains("return __convertedResponse;", source);
     }
 
     // -------------------------------------------------------------------------
-    // EmitResponseConversion – same-type inner short-circuit
-    // (sameRequest=false, sameResponse=true → else block runs, but response is not converted)
+    // Different request, same response
     // -------------------------------------------------------------------------
 
     [Fact]
@@ -463,12 +508,10 @@ public sealed class WrapperCodeEmitterTests
     [Fact]
     public void EmitClass_DifferentRequestSameResponse_EmitsReturnFallbackResponse()
     {
-        // When mostRecent and fallback share the same response type, EmitResponseConversion
-        // must emit the short-circuit `return __fallbackResponse;` rather than a conversion.
         var groups = Analyze(StubCompilation.WithDifferentRequestSameResponse())!;
         var source = WrapperCodeEmitter.EmitClass(groups);
 
-        Assert.Contains("return __fallbackResponse;", source);
+        Assert.Contains("return __response1;", source);
     }
 
     [Fact]
@@ -551,9 +594,12 @@ public sealed class WrapperCodeEmitterTests
         var groups = Analyze(StubCompilation.WithMultipleFallbacks())!;
         var source = WrapperCodeEmitter.EmitClass(groups);
 
-        Assert.Contains("SupportsMethodAsync(\"dapr.proto.runtime.v1.Dapr/Grault\"", source);
-        Assert.Contains("SupportsMethodAsync(\"dapr.proto.runtime.v1.Dapr/GraultAlpha2\"", source);
-        Assert.Contains("SupportsMethodAsync(\"dapr.proto.runtime.v1.Dapr/GraultAlpha1\"", source);
+        Assert.Contains("\"dapr.proto.runtime.v1.Dapr/Grault\"", source);
+        Assert.Contains("\"dapr.proto.runtime.v1.Dapr/GraultAlpha2\"", source);
+        Assert.Contains("\"dapr.proto.runtime.v1.Dapr/GraultAlpha1\"", source);
+        Assert.Contains("GetMethodSupportAsync(_graultMethodCatalog[0]", source);
+        Assert.Contains("GetMethodSupportAsync(_graultMethodCatalog[1]", source);
+        Assert.Contains("GetMethodSupportAsync(_graultMethodCatalog[2]", source);
     }
 
     [Fact]

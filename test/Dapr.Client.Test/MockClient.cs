@@ -35,11 +35,11 @@ public class MockClient
     // are not required to handle the gRPC reflection round-trip.
     private sealed class AlwaysAvailableCapabilities : IDaprRuntimeCapabilities
     {
-        public Task<bool> SupportsMethodAsync(string fullyQualifiedMethodName, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
+        public Task<DaprRuntimeSupport> GetMethodSupportAsync(string fullyQualifiedMethodName, CancellationToken cancellationToken = default)
+            => Task.FromResult(DaprRuntimeSupport.Supported);
 
-        public Task<bool> SupportsServiceAsync(string serviceName, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
+        public Task<DaprRuntimeSupport> GetServiceSupportAsync(string serviceName, CancellationToken cancellationToken = default)
+            => Task.FromResult(DaprRuntimeSupport.Supported);
     }
 
     public Mock<Autogen.Grpc.v1.Dapr.DaprClient> Mock { get; }

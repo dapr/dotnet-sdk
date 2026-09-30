@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,7 +85,7 @@ internal static class WrapperCodeEmitter
         sb.AppendLine("/// <summary>");
         sb.AppendLine("/// Version-aware gRPC wrapper that automatically selects the highest-supported");
         sb.AppendLine("/// Dapr runtime API variant for each operation and falls back to older variants");
-        sb.AppendLine("/// when the connected runtime does not yet support the newest API.");
+        sb.AppendLine("/// using an ordered method catalog generated from the build-time protobuf API.");
         sb.AppendLine("/// </summary>");
         sb.AppendLine($"internal sealed partial class {ClassName} : {InterfaceName}");
         sb.AppendLine("{");
@@ -94,6 +94,16 @@ internal static class WrapperCodeEmitter
         sb.AppendLine($"    private readonly global::Dapr.Client.Autogen.Grpc.v1.Dapr.DaprClient {InnerFieldName};");
         sb.AppendLine($"    private readonly global::Dapr.Common.IDaprRuntimeCapabilities {CapabilitiesFieldName};");
         sb.AppendLine();
+
+        foreach (var group in groups)
+        {
+            EmitMethodCatalog(sb, group);
+            if (group.Classification == MethodClassification.AutoCompatible)
+            {
+                sb.AppendLine($"    private int {GetSelectedVariantFieldName(group)} = -1;");
+                sb.AppendLine();
+            }
+        }
 
         // Constructor
         sb.AppendLine($"    public {ClassName}(");
@@ -109,6 +119,11 @@ internal static class WrapperCodeEmitter
         foreach (var group in groups)
         {
             EmitMethod(sb, group);
+        }
+
+        if (groups.Any(group => group.Fallbacks.Count > 0))
+        {
+            EmitMethodUnavailableHelper(sb);
         }
 
         sb.AppendLine("}");
@@ -157,58 +172,55 @@ internal static class WrapperCodeEmitter
     {
         var mostRecent = group.MostRecent;
         var (reqFqn, respFqn) = GetRequestResponseFqns(mostRecent);
+        var variants = GetVariants(group);
+        var catalogFieldName = GetCatalogFieldName(group);
+        var selectedVariantFieldName = GetSelectedVariantFieldName(group);
 
         sb.AppendLine($"    /// <inheritdoc/>");
         sb.Append($"    public async global::System.Threading.Tasks.Task<{respFqn}> {group.BaseName}Async(");
         sb.AppendLine($"{reqFqn} request, global::Grpc.Core.CallOptions options)");
         sb.AppendLine("    {");
         sb.AppendLine("        var __ct = options.CancellationToken;");
-        sb.AppendLine();
-
-        // Most-recent variant: check capability then call, catching Unimplemented so that a method
-        // defined in the runtime's proto but not yet backed by a handler falls through to the older variant.
-        // Also catch Unknown with the Dapr proxy-routing error that older runtimes emit when they cannot
-        // match the method internally and attempt (and fail) to forward it as a service invocation.
-        sb.AppendLine($"        if (await {CapabilitiesFieldName}.SupportsMethodAsync(\"{mostRecent.FullyQualifiedMethodName}\", __ct).ConfigureAwait(false))");
+        sb.AppendLine($"        switch (global::System.Threading.Volatile.Read(ref {selectedVariantFieldName}))");
         sb.AppendLine("        {");
-        sb.AppendLine("            try");
-        sb.AppendLine("            {");
-        sb.AppendLine($"                return await {InnerFieldName}.{mostRecent.CSharpMethodName}(request, options).ResponseAsync.ConfigureAwait(false);");
-        sb.AppendLine("            }");
-        sb.AppendLine("            catch (global::Grpc.Core.RpcException __implEx) when (");
-        sb.AppendLine("                __implEx.StatusCode == global::Grpc.Core.StatusCode.Unimplemented ||");
-        sb.AppendLine("                (__implEx.StatusCode == global::Grpc.Core.StatusCode.Unknown &&");
-        sb.AppendLine("                 __implEx.Status.Detail.Contains(\"dapr-callee-app-id or dapr-app-id not found\")))");
-        sb.AppendLine("            {");
-        sb.AppendLine("                // Method is in the runtime proto but not yet implemented, or the runtime");
-        sb.AppendLine("                // does not recognise the method and attempted to proxy it as a service invocation.");
-        sb.AppendLine("                // Either way, fall through to the older variant.");
-        sb.AppendLine("            }");
+        for (var index = 0; index < variants.Count; index++)
+        {
+            sb.AppendLine($"            case {index}:");
+            sb.AppendLine("            {");
+            EmitVariantInvocation(
+                sb,
+                mostRecent,
+                variants[index],
+                index,
+                "                ",
+                selectedVariantFieldName: null);
+            sb.AppendLine("            }");
+        }
         sb.AppendLine("        }");
         sb.AppendLine();
 
-        // Fallback variants
-        foreach (var fallback in group.Fallbacks)
+        for (var index = 0; index < variants.Count; index++)
         {
-            var sameRequest = SymbolEqualityComparer.Default.Equals(mostRecent.RequestType, fallback.RequestType);
-            var sameResponse = SymbolEqualityComparer.Default.Equals(mostRecent.ResponseType, fallback.ResponseType);
+            var variant = variants[index];
+            sb.AppendLine($"        var __support{index} = await {CapabilitiesFieldName}.GetMethodSupportAsync({catalogFieldName}[{index}], __ct).ConfigureAwait(false);");
+            sb.AppendLine($"        if (__support{index} != global::Dapr.Common.DaprRuntimeSupport.Unsupported)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            try");
+            sb.AppendLine("            {");
+            EmitVariantInvocation(
+                sb,
+                mostRecent,
+                variant,
+                index,
+                "                ",
+                selectedVariantFieldName);
 
-            sb.AppendLine($"        if (await {CapabilitiesFieldName}.SupportsMethodAsync(\"{fallback.FullyQualifiedMethodName}\", __ct).ConfigureAwait(false))");
-
-            if (sameRequest && sameResponse)
-            {
-                // No type conversion needed — compact one-liner
-                sb.AppendLine($"            return await {InnerFieldName}.{fallback.CSharpMethodName}(request, options).ResponseAsync.ConfigureAwait(false);");
-            }
-            else
-            {
-                sb.AppendLine("        {");
-                EmitRequestConversion(sb, mostRecent, fallback, "            ");
-                sb.AppendLine($"            var __fallbackResponse = await {InnerFieldName}.{fallback.CSharpMethodName}(__fallbackRequest, options).ResponseAsync.ConfigureAwait(false);");
-                EmitResponseConversion(sb, mostRecent, fallback, "            ");
-                sb.AppendLine("        }");
-            }
-
+            sb.AppendLine("            }");
+            sb.AppendLine("            catch (global::Grpc.Core.RpcException __implEx) when (IsMethodUnavailable(__implEx))");
+            sb.AppendLine("            {");
+            sb.AppendLine("                // Continue to the next older compatible method in the generated catalog.");
+            sb.AppendLine("            }");
+            sb.AppendLine("        }");
             sb.AppendLine();
         }
 
@@ -227,6 +239,7 @@ internal static class WrapperCodeEmitter
     {
         var mostRecent = group.MostRecent;
         var (reqFqn, respFqn) = GetRequestResponseFqns(mostRecent);
+        var catalogFieldName = GetCatalogFieldName(group);
 
         sb.AppendLine($"    /// <inheritdoc/>");
         sb.Append($"    public async global::System.Threading.Tasks.Task<{respFqn}> {group.BaseName}Async(");
@@ -235,41 +248,119 @@ internal static class WrapperCodeEmitter
         sb.AppendLine("        var __ct = options.CancellationToken;");
         sb.AppendLine();
 
-        // Most-recent variant: catch Unimplemented so a proto-defined-but-not-yet-handled method
-        // falls through to the schema-divergent NotSupportedException path rather than surfacing a raw RpcException.
-        // Also catch Unknown with the Dapr proxy-routing error that older runtimes emit when they cannot
-        // match the method internally and attempt (and fail) to forward it as a service invocation.
-        sb.AppendLine($"        if (await {CapabilitiesFieldName}.SupportsMethodAsync(\"{mostRecent.FullyQualifiedMethodName}\", __ct).ConfigureAwait(false))");
+        sb.AppendLine($"        var __support0 = await {CapabilitiesFieldName}.GetMethodSupportAsync({catalogFieldName}[0], __ct).ConfigureAwait(false);");
+        sb.AppendLine("        if (__support0 != global::Dapr.Common.DaprRuntimeSupport.Unsupported)");
         sb.AppendLine("        {");
         sb.AppendLine("            try");
         sb.AppendLine("            {");
         sb.AppendLine($"                return await {InnerFieldName}.{mostRecent.CSharpMethodName}(request, options).ResponseAsync.ConfigureAwait(false);");
         sb.AppendLine("            }");
-        sb.AppendLine("            catch (global::Grpc.Core.RpcException __implEx) when (");
-        sb.AppendLine("                __implEx.StatusCode == global::Grpc.Core.StatusCode.Unimplemented ||");
-        sb.AppendLine("                (__implEx.StatusCode == global::Grpc.Core.StatusCode.Unknown &&");
-        sb.AppendLine("                 __implEx.Status.Detail.Contains(\"dapr-callee-app-id or dapr-app-id not found\")))");
+        sb.AppendLine("            catch (global::Grpc.Core.RpcException __implEx) when (IsMethodUnavailable(__implEx))");
         sb.AppendLine("            {");
-        sb.AppendLine("                // Method is in the runtime proto but not yet implemented, or the runtime");
-        sb.AppendLine("                // does not recognise the method and attempted to proxy it as a service invocation.");
-        sb.AppendLine("                // Either way, fall through to the older variant.");
+        sb.AppendLine("                // The newest method is unavailable; inspect the generated catalog for older variants.");
         sb.AppendLine("            }");
         sb.AppendLine("        }");
         sb.AppendLine();
 
         // Older, incompatible variants → NotSupportedException
-        foreach (var fallback in group.Fallbacks)
+        for (var index = 0; index < group.Fallbacks.Count; index++)
         {
-            sb.AppendLine($"        if (await {CapabilitiesFieldName}.SupportsMethodAsync(\"{fallback.FullyQualifiedMethodName}\", __ct).ConfigureAwait(false))");
+            var fallback = group.Fallbacks[index];
+            var catalogIndex = index + 1;
+            sb.AppendLine($"        var __support{catalogIndex} = await {CapabilitiesFieldName}.GetMethodSupportAsync({catalogFieldName}[{catalogIndex}], __ct).ConfigureAwait(false);");
+            sb.AppendLine($"        if (__support{catalogIndex} == global::Dapr.Common.DaprRuntimeSupport.Supported)");
             sb.AppendLine("            throw new global::System.NotSupportedException(");
             sb.AppendLine($"                \"The '{group.BaseName}' operation cannot automatically fall back from '{mostRecent.GrpcMethodName}' to '{fallback.GrpcMethodName}' \" +");
             sb.AppendLine($"                \"because the schemas are incompatible. Provide a partial-class override of {ClassName} to handle this older runtime version.\");");
+            sb.AppendLine();
+            sb.AppendLine($"        if (__support{catalogIndex} == global::Dapr.Common.DaprRuntimeSupport.Unknown)");
+            sb.AppendLine("            throw new global::System.NotSupportedException(");
+            sb.AppendLine($"                \"The '{group.BaseName}' operation could not use '{mostRecent.GrpcMethodName}', and runtime method discovery is unavailable. \" +");
+            sb.AppendLine($"                \"The SDK cannot safely determine whether the schema-incompatible fallback '{fallback.GrpcMethodName}' is supported.\");");
             sb.AppendLine();
         }
 
         EmitFeatureNotAvailableThrow(sb, group, "        ");
         sb.AppendLine("    }");
         sb.AppendLine();
+    }
+
+    private static void EmitMethodCatalog(StringBuilder sb, MethodGroup group)
+    {
+        sb.AppendLine($"    private static readonly string[] {GetCatalogFieldName(group)} =");
+        sb.AppendLine("    [");
+        foreach (var variant in GetVariants(group))
+        {
+            sb.AppendLine($"        \"{variant.FullyQualifiedMethodName}\",");
+        }
+        sb.AppendLine("    ];");
+        sb.AppendLine();
+    }
+
+    private static void EmitMethodUnavailableHelper(StringBuilder sb)
+    {
+        sb.AppendLine("    private static bool IsMethodUnavailable(global::Grpc.Core.RpcException exception)");
+        sb.AppendLine("    {");
+        sb.AppendLine("        if (exception.StatusCode == global::Grpc.Core.StatusCode.Unimplemented)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            return true;");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+        sb.AppendLine("        if (exception.StatusCode != global::Grpc.Core.StatusCode.Unknown)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            return false;");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+        sb.AppendLine("        return exception.Status.Detail.Contains(");
+        sb.AppendLine("                   \"dapr-callee-app-id or dapr-app-id not found\",");
+        sb.AppendLine("                   global::System.StringComparison.Ordinal) ||");
+        sb.AppendLine("               exception.Status.Detail.Contains(");
+        sb.AppendLine("                   \"missing dapr-callee-app-id or dapr-app-id metadata\",");
+        sb.AppendLine("                   global::System.StringComparison.Ordinal);");
+        sb.AppendLine("    }");
+        sb.AppendLine();
+    }
+
+    private static void EmitVariantInvocation(
+        StringBuilder sb,
+        MethodVariant mostRecent,
+        MethodVariant variant,
+        int variantIndex,
+        string indent,
+        string? selectedVariantFieldName)
+    {
+        var sameRequest = SymbolEqualityComparer.Default.Equals(mostRecent.RequestType, variant.RequestType);
+        var sameResponse = SymbolEqualityComparer.Default.Equals(mostRecent.ResponseType, variant.ResponseType);
+        var requestVariable = "request";
+
+        if (!sameRequest)
+        {
+            EmitRequestConversion(sb, mostRecent, variant, indent);
+            requestVariable = "__fallbackRequest";
+        }
+
+        sb.AppendLine($"{indent}var __response{variantIndex} = await {InnerFieldName}.{variant.CSharpMethodName}({requestVariable}, options).ResponseAsync.ConfigureAwait(false);");
+        var cacheSelectionStatement = selectedVariantFieldName is null
+            ? null
+            : $"global::System.Threading.Volatile.Write(ref {selectedVariantFieldName}, {variantIndex});";
+
+        if (sameResponse)
+        {
+            if (cacheSelectionStatement is not null)
+            {
+                sb.AppendLine($"{indent}{cacheSelectionStatement}");
+            }
+            sb.AppendLine($"{indent}return __response{variantIndex};");
+            return;
+        }
+
+        EmitResponseConversion(
+            sb,
+            mostRecent,
+            variant,
+            indent,
+            $"__response{variantIndex}",
+            cacheSelectionStatement);
     }
 
     // -------------------------------------------------------------------------
@@ -313,11 +404,17 @@ internal static class WrapperCodeEmitter
         StringBuilder sb,
         MethodVariant mostRecent,
         MethodVariant fallback,
-        string indent)
+        string indent,
+        string fallbackResponseVariable = "__fallbackResponse",
+        string? beforeReturnStatement = null)
     {
         if (SymbolEqualityComparer.Default.Equals(mostRecent.ResponseType, fallback.ResponseType))
         {
-            sb.AppendLine($"{indent}return __fallbackResponse;");
+            if (beforeReturnStatement is not null)
+            {
+                sb.AppendLine($"{indent}{beforeReturnStatement}");
+            }
+            sb.AppendLine($"{indent}return {fallbackResponseVariable};");
             return;
         }
 
@@ -329,9 +426,13 @@ internal static class WrapperCodeEmitter
         // the newer type may have additional fields which remain at their defaults.
         foreach (var prop in DaprClientAnalyzer.GetUserInstanceProperties(fallback.ResponseType))
         {
-            EmitPropertyCopy(sb, prop, "__fallbackResponse", "__convertedResponse", indent);
+            EmitPropertyCopy(sb, prop, fallbackResponseVariable, "__convertedResponse", indent);
         }
 
+        if (beforeReturnStatement is not null)
+        {
+            sb.AppendLine($"{indent}{beforeReturnStatement}");
+        }
         sb.AppendLine($"{indent}return __convertedResponse;");
     }
 
@@ -371,6 +472,15 @@ internal static class WrapperCodeEmitter
     // -------------------------------------------------------------------------
     // Shared helpers
     // -------------------------------------------------------------------------
+
+    private static IReadOnlyList<MethodVariant> GetVariants(MethodGroup group) =>
+        new[] { group.MostRecent }.Concat(group.Fallbacks).ToList();
+
+    private static string GetCatalogFieldName(MethodGroup group) =>
+        $"_{char.ToLowerInvariant(group.BaseName[0])}{group.BaseName.Substring(1)}MethodCatalog";
+
+    private static string GetSelectedVariantFieldName(MethodGroup group) =>
+        $"_{char.ToLowerInvariant(group.BaseName[0])}{group.BaseName.Substring(1)}SelectedVariant";
 
     private static void EmitFeatureNotAvailableThrow(StringBuilder sb, MethodGroup group, string indent)
     {
