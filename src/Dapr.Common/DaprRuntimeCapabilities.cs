@@ -1,4 +1,5 @@
-﻿using Google.Protobuf.Reflection;
+﻿using System.Collections.Concurrent;
+using Google.Protobuf.Reflection;
 using Grpc.Core;
 using Grpc.Net.Client;
 using Grpc.Reflection.V1;
@@ -8,18 +9,46 @@ namespace Dapr.Common;
 /// <summary>
 /// Used to determine Dapr runtime capability for fallback purposes by the SDKs.
 /// </summary>
-/// <param name="channel">The <see cref="GrpcChannel"/> to validate with.</param>
-internal sealed class DaprRuntimeCapabilities(GrpcChannel channel) : IDaprRuntimeCapabilities, IDisposable
+internal sealed class DaprRuntimeCapabilities : IDaprRuntimeCapabilities
 {
-    private readonly ServerReflection.ServerReflectionClient _reflectionClient = new(channel);
-    private readonly SemaphoreSlim _gate = new(1, 1);
-    private HashSet<string>? _cachedServices = null;
-    private readonly Dictionary<string, HashSet<string>> _cachedMethodsByService = [];
+    private static readonly TimeSpan DefaultReflectionTimeout = TimeSpan.FromSeconds(5);
+
+    private readonly ServerReflection.ServerReflectionClient _reflectionClient;
+    private readonly TimeSpan _reflectionTimeout;
+    private readonly Lazy<Task<HashSet<string>?>> _servicesLookup;
+    private readonly ConcurrentDictionary<string, Lazy<Task<HashSet<string>?>>> _methodLookups =
+        new(StringComparer.Ordinal);
+    private int _reflectionUnavailable;
 
     public const string Namespace = "dapr.proto.runtime.v1.Dapr";
-    
+
+    /// <summary>
+    /// Creates a runtime capability reader for the provided channel.
+    /// </summary>
+    /// <param name="channel">The <see cref="GrpcChannel"/> to validate with.</param>
+    public DaprRuntimeCapabilities(GrpcChannel channel)
+        : this(new ServerReflection.ServerReflectionClient(channel), DefaultReflectionTimeout)
+    {
+    }
+
+    internal DaprRuntimeCapabilities(
+        ServerReflection.ServerReflectionClient reflectionClient,
+        TimeSpan reflectionTimeout)
+    {
+        ArgumentNullException.ThrowIfNull(reflectionClient);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(reflectionTimeout, TimeSpan.Zero);
+
+        this._reflectionClient = reflectionClient;
+        this._reflectionTimeout = reflectionTimeout;
+        this._servicesLookup = new Lazy<Task<HashSet<string>?>>(
+            QueryServicesWithFallbackAsync,
+            LazyThreadSafetyMode.ExecutionAndPublication);
+    }
+
     /// <inheritdocs />
-    public async Task<bool> SupportsMethodAsync(string fullyQualifiedMethodName, CancellationToken cancellationToken = default)
+    public async Task<DaprRuntimeSupport> GetMethodSupportAsync(
+        string fullyQualifiedMethodName,
+        CancellationToken cancellationToken = default)
     {
         var slash = fullyQualifiedMethodName.LastIndexOf('/');
         if (slash <= 0)
@@ -30,46 +59,59 @@ internal sealed class DaprRuntimeCapabilities(GrpcChannel channel) : IDaprRuntim
         var service = fullyQualifiedMethodName[..slash];
         var method = fullyQualifiedMethodName[(slash + 1)..];
 
-        try
-        {
-            var methods = await GetMethodsForServiceAsync(service, cancellationToken).ConfigureAwait(false);
-            return methods.Contains(method);
-        }
-        catch (RpcException)
-        {
-            // gRPC reflection is unavailable or returned an error for this service.
-            // Return true (optimistic) so the version-aware caller will attempt the method
-            // and handle StatusCode.Unimplemented as the runtime-version fallback signal.
-            return true;
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            // The HTTP/2 stream underlying the reflection call was internally cancelled
-            // (e.g. connection reset, keep-alive expiry, or stream setup race on .NET 9+).
-            // This is NOT a caller cancellation — treat it the same as an unavailable
-            // reflection service and proceed optimistically.
-            return true;
-        }
+        var methods = await GetMethodsForServiceAsync(service, cancellationToken).ConfigureAwait(false);
+        return methods is null
+            ? DaprRuntimeSupport.Unknown
+            : methods.Contains(method)
+                ? DaprRuntimeSupport.Supported
+                : DaprRuntimeSupport.Unsupported;
     }
 
     /// <inheritdocs />
-    public async Task<bool> SupportsServiceAsync(string serviceName, CancellationToken cancellationToken = default)
+    public async Task<DaprRuntimeSupport> GetServiceSupportAsync(
+        string serviceName,
+        CancellationToken cancellationToken = default)
     {
         var services = await GetServicesAsync(cancellationToken).ConfigureAwait(false);
-        return services.Contains(serviceName); 
+        return services is null
+            ? DaprRuntimeSupport.Unknown
+            : services.Contains(serviceName)
+                ? DaprRuntimeSupport.Supported
+                : DaprRuntimeSupport.Unsupported;
     }
 
-    private async Task<HashSet<string>> GetServicesAsync(CancellationToken cancellationToken)
+    private Task<HashSet<string>?> GetServicesAsync(CancellationToken cancellationToken)
     {
-        if (_cachedServices is not null)
-            return _cachedServices;
-
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
+        if (Volatile.Read(ref _reflectionUnavailable) != 0)
         {
-            if (_cachedServices is not null)
-                return _cachedServices;
+            return Task.FromResult<HashSet<string>?>(null);
+        }
 
+        return _servicesLookup.Value.WaitAsync(cancellationToken);
+    }
+
+    private Task<HashSet<string>?> GetMethodsForServiceAsync(string serviceName,
+        CancellationToken cancellationToken)
+    {
+        if (Volatile.Read(ref _reflectionUnavailable) != 0)
+        {
+            return Task.FromResult<HashSet<string>?>(null);
+        }
+
+        var lookup = _methodLookups.GetOrAdd(
+            serviceName,
+            static (name, capabilities) => new Lazy<Task<HashSet<string>?>>(
+                () => capabilities.QueryMethodsWithFallbackAsync(name),
+                LazyThreadSafetyMode.ExecutionAndPublication),
+            this);
+
+        return lookup.Value.WaitAsync(cancellationToken);
+    }
+
+    private Task<HashSet<string>?> QueryServicesWithFallbackAsync()
+    {
+        return ExecuteReflectionQueryAsync(async cancellationToken =>
+        {
             using var call = _reflectionClient.ServerReflectionInfo(cancellationToken: cancellationToken);
             await call.RequestStream.WriteAsync(new ServerReflectionRequest { ListServices = "" }, cancellationToken)
                 .ConfigureAwait(false);
@@ -81,36 +123,25 @@ internal sealed class DaprRuntimeCapabilities(GrpcChannel channel) : IDaprRuntim
                 if (response.MessageResponseCase ==
                     ServerReflectionResponse.MessageResponseOneofCase.ListServicesResponse)
                 {
-                    foreach (var s in response.ListServicesResponse.Service)
+                    foreach (var service in response.ListServicesResponse.Service)
                     {
-                        set.Add(s.Name);
+                        set.Add(service.Name);
                     }
                 }
             }
 
-            _cachedServices = set;
             return set;
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        });
     }
 
-    private async Task<HashSet<string>> GetMethodsForServiceAsync(string serviceName,
-        CancellationToken cancellationToken)
+    private Task<HashSet<string>?> QueryMethodsWithFallbackAsync(string serviceName)
     {
-        if (_cachedMethodsByService.TryGetValue(serviceName, out var existing))
-            return existing;
-
-        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
+        return ExecuteReflectionQueryAsync(async cancellationToken =>
         {
-            if (_cachedMethodsByService.TryGetValue(serviceName, out existing))
-                return existing;
-
             using var call = _reflectionClient.ServerReflectionInfo(cancellationToken: cancellationToken);
-            await call.RequestStream.WriteAsync(new ServerReflectionRequest { FileContainingSymbol = serviceName }, cancellationToken)
+            await call.RequestStream.WriteAsync(
+                    new ServerReflectionRequest { FileContainingSymbol = serviceName },
+                    cancellationToken)
                 .ConfigureAwait(false);
             await call.RequestStream.CompleteAsync().ConfigureAwait(false);
 
@@ -119,7 +150,9 @@ internal sealed class DaprRuntimeCapabilities(GrpcChannel channel) : IDaprRuntim
             {
                 if (response.MessageResponseCase !=
                     ServerReflectionResponse.MessageResponseOneofCase.FileDescriptorResponse)
+                {
                     continue;
+                }
 
                 foreach (var raw in response.FileDescriptorResponse.FileDescriptorProto)
                 {
@@ -128,7 +161,10 @@ internal sealed class DaprRuntimeCapabilities(GrpcChannel channel) : IDaprRuntim
                     {
                         var fqn = string.IsNullOrEmpty(fd.Package) ? svc.Name : $"{fd.Package}.{svc.Name}";
                         if (fqn != serviceName)
+                        {
                             continue;
+                        }
+
                         foreach (var m in svc.Method)
                         {
                             set.Add(m.Name);
@@ -137,14 +173,45 @@ internal sealed class DaprRuntimeCapabilities(GrpcChannel channel) : IDaprRuntim
                 }
             }
 
-            _cachedMethodsByService[serviceName] = set;
             return set;
-        }
-        finally
+        });
+    }
+
+    private async Task<HashSet<string>?> ExecuteReflectionQueryAsync(
+        Func<CancellationToken, Task<HashSet<string>>> query)
+    {
+        using var timeoutSource = new CancellationTokenSource(_reflectionTimeout);
+        var queryTask = query(timeoutSource.Token);
+
+        try
         {
-            _gate.Release();
+            return await queryTask.WaitAsync(_reflectionTimeout, timeoutSource.Token).ConfigureAwait(false);
+        }
+        catch (RpcException)
+        {
+            Volatile.Write(ref _reflectionUnavailable, 1);
+            return null;
+        }
+        catch (OperationCanceledException)
+        {
+            Volatile.Write(ref _reflectionUnavailable, 1);
+            return null;
+        }
+        catch (TimeoutException)
+        {
+            await timeoutSource.CancelAsync();
+            ObserveFault(queryTask);
+            Volatile.Write(ref _reflectionUnavailable, 1);
+            return null;
         }
     }
 
-    public void Dispose() => _gate.Dispose();
+    private static void ObserveFault(Task task)
+    {
+        _ = task.ContinueWith(
+            static completedTask => _ = completedTask.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
+    }
 }

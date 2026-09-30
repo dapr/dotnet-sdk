@@ -55,8 +55,8 @@ public class DaprPublishSubscribeGrpcClientPublishTests
     {
         var mock = new Mock<P.Dapr.DaprClient>();
         var caps = new Mock<IDaprRuntimeCapabilities>();
-        caps.Setup(c => c.SupportsMethodAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+        caps.Setup(c => c.GetMethodSupportAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DaprRuntimeSupport.Supported);
         var client = new DaprPublishSubscribeGrpcClient(
             mock.Object, new HttpClient(), new System.Text.Json.JsonSerializerOptions(), caps.Object);
         return (mock, client);
@@ -430,8 +430,8 @@ public class DaprPublishSubscribeGrpcClientPublishTests
     {
         var mock = new Mock<P.Dapr.DaprClient>();
         var caps = new Mock<IDaprRuntimeCapabilities>();
-        caps.Setup(c => c.SupportsMethodAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+        caps.Setup(c => c.GetMethodSupportAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DaprRuntimeSupport.Supported);
         var client = new DaprPublishSubscribeGrpcClient(
             mock.Object, new HttpClient(), new System.Text.Json.JsonSerializerOptions(), caps.Object, daprApiToken: "secret-token");
 
