@@ -89,7 +89,7 @@ internal static class ProtoConverters
             HistoryEvent.EventTypeOneofCase.ExecutionSuspended => WorkflowHistoryEventType.ExecutionSuspended,
             HistoryEvent.EventTypeOneofCase.ExecutionResumed => WorkflowHistoryEventType.ExecutionResumed,
             HistoryEvent.EventTypeOneofCase.ExecutionStalled => WorkflowHistoryEventType.ExecutionStalled,
-            HistoryEvent.EventTypeOneofCase.DetachedWorkflowInstanceCreated => WorkflowHistoryEventType.SubOrchestrationInstanceCreated,
+            HistoryEvent.EventTypeOneofCase.DetachedWorkflowInstanceCreated => WorkflowHistoryEventType.DetachedWorkflowInstanceCreated,
             _ => WorkflowHistoryEventType.Unknown
         };
 

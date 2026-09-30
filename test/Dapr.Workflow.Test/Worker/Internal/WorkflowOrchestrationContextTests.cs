@@ -149,6 +149,129 @@ public class WorkflowOrchestrationContextTests
         Assert.Equal(targetAppId, action.Router.TargetAppID);
         Assert.Equal(sourceAppId, action.Router.SourceAppID);
     }
+
+    [Fact]
+    public async Task ScheduleNewDetachedWorkflowAsync_ShouldScheduleAndReturnWithoutWaiting()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
+        var startTime = new DateTimeOffset(2026, 01, 02, 03, 04, 05, TimeSpan.Zero);
+
+        var task = context.ScheduleNewDetachedWorkflowAsync(
+            "DetachedWf", "detached-1", new { V = 1 }, startTime);
+
+        Assert.True(task.IsCompletedSuccessfully);
+        Assert.Equal("detached-1", await task);
+        var pending = Assert.Single(context.PendingActions);
+        Assert.Equal(0, pending.Id);
+        Assert.Equal("DetachedWf", pending.CreateDetachedWorkflow.Name);
+        Assert.Equal("detached-1", pending.CreateDetachedWorkflow.InstanceId);
+        Assert.Contains("\"v\":1", pending.CreateDetachedWorkflow.Input);
+        Assert.Equal(startTime, pending.CreateDetachedWorkflow.ScheduledStartTimestamp.ToDateTimeOffset());
+        Assert.Null(pending.CreateChildWorkflow);
+    }
+
+    [Fact]
+    public async Task ScheduleNewDetachedWorkflowAsync_ShouldGenerateDeterministicInstanceId()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var first = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
+        var replay = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
+
+        var firstId = await first.ScheduleNewDetachedWorkflowAsync("DetachedWf");
+        var replayId = await replay.ScheduleNewDetachedWorkflowAsync("DetachedWf");
+
+        Assert.Equal(firstId, replayId);
+        Assert.Equal(first.PendingActions.Single().CreateDetachedWorkflow.InstanceId, replayId);
+    }
+
+    [Fact]
+    public async Task ScheduleNewDetachedWorkflowAsync_ShouldRemovePendingActionByInstanceIdOnReplay()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
+
+        await context.ScheduleNewDetachedWorkflowAsync("DetachedWf", "detached-1");
+        context.ProcessEvents(
+        [
+            new HistoryEvent
+            {
+                EventId = 42,
+                DetachedWorkflowInstanceCreated = new DetachedWorkflowInstanceCreatedEvent
+                {
+                    InstanceId = "detached-1"
+                }
+            }
+        ], isReplaying: true);
+
+        Assert.Empty(context.PendingActions);
+    }
+
+    [Fact]
+    public async Task ScheduleNewDetachedWorkflowAsync_ShouldAccountForDroppedOptionalTimerOnReplay()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
+
+        var waitTask = context.WaitForExternalEventAsync<string>("event", Timeout.InfiniteTimeSpan);
+        await context.ScheduleNewDetachedWorkflowAsync("DetachedWf", "detached-1");
+
+        context.ProcessEvents(
+        [
+            new HistoryEvent
+            {
+                EventId = 0,
+                DetachedWorkflowInstanceCreated = new DetachedWorkflowInstanceCreatedEvent
+                {
+                    InstanceId = "detached-1"
+                }
+            }
+        ], isReplaying: true);
+
+        Assert.Empty(context.PendingActions);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waitTask);
+    }
+
+    [Fact]
+    public async Task ScheduleNewDetachedWorkflowAsync_ShouldRejectDuplicateInstanceIdInSameExecution()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
+
+        await context.ScheduleNewDetachedWorkflowAsync("DetachedWf", "detached-1");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            context.ScheduleNewDetachedWorkflowAsync("DetachedWf", "detached-1"));
+        Assert.Single(context.PendingActions);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task ScheduleNewDetachedWorkflowAsync_ShouldRejectInvalidWorkflowName(string? workflowName)
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
+
+        await Assert.ThrowsAnyAsync<ArgumentException>(() =>
+            context.ScheduleNewDetachedWorkflowAsync(workflowName!));
+    }
     
     [Fact]
     public void CallActivityAsync_ShouldNotSetRouter_WhenAppIdNotProvided()
