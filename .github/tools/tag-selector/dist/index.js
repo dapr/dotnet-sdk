@@ -25511,7 +25511,7 @@ async function run() {
       repo,
       per_page: 100
     });
-    const releaseTags = releases.filter((release) => !release.draft).filter((release) => !release.tag_name.includes("1.17.")).map((release) => ({
+    const releaseTags = releases.filter((release) => !release.draft).map((release) => ({
       name: release.tag_name,
       prerelease: release.prerelease
     }));
