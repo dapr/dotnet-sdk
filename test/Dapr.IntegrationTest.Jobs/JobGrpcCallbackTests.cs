@@ -94,7 +94,7 @@ public sealed class JobGrpcCallbackTests
     /// </summary>
     private static DaprHarnessBuilder CreateGrpcHarnessBuilder(string componentsDir) =>
         new DaprHarnessBuilder(componentsDir)
-            .WithOptions(new DaprRuntimeOptions("1.17.0-rc.3").WithAppProtocol("grpc"));
+            .WithOptions(new DaprRuntimeOptions("1.19.0-rc.1").WithAppProtocol("grpc"));
 
     /// <summary>
     /// Creates a harness builder configured for the default HTTP app channel.
