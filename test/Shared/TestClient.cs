@@ -77,11 +77,11 @@ namespace Dapr
         /// </summary>
         private sealed class AlwaysAvailableRuntimeCapabilities : IDaprRuntimeCapabilities
         {
-            public Task<bool> SupportsMethodAsync(string fullyQualifiedMethodName, CancellationToken cancellationToken = default)
-                => Task.FromResult(true);
+            public Task<DaprRuntimeSupport> GetMethodSupportAsync(string fullyQualifiedMethodName, CancellationToken cancellationToken = default)
+                => Task.FromResult(DaprRuntimeSupport.Supported);
 
-            public Task<bool> SupportsServiceAsync(string serviceName, CancellationToken cancellationToken = default)
-                => Task.FromResult(true);
+            public Task<DaprRuntimeSupport> GetServiceSupportAsync(string serviceName, CancellationToken cancellationToken = default)
+                => Task.FromResult(DaprRuntimeSupport.Supported);
         }
 
         private static async Task WithTimeout(Task task, TimeSpan timeout, string message)
