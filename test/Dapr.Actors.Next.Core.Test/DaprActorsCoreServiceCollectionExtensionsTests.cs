@@ -171,7 +171,9 @@ public sealed class DaprActorsCoreServiceCollectionExtensionsTests
         services.AddDaprActorsCore(_ => { });
 
         Assert.Equal(1, services.Count(static descriptor => descriptor.ServiceType == typeof(SubscribeActorEventsStreamManager)));
-        Assert.Equal(1, services.Count(static descriptor => descriptor.ServiceType == typeof(SubscribeActorEventsStreamHostedService)));
+        Assert.Equal(1, services.Count(static descriptor =>
+            descriptor.ServiceType == typeof(IHostedService) &&
+            descriptor.ImplementationType == typeof(SubscribeActorEventsStreamHostedService)));
         Assert.Equal(1, services.Count(static descriptor => descriptor.ServiceType == typeof(ActorRuntimeRegistry)));
 
         using var provider = services.BuildServiceProvider();
