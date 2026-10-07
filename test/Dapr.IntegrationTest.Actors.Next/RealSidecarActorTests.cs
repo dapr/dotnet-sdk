@@ -158,6 +158,9 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
             var endpoint = builder.Configuration["DAPR_GRPC_ENDPOINT"] ?? throw new InvalidOperationException("Missing Dapr gRPC endpoint.");
             return new P.Dapr.DaprClient(GrpcChannel.ForAddress(endpoint));
         });
+        builder.Services.AddSingleton<RecordingActorStateStore>(sp =>
+            new RecordingActorStateStore(new DaprSidecarActorStateStore(sp.GetRequiredService<P.Dapr.DaprClient>())));
+        builder.Services.AddSingleton<IActorStateStore>(sp => sp.GetRequiredService<RecordingActorStateStore>());
         builder.Services.AddSingleton<ISubscribeActorEventsTransport>(sp =>
             new RecordingActorEventsTransport(sp.GetRequiredService<P.Dapr.DaprClient>()));
         builder.Services.AddSingleton<Probe>();
@@ -179,7 +182,7 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
                     sp.GetRequiredService<IActorTimerScheduler>(),
                     sp.GetRequiredService<IActorReminderScheduler>(),
                     sp.GetRequiredService<IActorRuntime>(),
-                    sp.GetRequiredService<IActorStateStore>(),
+                    sp.GetRequiredService<RecordingActorStateStore>(),
                     sp.GetRequiredService<IActorWireSerializer>(),
                     sp.GetRequiredService<Probe>()),
                 new ProtocolActorDispatcher(),
@@ -368,6 +371,31 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         await client.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "StopStateReminder", ReadOnlyMemory<byte>.Empty), cancellationToken: cts.Token);
     }
 
+    /// <summary>
+    /// Verifies missing actor state is fetched from the real sidecar once per activation and then cached.
+    /// </summary>
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Repeated_missing_state_reads_are_cached_per_activation()
+    {
+        using var cts = new CancellationTokenSource(Timeout);
+        var actorId = $"missing-state-{Guid.NewGuid():N}";
+
+        var firstResponse = await client!.InvokeActorAsync(
+            CreateInvoke("ProtocolActor", actorId, "ProbeMissingState", ReadOnlyMemory<byte>.Empty),
+            cancellationToken: cts.Token);
+        var first = JsonSerializer.Deserialize<MissingStateProbe>(firstResponse.Data.Span)!;
+
+        var secondResponse = await client.InvokeActorAsync(
+            CreateInvoke("ProtocolActor", actorId, "ProbeMissingState", ReadOnlyMemory<byte>.Empty),
+            cancellationToken: cts.Token);
+        var second = JsonSerializer.Deserialize<MissingStateProbe>(secondResponse.Data.Span)!;
+
+        Assert.False(first.HasValue);
+        Assert.Equal(1, first.ReadCount);
+        Assert.False(second.HasValue);
+        Assert.Equal(0, second.ReadCount);
+    }
+
     private static P.InvokeActorRequest CreateInvoke(
         string actorType,
         string actorId,
@@ -478,6 +506,11 @@ public sealed record ReminderManagementResult(
     bool MissingAfterCancel,
     int ActorScopedCountBeforeCancelAll,
     int ActorScopedCountAfterCancelAll);
+
+/// <summary>
+/// Result of probing an absent actor state value.
+/// </summary>
+public sealed record MissingStateProbe(bool HasValue, int ReadCount);
 
 /// <summary>
 /// Legacy state DTO persisted with schema version one.
@@ -652,7 +685,7 @@ public sealed class ProtocolActor(
     IActorTimerScheduler timerScheduler,
     IActorReminderScheduler reminderScheduler,
     IActorRuntime runtime,
-    IActorStateStore stateStore,
+    RecordingActorStateStore stateStore,
     IActorWireSerializer serializer,
     Probe probe) : Actor
 {
@@ -878,6 +911,22 @@ public sealed class ProtocolActor(
     }
 
     /// <summary>
+    /// Looks up a missing value repeatedly and reports how many store reads those lookups caused.
+    /// </summary>
+    public async Task<MissingStateProbe> ProbeMissingStateAsync(CancellationToken cancellationToken)
+    {
+        const string stateName = "missing-state-probe";
+        var readsBefore = stateStore.GetReadCount("ProtocolActor", Id.Value, stateName);
+        IActorState<int>? state = null;
+        for (var i = 0; i < 100; i++)
+        {
+            state = await State.TryGetAsync<int>(stateName, cancellationToken);
+        }
+
+        return new MissingStateProbe(state is not null, stateStore.GetReadCount("ProtocolActor", Id.Value, stateName) - readsBefore);
+    }
+
+    /// <summary>
     /// Stops the reminder used by the reentrancy state test.
     /// </summary>
     public async Task StopStateReminderAsync(CancellationToken cancellationToken)
@@ -923,6 +972,7 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
             "WriteStateReentrantly" => await CompleteAsync(protocol.WriteStateReentrantlyAsync(JsonSerializer.Deserialize<int>(request.Payload.Span), cancellationToken)),
             "SetReminderState" => await CompleteAsync(protocol.SetReminderStateAsync(JsonSerializer.Deserialize<int>(request.Payload.Span), cancellationToken)),
             "ReadReminderState" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ReadReminderStateAsync(cancellationToken))),
+            "ProbeMissingState" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ProbeMissingStateAsync(cancellationToken))),
             "StopStateReminder" => await CompleteAsync(protocol.StopStateReminderAsync(cancellationToken)),
             "Deactivate" => await CompleteAsync(protocol.ForceDeactivateAsync(cancellationToken)),
             _ => throw new InvalidOperationException($"Unknown method '{request.MethodName}'."),
@@ -934,4 +984,30 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
         await task.ConfigureAwait(false);
         return new ActorDispatchResponse(null);
     }
+}
+
+/// <summary>
+/// Counts real sidecar state reads so integration tests can verify activation-level cache behavior.
+/// </summary>
+public sealed class RecordingActorStateStore(IActorStateStore inner) : IActorStateStore
+{
+    private readonly ConcurrentDictionary<(string ActorType, string ActorId, string Name), int> readCounts = new();
+
+    /// <inheritdoc />
+    public async ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default)
+    {
+        readCounts.AddOrUpdate((actorType, actorId, name), 1, static (_, count) => count + 1);
+        return await inner.ReadAsync(actorType, actorId, name, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public ValueTask WriteAsync(string actorType, string actorId, string name, ReadOnlyMemory<byte> value, CancellationToken cancellationToken = default) =>
+        inner.WriteAsync(actorType, actorId, name, value, cancellationToken);
+
+    /// <inheritdoc />
+    public ValueTask DeleteAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default) =>
+        inner.DeleteAsync(actorType, actorId, name, cancellationToken);
+
+    public int GetReadCount(string actorType, string actorId, string name) =>
+        readCounts.TryGetValue((actorType, actorId, name), out var count) ? count : 0;
 }

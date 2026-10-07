@@ -42,7 +42,7 @@ public sealed class ActorStateUnitOfWork(
 
         if (entries.TryGetValue(name, out var existing))
         {
-            if (existing.Removed)
+            if (existing.Removed || existing.Missing)
             {
                 return null;
             }
@@ -59,6 +59,7 @@ public sealed class ActorStateUnitOfWork(
         var bytes = await store.ReadAsync(actorType, actorId.Value, name, cancellationToken).ConfigureAwait(false);
         if (bytes is null)
         {
+            entries[name] = CacheEntry.MissingEntry();
             return null;
         }
 
@@ -515,7 +516,8 @@ public sealed class ActorStateUnitOfWork(
             byte[]? persistedSnapshot,
             bool dirty,
             bool removed,
-            bool trackInPlaceMutations)
+            bool trackInPlaceMutations,
+            bool missing = false)
         {
             State = state;
             this.writer = writer;
@@ -524,6 +526,7 @@ public sealed class ActorStateUnitOfWork(
             Dirty = dirty;
             Removed = removed;
             TrackInPlaceMutations = trackInPlaceMutations;
+            Missing = missing;
         }
 
         public object State { get; }
@@ -531,6 +534,8 @@ public sealed class ActorStateUnitOfWork(
         public bool Dirty { get; }
 
         public bool Removed { get; }
+
+        public bool Missing { get; }
 
         public bool TrackInPlaceMutations { get; }
 
@@ -553,9 +558,11 @@ public sealed class ActorStateUnitOfWork(
 
         public static CacheEntry RemovedEntry() => new(new object(), static (_, _, _, _, _, _, _) => ValueTask.CompletedTask, static _ => Array.Empty<byte>(), null, true, true, false);
 
-        public CacheEntry AsDirty() => new(State, writer, snapshot, PersistedSnapshot, true, Removed, TrackInPlaceMutations);
+        public static CacheEntry MissingEntry() => new(new object(), static (_, _, _, _, _, _, _) => ValueTask.CompletedTask, static _ => Array.Empty<byte>(), null, false, false, false, true);
 
-        public CacheEntry AsClean(byte[]? persistedSnapshot) => new(State, writer, snapshot, persistedSnapshot, false, Removed, TrackInPlaceMutations);
+        public CacheEntry AsDirty() => new(State, writer, snapshot, PersistedSnapshot, true, Removed, TrackInPlaceMutations, Missing);
+
+        public CacheEntry AsClean(byte[]? persistedSnapshot) => new(State, writer, snapshot, persistedSnapshot, false, Removed, TrackInPlaceMutations, Missing);
 
         public byte[] CreateSnapshot(IActorWireSerializer serializer) => snapshot(serializer);
 
