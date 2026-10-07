@@ -137,31 +137,44 @@ public sealed class CryptographyTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task ShouldRoundTripConcurrentMultiChunkPayloads(bool streaming)
+    public async Task ShouldHandleConcurrentMultiChunkOperations(bool streaming)
     {
         await RunWithClientAsync(async (client, cancellationToken) =>
         {
             var start = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var roundTrips = Enumerable.Range(0, 4).Select(async operation =>
+            var plaintexts = Enumerable.Range(0, 4).Select(operation =>
             {
                 var plaintext = new byte[1024 * 1024 + operation * 137];
                 for (var index = 0; index < plaintext.Length; index++)
                     plaintext[index] = (byte)((index * 31 + operation * 67) % 256);
 
-                await start.Task.WaitAsync(cancellationToken);
+                return plaintext;
+            }).ToArray();
 
-                if (!streaming)
+            if (!streaming)
+            {
+                var roundTrips = plaintexts.Select(async plaintext =>
                 {
+                    await start.Task.WaitAsync(cancellationToken);
+
                     var encrypted = await client.EncryptAsync(ComponentName, plaintext.AsMemory(), KeyName,
                         new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken);
                     Assert.False(encrypted.IsEmpty);
                     var decrypted = await client.DecryptAsync(ComponentName, encrypted, KeyName,
                         cancellationToken: cancellationToken);
                     Assert.Equal(plaintext, decrypted.ToArray());
-                    return;
-                }
+                }).ToArray();
 
-                const int streamingBlockSizeInBytes = 64 * 1024;
+                start.SetResult(true);
+                await Task.WhenAll(roundTrips);
+                return;
+            }
+
+            const int streamingBlockSizeInBytes = 64 * 1024;
+            var encryptions = plaintexts.Select(async plaintext =>
+            {
+                await start.Task.WaitAsync(cancellationToken);
+
                 using var inputStream = new MemoryStream(plaintext);
                 var encryptedBuffer = new ArrayBufferWriter<byte>();
                 await foreach (var chunk in client.EncryptAsync(ComponentName, inputStream, KeyName,
@@ -174,7 +187,17 @@ public sealed class CryptographyTests
                 }
 
                 Assert.True(encryptedBuffer.WrittenCount > 0);
-                using var encryptedStream = new MemoryStream(encryptedBuffer.WrittenMemory.ToArray());
+                return encryptedBuffer.WrittenMemory.ToArray();
+            }).ToArray();
+
+            start.SetResult(true);
+            var encryptedPayloads = await Task.WhenAll(encryptions);
+
+            // Dapr 1.17.14 can reuse its pooled header buffer before concurrent decryptions
+            // finish signature verification. Keep decryption sequential in this stress test.
+            for (var index = 0; index < encryptedPayloads.Length; index++)
+            {
+                using var encryptedStream = new MemoryStream(encryptedPayloads[index]);
                 var decryptedBuffer = new ArrayBufferWriter<byte>();
                 await foreach (var chunk in client.DecryptAsync(ComponentName, encryptedStream, KeyName,
                                    new DecryptionOptions
@@ -185,11 +208,8 @@ public sealed class CryptographyTests
                     decryptedBuffer.Write(chunk.Span);
                 }
 
-                Assert.Equal(plaintext, decryptedBuffer.WrittenMemory.ToArray());
-            }).ToArray();
-
-            start.SetResult(true);
-            await Task.WhenAll(roundTrips);
+                Assert.Equal(plaintexts[index], decryptedBuffer.WrittenMemory.ToArray());
+            }
         });
     }
 
