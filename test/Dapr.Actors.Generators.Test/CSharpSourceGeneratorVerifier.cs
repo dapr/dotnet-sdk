@@ -38,6 +38,8 @@ internal static class CSharpSourceGeneratorVerifier<TSourceGenerator>
                 9;
 #elif NET10_0
                 10;
+#elif NET11_0
+                11;
 #endif
 
             //
@@ -53,7 +55,11 @@ internal static class CSharpSourceGeneratorVerifier<TSourceGenerator>
                     $"net{frameworkVersion}.0",
                     new PackageIdentity(
                         "Microsoft.NETCore.App.Ref",
+#if NET11_0
+                        "11.0.0-preview.7.26381.103"),
+#else
                         $"{frameworkVersion}.0.0"),
+#endif
                     Path.Combine("ref", $"net{frameworkVersion}.0"));
         }
 
