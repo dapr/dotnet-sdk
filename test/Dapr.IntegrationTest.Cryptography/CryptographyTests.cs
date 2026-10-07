@@ -153,20 +153,28 @@ public sealed class CryptographyTests
 
             if (!streaming)
             {
-                var roundTrips = plaintexts.Select(async plaintext =>
+                var bufferedEncryptions = plaintexts.Select(async plaintext =>
                 {
                     await start.Task.WaitAsync(cancellationToken);
 
                     var encrypted = await client.EncryptAsync(ComponentName, plaintext.AsMemory(), KeyName,
                         new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken);
                     Assert.False(encrypted.IsEmpty);
-                    var decrypted = await client.DecryptAsync(ComponentName, encrypted, KeyName,
-                        cancellationToken: cancellationToken);
-                    Assert.Equal(plaintext, decrypted.ToArray());
+                    return encrypted;
                 }).ToArray();
 
                 start.SetResult(true);
-                await Task.WhenAll(roundTrips);
+                var bufferedPayloads = await Task.WhenAll(bufferedEncryptions);
+
+                // Dapr 1.17.14 can reuse its pooled header buffer before concurrent decryptions
+                // finish signature verification. Keep decryption sequential in this stress test.
+                for (var index = 0; index < bufferedPayloads.Length; index++)
+                {
+                    var decrypted = await client.DecryptAsync(ComponentName, bufferedPayloads[index], KeyName,
+                        cancellationToken: cancellationToken);
+                    Assert.Equal(plaintexts[index], decrypted.ToArray());
+                }
+
                 return;
             }
 
