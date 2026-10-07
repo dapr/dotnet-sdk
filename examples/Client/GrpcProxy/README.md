@@ -25,16 +25,16 @@ Wait until the server is listening on port 5050 and Dapr reports that the applic
 In terminal 2, start a separate caller sidecar and run the client:
 
 ```sh
-dapr run --app-id grpcproxyclient --dapr-http-port 3501 --dapr-grpc-port 50001 -- dotnet run --project examples/Client/GrpcProxy --framework net10.0 -- Ada
+dapr run --app-id grpcproxyclient --dapr-http-port 3501 --dapr-grpc-port 50001 -- dotnet run --project examples/Client/GrpcProxy --framework net10.0 -- "over there Dapr"
 ```
 
 Expected application output:
 
 ```text
-Hello Ada
+Hello over there Dapr
 ```
 
-Without the final `-- Ada`, the default greeting is `Hello Dapr`.
+Without the final `-- "over there Dapr"`, the default greeting is `Hello Dapr`.
 
 The client's target app ID is `grpcsample`, not `grpcproxyclient`. Dapr sets `DAPR_GRPC_PORT` for the child process; the SDK uses it to connect to the caller sidecar on port 50001. Port 5050 belongs to the server application, and port 50002 belongs to the server's sidecar. Do not use either as the client's local Dapr endpoint.
 
