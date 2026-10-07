@@ -416,7 +416,7 @@ public sealed class CoreEdgeCaseTests
 
         var harness = new InMemoryTransportHarness();
         await using var provider = CoreRuntimeTestsAccess.CreateProvider(harness);
-        var service = provider.GetServices<Microsoft.Extensions.Hosting.IHostedService>().OfType<SubscribeActorEventsStreamManager>().Single();
+        var service = provider.GetRequiredService<SubscribeActorEventsStreamManager>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await service.StartAsync(cts.Token);
         var stream = await harness.WaitForStreamAsync(cts.Token);
@@ -435,7 +435,7 @@ public sealed class CoreEdgeCaseTests
     {
         var harness = new InMemoryTransportHarness();
         await using var provider = CoreRuntimeTestsAccess.CreateProvider(harness);
-        var service = provider.GetServices<Microsoft.Extensions.Hosting.IHostedService>().OfType<SubscribeActorEventsStreamManager>().Single();
+        var service = provider.GetRequiredService<SubscribeActorEventsStreamManager>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await service.StartAsync(cts.Token);
         var stream = await harness.WaitForStreamAsync(cts.Token);
