@@ -1,9 +1,10 @@
 // ------------------------------------------------------------------------
-// Copyright 2024 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //     http://www.apache.org/licenses/LICENSE-2.0
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,31 +13,17 @@
 // ------------------------------------------------------------------------
 
 using Dapr.AppCallback.Autogen.Grpc.v1;
-using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Jobs;
 
-/// <summary>
-/// Implements the <see cref="AppCallbackAlpha"/> gRPC service to receive job trigger
-/// callbacks from the Dapr runtime over gRPC instead of HTTP.
-/// </summary>
-internal sealed class DaprJobsAppCallbackService(
+internal sealed class DaprJobsAppCallbackHandler(
     DaprJobsHandlerRegistry registry,
-    IServiceProvider serviceProvider) : AppCallbackAlpha.AppCallbackAlphaBase
+    IServiceProvider serviceProvider)
 {
-    /// <summary>
-    /// Invoked by the Dapr runtime when a scheduled job triggers. The request is forwarded
-    /// to the handler delegate registered via <c>MapDaprScheduledJobHandler</c>.
-    /// </summary>
-    /// <param name="request">The job event request containing the job name and payload.</param>
-    /// <param name="context">The gRPC server call context.</param>
-    /// <returns>An empty <see cref="JobEventResponse"/>.</returns>
-    [Obsolete("Use the stable AppCallback.OnJobEvent RPC instead.")]
-    public override async Task<JobEventResponse> OnJobEventAlpha1(
-        JobEventRequest request, ServerCallContext context)
+    public async Task<JobEventResponse> HandleAsync(JobEventRequest request)
     {
-        var handler = registry.Handler
+        var registeredHandler = registry.Handler
             ?? throw new InvalidOperationException(
                 "No job handler has been configured. Call MapDaprScheduledJobHandler before the application starts.");
 
@@ -48,8 +35,6 @@ internal sealed class DaprJobsAppCallbackService(
             ? new CancellationTokenSource(registry.Timeout.Value)
             : new CancellationTokenSource();
 
-        // Create a DI scope so scoped services can be resolved the same way they are
-        // for HTTP requests.
         using var scope = serviceProvider.CreateScope();
 
         var parameters = new Dictionary<Type, object>
@@ -59,24 +44,18 @@ internal sealed class DaprJobsAppCallbackService(
             { typeof(CancellationToken), cts.Token }
         };
 
-        var actionParameters = handler.Method.GetParameters();
+        var actionParameters = registeredHandler.Method.GetParameters();
         var invokeParameters = new object?[actionParameters.Length];
 
-        for (var a = 0; a < actionParameters.Length; a++)
+        for (var index = 0; index < actionParameters.Length; index++)
         {
-            var parameterType = actionParameters[a].ParameterType;
-
-            if (parameters.TryGetValue(parameterType, out var value))
-            {
-                invokeParameters[a] = value;
-            }
-            else
-            {
-                invokeParameters[a] = scope.ServiceProvider.GetService(parameterType);
-            }
+            var parameterType = actionParameters[index].ParameterType;
+            invokeParameters[index] = parameters.TryGetValue(parameterType, out var value)
+                ? value
+                : scope.ServiceProvider.GetService(parameterType);
         }
 
-        var result = handler.DynamicInvoke(invokeParameters);
+        var result = registeredHandler.DynamicInvoke(invokeParameters);
         if (result is Task task)
         {
             await task;

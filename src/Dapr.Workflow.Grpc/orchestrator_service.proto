@@ -207,16 +207,25 @@ enum WorkerCapability {
   // On a cache miss the worker recovers the full history via the GetInstanceHistory
   // RPC, so the optimization never affects correctness.
   WORKER_CAPABILITY_STATEFUL_HISTORY = 2;
+
+  // Indicates that the worker accepts and discards WorkItem.healthPing. The
+  // service then sends one periodically on the work-item stream so that
+  // proxies with a stream idle timeout do not close the stream while no work
+  // is due. Workers that do not advertise this never receive a health ping.
+  WORKER_CAPABILITY_HEALTH_PING = 3;
 }
 
 message WorkItem {
   oneof request {
     WorkflowRequest workflowRequest = 1;
     ActivityRequest activityRequest = 2;
+    HealthPing healthPing = 6;
   }
   reserved 3, 4, 5;
   string completionToken = 10;
 }
+
+message HealthPing {}
 
 message CompleteTaskResponse {
   // No payload

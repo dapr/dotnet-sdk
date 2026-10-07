@@ -41,13 +41,26 @@ public static class DaprActorsCoreServiceCollectionExtensions
     /// <summary>
     /// Adds Core actor runtime services and generated actor registrations.
     /// </summary>
+    /// <remarks>
+    /// Multiple registration entry points (generated compiled actors, interpreted actors, manual
+    /// registrations) each route through this method. The runtime and the SubscribeActorEvents stream
+    /// manager resolve a single <see cref="ActorRuntimeRegistry"/>, so registrations from every call
+    /// must accumulate into one shared builder; otherwise whichever call registered its registry last
+    /// silently replaces the earlier calls' actor types, and those types are never announced to
+    /// placement (their invocations fail actor lookup).
+    /// </remarks>
     public static IServiceCollection AddDaprActorsCore(this IServiceCollection services, Action<ActorRuntimeRegistrationBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        var builder = new ActorRuntimeRegistrationBuilder();
-        configure(builder);
+        if (services.LastOrDefault(static descriptor => descriptor.ServiceType == typeof(ActorRuntimeRegistrationBuilder))?.ImplementationInstance is not ActorRuntimeRegistrationBuilder registrationBuilder)
+        {
+            registrationBuilder = new ActorRuntimeRegistrationBuilder();
+            services.AddSingleton(registrationBuilder);
+        }
+
+        configure(registrationBuilder);
 
         EnsureDaprActorGrpcClientRegistered(services);
 
@@ -85,9 +98,19 @@ public static class DaprActorsCoreServiceCollectionExtensions
             ShouldUseSidecar(sp)
                 ? new DaprActorEventsTransport(CreateDaprClientAccessor(sp), GetDaprApiToken(sp), GetDaprGrpcEndpoint(sp))
                 : new DisabledSubscribeActorEventsTransport());
-        services.AddSingleton(sp => builder.Build(sp));
-        services.AddSingleton<SubscribeActorEventsStreamManager>();
-        services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<SubscribeActorEventsStreamManager>());
+
+        // The registry is always rebuilt over the shared builder, so it reflects every registration
+        // made by this and any prior AddDaprActorsCore call. Replace the previous descriptor instead
+        // of appending: single-instance resolution takes the last registration.
+        var previousRegistry = services.FirstOrDefault(static descriptor => descriptor.ServiceType == typeof(ActorRuntimeRegistry));
+        if (previousRegistry is not null)
+        {
+            services.Remove(previousRegistry);
+        }
+
+        services.AddSingleton(static sp => sp.GetRequiredService<ActorRuntimeRegistrationBuilder>().Build(sp));
+        services.TryAddSingleton<SubscribeActorEventsStreamManager>();
+        services.TryAddSingleton<IHostedService>(sp => sp.GetRequiredService<SubscribeActorEventsStreamManager>());
 
         return services;
     }
