@@ -11,9 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Scheduling;
+using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.Client;
 using Dapr.Actors.Next.Core.DependencyInjection;
+using Dapr.Actors.Next.Core.Registration;
+using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.Core.State;
 using Dapr.Actors.Next.Core.Timers;
 using Dapr.Actors.Next.Core.Transport;
@@ -22,6 +26,8 @@ using Grpc.Net.Client;
 using Grpc.Net.ClientFactory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
@@ -79,6 +85,146 @@ public sealed class DaprActorsCoreServiceCollectionExtensionsTests
 
         Assert.Same(customClient, provider.GetRequiredService<P.Dapr.DaprClient>());
     }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void AddDaprActorsCore_merges_registrations_from_multiple_calls_into_one_registry()
+    {
+        var services = new ServiceCollection();
+        services.AddDaprActorsCore(registrations =>
+        {
+            registrations.Add("Counter", typeof(ICounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher());
+        });
+        services.AddDaprActorsCore(registrations =>
+        {
+            registrations.Add("OtherCounter", typeof(IOtherCounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher());
+        });
+
+        using var provider = services.BuildServiceProvider();
+        var registry = provider.GetRequiredService<ActorRuntimeRegistry>();
+
+        Assert.Equal(
+            new[] { "Counter", "OtherCounter" },
+            registry.ActorTypes.OrderBy(static type => type, StringComparer.Ordinal).ToArray());
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void AddDaprActorsCore_merges_registrations_regardless_of_call_order()
+    {
+        foreach (var counterFirst in (bool[])[true, false])
+        {
+            var services = new ServiceCollection();
+            if (counterFirst)
+            {
+                services.AddDaprActorsCore(static registrations =>
+                    registrations.Add("Counter", typeof(ICounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher()));
+                services.AddDaprActorsCore(static registrations =>
+                    registrations.Add("OtherCounter", typeof(IOtherCounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher()));
+            }
+            else
+            {
+                services.AddDaprActorsCore(static registrations =>
+                    registrations.Add("OtherCounter", typeof(IOtherCounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher()));
+                services.AddDaprActorsCore(static registrations =>
+                    registrations.Add("Counter", typeof(ICounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher()));
+            }
+
+            using var provider = services.BuildServiceProvider();
+            var registry = provider.GetRequiredService<ActorRuntimeRegistry>();
+
+            Assert.Equal(
+                new[] { "Counter", "OtherCounter" },
+                registry.ActorTypes.OrderBy(static type => type, StringComparer.Ordinal).ToArray());
+        }
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task AddDaprActorsCore_dispatches_to_actor_type_registered_by_an_earlier_call()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(new List<string>());
+        services.AddSingleton<ScopedProbe>();
+        services.AddInMemoryActorAdapters();
+        services.AddDaprActorsCore(registrations =>
+        {
+            registrations.Add("Counter", typeof(ICounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher());
+        });
+        services.AddDaprActorsCore(registrations =>
+        {
+            registrations.Add("OtherCounter", typeof(IOtherCounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher());
+        });
+
+        using var provider = services.BuildServiceProvider();
+        var runtime = provider.GetRequiredService<IActorRuntime>();
+
+        var incremented = await runtime.InvokeAsync(
+            "Counter", "merge-test", "Increment", System.Text.Encoding.UTF8.GetBytes("3"), new Dictionary<string, string>());
+
+        Assert.Equal("3", System.Text.Encoding.UTF8.GetString(incremented!));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void AddDaprActorsCore_registers_a_single_stream_manager_and_registry_across_calls()
+    {
+        var services = new ServiceCollection();
+        services.AddDaprActorsCore(_ => { });
+        services.AddDaprActorsCore(_ => { });
+
+        Assert.Equal(1, services.Count(static descriptor => descriptor.ServiceType == typeof(SubscribeActorEventsStreamManager)));
+        Assert.Equal(1, services.Count(static descriptor => descriptor.ServiceType == typeof(ActorRuntimeRegistry)));
+
+        using var provider = services.BuildServiceProvider();
+        var managers = provider.GetServices<IHostedService>().OfType<SubscribeActorEventsStreamManager>().ToList();
+
+        Assert.Single(managers);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task AddDaprActorsCore_announces_actor_types_from_every_call_over_the_stream()
+    {
+        var harness = new InMemoryTransportHarness();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddInMemoryActorAdapters();
+        services.AddSingleton<ISubscribeActorEventsTransport>(harness);
+        services.AddDaprActorsCore(registrations =>
+        {
+            registrations.Add("Counter", typeof(ICounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher());
+        });
+        services.AddDaprActorsCore(registrations =>
+        {
+            registrations.Add("OtherCounter", typeof(IOtherCounterActor), typeof(CounterActor), CreateCounterActor, new CounterDispatcher());
+        });
+
+        await using var provider = services.BuildServiceProvider();
+        var service = provider.GetServices<IHostedService>().OfType<SubscribeActorEventsStreamManager>().Single();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        await service.StartAsync(cts.Token);
+        var first = await harness.WaitForStreamAsync(cts.Token);
+        var second = await harness.WaitForStreamAsync(cts.Token);
+        var firstAdvertisement = await first.ReceiveAsync(cts.Token);
+        var secondAdvertisement = await second.ReceiveAsync(cts.Token);
+        await service.StopAsync(cts.Token);
+
+        Assert.Equal(SubscribeActorEventsFrameKind.RegisteredActors, firstAdvertisement.Kind);
+        Assert.Equal(SubscribeActorEventsFrameKind.RegisteredActors, secondAdvertisement.Kind);
+
+        var announced = new[]
+        {
+            System.Text.Encoding.UTF8.GetString(firstAdvertisement.Payload.Span),
+            System.Text.Encoding.UTF8.GetString(secondAdvertisement.Payload.Span),
+        };
+
+        Assert.Contains("Counter", announced);
+        Assert.Contains("OtherCounter", announced);
+    }
+
+    private static CounterActor CreateCounterActor(IServiceProvider serviceProvider, ActorId actorId) =>
+        new(serviceProvider.GetRequiredService<ActorActivationContext>(),
+            serviceProvider.GetRequiredService<IActorInvocationClient>(),
+            serviceProvider.GetRequiredService<ScopedProbe>(),
+            serviceProvider.GetRequiredService<List<string>>());
 
     private static GrpcChannelOptions ApplyGrpcOptions(ServiceProvider provider)
     {
