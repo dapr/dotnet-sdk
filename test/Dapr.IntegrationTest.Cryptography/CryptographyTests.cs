@@ -161,10 +161,14 @@ public sealed class CryptographyTests
                     return;
                 }
 
+                const int streamingBlockSizeInBytes = 64 * 1024;
                 using var inputStream = new MemoryStream(plaintext);
                 var encryptedBuffer = new ArrayBufferWriter<byte>();
                 await foreach (var chunk in client.EncryptAsync(ComponentName, inputStream, KeyName,
-                                   new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken))
+                                   new EncryptionOptions(KeyWrapAlgorithm.Rsa)
+                                   {
+                                       StreamingBlockSizeInBytes = streamingBlockSizeInBytes
+                                   }, cancellationToken))
                 {
                     encryptedBuffer.Write(chunk.Span);
                 }
@@ -173,7 +177,10 @@ public sealed class CryptographyTests
                 using var encryptedStream = new MemoryStream(encryptedBuffer.WrittenMemory.ToArray());
                 var decryptedBuffer = new ArrayBufferWriter<byte>();
                 await foreach (var chunk in client.DecryptAsync(ComponentName, encryptedStream, KeyName,
-                                   cancellationToken: cancellationToken))
+                                   new DecryptionOptions
+                                   {
+                                       StreamingBlockSizeInBytes = streamingBlockSizeInBytes
+                                   }, cancellationToken))
                 {
                     decryptedBuffer.Write(chunk.Span);
                 }
