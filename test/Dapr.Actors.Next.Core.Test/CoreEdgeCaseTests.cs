@@ -101,6 +101,72 @@ public sealed class CoreEdgeCaseTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public async Task State_accessor_caches_missing_values_until_state_changes_or_cache_is_evicted()
+    {
+        var store = new RecordingActorStateStore();
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("missing-cache"), store, new ActorWireSerializer(new JsonDaprSerializer()));
+
+        Assert.Null(await state.TryGetAsync<CounterState>("missing"));
+        Assert.Null(await state.TryGetAsync<CounterState>("missing"));
+        Assert.Equal(1, store.ReadCount);
+
+        await state.SetAsync("missing", new CounterState { Value = 10 });
+        Assert.Equal(10, (await state.TryGetAsync<CounterState>("missing"))!.Value.Value);
+        await state.FlushAsync();
+        Assert.Equal(1, store.ReadCount);
+
+        await state.RemoveAsync("missing");
+        Assert.Null(await state.TryGetAsync<CounterState>("missing"));
+        await state.FlushAsync();
+
+        Assert.Null(await state.TryGetAsync<CounterState>("missing"));
+        Assert.Equal(2, store.ReadCount);
+        await state.EvictCacheAsync();
+        Assert.Null(await state.TryGetAsync<CounterState>("missing"));
+        Assert.Equal(3, store.ReadCount);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task State_accessor_caches_missing_values_by_name_and_get_or_create_reuses_the_cached_miss()
+    {
+        var store = new RecordingActorStateStore();
+        var state = new ActorStateUnitOfWork("Counter", ActorId.Create("missing-cache-keys"), store, new ActorWireSerializer(new JsonDaprSerializer()));
+
+        Assert.Null(await state.TryGetAsync<CounterState>("missing-one"));
+        Assert.Null(await state.TryGetAsync<CounterState>("missing-one"));
+        Assert.Null(await state.TryGetAsync<CounterState>("missing-two"));
+        Assert.Null(await state.TryGetAsync<CounterState>("missing-two"));
+        Assert.Equal(2, store.ReadCount);
+
+        await state.FlushAsync();
+        Assert.Equal(0, store.WriteCount);
+
+        var factoryCalls = 0;
+        var first = await state.GetOrCreateAsync("missing-one", () =>
+        {
+            factoryCalls++;
+            return new CounterState { Value = 10 };
+        });
+        var second = await state.GetOrCreateAsync("missing-one", () =>
+        {
+            factoryCalls++;
+            return new CounterState { Value = 20 };
+        });
+
+        Assert.Same(first, second);
+        Assert.Equal(10, second.Value.Value);
+        Assert.Equal(1, factoryCalls);
+        Assert.Equal(2, store.ReadCount);
+
+        await state.FlushAsync();
+        Assert.Equal(1, store.WriteCount);
+
+        await state.EvictCacheAsync();
+        Assert.Null(await state.TryGetAsync<CounterState>("missing-two"));
+        Assert.Equal(3, store.ReadCount);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Loaded_state_stays_clean_until_it_changes()
     {
         var store = new RecordingActorStateStore();
