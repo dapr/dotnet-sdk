@@ -2,7 +2,7 @@
 
 The following examples will show you how to:
 
-- [Invoke services](./ServiceInvocation)
+- [Invoke a gRPC service through Dapr's proxy](./GrpcProxy)
 - [Manage state](./StateManagement)
 - [Publish events (Deprecated - use Dapr.Messaging)](./PublishSubscribe)
 - [Configuration API](./ConfigurationApi)
