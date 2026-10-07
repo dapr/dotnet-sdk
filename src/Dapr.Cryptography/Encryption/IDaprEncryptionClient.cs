@@ -45,6 +45,11 @@ public interface IDaprEncryptionClient : IDaprClient
     /// <param name="encryptionOptions">Options informing how the encryption operation should be configured.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>An array of encrypted bytes.</returns>
+    /// <remarks>
+    /// Enumeration completes only after both request and response processing finish. Failures are
+    /// propagated to the enumerator. Disposing the enumerator early cancels the operation and waits
+    /// for stream processing to stop.
+    /// </remarks>
     public IAsyncEnumerable<ReadOnlyMemory<byte>> EncryptAsync(string vaultResourceName, Stream plaintextStream, string keyName,
         EncryptionOptions encryptionOptions, CancellationToken cancellationToken = default);
 
@@ -69,6 +74,11 @@ public interface IDaprEncryptionClient : IDaprClient
     /// <param name="options">Options informing how the decryption operation should be configured.</param>
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
     /// <returns>An asynchronously enumerable array of decrypted bytes.</returns>
+    /// <remarks>
+    /// Enumeration completes only after both request and response processing finish. Failures are
+    /// propagated to the enumerator. Disposing the enumerator early cancels the operation and waits
+    /// for stream processing to stop.
+    /// </remarks>
     public IAsyncEnumerable<ReadOnlyMemory<byte>> DecryptAsync(string vaultResourceName, Stream ciphertextStream,
         string keyName, DecryptionOptions? options = null, CancellationToken cancellationToken = default);
 }
