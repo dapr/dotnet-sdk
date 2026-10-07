@@ -181,3 +181,4 @@ message JobFailurePolicyConstant {
   // If unset, the Job will be retried indefinitely.
   optional uint32 max_retries = 2;
 }
+
