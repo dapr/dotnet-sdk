@@ -171,12 +171,26 @@ public sealed class DaprActorsCoreServiceCollectionExtensionsTests
         services.AddDaprActorsCore(_ => { });
 
         Assert.Equal(1, services.Count(static descriptor => descriptor.ServiceType == typeof(SubscribeActorEventsStreamManager)));
+        Assert.Equal(1, services.Count(static descriptor => descriptor.ServiceType == typeof(SubscribeActorEventsStreamHostedService)));
         Assert.Equal(1, services.Count(static descriptor => descriptor.ServiceType == typeof(ActorRuntimeRegistry)));
 
         using var provider = services.BuildServiceProvider();
-        var managers = provider.GetServices<IHostedService>().OfType<SubscribeActorEventsStreamManager>().ToList();
+        var managers = provider.GetServices<IHostedService>().OfType<SubscribeActorEventsStreamHostedService>().ToList();
 
         Assert.Single(managers);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void AddDaprActorsCore_starts_stream_manager_when_hosted_services_were_registered_first()
+    {
+        var services = new ServiceCollection();
+        services.AddHostedService<PreexistingHostedService>();
+        services.AddDaprActorsCore(_ => { });
+
+        using var provider = services.BuildServiceProvider();
+
+        var streamServices = provider.GetServices<IHostedService>().OfType<SubscribeActorEventsStreamHostedService>().ToList();
+        Assert.Single(streamServices);
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -197,7 +211,7 @@ public sealed class DaprActorsCoreServiceCollectionExtensionsTests
         });
 
         await using var provider = services.BuildServiceProvider();
-        var service = provider.GetServices<IHostedService>().OfType<SubscribeActorEventsStreamManager>().Single();
+        var service = provider.GetServices<IHostedService>().OfType<SubscribeActorEventsStreamHostedService>().Single();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         await service.StartAsync(cts.Token);
@@ -250,5 +264,12 @@ public sealed class DaprActorsCoreServiceCollectionExtensionsTests
 
     private sealed class TestDaprClient : P.Dapr.DaprClient
     {
+    }
+
+    private sealed class PreexistingHostedService : IHostedService
+    {
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }
