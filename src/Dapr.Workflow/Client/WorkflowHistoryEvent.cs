@@ -96,4 +96,7 @@ public enum WorkflowHistoryEventType
 
     /// <summary>The workflow execution stalled.</summary>
     ExecutionStalled,
+
+    /// <summary>A detached workflow instance was created.</summary>
+    DetachedWorkflowInstanceCreated,
 }

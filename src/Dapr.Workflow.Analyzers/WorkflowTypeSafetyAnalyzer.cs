@@ -102,6 +102,12 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        if (IsScheduleNewDetachedWorkflowAsync(targetMethod, workflowContextType))
+        {
+            AnalyzeWorkflowInput(invocation, context, workflowBaseType);
+            return;
+        }
+
         if (IsCallActivityAsync(targetMethod, workflowContextType))
         {
             AnalyzeActivityInput(invocation, context, workflowActivityBaseType);
@@ -121,6 +127,12 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
         IMethodSymbol method,
         INamedTypeSymbol workflowContextType) =>
         method.Name == "CallChildWorkflowAsync" &&
+        SymbolEqualityComparer.Default.Equals(method.ContainingType, workflowContextType);
+
+    private static bool IsScheduleNewDetachedWorkflowAsync(
+        IMethodSymbol method,
+        INamedTypeSymbol workflowContextType) =>
+        method.Name == "ScheduleNewDetachedWorkflowAsync" &&
         SymbolEqualityComparer.Default.Equals(method.ContainingType, workflowContextType);
 
     private static bool IsCallActivityAsync(
