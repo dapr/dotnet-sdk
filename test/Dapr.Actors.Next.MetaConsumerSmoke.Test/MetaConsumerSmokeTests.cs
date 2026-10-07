@@ -13,12 +13,41 @@
 
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using Dapr.Actors.Next.Abstractions.Options;
+using Dapr.Actors.Next.Core.Registration;
+using Dapr.Actors.Next.Interpreted;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Actors.Next.MetaConsumerSmoke.Test;
 
 public sealed class MetaConsumerSmokeTests
 {
     private const string PackageConfiguration = "Release";
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public void AddDaprActors_and_AddDaprInterpretedActors_merge_into_one_registry()
+    {
+        foreach (var generatedFirst in (bool[])[true, false])
+        {
+            var services = new ServiceCollection();
+            if (generatedFirst)
+            {
+                services.AddDaprActors(_ => { });
+                services.AddDaprInterpretedActors("Track");
+            }
+            else
+            {
+                services.AddDaprInterpretedActors("Track");
+                services.AddDaprActors(_ => { });
+            }
+
+            using var provider = services.BuildServiceProvider();
+            var registry = provider.GetRequiredService<ActorRuntimeRegistry>();
+
+            Assert.Contains("SmokeActor", registry.ActorTypes);
+            Assert.Contains("Track", registry.ActorTypes);
+        }
+    }
 
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Generator_flows_through_meta_package()
@@ -35,13 +64,56 @@ public sealed class MetaConsumerSmokeTests
                 using Dapr.Actors.Next.Abstractions.Attributes;
                 using Dapr.Actors.Next.Abstractions.Options;
                 using Dapr.Actors.Next.Abstractions.Registry;
+                using Dapr.Actors.Next.Core.Registration;
+                using Dapr.Actors.Next.Core.Runtime;
+                using Dapr.Actors.Next.Interpreted;
                 using Microsoft.Extensions.DependencyInjection;
 
-                var services = new ServiceCollection();
-                services.AddDaprActors(_ => { });
-                using var provider = services.BuildServiceProvider();
-                var registry = provider.GetRequiredService<IActorRegistry>();
-                return registry.TryGet("SmokeActor", out var descriptor) && descriptor.InterfaceType == typeof(ISmokeActor) ? 0 : 2;
+                // 1. The generated actor registration flows through the meta package into the runtime
+                //    registry, and the generated actor dispatches end-to-end in-process.
+                var generated = new ServiceCollection();
+                generated.AddDaprActors(static options => options.EnableSidecarTransport = false);
+                using (var provider = generated.BuildServiceProvider())
+                {
+                    var registry = provider.GetRequiredService<ActorRuntimeRegistry>();
+                    if (!registry.ActorTypes.Contains("SmokeActor"))
+                    {
+                        return 2;
+                    }
+
+                    var runtime = provider.GetRequiredService<IActorRuntime>();
+                    var pong = await runtime.InvokeAsync("SmokeActor", "consumer", "Ping", ReadOnlyMemory<byte>.Empty, new Dictionary<string, string>());
+                    if (pong is null)
+                    {
+                        return 3;
+                    }
+                }
+
+                // 2. Generated and interpreted actor types merge into one registry regardless of the
+                //    registration order — every call's types must reach placement.
+                foreach (var generatedFirst in new[] { true, false })
+                {
+                    var services = new ServiceCollection();
+                    if (generatedFirst)
+                    {
+                        services.AddDaprActors(_ => { });
+                        services.AddDaprInterpretedActors("Track");
+                    }
+                    else
+                    {
+                        services.AddDaprInterpretedActors("Track");
+                        services.AddDaprActors(_ => { });
+                    }
+
+                    using var provider = services.BuildServiceProvider();
+                    var registry = provider.GetRequiredService<ActorRuntimeRegistry>();
+                    if (!registry.ActorTypes.Contains("SmokeActor") || !registry.ActorTypes.Contains("Track"))
+                    {
+                        return 4;
+                    }
+                }
+
+                return 0;
 
                 [GenerateActorClient]
                 public interface ISmokeActor : IActor
