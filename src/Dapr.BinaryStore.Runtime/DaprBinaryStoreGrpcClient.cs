@@ -95,11 +95,11 @@ internal sealed class DaprBinaryStoreGrpcClient(
 
                 await call.RequestStream.CompleteAsync().ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException && ex is not DaprException
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested && ex is not DaprException
                                        && ex is not ArgumentException)
             {
                 // The runtime ends the call early when it rejects the request, which surfaces as a
-                // write failure here; the response carries the actual error.
+                // write failure (including transport cancellation) here; the response carries the actual error.
                 await call.ResponseAsync.ConfigureAwait(false);
                 throw;
             }
