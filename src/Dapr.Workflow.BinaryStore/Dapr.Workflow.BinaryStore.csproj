@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+      <ProjectReference Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
+      <ProjectReference Include="..\Dapr.Workflow\Dapr.Workflow.csproj" />
+    </ItemGroup>
+
+</Project>

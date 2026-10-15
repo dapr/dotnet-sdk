@@ -44,6 +44,24 @@ public abstract class WorkflowContext : IWorkflowContext
     public abstract bool IsPatched(string patchName);
 
     /// <summary>
+    /// Retrieves an optional feature attached to the current workflow execution. Features are
+    /// registered by the workflow runtime or by extension packages and expose capabilities that
+    /// are not part of the core context surface, such as payload resolution.
+    /// </summary>
+    /// <typeparam name="TFeature">The feature interface to retrieve.</typeparam>
+    /// <returns>
+    /// The feature instance, or <see langword="null"/> if the feature is not available in this
+    /// execution. The base implementation always returns <see langword="null"/>, so subclasses
+    /// and test doubles that do not override this member continue to compile and behave as before.
+    /// </returns>
+    /// <remarks>
+    /// Features must honor orchestrator determinism. A feature that performs I/O must do so in a
+    /// way that yields identical results on replay; typically this means read-only access to
+    /// immutable, content-addressed data.
+    /// </remarks>
+    public virtual TFeature? GetFeature<TFeature>() where TFeature : class => null;
+
+    /// <summary>
     /// Asynchronously invokes an activity by name and with the specified input value.
     /// </summary>
     /// <remarks>

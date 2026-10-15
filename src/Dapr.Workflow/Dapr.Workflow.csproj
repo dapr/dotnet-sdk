@@ -115,6 +115,9 @@
     <_WorkflowGeneratorProj Include="..\Dapr.Workflow.Analyzers\Dapr.Workflow.Analyzers.csproj" />
     <_WorkflowGeneratorProj Include="..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Payloads\Extensions\" />
+  </ItemGroup>
 
   <Target Name="_AddWorkflowAnalyzerOnce">
     <PropertyGroup>
