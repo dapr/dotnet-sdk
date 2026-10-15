@@ -15,15 +15,17 @@ using Dapr.BinaryStore;
 using Dapr.BinaryStore.Extensions;
 using Dapr.Testcontainers;
 using Dapr.Testcontainers.Common;
+using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Common.Testing;
 using Dapr.Testcontainers.Harnesses;
 using Dapr.Testcontainers.Xunit.Attributes;
+using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.IntegrationTest.BinaryStore;
 
-public sealed class BinaryStoreTests
+public sealed partial class BinaryStoreTests
 {
     private const string StoreName = Constants.DaprComponentNames.BinaryStoreComponentName;
 
@@ -31,29 +33,47 @@ public sealed class BinaryStoreTests
         long? maxSize = null, long? maxTotalSize = null)
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("binarystore-components");
-        var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
-        await environment.StartAsync(TestContext.Current.CancellationToken);
-
-        var harness = new DaprHarnessBuilder(componentsDir).BuildBinaryStore(maxSize, maxTotalSize);
-        var app = await DaprHarnessBuilder.ForHarness(harness)
-            .ConfigureServices(builder =>
-            {
-                builder.Services.AddDaprBinaryStoreClient((sp, clientBuilder) =>
+        var options = new DaprRuntimeOptions();
+        var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(options, cancellationToken: TestContext.Current.CancellationToken);
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithOptions(options)
+            .WithEnvironment(environment)
+            .BuildBinaryStore(maxSize, maxTotalSize);
+        try
+        {
+            await environment.StartAsync(TestContext.Current.CancellationToken);
+            var app = await DaprHarnessBuilder.ForHarness(harness)
+                .ConfigureServices(builder =>
                 {
-                    var config = sp.GetRequiredService<IConfiguration>();
-                    var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
-                    if (!string.IsNullOrEmpty(grpcEndpoint))
-                        clientBuilder.UseGrpcEndpoint(grpcEndpoint);
-                });
-            })
-            .BuildAndStartAsync();
-        return (environment, app);
+                    builder.Services.AddDaprBinaryStoreClient((sp, clientBuilder) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrEmpty(grpcEndpoint))
+                            clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                    });
+                })
+                .BuildAndStartAsync();
+            return (environment, app);
+        }
+        catch
+        {
+            try
+            {
+                await harness.DisposeAsync();
+            }
+            finally
+            {
+                await environment.DisposeAsync();
+            }
+            throw;
+        }
     }
 
-    private static byte[] RandomBytes(int length)
+    private static byte[] RandomBytes(int length, int seed = 42)
     {
         var bytes = new byte[length];
-        new Random(42).NextBytes(bytes);
+        new Random(seed).NextBytes(bytes);
         return bytes;
     }
 
@@ -103,8 +123,9 @@ public sealed class BinaryStoreTests
         var ct = TestContext.Current.CancellationToken;
 
         await client.SetBinaryFileAsync(StoreName, "ow.bin", new ReadOnlyMemory<byte>([1, 2, 3]), cancellationToken: ct);
-        await Assert.ThrowsAsync<DaprException>(() =>
+        await AssertRpcFailureAsync(StatusCode.AlreadyExists, () =>
             client.SetBinaryFileAsync(StoreName, "ow.bin", new ReadOnlyMemory<byte>([9]), overwrite: false, cancellationToken: ct));
+        Assert.Equal(new byte[] { 1, 2, 3 }, await client.GetBinaryFileBytesAsync(StoreName, "ow.bin", ct));
 
         await client.SetBinaryFileAsync(StoreName, "ow.bin", new ReadOnlyMemory<byte>([4, 5]), overwrite: true, cancellationToken: ct);
         Assert.Equal(new byte[] { 4, 5 }, await client.GetBinaryFileBytesAsync(StoreName, "ow.bin", ct));
@@ -123,7 +144,8 @@ public sealed class BinaryStoreTests
         await client.SetBinaryFileAsync(StoreName, "del.bin", new ReadOnlyMemory<byte>([1]), cancellationToken: ct);
         await client.DeleteBinaryFileAsync(StoreName, "del.bin", ct);
 
-        await Assert.ThrowsAsync<DaprException>(() => client.GetBinaryFileBytesAsync(StoreName, "del.bin", ct));
+        await AssertRpcFailureAsync(StatusCode.NotFound, () => client.GetBinaryFileBytesAsync(StoreName, "del.bin", ct));
+        await AssertRpcFailureAsync(StatusCode.NotFound, () => client.DeleteBinaryFileAsync(StoreName, "del.bin", ct));
     }
 
     [MinimumDaprRuntimeFact("1.19")]
@@ -135,7 +157,7 @@ public sealed class BinaryStoreTests
         using var scope = testApp.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<DaprBinaryStoreClient>();
 
-        await Assert.ThrowsAsync<DaprException>(() =>
+        await AssertRpcFailureAsync(StatusCode.NotFound, () =>
             client.GetBinaryFileBytesAsync(StoreName, "missing.bin", TestContext.Current.CancellationToken));
     }
 
@@ -144,7 +166,13 @@ public sealed class BinaryStoreTests
     [InlineData("trailing/")]
     [InlineData("a//b.bin")]
     [InlineData("a/../b.bin")]
+    [InlineData("a/./b.bin")]
     [InlineData("star*.bin")]
+    [InlineData(@"a\b.bin")]
+    [InlineData("question?.bin")]
+    [InlineData("bracket[.bin")]
+    [InlineData("bracket].bin")]
+    [InlineData("hash#.bin")]
     public async Task ShouldRejectInvalidFileNames(string fileName)
     {
         var (environment, testApp) = await StartAsync();
@@ -153,9 +181,13 @@ public sealed class BinaryStoreTests
         using var scope = testApp.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<DaprBinaryStoreClient>();
 
-        await Assert.ThrowsAsync<DaprException>(() =>
+        await AssertRpcFailureAsync(StatusCode.InvalidArgument, () =>
             client.SetBinaryFileAsync(StoreName, fileName, new ReadOnlyMemory<byte>([1]),
                 cancellationToken: TestContext.Current.CancellationToken));
+        await AssertRpcFailureAsync(StatusCode.InvalidArgument, () =>
+            client.GetBinaryFileBytesAsync(StoreName, fileName, TestContext.Current.CancellationToken));
+        await AssertRpcFailureAsync(StatusCode.InvalidArgument, () =>
+            client.DeleteBinaryFileAsync(StoreName, fileName, TestContext.Current.CancellationToken));
     }
 
     [MinimumDaprRuntimeFact("1.19")]
@@ -167,8 +199,18 @@ public sealed class BinaryStoreTests
         using var scope = testApp.CreateScope();
         var client = scope.ServiceProvider.GetRequiredService<DaprBinaryStoreClient>();
 
-        await Assert.ThrowsAsync<DaprException>(() =>
+        await AssertRpcFailureAsync(StatusCode.ResourceExhausted, () =>
             client.SetBinaryFileAsync(StoreName, "big.bin", new ReadOnlyMemory<byte>(RandomBytes(8 * 1024)),
                 cancellationToken: TestContext.Current.CancellationToken));
+        await AssertRpcFailureAsync(StatusCode.NotFound, () =>
+            client.GetBinaryFileBytesAsync(StoreName, "big.bin", TestContext.Current.CancellationToken));
+    }
+
+    private static async Task AssertRpcFailureAsync(StatusCode expected, Func<Task> operation)
+    {
+        var error = await Assert.ThrowsAsync<DaprException>(operation);
+        var rpcError = Assert.IsType<RpcException>(error.InnerException);
+        Assert.Equal(expected, rpcError.StatusCode);
+        Assert.False(string.IsNullOrWhiteSpace(rpcError.Status.Detail));
     }
 }
