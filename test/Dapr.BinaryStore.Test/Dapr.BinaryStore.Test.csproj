@@ -30,6 +30,7 @@
         <ProjectReference Include="..\..\src\Dapr.BinaryStore.Generators\Dapr.BinaryStore.Generators.csproj"
                           ReferenceOutputAssembly="false"
                           OutputItemType="Analyzer" />
+        <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
     </ItemGroup>
 
 </Project>

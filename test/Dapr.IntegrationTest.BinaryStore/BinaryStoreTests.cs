@@ -17,6 +17,7 @@ using Dapr.Testcontainers;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Testing;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -56,7 +57,7 @@ public sealed class BinaryStoreTests
         return bytes;
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ShouldRoundTripSmallFile()
     {
         var (environment, testApp) = await StartAsync();
@@ -73,7 +74,7 @@ public sealed class BinaryStoreTests
         Assert.Equal(data, result);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ShouldRoundTripMultiChunkFileInNestedPath()
     {
         var (environment, testApp) = await StartAsync();
@@ -91,7 +92,7 @@ public sealed class BinaryStoreTests
         Assert.Equal(data, destination.ToArray());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ShouldRejectExistingFileWithoutOverwriteAndReplaceWithOverwrite()
     {
         var (environment, testApp) = await StartAsync();
@@ -109,7 +110,7 @@ public sealed class BinaryStoreTests
         Assert.Equal(new byte[] { 4, 5 }, await client.GetBinaryFileBytesAsync(StoreName, "ow.bin", ct));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ShouldDeleteFile()
     {
         var (environment, testApp) = await StartAsync();
@@ -125,7 +126,7 @@ public sealed class BinaryStoreTests
         await Assert.ThrowsAsync<DaprException>(() => client.GetBinaryFileBytesAsync(StoreName, "del.bin", ct));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ShouldFailToGetMissingFile()
     {
         var (environment, testApp) = await StartAsync();
@@ -138,7 +139,7 @@ public sealed class BinaryStoreTests
             client.GetBinaryFileBytesAsync(StoreName, "missing.bin", TestContext.Current.CancellationToken));
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData("/leading.bin")]
     [InlineData("trailing/")]
     [InlineData("a//b.bin")]
@@ -157,7 +158,7 @@ public sealed class BinaryStoreTests
                 cancellationToken: TestContext.Current.CancellationToken));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ShouldRejectFileLargerThanMaxSize()
     {
         var (environment, testApp) = await StartAsync(maxSize: 1024, maxTotalSize: 4096);

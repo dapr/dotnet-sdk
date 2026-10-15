@@ -16,6 +16,7 @@
 using System;
 using System.Linq;
 using Dapr.BinaryStore.Extensions;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.BinaryStore.Test;
@@ -25,7 +26,7 @@ public partial interface ITestBlobStore : IDaprBinaryStoreClient;
 
 public class BinaryStoreGeneratorTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void Generated_Extension_RegistersInterfaceAsSingleton()
     {
         var services = new ServiceCollection();
@@ -36,7 +37,7 @@ public class BinaryStoreGeneratorTests
         Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void Generated_Extension_ResolvesStoreBoundClient()
     {
         var services = new ServiceCollection();
@@ -46,20 +47,20 @@ public class BinaryStoreGeneratorTests
         Assert.NotNull(provider.GetRequiredService<ITestBlobStore>());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void Generated_Extension_ReturnsSameBuilder()
     {
         var builder = new ServiceCollection().AddDaprBinaryStoreClient();
         Assert.Same(builder, builder.WithTestBlobStore());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void BinaryStoreAttribute_ExposesStoreName()
     {
         Assert.Equal("blobstore", new BinaryStoreAttribute("blobstore").StoreName);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void BinaryStoreAttribute_NullOrEmptyName_Throws()
     {
         Assert.Throws<ArgumentException>(() => new BinaryStoreAttribute(""));
