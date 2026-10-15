@@ -10,6 +10,7 @@
         <Protobuf Include="Protos\dapr\proto\common\v1\common.proto" ProtoRoot="Protos" GrpcServices="Client,Server" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\actors.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\ai.proto" ProtoRoot="Protos" GrpcServices="Client" />
+        <Protobuf Include="Protos\dapr\proto\runtime\v1\binarystore.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\binding.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\configuration.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\crypto.proto" ProtoRoot="Protos" GrpcServices="Client" />
