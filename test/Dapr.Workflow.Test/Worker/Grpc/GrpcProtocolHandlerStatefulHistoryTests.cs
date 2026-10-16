@@ -366,12 +366,15 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
         var releaseRetiredHandler = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var retiredCompletionSent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        // The failing delta tears down the first stream, which cancels that stream's token. A work item
+        // whose task has not started by then never runs, so deliver the failing delta only once the
+        // retired turn's handler is running. Otherwise the current turn waits for it forever.
         grpcClientMock
             .SetupSequence(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCallFromReader(new GatedStreamReader(
             [
                 (retiredTurn, null),
-                (new WorkItem { WorkflowRequest = failingDelta }, null),
+                (new WorkItem { WorkflowRequest = failingDelta }, retiredHandlerStarted.Task),
                 (new WorkItem(), neverCompletes.Task)
             ])))
             .Returns(CreateServerStreamingCallFromReader(new GatedStreamReader(
