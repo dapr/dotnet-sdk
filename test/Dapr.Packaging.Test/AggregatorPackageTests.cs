@@ -39,6 +39,31 @@ public sealed class AggregatorPackageTests
             IncludeBuildOutput: false),
 
         new PackageContractCase(
+            PackageId: "Dapr.BinaryStore",
+            ProjectPath: Path.Combine("src", "Dapr.BinaryStore", "Dapr.BinaryStore.csproj"),
+            RequiredProjectReferences:
+            [
+                "Dapr.Common.csproj",
+            ],
+            RequiredPackageReferences:
+            [
+                "Google.Protobuf",
+                "Grpc.Net.Client",
+                "Microsoft.Extensions.DependencyInjection.Abstractions",
+                "Microsoft.Extensions.Http",
+            ],
+            RequiredBundledProjects:
+            [
+                "Dapr.BinaryStore.Abstractions.csproj",
+                "Dapr.BinaryStore.Runtime.csproj",
+            ],
+            RequiredAnalyzerProjects:
+            [
+                "Dapr.BinaryStore.Generators.csproj",
+            ],
+            IncludeBuildOutput: false),
+
+        new PackageContractCase(
             PackageId: "Dapr.StateManagement",
             ProjectPath: Path.Combine("src", "Dapr.StateManagement", "Dapr.StateManagement.csproj"),
             RequiredProjectReferences:

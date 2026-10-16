@@ -476,6 +476,9 @@ jobs:
                 ((test("/Dapr\\.SecretsManagement\\.(Abstractions|Generators|Runtime)\\.")) | not)
               ))
             | map(select(
+                (test("/Dapr\\.BinaryStore\\.(Abstractions|Generators|Runtime)\\.")) | not
+              ))
+            | map(select(
                 (test("/Dapr\\.StateManagement\\.(Abstractions|Generators|Runtime)\\.")) | not
               ))
           ')
