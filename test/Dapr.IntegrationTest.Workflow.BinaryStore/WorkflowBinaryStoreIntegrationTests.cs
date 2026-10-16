@@ -234,7 +234,7 @@ public sealed class WorkflowBinaryStoreIntegrationTests
             var app = await DaprHarnessBuilder.ForHarness(harness)
                 .ConfigureServices(builder =>
                 {
-                    builder.Services.AddDaprWorkflowBuilder(
+                    var workflowBuilder = builder.Services.AddDaprWorkflowBuilder(
                         configureRuntime: runtime =>
                         {
                             runtime.RegisterWorkflow<ResolvePayloadWorkflow>();
@@ -256,7 +256,7 @@ public sealed class WorkflowBinaryStoreIntegrationTests
                         });
                     if (enablePayloadSupport)
                     {
-                        builder.Services.WithBinaryStorePayloads(payloadOptions =>
+                        workflowBuilder.WithBinaryStorePayloads(payloadOptions =>
                         {
                             payloadOptions.StoreName = StoreName;
                             payloadOptions.KeyPrefix = KeyPrefix;

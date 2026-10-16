@@ -95,23 +95,25 @@ public static class WorkflowServiceCollectionExtensions
     /// <summary>
     /// Adds Dapr Workflow support with defaults.
     /// </summary>
-    public static IServiceCollection AddDaprWorkflow(this IServiceCollection services)
+    /// <returns>A builder for additional workflow configuration.</returns>
+    public static DaprWorkflowBuilder AddDaprWorkflow(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
         AddDaprWorkflowCore(services, _ => { }, ServiceLifetime.Singleton);
-        return services;
+        return new DaprWorkflowBuilder(services);
     }
 
     /// <summary>
     /// Adds Dapr Workflow support to the service collection.
     /// </summary>
-    public static IServiceCollection AddDaprWorkflow(this IServiceCollection services, Action<WorkflowRuntimeOptions> configure, ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    /// <returns>A builder for additional workflow configuration.</returns>
+    public static DaprWorkflowBuilder AddDaprWorkflow(this IServiceCollection services, Action<WorkflowRuntimeOptions> configure, ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
         AddDaprWorkflowCore(services, configure, lifetime);
-        return services;
+        return new DaprWorkflowBuilder(services);
     }
 
     /// <summary>

@@ -31,7 +31,7 @@ public static class BinaryStorePayloadServiceCollectionExtensions
     /// Registers an internal payload codec, a payload feature provider, and the resolver and
     /// <see cref="WorkflowPayloadCleaner"/> for injection into activities and clients.
     /// </summary>
-    /// <param name="services">The service collection. <c>AddDaprWorkflow</c> must already have been called.</param>
+    /// <param name="builder">The builder returned by <c>AddDaprWorkflow</c> or <c>AddDaprWorkflowBuilder</c>.</param>
     /// <param name="configure">Configures the offloading options. <see cref="BinaryStorePayloadOptions.StoreName"/> is required.</param>
     /// <remarks>
     /// Included in Dapr.Workflow; no separate workflow binary store package is required.
@@ -39,10 +39,12 @@ public static class BinaryStorePayloadServiceCollectionExtensions
     /// Register on each participating client and worker. Offloading applies after the configured
     /// serializer runs; historical references remain readable even when new offloading is disabled.
     /// </remarks>
-    /// <returns>The service collection, for chaining.</returns>
-    public static IServiceCollection WithBinaryStorePayloads(this IServiceCollection services,
+    /// <returns>The workflow builder, for chaining.</returns>
+    public static WorkflowServiceCollectionExtensions.DaprWorkflowBuilder WithBinaryStorePayloads(
+        this WorkflowServiceCollectionExtensions.DaprWorkflowBuilder builder,
         Action<BinaryStorePayloadOptions> configure)
     {
+        var services = builder.Services;
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
@@ -72,7 +74,7 @@ public static class BinaryStorePayloadServiceCollectionExtensions
         services.TryAddSingleton(sp => new WorkflowPayloadCleaner(
             sp.GetRequiredService<DaprBinaryStoreClient>(), sp.GetRequiredService<IWorkflowPayloadManifest>()));
 
-        return services;
+        return builder;
     }
 
     /// <summary>

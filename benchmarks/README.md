@@ -1,6 +1,18 @@
-# Dapr Actors Benchmarks
+# Dapr SDK Benchmarks
 
-This directory contains benchmarks for comparing the legacy `Dapr.Actors` stack with `Dapr.Actors.Next`.
+This directory contains actor comparisons and end-to-end workflow benchmarks.
+
+## Workflow data references
+
+[Dapr.Workflow.Benchmarks](./Dapr.Workflow.Benchmarks) compares legacy inline data,
+automatic offloading, and explicit references across nine activities with a
+2 MB serialized document. It reports per-replay logical byte counts, storage
+traffic, materializations, allocations, and execution times against a real sidecar.
+See its README for setup, history-cache comparisons, and measurement limitations.
+
+## Actor comparisons
+
+The actor projects compare the legacy `Dapr.Actors` stack with `Dapr.Actors.Next`.
 
 ## BenchmarkDotNet comparison
 

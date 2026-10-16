@@ -131,17 +131,32 @@ public class BinaryStorePayloadTests
         Assert.Null(provider.GetService<WorkflowPayloadCleaner>());
     }
 
-    [Fact]
-    public void PayloadRegistrationUsesInternalImplementationAndCustomManifest()
+    [Theory]
+    [InlineData("defaults")]
+    [InlineData("configured")]
+    [InlineData("builder")]
+    public void PayloadRegistrationUsesInternalImplementationAndCustomManifest(string registration)
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddDaprWorkflow();
-        services.WithBinaryStorePayloads(options => options.StoreName = "store");
+        var builder = registration switch
+        {
+            "defaults" => services.AddDaprWorkflow(),
+            "configured" => services.AddDaprWorkflow(_ => { }),
+            "builder" => services.AddDaprWorkflowBuilder(null),
+            _ => throw new ArgumentOutOfRangeException(nameof(registration))
+        };
+        var serializer = new JsonDaprSerializer();
+        var configuredBuilder = builder
+            .WithBinaryStorePayloads(options => options.StoreName = "store")
+            .WithSerializer(serializer);
+        Assert.Same(services, configuredBuilder.Services);
         services.WithPayloadManifest<TestManifest>();
         services.AddSingleton(new Mock<DaprBinaryStoreClient>(MockBehavior.Strict).Object);
 
         using var provider = services.BuildServiceProvider();
+        Assert.Same(serializer, provider.GetRequiredService<IDaprSerializer>());
+        Assert.Equal("store", provider.GetRequiredService<IOptions<BinaryStorePayloadOptions>>().Value.StoreName);
         var converter = provider.GetRequiredService<IWorkflowPayloadConverter>();
         Assert.IsType<BinaryStorePayloadConverter>(converter);
         Assert.IsType<BinaryStoreWorkflowPayloadResolver>(provider.GetRequiredService<IWorkflowPayloadResolver>());
@@ -149,6 +164,37 @@ public class BinaryStorePayloadTests
         Assert.NotNull(provider.GetRequiredService<WorkflowPayloadCleaner>());
         Assert.Contains(provider.GetServices<IWorkflowFeatureProvider>(),
             feature => feature is BinaryStorePayloadFeatureProvider);
+    }
+
+    [Fact]
+    public void PayloadRegistrationRequiresWorkflowBuilder()
+    {
+        var method = typeof(BinaryStorePayloadServiceCollectionExtensions)
+            .GetMethod(nameof(BinaryStorePayloadServiceCollectionExtensions.WithBinaryStorePayloads))!;
+
+        Assert.Equal(typeof(WorkflowServiceCollectionExtensions.DaprWorkflowBuilder),
+            method.GetParameters()[0].ParameterType);
+        Assert.Equal(typeof(WorkflowServiceCollectionExtensions.DaprWorkflowBuilder), method.ReturnType);
+    }
+
+    [Fact]
+    public void PayloadRegistrationRejectsUninitializedBuilder()
+    {
+        var builder = default(WorkflowServiceCollectionExtensions.DaprWorkflowBuilder);
+
+        Assert.Throws<ArgumentNullException>(() =>
+            builder.WithBinaryStorePayloads(options => options.StoreName = "store"));
+    }
+
+    [Fact]
+    public void PayloadRegistrationRejectsNullConfiguration()
+    {
+        var services = new ServiceCollection();
+        var builder = services.AddDaprWorkflow();
+        var count = services.Count;
+
+        Assert.Throws<ArgumentNullException>(() => builder.WithBinaryStorePayloads(null!));
+        Assert.Equal(count, services.Count);
     }
 
     [Fact]
