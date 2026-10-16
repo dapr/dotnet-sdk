@@ -11,24 +11,27 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Workflow.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Dapr.Workflow.BinaryStore;
 
 /// <summary>
 /// Attaches a per-execution <see cref="IWorkflowPayloadResolver"/> feature to every orchestrator
-/// invocation so that <see cref="WorkflowContextBinaryStoreExtensions"/> can locate it.
+/// invocation so that <see cref="Extensions.WorkflowContextBinaryStoreExtensions"/> can locate it.
 /// </summary>
 /// <param name="resolver">The application-wide resolver to wrap per execution.</param>
 /// <param name="options">The offloading options, used for the cache size.</param>
-internal sealed class BinaryStorePayloadFeatureProvider(IWorkflowPayloadResolver resolver, IOptions<BinaryStorePayloadOptions> options) : IWorkflowFeatureProvider
+internal sealed class BinaryStorePayloadFeatureProvider(
+    IWorkflowPayloadResolver resolver,
+    IOptions<BinaryStorePayloadOptions> options) : IWorkflowFeatureProvider
 {
     private readonly IWorkflowPayloadResolver _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
-    private readonly BinaryStorePayloadOptions _options = options ?? throw new ArgumentNullException(nameof(options));
- 
+
+    private readonly BinaryStorePayloadOptions _options =
+        options?.Value ?? throw new ArgumentNullException(nameof(options));
+
     /// <inheritdoc />
     public void Configure(string instanceId, IWorkflowFeatureRegistry registry)
-        => registry.Set<IWorkflowPayloadResolver>(new CachingWorkflowPayloadResolver(_resolver, _options.ResolutionCacheSize));
+        => registry.Set<IWorkflowPayloadResolver>(
+            new CachingWorkflowPayloadResolver(_resolver, _options.ResolutionCacheSize));
 }
-

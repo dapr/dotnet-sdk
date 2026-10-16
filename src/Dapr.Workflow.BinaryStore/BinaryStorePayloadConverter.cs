@@ -14,13 +14,13 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
-using Dapr.Workflow.BinaryStore;
+using Dapr.BinaryStore;
+using Dapr.Common.Serialization;
 using Dapr.Workflow.Payloads;
-using Dapr.Workflow.Serialization;
+using Grpc.Core;
 using Microsoft.Extensions.Options;
 
-namespace System.Runtime.CompilerServices;
-
+namespace Dapr.Workflow.BinaryStore;
 
 /// <summary>
 /// An <see cref="IWorkflowPayloadConverter"/> that offloads large workflow payloads to a Dapr
@@ -28,7 +28,7 @@ namespace System.Runtime.CompilerServices;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Outbound: the value is serialized with <see cref="IWorkflowSerializer"/>. If the boundary is
+/// Outbound: the value is serialized with <see cref="IDaprSerializer"/>. If the boundary is
 /// enabled in <see cref="BinaryStorePayloadOptions.OffloadSites"/> and the UTF-8 size of the
 /// serialized string meets <see cref="BinaryStorePayloadOptions.OffloadThreshold"/>, the bytes are
 /// written to the store under a content-addressed key scoped to the workflow instance and a
@@ -51,10 +51,10 @@ namespace System.Runtime.CompilerServices;
 public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWorkflowPayloadResolver
 {
     private readonly DaprBinaryStoreClient _store;
-    private readonly IWorkflowSerializer _serializer;
+    private readonly IDaprSerializer _serializer;
     private readonly BinaryStorePayloadOptions _options;
     private readonly IWorkflowPayloadManifest _manifest;
- 
+
     /// <summary>
     /// Initializes a new instance of the <see cref="BinaryStorePayloadConverter"/> class.
     /// </summary>
@@ -62,7 +62,7 @@ public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWo
     /// <param name="serializer">The workflow serializer applied to payload values.</param>
     /// <param name="options">The offloading options.</param>
     /// <param name="manifest">The manifest that tracks keys written per instance for later cleanup.</param>
-    public BinaryStorePayloadConverter(DaprBinaryStoreClient store, IWorkflowSerializer serializer,
+    public BinaryStorePayloadConverter(DaprBinaryStoreClient store, IDaprSerializer serializer,
         IOptions<BinaryStorePayloadOptions> options, IWorkflowPayloadManifest manifest)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
@@ -71,9 +71,9 @@ public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWo
         _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
         _options.Validate();
     }
- 
+
     // ---- IWorkflowPayloadConverter ----
- 
+
     /// <inheritdoc />
     public ValueTask<string> ToWireAsync<T>(T value, PayloadSite site, CancellationToken cancellationToken = default)
     {
@@ -81,150 +81,169 @@ public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWo
         {
             return new ValueTask<string>(existing.ToEnvelope());
         }
- 
+
         return OffloadIfNeededAsync(_serializer.Serialize(value), site, cancellationToken);
     }
- 
+
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Serialization with a runtime Type may require types that cannot be statically analyzed.")]
+    [RequiresUnreferencedCode(
+        "Serialization with a runtime Type may require types that cannot be statically analyzed.")]
     [RequiresDynamicCode("Serialization with a runtime Type requires dynamic code generation.")]
-    public ValueTask<string> ToWireAsync(object? value, Type? inputType, PayloadSite site, CancellationToken cancellationToken = default)
+    public ValueTask<string> ToWireAsync(object? value, Type? inputType, PayloadSite site,
+        CancellationToken cancellationToken = default)
     {
         if (value is PayloadReference existing)
         {
             return new ValueTask<string>(existing.ToEnvelope());
         }
- 
+
         return OffloadIfNeededAsync(_serializer.Serialize(value, inputType), site, cancellationToken);
     }
- 
+
     /// <inheritdoc />
-    public async ValueTask<T?> FromWireAsync<T>(string? wire, PayloadSite site, CancellationToken cancellationToken = default)
+    public async ValueTask<T?> FromWireAsync<T>(string? wire, PayloadSite site,
+        CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(wire))
         {
             return default;
         }
- 
+
         if (!PayloadReference.TryParse(wire, out var reference) || reference is null)
         {
             return _serializer.Deserialize<T>(wire);
         }
- 
+
         if (typeof(T) == typeof(PayloadReference))
         {
             return (T)(object)reference;
         }
- 
+
         if (PayloadReference.IsReferenceType(typeof(T)))
         {
             return (T)(object)CoerceReference(reference, typeof(T));
         }
- 
+
         var json = await ResolveStringAsync(reference, cancellationToken).ConfigureAwait(false);
         return _serializer.Deserialize<T>(json);
     }
- 
+
     /// <inheritdoc />
-    [RequiresUnreferencedCode("Deserialization with a runtime Type may require types that cannot be statically analyzed.")]
+    [RequiresUnreferencedCode(
+        "Deserialization with a runtime Type may require types that cannot be statically analyzed.")]
     [RequiresDynamicCode("Deserialization with a runtime Type requires dynamic code generation.")]
-    public async ValueTask<object?> FromWireAsync(string? wire, Type returnType, PayloadSite site, CancellationToken cancellationToken = default)
+    public async ValueTask<object?> FromWireAsync(string? wire, Type returnType, PayloadSite site,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(returnType);
- 
+
         if (string.IsNullOrEmpty(wire))
         {
             return null;
         }
- 
+
         if (!PayloadReference.TryParse(wire, out var reference) || reference is null)
         {
             return _serializer.Deserialize(wire, returnType);
         }
- 
+
         if (PayloadReference.IsReferenceType(returnType))
         {
             return CoerceReference(reference, returnType);
         }
- 
+
         var json = await ResolveStringAsync(reference, cancellationToken).ConfigureAwait(false);
         return _serializer.Deserialize(json, returnType);
     }
- 
+
     // ---- IWorkflowPayloadResolver ----
- 
+
     /// <inheritdoc />
     public async Task<T> ResolveAsync<T>(PayloadReference reference, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(reference);
         var json = await ResolveStringAsync(reference, cancellationToken).ConfigureAwait(false);
         return _serializer.Deserialize<T>(json)
-               ?? throw new InvalidOperationException($"Payload '{reference.Key}' deserialized to null for type {typeof(T)}.");
+               ?? throw new InvalidOperationException(
+                   $"Payload '{reference.Key}' deserialized to null for type {typeof(T)}.");
     }
- 
+
     /// <inheritdoc />
     public async Task<Stream> OpenAsync(PayloadReference reference, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(reference);
+        var chunks = _store.GetBinaryFileChunksAsync(reference.StoreName, reference.Key, cancellationToken)
+            .GetAsyncEnumerator(cancellationToken);
         try
         {
-            return await _store.GetAsync(reference.StoreName, reference.Key, cancellationToken).ConfigureAwait(false);
+            var hasFirstChunk = await chunks.MoveNextAsync().ConfigureAwait(false);
+            return new BinaryStorePayloadStream(chunks, reference, hasFirstChunk);
         }
-        catch (DaprBinaryStoreException ex) when (ex.ErrorCode == DaprBinaryStoreErrorCode.NotFound)
+        catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
         {
+            await chunks.DisposeAsync().ConfigureAwait(false);
             throw new PayloadNotFoundException(reference, ex);
         }
+        catch
+        {
+            await chunks.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
     }
- 
+
     /// <inheritdoc />
-    public async Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId, CancellationToken cancellationToken = default)
+    public async Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
         var bytes = Encoding.UTF8.GetBytes(_serializer.Serialize(value));
         var reference = await StoreBytesAsync(bytes, instanceId, cancellationToken).ConfigureAwait(false);
         return reference.AsTyped<T>();
     }
- 
+
     // ---- internals ----
- 
-    private async ValueTask<string> OffloadIfNeededAsync(string serialized, PayloadSite site, CancellationToken cancellationToken)
+
+    private async ValueTask<string> OffloadIfNeededAsync(string serialized, PayloadSite site,
+        CancellationToken cancellationToken)
     {
         if ((_options.OffloadSites & site.Kind) == 0)
         {
             return serialized;
         }
- 
+
         var byteCount = Encoding.UTF8.GetByteCount(serialized);
         if (_options.OffloadThreshold is { } threshold && byteCount < threshold)
         {
             return serialized;
         }
- 
+
         var bytes = Encoding.UTF8.GetBytes(serialized);
         var reference = await StoreBytesAsync(bytes, site.InstanceId, cancellationToken).ConfigureAwait(false);
         return reference.ToEnvelope();
     }
- 
-    private async Task<PayloadReference> StoreBytesAsync(byte[] bytes, string instanceId, CancellationToken cancellationToken)
+
+    private async Task<PayloadReference> StoreBytesAsync(byte[] bytes, string instanceId,
+        CancellationToken cancellationToken)
     {
         var hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
         var key = $"{_options.KeyPrefix}/{instanceId}/{hash}";
- 
+
         try
         {
             using var content = new MemoryStream(bytes, writable: false);
-            await _store.CreateAsync(_options.StoreName, key, content, cancellationToken).ConfigureAwait(false);
+            await _store.SetBinaryFileAsync(_options.StoreName, key, content, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
-        catch (DaprBinaryStoreException ex) when (ex.ErrorCode == DaprBinaryStoreErrorCode.AlreadyExists && _options.SkipWriteIfExists)
+        catch (DaprException ex) when (ex.HasStatusCode(StatusCode.AlreadyExists) && _options.SkipWriteIfExists)
         {
             // Same instance, same content hash: identical bytes are already present.
         }
- 
+
         var reference = new PayloadReference(_options.StoreName, key, bytes.LongLength, hash);
         await _manifest.RecordAsync(instanceId, reference, cancellationToken).ConfigureAwait(false);
         return reference;
     }
- 
+
     private async Task<string> ResolveStringAsync(PayloadReference reference, CancellationToken cancellationToken)
     {
         if (reference.Size > _options.MaxInMemoryRehydrationSize)
@@ -233,36 +252,37 @@ public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWo
                 $"Payload '{reference.Key}' is {reference.Size} bytes, which exceeds MaxInMemoryRehydrationSize " +
                 $"({_options.MaxInMemoryRehydrationSize}). Declare the parameter as PayloadReference<T> and stream it instead.");
         }
- 
+
         if (reference.Stages.Count > 0)
         {
             throw new NotSupportedException(
                 $"Payload '{reference.Key}' was written with stages [{string.Join(", ", reference.Stages.Select(s => s.Name))}] " +
                 "but this converter does not support stage reversal.");
         }
- 
+
         await using var stream = await OpenAsync(reference, cancellationToken).ConfigureAwait(false);
         using var buffer = new MemoryStream(reference.Size is > 0 and <= int.MaxValue ? (int)reference.Size : 0);
         await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
- 
-        var span = buffer.GetBuffer().AsSpan(0, (int)buffer.Length);
- 
+
+        var bytes = buffer.ToArray();
+
         if (_options.VerifyIntegrityOnRead)
         {
-            var actual = Convert.ToHexString(SHA256.HashData(span)).ToLowerInvariant();
+            var actual = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
             if (!string.Equals(actual, reference.ContentHash, StringComparison.Ordinal))
             {
                 throw new PayloadIntegrityException(reference, actual);
             }
         }
- 
-        return Encoding.UTF8.GetString(span);
+
+        return Encoding.UTF8.GetString(bytes);
     }
- 
+
     // The only reflective call in the package. If AOT trimming flags it, the fix is for the
     // generated activity invoker to construct PayloadReference<T> itself (it knows T at compile
     // time) rather than asking the converter to produce a closed generic from a Type.
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "PayloadReference<T>.AsTyped is preserved via DynamicDependency on PayloadReference.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050",
+        Justification = "PayloadReference<T>.AsTyped is preserved via DynamicDependency on PayloadReference.")]
     [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "See above.")]
     private static PayloadReference CoerceReference(PayloadReference reference, Type targetType)
     {
@@ -270,9 +290,10 @@ public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWo
         {
             return reference;
         }
- 
+
         var elementType = targetType.GetGenericArguments()[0];
-        var method = typeof(PayloadReference).GetMethod(nameof(PayloadReference.AsTyped))!.MakeGenericMethod(elementType);
+        var method =
+            typeof(PayloadReference).GetMethod(nameof(PayloadReference.AsTyped))!.MakeGenericMethod(elementType);
         return (PayloadReference)method.Invoke(reference, null)!;
     }
 }

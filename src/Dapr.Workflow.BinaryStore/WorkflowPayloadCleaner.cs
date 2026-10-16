@@ -11,6 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using Dapr.BinaryStore;
+using Grpc.Core;
+
 namespace Dapr.Workflow.BinaryStore;
 
 /// <summary>
@@ -23,7 +26,7 @@ public sealed class WorkflowPayloadCleaner(DaprBinaryStoreClient store, IWorkflo
 {
     private readonly DaprBinaryStoreClient _store = store ?? throw new ArgumentNullException(nameof(store));
     private readonly IWorkflowPayloadManifest _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
- 
+
     /// <summary>
     /// Deletes every payload recorded for <paramref name="instanceId"/> and clears the manifest.
     /// Missing payloads are ignored. Other store failures propagate, leaving the manifest intact
@@ -36,20 +39,21 @@ public sealed class WorkflowPayloadCleaner(DaprBinaryStoreClient store, IWorkflo
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
         var deleted = 0;
- 
+
         foreach (var reference in await _manifest.ListAsync(instanceId, cancellationToken).ConfigureAwait(false))
         {
             try
             {
-                await _store.DeleteAsync(reference.StoreName, reference.Key, cancellationToken).ConfigureAwait(false);
+                await _store.DeleteBinaryFileAsync(reference.StoreName, reference.Key, cancellationToken)
+                    .ConfigureAwait(false);
                 deleted++;
             }
-            catch (DaprBinaryStoreException ex) when (ex.ErrorCode == DaprBinaryStoreErrorCode.NotFound)
+            catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
             {
                 // Already gone; nothing to do.
             }
         }
- 
+
         await _manifest.ClearAsync(instanceId, cancellationToken).ConfigureAwait(false);
         return deleted;
     }

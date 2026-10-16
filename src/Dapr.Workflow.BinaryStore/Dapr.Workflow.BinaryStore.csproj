@@ -7,9 +7,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
-      <ProjectReference Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj" />
-      <ProjectReference Include="..\Dapr.Workflow\Dapr.Workflow.csproj" />
+        <ProjectReference Include="..\Dapr.BinaryStore.Abstractions\Dapr.BinaryStore.Abstractions.csproj"/>
+        <ProjectReference Include="..\Dapr.BinaryStore.Runtime\Dapr.BinaryStore.Runtime.csproj"/>
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj"/>
+        <ProjectReference Include="..\Dapr.Workflow.Abstractions\Dapr.Workflow.Abstractions.csproj"/>
+        <ProjectReference Include="..\Dapr.Workflow\Dapr.Workflow.csproj"/>
     </ItemGroup>
 
 </Project>

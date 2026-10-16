@@ -11,10 +11,9 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
-using Dapr.Workflow.Abstractions;
+using Dapr.BinaryStore.Extensions;
 using Dapr.Workflow.Payloads;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -32,30 +31,42 @@ public static class BinaryStorePayloadServiceCollectionExtensions
     /// <see cref="WorkflowPayloadCleaner"/> for injection into activities and clients.
     /// </summary>
     /// <param name="services">The service collection. <c>AddDaprWorkflow</c> must already have been called.</param>
-    /// <param name="configure">Configures the offloading options. <see cref="StoreName"/> is required.</param>
+    /// <param name="configure">Configures the offloading options. <see cref="BinaryStorePayloadOptions.StoreName"/> is required.</param>
     /// <returns>The service collection, for chaining.</returns>
-    public static IServiceCollection WithBinaryStorePayloads(this IServiceCollection services, Action<BinaryStorePayloadOptions> configure)
+    public static IServiceCollection WithBinaryStorePayloads(this IServiceCollection services,
+        Action<BinaryStorePayloadOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
- 
+
+        services.AddDaprBinaryStoreClient((serviceProvider, clientBuilder) =>
+        {
+            var grpcEndpoint = serviceProvider.GetRequiredService<IConfiguration>()["DAPR_GRPC_ENDPOINT"];
+            if (!string.IsNullOrEmpty(grpcEndpoint))
+            {
+                clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+            }
+        });
+
         services.AddOptions<BinaryStorePayloadOptions>()
             .Configure(configure)
-            .Validate(o => { o.Validate(); return true; });
- 
-        // Ensure a binary store client is available without overriding a user's own registration.
-        services.AddDaprBinaryStoreClient();
- 
+            .Validate(o =>
+            {
+                o.Validate();
+                return true;
+            });
+
         services.TryAddSingleton<IWorkflowPayloadManifest>(NullWorkflowPayloadManifest.Instance);
         services.AddSingleton<BinaryStorePayloadConverter>();
-        services.Replace(ServiceDescriptor.Singleton<IWorkflowPayloadConverter>(sp => sp.GetRequiredService<BinaryStorePayloadConverter>()));
+        services.Replace(ServiceDescriptor.Singleton<IWorkflowPayloadConverter>(sp =>
+            sp.GetRequiredService<BinaryStorePayloadConverter>()));
         services.TryAddSingleton<IWorkflowPayloadResolver>(sp => sp.GetRequiredService<BinaryStorePayloadConverter>());
         services.AddSingleton<IWorkflowFeatureProvider, BinaryStorePayloadFeatureProvider>();
         services.TryAddSingleton<WorkflowPayloadCleaner>();
- 
+
         return services;
     }
- 
+
     /// <summary>
     /// Registers a durable <see cref="IWorkflowPayloadManifest"/> so that purging a workflow
     /// instance also deletes its offloaded payloads. Call after <see cref="WithBinaryStorePayloads"/>.
@@ -71,4 +82,3 @@ public static class BinaryStorePayloadServiceCollectionExtensions
         return services;
     }
 }
- 
