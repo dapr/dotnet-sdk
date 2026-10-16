@@ -11,12 +11,12 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Grpc.Core;
+namespace Dapr.Workflow;
 
-namespace Dapr.Workflow.BinaryStore;
-
-internal static class DaprBinaryStoreExceptionExtensions
+/// <summary>
+/// Provides SDK-owned execution features without extending the public workflow context.
+/// </summary>
+internal interface IWorkflowFeatureSource
 {
-    public static bool HasStatusCode(this DaprException exception, StatusCode statusCode)
-        => exception.InnerException is RpcException rpcException && rpcException.StatusCode == statusCode;
+    TFeature? GetFeature<TFeature>() where TFeature : class;
 }

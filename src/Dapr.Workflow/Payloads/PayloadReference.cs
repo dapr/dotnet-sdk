@@ -23,7 +23,7 @@ namespace Dapr.Workflow.Payloads;
 /// A reference to a workflow payload that has been offloaded to an external store rather than
 /// persisted inline in workflow history. The reference is the only thing that crosses the
 /// orchestrator boundary; the payload itself is retrieved on demand by an
-/// <see cref="IWorkflowPayloadConverter"/> or by an explicit resolution call.
+/// SDK payload codec or by an explicit resolution call.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -114,7 +114,7 @@ public record PayloadReference
     /// </summary>
     /// <param name="type">The type to inspect.</param>
     /// <returns><see langword="true"/> if the type represents a reference; otherwise <see langword="false"/>.</returns>
-    public static bool IsReferenceType(Type type)
+    internal static bool IsReferenceType(Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
         return type == typeof(PayloadReference)
@@ -128,7 +128,7 @@ public record PayloadReference
     /// </summary>
     /// <param name="json">The serialized payload as produced by <see cref="Dapr.Common.Serialization.IDaprSerializer"/>.</param>
     /// <returns><see langword="true"/> if the payload appears to be a reference envelope.</returns>
-    public static bool LooksLikeEnvelope(ReadOnlySpan<char> json)
+    internal static bool LooksLikeEnvelope(ReadOnlySpan<char> json)
     {
         var trimmed = json.TrimStart();
         if (trimmed.IsEmpty || trimmed[0] != '{')
@@ -224,7 +224,7 @@ public record PayloadReference
 /// <summary>
 /// A <see cref="PayloadReference"/> that carries the expected deserialized type of the payload.
 /// Declaring an activity parameter or return type as <see cref="PayloadReference{T}"/> instructs
-/// the <see cref="IWorkflowPayloadConverter"/> to pass the reference through without
+/// the SDK to pass the reference through without
 /// rehydrating or re-offloading it.
 /// </summary>
 /// <typeparam name="T">The type the payload is expected to deserialize to.</typeparam>

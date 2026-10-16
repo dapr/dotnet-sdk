@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -18,6 +18,7 @@ using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
 using Dapr.Workflow.Registration;
 using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Payloads;
 using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -28,6 +29,23 @@ namespace Dapr.Workflow.Test;
 
 public class DaprWorkflowClientBuilderTests
 {
+    [Fact]
+    public void PayloadSupportUsesTheRegisteredSerializerUnlessExplicitlyOverridden()
+    {
+        var registered = new StubDaprSerializer("registered");
+        using var provider = new ServiceCollection()
+            .AddSingleton(CreateGrpcClient())
+            .AddSingleton<IDaprSerializer>(registered)
+            .AddSingleton<IWorkflowPayloadConverter>(new DefaultWorkflowPayloadConverter())
+            .BuildServiceProvider();
+        var builder = new DaprWorkflowClientBuilder().UseServiceProvider(provider);
+        Assert.Same(registered, BuildAndGetSerializer(builder));
+
+        var overridden = new StubDaprSerializer("override");
+        builder.UseSerializer(overridden);
+        Assert.Same(overridden, BuildAndGetSerializer(builder));
+    }
+
     // -------------------------------------------------------------------------
     // UseSerializer(IDaprSerializer) overload
     // -------------------------------------------------------------------------

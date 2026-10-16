@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -19,6 +19,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common;
 using Dapr.Common.Serialization;
+using Dapr.Workflow.Payloads;
 using Grpc.Core;
 using grpc = Dapr.DurableTask.Protobuf;
 using Microsoft.Extensions.Logging;
@@ -32,8 +33,13 @@ internal sealed class WorkflowGrpcClient(
     grpc.TaskHubSidecarService.TaskHubSidecarServiceClient grpcClient,
     ILogger<WorkflowGrpcClient> logger,
     IDaprSerializer serializer,
-    string? daprApiToken = null) : WorkflowClient
+    string? daprApiToken = null,
+    IWorkflowPayloadConverter? payloadConverter = null) : WorkflowClient
 {
+    private readonly WorkflowPayloadHandler? _payloads = payloadConverter is null
+        ? null
+        : new WorkflowPayloadHandler(serializer, payloadConverter);
+
     /// <inheritdoc />
     public override async Task<string> ScheduleNewWorkflowAsync(string workflowName, object? input = null, StartWorkflowOptions? options = null,
         CancellationToken cancellationToken = default)
@@ -44,7 +50,7 @@ internal sealed class WorkflowGrpcClient(
         {
             InstanceId = instanceId,
             Name = workflowName,
-            Input = SerializeToJson(input),
+            Input = await SerializeToWireAsync(input, new(PayloadKind.WorkflowInput, instanceId, workflowName), cancellationToken),
             ParentTraceContext = CreateParentTraceContext()
         };
         
@@ -70,23 +76,11 @@ internal sealed class WorkflowGrpcClient(
             GetInputsAndOutputs = getInputsAndOutputs
         };
 
+        grpc.GetInstanceResponse response;
         try
         {
             var grpcCallOptions = CreateCallOptions(cancellationToken);
-            var response = await grpcClient.GetInstanceAsync(request, grpcCallOptions);
-
-            if (response is null)
-            {
-                logger.LogGetWorkflowMetadataInstanceNotFound(instanceId);
-                return null;
-            }
-
-            if (!response.Exists)
-            {
-                return null;
-            }
-
-            return ProtoConverters.ToWorkflowMetadata(response.WorkflowState, serializer);
+            response = await grpcClient.GetInstanceAsync(request, grpcCallOptions);
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
         {
@@ -95,6 +89,16 @@ internal sealed class WorkflowGrpcClient(
             // genuine "not found" from a transport/runtime error rather than seeing an identical null result.
             return null;
         }
+
+        if (response is null)
+        {
+            logger.LogGetWorkflowMetadataInstanceNotFound(instanceId);
+            return null;
+        }
+
+        return response.Exists
+            ? await ReadMetadataAsync(response.WorkflowState, cancellationToken).ConfigureAwait(false)
+            : null;
     }
 
     /// <inheritdoc />
@@ -114,7 +118,7 @@ internal sealed class WorkflowGrpcClient(
             throw ex;
         }
 
-        var metadata = ProtoConverters.ToWorkflowMetadata(response.WorkflowState, serializer);
+        var metadata = await ReadMetadataAsync(response.WorkflowState, cancellationToken).ConfigureAwait(false);
         logger.LogWaitForStartCompleted(instanceId, metadata.RuntimeStatus);
         return metadata;
     }
@@ -135,7 +139,7 @@ internal sealed class WorkflowGrpcClient(
             throw ex;
         }
 
-        var metadata = ProtoConverters.ToWorkflowMetadata(response.WorkflowState, serializer);
+        var metadata = await ReadMetadataAsync(response.WorkflowState, cancellationToken).ConfigureAwait(false);
         logger.LogWaitForCompletionCompleted(instanceId, metadata.RuntimeStatus);
         return metadata;
     }
@@ -149,7 +153,8 @@ internal sealed class WorkflowGrpcClient(
 
         var request = new grpc.RaiseEventRequest
         {
-            InstanceId = instanceId, Name = eventName, Input = SerializeToJson(eventPayload)
+            InstanceId = instanceId, Name = eventName,
+            Input = await SerializeToWireAsync(eventPayload, new(PayloadKind.ExternalEvent, instanceId, eventName), cancellationToken)
         };
 
         var grpcCallOptions = CreateCallOptions(cancellationToken);
@@ -164,7 +169,7 @@ internal sealed class WorkflowGrpcClient(
         var request = new grpc.TerminateRequest
         {
             InstanceId = instanceId,
-            Output = SerializeToJson(output),
+            Output = await SerializeToWireAsync(output, new(PayloadKind.WorkflowOutput, instanceId, null), cancellationToken),
             Recursive = true // Terminate child workflows too
         };
 
@@ -312,7 +317,13 @@ internal sealed class WorkflowGrpcClient(
 
         if (options is { OverwriteInput: true })
         {
-            request.Input = SerializeToJson(options.Input);
+            if (_payloads is not null && string.IsNullOrEmpty(request.NewInstanceID))
+            {
+                request.NewInstanceID = Guid.NewGuid().ToString();
+            }
+
+            request.Input = await SerializeToWireAsync(options.Input,
+                new(PayloadKind.WorkflowInput, request.NewInstanceID, null), cancellationToken);
         }
 
         var grpcCallOptions = CreateCallOptions(cancellationToken);
@@ -330,7 +341,35 @@ internal sealed class WorkflowGrpcClient(
         return ValueTask.CompletedTask;
     }
 
-    private string SerializeToJson(object? obj) => obj == null ? string.Empty : serializer.Serialize(obj);
+    private ValueTask<string> SerializeToWireAsync(object? value, PayloadSite site, CancellationToken cancellationToken)
+        => _payloads is null
+            ? new(value is null ? string.Empty : serializer.Serialize(value))
+            : _payloads.EncodeAsync(_payloads.Snapshot(value), site, cancellationToken);
+
+    private async Task<WorkflowMetadata> ReadMetadataAsync(grpc.WorkflowState state, CancellationToken cancellationToken)
+    {
+        var metadata = ProtoConverters.ToWorkflowMetadata(state, serializer);
+        if (_payloads is null)
+        {
+            return metadata;
+        }
+
+        var input = await _payloads.PrepareAsync(metadata.SerializedInput,
+            new(PayloadKind.WorkflowInput, metadata.InstanceId, metadata.Name), cancellationToken).ConfigureAwait(false);
+        var output = await _payloads.PrepareAsync(metadata.SerializedOutput,
+            new(PayloadKind.WorkflowOutput, metadata.InstanceId, metadata.Name), cancellationToken).ConfigureAwait(false);
+        var customStatus = await _payloads.PrepareAsync(metadata.SerializedCustomStatus,
+            new(PayloadKind.CustomStatus, metadata.InstanceId, null), cancellationToken).ConfigureAwait(false);
+        return metadata with
+        {
+            PreparedInput = input,
+            PreparedOutput = output,
+            PreparedCustomStatus = customStatus,
+            SerializedInput = input.Serialized,
+            SerializedOutput = output.Serialized,
+            SerializedCustomStatus = customStatus.Serialized
+        };
+    }
 
     private static grpc.TraceContext? CreateParentTraceContext()
     {

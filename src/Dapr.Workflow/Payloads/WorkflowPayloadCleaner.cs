@@ -11,21 +11,29 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Dapr.BinaryStore;
 using Grpc.Core;
 
-namespace Dapr.Workflow.BinaryStore;
+namespace Dapr.Workflow.Payloads;
 
 /// <summary>
-/// Deletes the payloads recorded for a workflow instance. Intended to be invoked by the workflow
-/// client when an instance is purged.
+/// Deletes the payloads recorded for a workflow instance. Resolve this service from dependency
+/// injection after registering payload storage, and invoke it only when the references are no
+/// longer needed by any retained history, result, or other workflow.
 /// </summary>
-/// <param name="store">The binary store client used to delete payloads.</param>
-/// <param name="manifest">The manifest listing the payloads of each instance.</param>
-public sealed class WorkflowPayloadCleaner(DaprBinaryStoreClient store, IWorkflowPayloadManifest manifest)
+public sealed class WorkflowPayloadCleaner
 {
-    private readonly DaprBinaryStoreClient _store = store ?? throw new ArgumentNullException(nameof(store));
-    private readonly IWorkflowPayloadManifest _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
+    private readonly DaprBinaryStoreClient _store;
+    private readonly IWorkflowPayloadManifest _manifest;
+
+    internal WorkflowPayloadCleaner(DaprBinaryStoreClient store, IWorkflowPayloadManifest manifest)
+    {
+        _store = store ?? throw new ArgumentNullException(nameof(store));
+        _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
+    }
 
     /// <summary>
     /// Deletes every payload recorded for <paramref name="instanceId"/> and clears the manifest.

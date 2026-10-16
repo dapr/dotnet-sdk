@@ -15,7 +15,7 @@ namespace Dapr.Workflow.Payloads;
 
 /// <summary>
 /// Describes the context in which a payload is crossing a workflow boundary. Supplied to
-/// <see cref="IWorkflowPayloadConverter"/> so an implementation can apply per-boundary policy
+/// the SDK payload codec so an implementation can apply per-boundary policy
 /// and derive storage keys scoped to the owning workflow instance.
 /// </summary>
 /// <param name="Kind">The boundary being crossed.</param>
@@ -24,4 +24,4 @@ namespace Dapr.Workflow.Payloads;
 /// The name of the workflow, activity, or event associated with the payload, where applicable.
 /// <see langword="null"/> for boundaries that are not named, such as <see cref="PayloadKind.CustomStatus"/>.
 /// </param>
-public readonly record struct PayloadSite(PayloadKind Kind, string InstanceId, string? Name);
+internal readonly record struct PayloadSite(PayloadKind Kind, string InstanceId, string? Name);

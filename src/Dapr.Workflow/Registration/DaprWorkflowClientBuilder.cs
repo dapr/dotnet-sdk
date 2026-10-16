@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -9,7 +9,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//  ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 using System;
 using System.Text.Json;
@@ -17,6 +17,7 @@ using Dapr.Common;
 using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
+using Dapr.Workflow.Payloads;
 using Dapr.Workflow.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -108,6 +109,7 @@ public sealed class DaprWorkflowClientBuilder(IConfiguration? configuration = nu
         }
         
         // Resolve serializer
+        var payloadConverter = _serviceProvider?.GetService<IWorkflowPayloadConverter>();
         IDaprSerializer serializer;
         if (_serializer is not null)
         {
@@ -117,7 +119,8 @@ public sealed class DaprWorkflowClientBuilder(IConfiguration? configuration = nu
         {
             serializer = _serializerFactory is not null && _serviceProvider is not null
                 ? _serializerFactory(_serviceProvider)
-                : new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                : (payloadConverter is not null ? _serviceProvider?.GetService<IDaprSerializer>() : null)
+                  ?? new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         }
         
         // Resolve logger
@@ -128,7 +131,8 @@ public sealed class DaprWorkflowClientBuilder(IConfiguration? configuration = nu
             logger = loggerFactory.CreateLogger<WorkflowGrpcClient>();
         }
 
-        var innerClient = new WorkflowGrpcClient(grpcClient, logger, serializer, DaprApiToken);
+        var innerClient = new WorkflowGrpcClient(grpcClient, logger, serializer, DaprApiToken,
+            payloadConverter);
 
         return new DaprWorkflowClient(innerClient, DaprApiToken);
     }

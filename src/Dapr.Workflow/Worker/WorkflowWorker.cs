@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -20,6 +20,7 @@ using Dapr.Common;
 using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Abstractions;
+using Dapr.Workflow.Payloads;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
@@ -52,12 +53,14 @@ internal sealed class WorkflowWorker(
     private readonly string? _daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
     
     private GrpcProtocolHandler? _protocolHandler;
+    private CancellationToken _stoppingToken;
 
     /// <summary>
     /// Executes the workflow worker.
     /// </summary>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _stoppingToken = stoppingToken;
         _logger.LogWorkerWorkflowStart();
 
         try
@@ -346,16 +349,32 @@ internal sealed class WorkflowWorker(
             var incomingPropagatedHistory = request.PropagatedHistory?.Chunks.Count > 0
                 ? request.PropagatedHistory.Chunks
                 : null;
+            var codec = scope.ServiceProvider.GetService<IWorkflowPayloadConverter>();
+            var payloads = codec is null ? null : new WorkflowPayloadHandler(_serializer, codec, _stoppingToken);
+            var isChild = timelineEvents.LastOrDefault(e => e.ExecutionStarted is not null)?.ExecutionStarted.ParentInstance is not null;
+            var features = new WorkflowFeatureCollection();
+            foreach (var provider in scope.ServiceProvider.GetServices<IWorkflowFeatureProvider>())
+            {
+                provider.Configure(request.InstanceId, features);
+            }
+
+            if (payloads is not null && features.Get<IWorkflowPayloadResolver>() is { } resolver)
+            {
+                features.Set<IWorkflowPayloadResolver>(new QueuedWorkflowPayloadResolver(resolver, payloads));
+            }
             var context = new WorkflowOrchestrationContext(workflowName, request.InstanceId, currentUtcDateTime,
                 _serializer, loggerFactory, versionTracker, appId, request.ExecutionId,
                 allPastEvents,
                 incomingPropagatedHistory,
-                historyExecutionId);
+                historyExecutionId, payloads, features);
 
             // Deserialize the input
             object? input = string.IsNullOrEmpty(serializedInput)
                 ? null
-                : _serializer.Deserialize(serializedInput, workflow!.InputType);
+                : payloads is null
+                    ? _serializer.Deserialize(serializedInput, workflow!.InputType)
+                    : await payloads.DecodeAsync(serializedInput, workflow!.InputType,
+                        new(isChild ? PayloadKind.ChildWorkflowInput : PayloadKind.WorkflowInput, request.InstanceId, workflowName));
 
             // Initialize per-turn state before any workflow code runs.
             // On first execution (no past events) use the current turn's OrchestratorStarted timestamp.
@@ -372,17 +391,21 @@ internal sealed class WorkflowWorker(
             // We run the workflow BEFORE processing new events so that the code reaches the 'await' points and registers tasks
             // in _openTasks. Then, ProcessEvents(NewEvents) can satisfy those tasks.
             var runTask = workflow!.RunAsync(context, input);
+            if (payloads is not null)
+            {
+                await payloads.DrainAsync().ConfigureAwait(false);
+            }
 
             // Replay the old history to rebuild the local state of the orchestration.
             if (allPastEvents.Count > 0)
             {
-                context.ProcessEvents(allPastEvents, true);
+                await context.ProcessEventsAsync(allPastEvents, true).ConfigureAwait(false);
             }
 
             // Play the newly arrived events to determine the next action to take.
             if (request.NewEvents.Count > 0)
             {
-                context.ProcessEvents(request.NewEvents, false);
+                await context.ProcessEventsAsync(request.NewEvents, false).ConfigureAwait(false);
             }
 
             // Populate CarryoverEvents now that all events in this turn have been processed.
@@ -430,13 +453,17 @@ internal sealed class WorkflowWorker(
 
             // Set custom status if provided
             if (context.CustomStatus != null)
-                response.CustomStatus = _serializer.Serialize(context.CustomStatus);
+                response.CustomStatus = payloads is null
+                    ? _serializer.Serialize(context.CustomStatus)
+                    : context.SerializedCustomStatus;
 
             // If the workflow issued ContinueAsNew, it already queued a completion action; just return it.
             if (context.PendingActions.Any(a => 
                     a.CompleteWorkflow?.WorkflowStatus == OrchestrationStatus.ContinuedAsNew))
             {
                 _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
+                if (payloads is not null)
+                    await payloads.EncodeResponseAsync(response, request.InstanceId, workflowName, isChild).ConfigureAwait(false);
                 return response;
             }
 
@@ -448,6 +475,8 @@ internal sealed class WorkflowWorker(
                 if (response.Actions.Count == 0 && context.PendingActions.Count == 0) 
                     _logger.LogWorkflowWorkerOrchestratorStall(request.InstanceId);
                 
+                if (payloads is not null)
+                    await payloads.EncodeResponseAsync(response, request.InstanceId, workflowName, isChild).ConfigureAwait(false);
                 return response;
             }
 
@@ -457,7 +486,9 @@ internal sealed class WorkflowWorker(
                 // The workflow completed synchronously (either on replay or it had nothing to await).
                 // Observe exceptions if any, otherwise serialize the output and complete the orchestration.
                 var output = await runTask.ConfigureAwait(false);
-                var outputJson = output != null ? _serializer.Serialize(output) : string.Empty;
+                var outputJson = payloads is null
+                    ? output != null ? _serializer.Serialize(output) : string.Empty
+                    : payloads.Snapshot(output);
 
                 response.Actions.Add(new WorkflowAction
                 {
@@ -467,6 +498,10 @@ internal sealed class WorkflowWorker(
                         WorkflowStatus = OrchestrationStatus.Completed
                     }
                 });
+            }
+            catch (OperationCanceledException) when (_stoppingToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -490,7 +525,13 @@ internal sealed class WorkflowWorker(
             }
 
             _logger.LogWorkerWorkflowHandleOrchestratorRequestCompleted(workflowName, request.InstanceId);
+            if (payloads is not null)
+                await payloads.EncodeResponseAsync(response, request.InstanceId, workflowName, isChild).ConfigureAwait(false);
             return response;
+        }
+        catch (OperationCanceledException) when (_stoppingToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -580,21 +621,27 @@ internal sealed class WorkflowWorker(
 
             var context = new WorkflowActivityContextImpl(activityIdentifier,
                 request.WorkflowInstance?.InstanceId ?? string.Empty, taskExecutionKey);
+            var codec = scope.ServiceProvider.GetService<IWorkflowPayloadConverter>();
+            var payloads = codec is null ? null : new WorkflowPayloadHandler(_serializer, codec, _stoppingToken);
 
             // Deserialize the input
             object? input = null;
             if (!string.IsNullOrEmpty(request.Input))
             {
-                input = _serializer.Deserialize(request.Input, activity!.InputType);
+                input = payloads is null
+                    ? _serializer.Deserialize(request.Input, activity!.InputType)
+                    : await payloads.DecodeAsync(request.Input, activity!.InputType,
+                        new(PayloadKind.ActivityInput, context.InstanceId, request.Name)).ConfigureAwait(false);
             }
 
             // Execute the activity
             var output = await activity!.RunAsync(context, input);
 
             // Serialize output
-            var outputJson = output != null
-                ? _serializer.Serialize(output)
-                : string.Empty;
+            var outputJson = payloads is null
+                ? output != null ? _serializer.Serialize(output) : string.Empty
+                : await payloads.EncodeAsync(payloads.Snapshot(output),
+                    new(PayloadKind.ActivityOutput, context.InstanceId, request.Name)).ConfigureAwait(false);
 
             _logger.LogWorkerWorkflowHandleActivityRequestCompleted(request.Name, request.TaskId);
 
@@ -605,6 +652,10 @@ internal sealed class WorkflowWorker(
                 Result = outputJson,
                 CompletionToken = completionToken
             };
+        }
+        catch (OperationCanceledException) when (_stoppingToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

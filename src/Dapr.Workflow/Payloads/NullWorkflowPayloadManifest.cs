@@ -11,15 +11,17 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Workflow.Payloads;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace Dapr.Workflow.BinaryStore;
+namespace Dapr.Workflow.Payloads;
 
 /// <summary>
 /// An <see cref="IWorkflowPayloadManifest"/> that records nothing. Purge-time cleanup is a no-op
 /// and payload lifecycle is left to store-side retention policy.
 /// </summary>
-public sealed class NullWorkflowPayloadManifest : IWorkflowPayloadManifest
+internal sealed class NullWorkflowPayloadManifest : IWorkflowPayloadManifest
 {
     /// <summary>
     /// The shared instance.

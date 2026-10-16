@@ -11,10 +11,14 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Workflow.Payloads;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Grpc.Core;
 
-namespace Dapr.Workflow.BinaryStore;
+namespace Dapr.Workflow.Payloads;
 
 internal sealed class BinaryStorePayloadStream : Stream
 {

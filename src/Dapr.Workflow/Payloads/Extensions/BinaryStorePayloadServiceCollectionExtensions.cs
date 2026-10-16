@@ -11,13 +11,15 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using Dapr.BinaryStore;
 using Dapr.BinaryStore.Extensions;
 using Dapr.Workflow.Payloads;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace Dapr.Workflow.BinaryStore.Extensions;
+namespace Dapr.Workflow;
 
 /// <summary>
 /// Registers binary-store-backed payload offloading for Dapr Workflows.
@@ -25,13 +27,18 @@ namespace Dapr.Workflow.BinaryStore.Extensions;
 public static class BinaryStorePayloadServiceCollectionExtensions
 {
     /// <summary>
-    /// Enables offloading of large workflow payloads to a Dapr binary store. Replaces the default
-    /// <see cref="IWorkflowPayloadConverter"/>, attaches an <see cref="IWorkflowPayloadResolver"/>
-    /// feature to every orchestrator execution, and registers the resolver and
+    /// Registers SDK-based workflow payload storage using the runtime's binary store API.
+    /// Registers an internal payload codec, a payload feature provider, and the resolver and
     /// <see cref="WorkflowPayloadCleaner"/> for injection into activities and clients.
     /// </summary>
     /// <param name="services">The service collection. <c>AddDaprWorkflow</c> must already have been called.</param>
     /// <param name="configure">Configures the offloading options. <see cref="BinaryStorePayloadOptions.StoreName"/> is required.</param>
+    /// <remarks>
+    /// Included in Dapr.Workflow; no separate workflow binary store package is required.
+    /// Payload storage is opt-in and does not change the workflow runtime protocol.
+    /// Register on each participating client and worker. Offloading applies after the configured
+    /// serializer runs; historical references remain readable even when new offloading is disabled.
+    /// </remarks>
     /// <returns>The service collection, for chaining.</returns>
     public static IServiceCollection WithBinaryStorePayloads(this IServiceCollection services,
         Action<BinaryStorePayloadOptions> configure)
@@ -60,16 +67,17 @@ public static class BinaryStorePayloadServiceCollectionExtensions
         services.AddSingleton<BinaryStorePayloadConverter>();
         services.Replace(ServiceDescriptor.Singleton<IWorkflowPayloadConverter>(sp =>
             sp.GetRequiredService<BinaryStorePayloadConverter>()));
-        services.TryAddSingleton<IWorkflowPayloadResolver>(sp => sp.GetRequiredService<BinaryStorePayloadConverter>());
+        services.TryAddSingleton<IWorkflowPayloadResolver, BinaryStoreWorkflowPayloadResolver>();
         services.AddSingleton<IWorkflowFeatureProvider, BinaryStorePayloadFeatureProvider>();
-        services.TryAddSingleton<WorkflowPayloadCleaner>();
+        services.TryAddSingleton(sp => new WorkflowPayloadCleaner(
+            sp.GetRequiredService<DaprBinaryStoreClient>(), sp.GetRequiredService<IWorkflowPayloadManifest>()));
 
         return services;
     }
 
     /// <summary>
-    /// Registers a durable <see cref="IWorkflowPayloadManifest"/> so that purging a workflow
-    /// instance also deletes its offloaded payloads. Call after <see cref="WithBinaryStorePayloads"/>.
+    /// Registers a durable <see cref="IWorkflowPayloadManifest"/> for explicit cleanup with
+    /// <see cref="WorkflowPayloadCleaner"/>. Call after <see cref="WithBinaryStorePayloads"/>.
     /// </summary>
     /// <typeparam name="TManifest">The manifest implementation.</typeparam>
     /// <param name="services">The service collection.</param>

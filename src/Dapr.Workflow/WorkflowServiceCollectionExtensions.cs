@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2022 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,6 +16,7 @@ using System.Text.Json;
 using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
+using Dapr.Workflow.Payloads;
 using Dapr.Workflow.Grpc.Extensions;
 using Dapr.Workflow.Registration;
 using Dapr.Workflow.Serialization;
@@ -219,7 +220,8 @@ public static class WorkflowServiceCollectionExtensions
             var logger = loggerFactory.CreateLogger<WorkflowGrpcClient>();
             var serializer = sp.GetRequiredService<IDaprSerializer>();
             var daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
-            return new WorkflowGrpcClient(grpcClient, logger, serializer, daprApiToken);
+            return new WorkflowGrpcClient(grpcClient, logger, serializer, daprApiToken,
+                sp.GetService<IWorkflowPayloadConverter>());
         });
 
         // Register gRPC client for communicating with Dapr sidecar

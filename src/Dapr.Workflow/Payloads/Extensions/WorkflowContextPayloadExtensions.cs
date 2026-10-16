@@ -11,10 +11,12 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System.IO;
+using System.Threading.Tasks;
 using Dapr.Workflow.Payloads;
 
-namespace Dapr.Workflow.BinaryStore.Extensions;
-
+namespace Dapr.Workflow;
 
 /// <summary>
 /// Extension methods that let orchestrator code resolve offloaded payloads from a
@@ -24,7 +26,7 @@ namespace Dapr.Workflow.BinaryStore.Extensions;
 /// These methods are read-only by design. Writing payloads from an orchestrator would execute on
 /// every replay; produce references in activities or from the client instead.
 /// </remarks>
-public static class WorkflowContextBinaryStoreExtensions
+public static class WorkflowContextPayloadExtensions
 {
     /// <summary>
     /// Retrieves and deserializes the payload identified by <paramref name="reference"/>.
@@ -38,7 +40,7 @@ public static class WorkflowContextBinaryStoreExtensions
     /// <exception cref="PayloadNotFoundException">The stored payload no longer exists.</exception>
     public static Task<T> ResolvePayloadAsync<T>(this WorkflowContext context, PayloadReference<T> reference)
         => GetResolver(context).ResolveAsync<T>(reference);
- 
+
     /// <summary>
     /// Retrieves and deserializes the payload identified by an untyped <paramref name="reference"/>.
     /// </summary>
@@ -49,11 +51,12 @@ public static class WorkflowContextBinaryStoreExtensions
     /// <exception cref="InvalidOperationException">Binary store payload support is not registered.</exception>
     public static Task<T> ResolvePayloadAsync<T>(this WorkflowContext context, PayloadReference reference)
         => GetResolver(context).ResolveAsync<T>(reference);
- 
+
     /// <summary>
     /// Opens a read-only stream over the raw bytes identified by <paramref name="reference"/>.
     /// The caller owns the returned stream. Prefer this over <see cref="ResolvePayloadAsync{T}(WorkflowContext, PayloadReference{T})"/>
-    /// for payloads too large to buffer.
+    /// for payloads too large to buffer. Use asynchronous reads and <c>await using</c> for disposal
+    /// so the worker can perform storage I/O outside deterministic execution.
     /// </summary>
     /// <param name="context">The workflow context.</param>
     /// <param name="reference">The reference to open.</param>
@@ -61,20 +64,23 @@ public static class WorkflowContextBinaryStoreExtensions
     /// <exception cref="InvalidOperationException">Binary store payload support is not registered.</exception>
     public static Task<Stream> OpenPayloadAsync(this WorkflowContext context, PayloadReference reference)
         => GetResolver(context).OpenAsync(reference);
- 
+
     /// <summary>
     /// Returns a value indicating whether binary store payload support is available on this context.
     /// </summary>
     /// <param name="context">The workflow context.</param>
     /// <returns><see langword="true"/> if <see cref="ResolvePayloadAsync{T}(WorkflowContext, PayloadReference{T})"/> can be called.</returns>
     public static bool HasPayloadResolver(this WorkflowContext context)
-        => context.GetFeature<IWorkflowPayloadResolver>() is not null;
- 
+        => FindResolver(context) is not null;
+
     private static IWorkflowPayloadResolver GetResolver(WorkflowContext context)
+        => FindResolver(context)
+           ?? throw new InvalidOperationException(
+               "Binary store payload support is not registered. Call services.AddDaprWorkflow(...).WithBinaryStorePayloads(...) at startup.");
+
+    private static IWorkflowPayloadResolver? FindResolver(WorkflowContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        return context.GetFeature<IWorkflowPayloadResolver>()
-               ?? throw new InvalidOperationException(
-                   "Binary store payload support is not registered. Call services.AddDaprWorkflow(...).WithBinaryStorePayloads(...) at startup.");
+        return (context as IWorkflowFeatureSource)?.GetFeature<IWorkflowPayloadResolver>();
     }
 }

@@ -16,12 +16,12 @@ using System;
 namespace Dapr.Workflow.Payloads;
 
 /// <summary>
-/// Thrown when a payload reference is encountered from no <see cref="IWorkflowPayloadConverter"/>
+/// Thrown when a payload reference is encountered but no payload codec
 /// capable of resolving it is registered. This typically means the application that produced the payload
 /// had offloading enabled, but the consuming application does not.
 /// </summary>
 /// <param name="site">The boundary at which the reference was encountered.</param>
-public sealed class PayloadNotResolvableException(PayloadSite site) : Exception($"A payload reference was received at {site.Kind} for workflow instance '{site.InstanceId}' " +
+internal sealed class PayloadNotResolvableException(PayloadSite site) : Exception($"A payload reference was received at {site.Kind} for workflow instance '{site.InstanceId}' " +
     "but not payload converter capable of resolving references is registered. " +
     "Register one (for example via WithBinaryStorePayloads) or declare the parameter as PayloadReference<T>.")
 {

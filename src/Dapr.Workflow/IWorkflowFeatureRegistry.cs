@@ -16,7 +16,7 @@ namespace Dapr.Workflow;
 /// <summary>
 /// Receives feature registrations for a single workflow execution.
 /// </summary>
-public interface IWorkflowFeatureRegistry
+internal interface IWorkflowFeatureRegistry
 {
     /// <summary>
     /// Registers or replaces a feature instance for the current execution.

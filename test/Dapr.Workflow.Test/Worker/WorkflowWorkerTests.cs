@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -9,7 +9,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//  ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 using System.Diagnostics;
 using System.Reflection;
@@ -22,6 +22,8 @@ using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
+using Dapr.Workflow.Payloads;
+using DelayedPayloadConverter = Dapr.Workflow.Test.Payloads.BinaryStorePayloadTests.DelayedPayloadConverter;
 using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +36,128 @@ namespace Dapr.Workflow.Test.Worker;
 
 public class WorkflowWorkerTests
 {
+    [Fact]
+    public async Task WorkerShutdownDuringPayloadReadDoesNotProduceFailedWorkflowHistory()
+    {
+        var codec = new DelayedPayloadConverter();
+        using var services = new ServiceCollection().AddSingleton<IWorkflowPayloadConverter>(codec).BuildServiceProvider();
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("workflow", new InlineWorkflow(typeof(int), (_, input) => Task.FromResult(input)));
+        var worker = new WorkflowWorker(CreateGrpcClientMock().Object, factory, NullLoggerFactory.Instance,
+            new JsonDaprSerializer(), services);
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        typeof(WorkflowWorker).GetField("_stoppingToken", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(worker, cancellation.Token);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => InvokeHandleWorkflowResponseAsync(worker,
+            new WorkflowRequest
+            {
+                InstanceId = "instance",
+                NewEvents = { new HistoryEvent { ExecutionStarted = new() { Name = "workflow", Input = "wire:1" } } }
+            }));
+    }
+
+    [Fact]
+    public async Task FailedPayloadReadFaultsWorkflowInsteadOfYieldingWithoutActions()
+    {
+        var codec = new DelayedPayloadConverter();
+        using var services = new ServiceCollection().AddSingleton<IWorkflowPayloadConverter>(codec).BuildServiceProvider();
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("workflow", new InlineWorkflow(typeof(object),
+            async (context, _) => await context.CallActivityAsync<int>("activity")));
+        var worker = new WorkflowWorker(CreateGrpcClientMock().Object, factory, NullLoggerFactory.Instance,
+            new JsonDaprSerializer(), services);
+        var response = await InvokeHandleWorkflowResponseAsync(worker, new WorkflowRequest
+        {
+            InstanceId = "instance",
+            PastEvents =
+            {
+                new HistoryEvent { ExecutionStarted = new() { Name = "workflow" } },
+                new HistoryEvent { EventId = 0, TaskScheduled = new() { Name = "activity" } }
+            },
+            NewEvents =
+            {
+                new HistoryEvent { TaskCompleted = new() { TaskScheduledId = 0, Result = "wire:{invalid-json}" } }
+            }
+        });
+
+        var completion = Assert.Single(response.Actions).CompleteWorkflow;
+        Assert.Equal(OrchestrationStatus.Failed, completion.WorkflowStatus);
+        Assert.Equal(typeof(JsonException).FullName, completion.FailureDetails.ErrorType);
+    }
+
+    [Fact]
+    public async Task PayloadReadsDrainBeforeAdvancingReplayAndOnlyNewActionsAreEncoded()
+    {
+        var codec = new DelayedPayloadConverter();
+        using var services = new ServiceCollection().AddSingleton<IWorkflowPayloadConverter>(codec).BuildServiceProvider();
+        var factory = new StubWorkflowsFactory();
+        var firstTime = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var completionTime = firstTime.AddMinutes(1);
+        var seen = new List<(DateTime Time, bool Replaying)>();
+        factory.AddWorkflow("workflow", new InlineWorkflow(typeof(int), async (context, input) =>
+        {
+            Assert.Equal(7, input);
+            var result = await context.CallActivityAsync<int>("first", input);
+            seen.Add((context.CurrentUtcDateTime, context.IsReplaying));
+            var status = new List<string> { "snapshot" };
+            context.SetCustomStatus(status);
+            status.Add("not-persisted");
+            return await context.CallActivityAsync<int>("second", result);
+        }));
+        var worker = new WorkflowWorker(CreateGrpcClientMock().Object, factory, NullLoggerFactory.Instance,
+            new JsonDaprSerializer(), services);
+        var request = new WorkflowRequest
+        {
+            InstanceId = "instance",
+            PastEvents =
+            {
+                new HistoryEvent { WorkflowStarted = new(), Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(firstTime) },
+                new HistoryEvent { ExecutionStarted = new() { Name = "workflow", Input = "wire:7" } },
+                new HistoryEvent { EventId = 0, TaskScheduled = new() { Name = "first", Input = "wire:7" } },
+                new HistoryEvent { WorkflowStarted = new(), Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(completionTime) },
+                new HistoryEvent { TaskCompleted = new() { TaskScheduledId = 0, Result = "wire:8" } }
+            },
+            NewEvents =
+            {
+                new HistoryEvent { WorkflowStarted = new(), Timestamp = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(firstTime.AddMinutes(2)) }
+            }
+        };
+
+        var response = await InvokeHandleWorkflowResponseAsync(worker, request);
+
+        Assert.Equal((completionTime, true), Assert.Single(seen));
+        var action = Assert.Single(response.Actions);
+        Assert.Equal("second", action.ScheduleTask.Name);
+        Assert.Equal("wire:8", action.ScheduleTask.Input);
+        Assert.Equal("wire:[\"snapshot\"]", response.CustomStatus);
+        Assert.Equal([PayloadKind.ActivityInput, PayloadKind.CustomStatus], codec.Writes.Select(write => write.Site.Kind));
+        Assert.Equal([PayloadKind.WorkflowInput, PayloadKind.ActivityOutput], codec.Reads.Select(site => site.Kind));
+        Assert.Equal("wire:8", request.PastEvents[^1].TaskCompleted.Result);
+    }
+
+    [Fact]
+    public async Task ActivityPayloadBoundariesDecodeBeforeUserCodeAndEncodeAfterIt()
+    {
+        var codec = new DelayedPayloadConverter();
+        using var services = new ServiceCollection().AddSingleton<IWorkflowPayloadConverter>(codec).BuildServiceProvider();
+        var factory = new StubWorkflowsFactory();
+        factory.AddActivity("activity", new InlineActivity(typeof(int), (_, input) => Task.FromResult<object?>((int)input! + 1)));
+        var worker = new WorkflowWorker(CreateGrpcClientMock().Object, factory, NullLoggerFactory.Instance,
+            new JsonDaprSerializer(), services);
+
+        var response = await InvokeHandleActivityResponseAsync(worker, new ActivityRequest
+        {
+            Name = "activity", Input = "wire:41", WorkflowInstance = new() { InstanceId = "instance" }
+        });
+
+        Assert.Null(response.FailureDetails);
+        Assert.Equal("wire:42", response.Result);
+        Assert.Equal(new(PayloadKind.ActivityInput, "instance", "activity"), Assert.Single(codec.Reads));
+        Assert.Equal(("42", new PayloadSite(PayloadKind.ActivityOutput, "instance", "activity")), Assert.Single(codec.Writes));
+    }
+
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenGrpcClientIsNull()
     {

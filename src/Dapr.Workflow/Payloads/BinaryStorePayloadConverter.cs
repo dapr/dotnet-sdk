@@ -11,16 +11,18 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Diagnostics.CodeAnalysis;
+using System;
+using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Dapr.BinaryStore;
-using Dapr.Common.Serialization;
-using Dapr.Workflow.Payloads;
 using Grpc.Core;
 using Microsoft.Extensions.Options;
 
-namespace Dapr.Workflow.BinaryStore;
+namespace Dapr.Workflow.Payloads;
 
 /// <summary>
 /// An <see cref="IWorkflowPayloadConverter"/> that offloads large workflow payloads to a Dapr
@@ -28,7 +30,7 @@ namespace Dapr.Workflow.BinaryStore;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Outbound: the value is serialized with <see cref="IDaprSerializer"/>. If the boundary is
+/// Outbound: the caller supplies a serialized snapshot. If the boundary is
 /// enabled in <see cref="BinaryStorePayloadOptions.OffloadSites"/> and the UTF-8 size of the
 /// serialized string meets <see cref="BinaryStorePayloadOptions.OffloadThreshold"/>, the bytes are
 /// written to the store under a content-addressed key scoped to the workflow instance and a
@@ -36,10 +38,8 @@ namespace Dapr.Workflow.BinaryStore;
 /// are passed through unchanged and never re-offloaded.
 /// </para>
 /// <para>
-/// Inbound: if the string is a reference envelope and the target type is not itself a reference
-/// type, the payload is retrieved, optionally verified, decoded as UTF-8 and deserialized. If the
-/// target type is <see cref="PayloadReference"/> or <see cref="PayloadReference{T}"/>, the envelope
-/// is parsed and returned without retrieval so the consumer can stream it.
+/// Inbound: reference envelopes are resolved to their original serialized bytes. The boundary
+/// coordinator bypasses decoding when the application explicitly requests a reference.
 /// </para>
 /// <para>
 /// Writes are never retried by this converter because the runtime cannot replay an upload
@@ -48,10 +48,9 @@ namespace Dapr.Workflow.BinaryStore;
 /// is <see langword="true"/>.
 /// </para>
 /// </remarks>
-public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWorkflowPayloadResolver
+internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
 {
     private readonly DaprBinaryStoreClient _store;
-    private readonly IDaprSerializer _serializer;
     private readonly BinaryStorePayloadOptions _options;
     private readonly IWorkflowPayloadManifest _manifest;
 
@@ -59,117 +58,39 @@ public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWo
     /// Initializes a new instance of the <see cref="BinaryStorePayloadConverter"/> class.
     /// </summary>
     /// <param name="store">The binary store client used for all reads and writes.</param>
-    /// <param name="serializer">The workflow serializer applied to payload values.</param>
     /// <param name="options">The offloading options.</param>
     /// <param name="manifest">The manifest that tracks keys written per instance for later cleanup.</param>
-    public BinaryStorePayloadConverter(DaprBinaryStoreClient store, IDaprSerializer serializer,
+    public BinaryStorePayloadConverter(DaprBinaryStoreClient store,
         IOptions<BinaryStorePayloadOptions> options, IWorkflowPayloadManifest manifest)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
-        _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
         _options.Validate();
     }
 
-    // ---- IWorkflowPayloadConverter ----
-
     /// <inheritdoc />
-    public ValueTask<string> ToWireAsync<T>(T value, PayloadSite site, CancellationToken cancellationToken = default)
+    public ValueTask<string> EncodeAsync(string serialized, PayloadSite site, CancellationToken cancellationToken = default)
     {
-        if (value is PayloadReference existing)
+        cancellationToken.ThrowIfCancellationRequested();
+        if (serialized.Length == 0 || PayloadReferenceParser.Parse(serialized) is not null)
         {
-            return new ValueTask<string>(existing.ToEnvelope());
+            return new(serialized);
         }
 
-        return OffloadIfNeededAsync(_serializer.Serialize(value), site, cancellationToken);
+        return OffloadIfNeededAsync(serialized, site, cancellationToken);
     }
 
     /// <inheritdoc />
-    [RequiresUnreferencedCode(
-        "Serialization with a runtime Type may require types that cannot be statically analyzed.")]
-    [RequiresDynamicCode("Serialization with a runtime Type requires dynamic code generation.")]
-    public ValueTask<string> ToWireAsync(object? value, Type? inputType, PayloadSite site,
+    public async ValueTask<string?> DecodeAsync(string? wire, PayloadSite site,
         CancellationToken cancellationToken = default)
     {
-        if (value is PayloadReference existing)
-        {
-            return new ValueTask<string>(existing.ToEnvelope());
-        }
-
-        return OffloadIfNeededAsync(_serializer.Serialize(value, inputType), site, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var reference = PayloadReferenceParser.Parse(wire);
+        return reference is null ? wire : await ResolveStringAsync(reference, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <inheritdoc />
-    public async ValueTask<T?> FromWireAsync<T>(string? wire, PayloadSite site,
-        CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(wire))
-        {
-            return default;
-        }
-
-        if (!PayloadReference.TryParse(wire, out var reference) || reference is null)
-        {
-            return _serializer.Deserialize<T>(wire);
-        }
-
-        if (typeof(T) == typeof(PayloadReference))
-        {
-            return (T)(object)reference;
-        }
-
-        if (PayloadReference.IsReferenceType(typeof(T)))
-        {
-            return (T)(object)CoerceReference(reference, typeof(T));
-        }
-
-        var json = await ResolveStringAsync(reference, cancellationToken).ConfigureAwait(false);
-        return _serializer.Deserialize<T>(json);
-    }
-
-    /// <inheritdoc />
-    [RequiresUnreferencedCode(
-        "Deserialization with a runtime Type may require types that cannot be statically analyzed.")]
-    [RequiresDynamicCode("Deserialization with a runtime Type requires dynamic code generation.")]
-    public async ValueTask<object?> FromWireAsync(string? wire, Type returnType, PayloadSite site,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(returnType);
-
-        if (string.IsNullOrEmpty(wire))
-        {
-            return null;
-        }
-
-        if (!PayloadReference.TryParse(wire, out var reference) || reference is null)
-        {
-            return _serializer.Deserialize(wire, returnType);
-        }
-
-        if (PayloadReference.IsReferenceType(returnType))
-        {
-            return CoerceReference(reference, returnType);
-        }
-
-        var json = await ResolveStringAsync(reference, cancellationToken).ConfigureAwait(false);
-        return _serializer.Deserialize(json, returnType);
-    }
-
-    // ---- IWorkflowPayloadResolver ----
-
-    /// <inheritdoc />
-    public async Task<T> ResolveAsync<T>(PayloadReference reference, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(reference);
-        var json = await ResolveStringAsync(reference, cancellationToken).ConfigureAwait(false);
-        return _serializer.Deserialize<T>(json)
-               ?? throw new InvalidOperationException(
-                   $"Payload '{reference.Key}' deserialized to null for type {typeof(T)}.");
-    }
-
-    /// <inheritdoc />
-    public async Task<Stream> OpenAsync(PayloadReference reference, CancellationToken cancellationToken = default)
+    internal async Task<Stream> OpenAsync(PayloadReference reference, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(reference);
         var chunks = _store.GetBinaryFileChunksAsync(reference.StoreName, reference.Key, cancellationToken)
@@ -191,14 +112,11 @@ public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWo
         }
     }
 
-    /// <inheritdoc />
-    public async Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId,
+    internal Task<PayloadReference> StoreSerializedAsync(string serialized, string instanceId,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
-        var bytes = Encoding.UTF8.GetBytes(_serializer.Serialize(value));
-        var reference = await StoreBytesAsync(bytes, instanceId, cancellationToken).ConfigureAwait(false);
-        return reference.AsTyped<T>();
+        return StoreBytesAsync(Encoding.UTF8.GetBytes(serialized), instanceId, cancellationToken);
     }
 
     // ---- internals ----
@@ -244,13 +162,12 @@ public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWo
         return reference;
     }
 
-    private async Task<string> ResolveStringAsync(PayloadReference reference, CancellationToken cancellationToken)
+    internal async Task<string> ResolveStringAsync(PayloadReference reference, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(reference);
         if (reference.Size > _options.MaxInMemoryRehydrationSize)
         {
-            throw new InvalidOperationException(
-                $"Payload '{reference.Key}' is {reference.Size} bytes, which exceeds MaxInMemoryRehydrationSize " +
-                $"({_options.MaxInMemoryRehydrationSize}). Declare the parameter as PayloadReference<T> and stream it instead.");
+            throw new PayloadRehydrationLimitException(reference, _options.MaxInMemoryRehydrationSize);
         }
 
         if (reference.Stages.Count > 0)
@@ -262,7 +179,17 @@ public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWo
 
         await using var stream = await OpenAsync(reference, cancellationToken).ConfigureAwait(false);
         using var buffer = new MemoryStream(reference.Size is > 0 and <= int.MaxValue ? (int)reference.Size : 0);
-        await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await stream.ReadAsync(chunk, cancellationToken).ConfigureAwait(false)) != 0)
+        {
+            if (buffer.Length + read > _options.MaxInMemoryRehydrationSize)
+            {
+                throw new PayloadRehydrationLimitException(reference, _options.MaxInMemoryRehydrationSize);
+            }
+
+            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+        }
 
         var bytes = buffer.ToArray();
 
@@ -278,22 +205,4 @@ public sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter, IWo
         return Encoding.UTF8.GetString(bytes);
     }
 
-    // The only reflective call in the package. If AOT trimming flags it, the fix is for the
-    // generated activity invoker to construct PayloadReference<T> itself (it knows T at compile
-    // time) rather than asking the converter to produce a closed generic from a Type.
-    [UnconditionalSuppressMessage("AOT", "IL3050",
-        Justification = "PayloadReference<T>.AsTyped is preserved via DynamicDependency on PayloadReference.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "See above.")]
-    private static PayloadReference CoerceReference(PayloadReference reference, Type targetType)
-    {
-        if (targetType == typeof(PayloadReference))
-        {
-            return reference;
-        }
-
-        var elementType = targetType.GetGenericArguments()[0];
-        var method =
-            typeof(PayloadReference).GetMethod(nameof(PayloadReference.AsTyped))!.MakeGenericMethod(elementType);
-        return (PayloadReference)method.Invoke(reference, null)!;
-    }
 }

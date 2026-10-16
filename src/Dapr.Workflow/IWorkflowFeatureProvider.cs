@@ -14,11 +14,11 @@
 namespace Dapr.Workflow;
 
 /// <summary>
-/// Implemented by services that wish to contribute features to every workflow execution.
+/// Implemented by SDK services that contribute features to every workflow execution.
 /// The runtime resolves all registered providers from DI and invokes them when building the
 /// feature collection for an orchestrator invocation.
 /// </summary>
-public interface IWorkflowFeatureProvider
+internal interface IWorkflowFeatureProvider
 {
     /// <summary>
     /// Adds features for the execution identified by <paramref name="instanceId"/>.

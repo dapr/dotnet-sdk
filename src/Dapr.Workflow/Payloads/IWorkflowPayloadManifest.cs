@@ -11,9 +11,11 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Workflow.Payloads;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace Dapr.Workflow.BinaryStore;
+namespace Dapr.Workflow.Payloads;
 
 /// <summary>
 /// Tracks the payload references written on behalf of each workflow instance so they can be
@@ -21,8 +23,8 @@ namespace Dapr.Workflow.BinaryStore;
 /// operation, so without a manifest the SDK cannot discover an instance's payloads after the fact.
 /// </summary>
 /// <remarks>
-/// The default registration is <see cref="NullWorkflowPayloadManifest"/>, which records nothing and
-/// makes purge-time cleanup a no-op. Applications that need cleanup should register an
+/// The default implementation records nothing and makes explicit payload cleanup a no-op.
+/// Applications that need cleanup should register an
 /// implementation backed by a durable store. When the runtime gains a prefix-delete RPC this
 /// abstraction can be bypassed entirely.
 /// </remarks>

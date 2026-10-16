@@ -11,14 +11,16 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Workflow.Payloads;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace Dapr.Workflow.BinaryStore;
+namespace Dapr.Workflow.Payloads;
 
 /// <summary>
-/// Resolves and creates <see cref="PayloadReference"/> instances against a binary store. Exposed to
-/// orchestrator code as a <see cref="WorkflowContext"/> feature and to activity code via dependency
-/// injection.
+/// Resolves and creates <see cref="PayloadReference"/> instances against a binary store. Accessed by
+/// orchestrators through <see cref="WorkflowContextPayloadExtensions"/> and by activities and clients
+/// through dependency injection.
 /// </summary>
 /// <remarks>
 /// Orchestrator code must treat this interface as read-only. Resolution of an existing reference is

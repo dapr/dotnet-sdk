@@ -11,10 +11,13 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
 using System.Collections.Concurrent;
-using Dapr.Workflow.Payloads;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace Dapr.Workflow.BinaryStore;
+namespace Dapr.Workflow.Payloads;
 
 /// <summary>
 /// Wraps an <see cref="IWorkflowPayloadResolver"/> with a bounded per-execution cache so that an
@@ -25,7 +28,7 @@ internal sealed class CachingWorkflowPayloadResolver : IWorkflowPayloadResolver
 {
     private readonly IWorkflowPayloadResolver _inner;
     private readonly int _capacity;
-    private readonly ConcurrentDictionary<string, object?> _cache = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<(PayloadReference Reference, Type Type), object?> _cache = new();
  
     /// <summary>
     /// Initializes a new instance of the <see cref="CachingWorkflowPayloadResolver"/> class.
@@ -41,7 +44,9 @@ internal sealed class CachingWorkflowPayloadResolver : IWorkflowPayloadResolver
     /// <inheritdoc />
     public async Task<T> ResolveAsync<T>(PayloadReference reference, CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"{reference.StoreName}|{reference.Key}|{typeof(T).FullName}";
+        ArgumentNullException.ThrowIfNull(reference);
+        cancellationToken.ThrowIfCancellationRequested();
+        var cacheKey = (reference, typeof(T));
         if (_capacity > 0 && _cache.TryGetValue(cacheKey, out var cached))
         {
             return (T)cached!;

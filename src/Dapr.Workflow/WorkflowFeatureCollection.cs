@@ -17,9 +17,9 @@ using System.Collections.Generic;
 namespace Dapr.Workflow;
 
 /// <summary>
-/// A per-execution bag of feature instance keyed by interface type. Populated by the workflow
-/// runtime ebfore an orchestrator is invokled and exposed to user code via
-/// <see cref="WorkflowContext.GetFeature{TFeature}"/>.
+/// A per-execution bag of features keyed by interface type. Populated by the workflow
+/// runtime before an orchestrator is invoked and accessed through
+/// <see cref="IWorkflowFeatureSource"/>.
 /// </summary>
 internal sealed class WorkflowFeatureCollection : IWorkflowFeatureRegistry
 {

@@ -11,13 +11,14 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
 using Microsoft.Extensions.Options;
 
-namespace Dapr.Workflow.BinaryStore;
+namespace Dapr.Workflow.Payloads;
 
 /// <summary>
 /// Attaches a per-execution <see cref="IWorkflowPayloadResolver"/> feature to every orchestrator
-/// invocation so that <see cref="Extensions.WorkflowContextBinaryStoreExtensions"/> can locate it.
+/// invocation so that <see cref="WorkflowContextPayloadExtensions"/> can locate it.
 /// </summary>
 /// <param name="resolver">The application-wide resolver to wrap per execution.</param>
 /// <param name="options">The offloading options, used for the cache size.</param>

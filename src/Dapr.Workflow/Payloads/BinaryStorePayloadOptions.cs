@@ -11,9 +11,10 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using Dapr.Workflow.Payloads;
+using System;
+using System.Linq;
 
-namespace Dapr.Workflow.BinaryStore;
+namespace Dapr.Workflow.Payloads;
 
 /// <summary>
 /// Configures offloading and resolution of Dapr Workflow payloads in a Dapr binary store.
@@ -68,7 +69,7 @@ public sealed class BinaryStorePayloadOptions
     /// </summary>
     /// <exception cref="ArgumentException">A required name or prefix is invalid.</exception>
     /// <exception cref="ArgumentOutOfRangeException">A numeric option is outside its valid range.</exception>
-    public void Validate()
+    internal void Validate()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(StoreName);
         ArgumentException.ThrowIfNullOrWhiteSpace(KeyPrefix);
