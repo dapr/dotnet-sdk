@@ -287,7 +287,7 @@ public sealed class WorkflowBinaryStoreIntegrationTests
         }
     }
 
-    private sealed record PayloadDocument(string Name, string Content);
+    internal sealed record PayloadDocument(string Name, string Content);
 
     private sealed class InMemoryPayloadManifest : IWorkflowPayloadManifest
     {
@@ -321,7 +321,7 @@ public sealed class WorkflowBinaryStoreIntegrationTests
         }
     }
 
-    private sealed class ResolvePayloadWorkflow : Workflow<PayloadReference<PayloadDocument>, string>
+    internal sealed class ResolvePayloadWorkflow : Workflow<PayloadReference<PayloadDocument>, string>
     {
         public override async Task<string> RunAsync(WorkflowContext context, PayloadReference<PayloadDocument> input)
         {
@@ -339,7 +339,7 @@ public sealed class WorkflowBinaryStoreIntegrationTests
         }
     }
 
-    private sealed class AutomaticPayloadWorkflow : Workflow<PayloadDocument, PayloadDocument>
+    internal sealed class AutomaticPayloadWorkflow : Workflow<PayloadDocument, PayloadDocument>
     {
         public override async Task<PayloadDocument> RunAsync(WorkflowContext context, PayloadDocument input)
         {
@@ -357,7 +357,7 @@ public sealed class WorkflowBinaryStoreIntegrationTests
         }
     }
 
-    private sealed class UnconfiguredPayloadWorkflow : Workflow<PayloadDocument, PayloadDocument>
+    internal sealed class UnconfiguredPayloadWorkflow : Workflow<PayloadDocument, PayloadDocument>
     {
         public override Task<PayloadDocument> RunAsync(WorkflowContext context, PayloadDocument input)
         {
@@ -366,7 +366,7 @@ public sealed class WorkflowBinaryStoreIntegrationTests
         }
     }
 
-    private sealed class UnconfiguredEnvelopeWorkflow : Workflow<JsonElement, JsonElement>
+    internal sealed class UnconfiguredEnvelopeWorkflow : Workflow<JsonElement, JsonElement>
     {
         public override async Task<JsonElement> RunAsync(WorkflowContext context, JsonElement input)
         {
@@ -382,7 +382,7 @@ public sealed class WorkflowBinaryStoreIntegrationTests
             => Task.FromResult(input);
     }
 
-    private sealed class EchoPayloadChild : Workflow<PayloadDocument, PayloadDocument>
+    internal sealed class EchoPayloadChild : Workflow<PayloadDocument, PayloadDocument>
     {
         public override Task<PayloadDocument> RunAsync(WorkflowContext context, PayloadDocument input)
             => Task.FromResult(input with { Name = "child" });
