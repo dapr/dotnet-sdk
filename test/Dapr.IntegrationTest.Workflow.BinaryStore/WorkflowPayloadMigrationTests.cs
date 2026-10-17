@@ -437,7 +437,7 @@ public sealed class WorkflowPayloadMigrationTests
             // Keep the sidecar alive: restarting an in-memory binary store would destroy the payloads.
             await StopWorkerAsync();
             var builder = WebApplication.CreateBuilder();
-            builder.WebHost.UseUrls($"http://127.0.0.1:{harness.AppPort}");
+            builder.WebHost.UseUrls($"http://0.0.0.0:{harness.AppPort}");
             builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["DAPR_GRPC_ENDPOINT"] = $"http://127.0.0.1:{harness.DaprGrpcPort}",
