@@ -15,6 +15,7 @@ using System.Reflection;
 using System.Text.Json;
 using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow.Client;
 using Dapr.Workflow.Registration;
 using Dapr.Workflow.Serialization;
@@ -29,7 +30,7 @@ namespace Dapr.Workflow.Test;
 
 public class DaprWorkflowClientBuilderTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void PayloadSupportUsesTheRegisteredSerializerUnlessExplicitlyOverridden()
     {
         var registered = new StubDaprSerializer("registered");

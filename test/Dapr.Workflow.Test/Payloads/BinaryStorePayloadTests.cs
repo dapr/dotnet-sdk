@@ -17,6 +17,7 @@ using System.Text;
 using Dapr.BinaryStore;
 using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow.Payloads;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -28,7 +29,7 @@ public class BinaryStorePayloadTests
 {
     private static readonly PayloadSite Site = new(PayloadKind.ActivityInput, "instance", "activity");
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void PublicPayloadSurfaceIsLimitedToApplicationContracts()
     {
         Type[] expected =
@@ -79,7 +80,7 @@ public class BinaryStorePayloadTests
         }
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void FeatureHooksDoNotExtendThePublicWorkflowContext()
     {
         Assert.Null(typeof(WorkflowContext).GetMethod("GetFeature"));
@@ -95,7 +96,7 @@ public class BinaryStorePayloadTests
         });
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void ImplementationIsInternalToWorkflowAssembly()
     {
         var assembly = typeof(DaprWorkflowClient).Assembly;
@@ -119,7 +120,7 @@ public class BinaryStorePayloadTests
         Assert.Empty(typeof(WorkflowPayloadCleaner).GetConstructors());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void WorkflowRegistrationDoesNotEnablePayloadStorage()
     {
         var services = new ServiceCollection();
@@ -132,7 +133,7 @@ public class BinaryStorePayloadTests
         Assert.Null(provider.GetService<WorkflowPayloadCleaner>());
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData("defaults")]
     [InlineData("configured")]
     [InlineData("builder")]
@@ -167,7 +168,7 @@ public class BinaryStorePayloadTests
             feature => feature is BinaryStorePayloadFeatureProvider);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void PayloadRegistrationRequiresWorkflowBuilder()
     {
         var method = typeof(BinaryStorePayloadServiceCollectionExtensions)
@@ -178,7 +179,7 @@ public class BinaryStorePayloadTests
         Assert.Equal(typeof(WorkflowServiceCollectionExtensions.DaprWorkflowBuilder), method.ReturnType);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void PayloadRegistrationRejectsUninitializedBuilder()
     {
         var builder = default(WorkflowServiceCollectionExtensions.DaprWorkflowBuilder);
@@ -187,7 +188,7 @@ public class BinaryStorePayloadTests
             builder.WithBinaryStorePayloads(options => options.StoreName = "store"));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void PayloadRegistrationRejectsNullConfiguration()
     {
         var services = new ServiceCollection();
@@ -198,7 +199,7 @@ public class BinaryStorePayloadTests
         Assert.Equal(count, services.Count);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task InlinePayloadPreservesConfiguredSerializer()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -218,7 +219,7 @@ public class BinaryStorePayloadTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task OffloadingPreservesVersionOneEnvelopeAndStoredBytes()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -254,7 +255,7 @@ public class BinaryStorePayloadTests
         store.VerifyAll();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(PayloadWritePreference.Preserve)]
     [InlineData(PayloadWritePreference.PreferReference)]
     public async Task ExplicitReferenceIsPassedThroughWithoutStorageIo(PayloadWritePreference preference)
@@ -275,7 +276,7 @@ public class BinaryStorePayloadTests
         store.VerifyNoOtherCalls();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(PayloadWritePreference.Preserve)]
     [InlineData(PayloadWritePreference.PreferReference)]
     [InlineData(PayloadWritePreference.PreferInline)]
@@ -302,7 +303,7 @@ public class BinaryStorePayloadTests
         Assert.Equal(bytes, copy.ToArray());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task CleanupUsesExplicitManifestAndClearsItAfterDeletion()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -319,7 +320,7 @@ public class BinaryStorePayloadTests
         store.VerifyAll();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("custom serialized payload")]
@@ -337,7 +338,7 @@ public class BinaryStorePayloadTests
         store.VerifyNoOtherCalls();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData("{\"$daprRef\":{\"v\":2,\"store\":\"s\",\"key\":\"k\",\"size\":1,\"sha256\":\"h\"}}")]
     [InlineData("{\"$daprRef\":{\"v\":0,\"store\":\"s\",\"key\":\"k\",\"size\":1,\"sha256\":\"h\"}}")]
     [InlineData("{\"$daprRef\":{\"store\":\"s\",\"key\":\"k\",\"size\":1,\"sha256\":\"h\"}}")]
@@ -355,7 +356,7 @@ public class BinaryStorePayloadTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task EnvelopeDetectionDoesNotDependOnLeadingWhitespaceOrSerializer()
     {
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
@@ -367,7 +368,7 @@ public class BinaryStorePayloadTests
         store.VerifyNoOtherCalls();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(4, PayloadKind.ActivityInput, true)]
     [InlineData(5, PayloadKind.ActivityInput, false)]
     [InlineData(4, PayloadKind.WorkflowInput, false)]
@@ -392,7 +393,7 @@ public class BinaryStorePayloadTests
             offloaded ? Times.Once() : Times.Never());
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(PayloadWritePreference.Preserve, null)]
     [InlineData(PayloadWritePreference.Preserve, 1)]
     [InlineData(PayloadWritePreference.Preserve, 64 * 1024)]
@@ -426,7 +427,7 @@ public class BinaryStorePayloadTests
         store.VerifyNoOtherCalls();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(1)]
     [InlineData(100)]
     public async Task OversizedMetadataPreservesReferenceButRejectsMaterializedReads(long declaredSize)
@@ -448,7 +449,7 @@ public class BinaryStorePayloadTests
             declaredSize > 10 ? Times.Never() : Times.Once());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ReferenceBoundaryAlsoAcceptsLegacyObjectSerialization()
     {
         var serializer = new JsonDaprSerializer();
@@ -461,7 +462,7 @@ public class BinaryStorePayloadTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ResponseEncodingCoversAllActionKindsWithoutChangingCarryoverHistory()
     {
         var codec = new DelayedPayloadConverter();
@@ -530,7 +531,7 @@ public class BinaryStorePayloadTests
         Assert.Equal("wire:retained", carried.EventRaised.Input);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task DisablingNewWritesStillReadsExistingVersionOneReferences()
     {
         var bytes = Encoding.UTF8.GetBytes("\"retained\"");
@@ -552,7 +553,7 @@ public class BinaryStorePayloadTests
             DaprBinaryStoreClient.DefaultChunkSize, It.IsAny<CancellationToken>()), Times.Never());
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ResolutionCacheDoesNotIgnoreChangedReferenceMetadata()
     {
         var original = new PayloadReference("store", "key", 10, "original-hash");

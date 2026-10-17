@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.DurableTask.Protobuf;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow.Client;
 using Dapr.Common.Serialization;
 using Dapr.Workflow.Serialization;
@@ -26,7 +27,7 @@ namespace Dapr.Workflow.Test.Client;
 
 public class WorkflowGrpcClientTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task PayloadCodecTransformsClientWritesAfterConfiguredSerialization()
     {
         var codec = new DelayedPayloadConverter();
@@ -67,7 +68,7 @@ public class WorkflowGrpcClientTests
         Assert.Equal(rerun.NewInstanceID, codec.Writes[^1].Site.InstanceId);
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData("get")]
     [InlineData("start")]
     [InlineData("complete")]
@@ -108,7 +109,7 @@ public class WorkflowGrpcClientTests
         Assert.Equal(3, codec.Reads.Count);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task MissingPayloadMustNotBeReportedAsMissingWorkflowMetadata()
     {
         var codec = new Mock<IWorkflowPayloadConverter>();

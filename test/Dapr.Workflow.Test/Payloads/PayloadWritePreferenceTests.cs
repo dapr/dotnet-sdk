@@ -16,6 +16,7 @@ using System.Text;
 using Dapr.BinaryStore;
 using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow.Client;
 using Dapr.Workflow.Payloads;
 using Dapr.Workflow.Versioning;
@@ -50,7 +51,7 @@ public class PayloadWritePreferenceTests
         }
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [MemberData(nameof(Calls))]
     public async Task CallsApplyPreferenceAndCrossAppOverride(
         string kind, PayloadWritePreference preference, bool referenceInput, bool allowReferences, string? target)
@@ -113,7 +114,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(PayloadWritePreference.Preserve)]
     [InlineData(PayloadWritePreference.PreferReference)]
     [InlineData(PayloadWritePreference.PreferInline)]
@@ -140,7 +141,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ReferenceContractsRejectInlineInsteadOfManufacturingReferences()
     {
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
@@ -158,7 +159,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(false)]
     [InlineData(true)]
     public async Task InlineResolutionChecksDeclaredAndActualSize(bool understatedSize)
@@ -175,7 +176,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task InlineResolutionAcceptsExactBufferingLimitAndDoesNotReoffload()
     {
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
@@ -188,7 +189,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task InlineResolutionRejectsCorruptionAndDoesNotFallBack()
     {
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
@@ -202,7 +203,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task InlineResolutionSurfacesStorageFailures()
     {
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
@@ -216,7 +217,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task InlineResolutionRejectsUnknownVersionsStagesAndCancellation()
     {
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
@@ -231,7 +232,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ReferencePermissionIsPerCallAndPreservesRetryAndPropagationOptions()
     {
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
@@ -260,7 +261,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task RecordedCallsAreNotReencodedOnReplay()
     {
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
@@ -283,7 +284,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task CrossAppReferenceWithoutPayloadSupportFailsBeforeSending()
     {
         var context = CreateContext(null);
@@ -304,14 +305,14 @@ public class PayloadWritePreferenceTests
                 TestContext.Current.CancellationToken));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void InvalidPreferenceIsRejected()
     {
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateConverter(store, (PayloadWritePreference)99));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public void ExistingOptionConstructorsAndDeconstructionRemainAvailable()
     {
         var options = new WorkflowTaskOptions(null, "remote", HistoryPropagationScope.OwnHistory);
@@ -334,7 +335,7 @@ public class PayloadWritePreferenceTests
             [typeof(string), typeof(WorkflowRetryPolicy), typeof(string), typeof(HistoryPropagationScope)]));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task TargetAppIdRequiresInliningEvenWithoutSourceAppId()
     {
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
@@ -353,7 +354,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task DetachedOptionsRejectUnsupportedSettings()
     {
         var context = CreateContext(null);
@@ -365,7 +366,7 @@ public class PayloadWritePreferenceTests
         Assert.Empty(context.PendingActions);
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(PayloadWritePreference.Preserve, false, PayloadKind.All)]
     [InlineData(PayloadWritePreference.Preserve, true, PayloadKind.All)]
     [InlineData(PayloadWritePreference.PreferReference, false, PayloadKind.All)]
@@ -434,7 +435,7 @@ public class PayloadWritePreferenceTests
         grpc.VerifyNoOtherCalls();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]
@@ -469,7 +470,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ReferenceTypedEventsDoNotResolveOrManufactureReferences(bool referenceInput)
@@ -498,7 +499,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(false)]
     [InlineData(true)]
     public async Task EventInliningFailureDisposesTheStreamAndNeverSends(bool cancelDuringRead)
@@ -543,7 +544,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Theory]
+    [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]
@@ -609,7 +610,7 @@ public class PayloadWritePreferenceTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task CrossAppInliningDoesNotRecursivelyChangeNestedReferenceContracts()
     {
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);

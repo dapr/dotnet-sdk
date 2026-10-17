@@ -15,6 +15,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using Dapr.DurableTask.Protobuf;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow.Abstractions;
 using Dapr.Common.Serialization;
 using Dapr.Workflow.Serialization;
@@ -36,7 +37,7 @@ namespace Dapr.Workflow.Test.Worker;
 
 public class WorkflowWorkerTests
 {
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task WorkerShutdownDuringPayloadReadDoesNotProduceFailedWorkflowHistory()
     {
         var codec = new DelayedPayloadConverter();
@@ -58,7 +59,7 @@ public class WorkflowWorkerTests
             }));
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task FailedPayloadReadFaultsWorkflowInsteadOfYieldingWithoutActions()
     {
         var codec = new DelayedPayloadConverter();
@@ -87,7 +88,7 @@ public class WorkflowWorkerTests
         Assert.Equal(typeof(JsonException).FullName, completion.FailureDetails.ErrorType);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task PayloadReadsDrainBeforeAdvancingReplayAndOnlyNewActionsAreEncoded()
     {
         var codec = new DelayedPayloadConverter();
@@ -137,7 +138,7 @@ public class WorkflowWorkerTests
         Assert.Equal("wire:8", request.PastEvents[^1].TaskCompleted.Result);
     }
 
-    [Fact]
+    [MinimumDaprRuntimeFact("1.19")]
     public async Task ActivityPayloadBoundariesDecodeBeforeUserCodeAndEncodeAfterIt()
     {
         var codec = new DelayedPayloadConverter();
