@@ -1,0 +1,12 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: binarystore
+spec:
+  type: binarystore.in-memory
+  version: v1
+  metadata:
+    - name: maxSize
+      value: "1Mi"
+    - name: maxTotalSize
+      value: "25Mi"
