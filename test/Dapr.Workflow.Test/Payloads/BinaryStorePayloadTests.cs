@@ -38,6 +38,7 @@ public class BinaryStorePayloadTests
             typeof(IWorkflowPayloadResolver),
             typeof(PayloadIntegrityException),
             typeof(PayloadKind),
+            typeof(PayloadWritePreference),
             typeof(PayloadNotFoundException),
             typeof(PayloadReference),
             typeof(PayloadReference<>),
@@ -253,12 +254,14 @@ public class BinaryStorePayloadTests
         store.VerifyAll();
     }
 
-    [Fact]
-    public async Task ExplicitReferenceIsPassedThroughWithoutStorageIo()
+    [Theory]
+    [InlineData(PayloadWritePreference.Preserve)]
+    [InlineData(PayloadWritePreference.PreferReference)]
+    public async Task ExplicitReferenceIsPassedThroughWithoutStorageIo(PayloadWritePreference preference)
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
-        var converter = CreateConverter(store.Object);
+        var converter = CreateConverter(store.Object, preference: preference);
         var handler = new WorkflowPayloadHandler(new JsonDaprSerializer(), converter);
         var reference = new PayloadReference<string>("legacy-store", "legacy-key", 10, "hash");
 
@@ -272,8 +275,11 @@ public class BinaryStorePayloadTests
         store.VerifyNoOtherCalls();
     }
 
-    [Fact]
-    public async Task ResolverCanStoreAndStreamWithoutAutomaticBoundaryInterception()
+    [Theory]
+    [InlineData(PayloadWritePreference.Preserve)]
+    [InlineData(PayloadWritePreference.PreferReference)]
+    [InlineData(PayloadWritePreference.PreferInline)]
+    public async Task ResolverCanStoreAndStreamWithoutAutomaticBoundaryInterception(PayloadWritePreference preference)
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
@@ -286,7 +292,7 @@ public class BinaryStorePayloadTests
         store.Setup(s => s.GetBinaryFileChunksAsync("store", key, It.IsAny<CancellationToken>()))
             .Returns(() => ReadChunksAsync(bytes));
         IWorkflowPayloadResolver resolver = new BinaryStoreWorkflowPayloadResolver(
-            CreateConverter(store.Object), new JsonDaprSerializer());
+            CreateConverter(store.Object, preference: preference), new JsonDaprSerializer());
 
         var reference = await resolver.StoreAsync("value", "instance", cancellationToken);
         Assert.Equal("value", await resolver.ResolveAsync<string>(reference, cancellationToken));
@@ -375,7 +381,8 @@ public class BinaryStorePayloadTests
         var codec = new BinaryStorePayloadConverter(store.Object,
             Options.Create(new BinaryStorePayloadOptions
             {
-                StoreName = "store", OffloadThreshold = threshold, OffloadSites = PayloadKind.ActivityInput
+                StoreName = "store", OffloadThreshold = threshold, OffloadSites = PayloadKind.ActivityInput,
+                WritePreference = PayloadWritePreference.PreferReference
             }), NullWorkflowPayloadManifest.Instance);
         var wire = await codec.EncodeAsync(serialized, Site with { Kind = site },
             TestContext.Current.CancellationToken);
@@ -383,6 +390,40 @@ public class BinaryStorePayloadTests
         store.Verify(s => s.SetBinaryFileAsync("store", It.IsAny<string>(), It.IsAny<Stream>(), false,
                 DaprBinaryStoreClient.DefaultChunkSize, It.IsAny<CancellationToken>()),
             offloaded ? Times.Once() : Times.Never());
+    }
+
+    [Theory]
+    [InlineData(PayloadWritePreference.Preserve, null)]
+    [InlineData(PayloadWritePreference.Preserve, 1)]
+    [InlineData(PayloadWritePreference.Preserve, 64 * 1024)]
+    [InlineData(PayloadWritePreference.PreferInline, null)]
+    public async Task NonOffloadingPreferencesWriteInlineAtEveryBoundary(PayloadWritePreference preference, int? threshold)
+    {
+        var store = new Mock<DaprBinaryStoreClient>(MockBehavior.Strict);
+        var manifest = new TestManifest();
+        var options = new BinaryStorePayloadOptions
+        {
+            StoreName = "store", OffloadThreshold = threshold, OffloadSites = PayloadKind.All
+        };
+        Assert.Equal(PayloadWritePreference.Preserve, options.WritePreference);
+        options.WritePreference = preference;
+        var codec = new BinaryStorePayloadConverter(store.Object, Options.Create(options), manifest);
+        var serializer = new JsonDaprSerializer();
+        var value = new PayloadDocument(new string('x', 128 * 1024));
+        var serialized = serializer.Serialize(value);
+        var token = TestContext.Current.CancellationToken;
+
+        foreach (var kind in Enum.GetValues<PayloadKind>().Except([PayloadKind.None, PayloadKind.All]))
+        {
+            var site = Site with { Kind = kind };
+            var wire = await codec.EncodeAsync(serialized, site, token);
+            Assert.Equal(serialized, wire);
+            Assert.False(PayloadReference.TryParse(wire, out _));
+            Assert.Equal(value, serializer.Deserialize<PayloadDocument>(await codec.DecodeAsync(wire, site, token)));
+        }
+
+        Assert.Empty(manifest.References);
+        store.VerifyNoOtherCalls();
     }
 
     [Theory]
@@ -530,8 +571,11 @@ public class BinaryStorePayloadTests
     }
 
     private static BinaryStorePayloadConverter CreateConverter(DaprBinaryStoreClient store,
-        IWorkflowPayloadManifest? manifest = null) =>
-        new(store, Options.Create(new BinaryStorePayloadOptions { StoreName = "store" }),
+        IWorkflowPayloadManifest? manifest = null, PayloadWritePreference preference = PayloadWritePreference.PreferReference) =>
+        new(store, Options.Create(new BinaryStorePayloadOptions
+        {
+            StoreName = "store", WritePreference = preference
+        }),
             manifest ?? NullWorkflowPayloadManifest.Instance);
 
     private static IEnumerable<Type> ReferencedTypes(Type type)

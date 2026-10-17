@@ -40,7 +40,7 @@ internal sealed class ReferencePayloadExample : PayloadExample
     public override async Task RunAsync(
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {
-        Console.WriteLine("Registration: the same binary-store support as automatic offloading.");
+        Console.WriteLine("Registration: binary-store support with the default Preserve write preference.");
         Console.WriteLine("History: an explicit PayloadReference<DocumentPayload> input and a small inline summary output.");
         Console.WriteLine("Application code: the client uploads once; the workflow forwards the reference without reading the document.");
 

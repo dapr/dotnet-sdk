@@ -24,4 +24,5 @@ namespace Dapr.Workflow.Payloads;
 /// The name of the workflow, activity, or event associated with the payload, where applicable.
 /// <see langword="null"/> for boundaries that are not named, such as <see cref="PayloadKind.CustomStatus"/>.
 /// </param>
-internal readonly record struct PayloadSite(PayloadKind Kind, string InstanceId, string? Name);
+/// <param name="RequireInline">Whether this boundary forbids reference envelopes.</param>
+internal readonly record struct PayloadSite(PayloadKind Kind, string InstanceId, string? Name, bool RequireInline = false);

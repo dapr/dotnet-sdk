@@ -45,6 +45,7 @@ public sealed class WorkflowPayloadMigrationTests
     [InlineData(PayloadMode.Inline, PayloadMode.Inline)]
     [InlineData(PayloadMode.Inline, PayloadMode.Automatic)]
     [InlineData(PayloadMode.Automatic, PayloadMode.ReadOnly)]
+    [InlineData(PayloadMode.Automatic, PayloadMode.PreferInline)]
     public async Task ShouldReplayExistingHistoryAfterChangingPayloadMode(PayloadMode before, PayloadMode after)
     {
         using var timeout = CreateTimeout();
@@ -112,6 +113,123 @@ public sealed class WorkflowPayloadMigrationTests
         Assert.Equal(firstInput, persisted.WorkflowState.Input);
         await deployment.AssertWireAsync(persisted.WorkflowState.Output, expected, after == PayloadMode.Automatic,
             token);
+    }
+
+    [MinimumDaprRuntimeTheory("1.19")]
+    [InlineData(PayloadMode.ReadOnly)]
+    [InlineData(PayloadMode.Automatic)]
+    [InlineData(PayloadMode.PreferInline)]
+    public async Task ShouldKeepMultipleDocumentReferencesDistinctAcrossReplayAndPolicyChanges(PayloadMode after)
+    {
+        using var timeout = CreateTimeout();
+        var token = timeout.Token;
+        await using var deployment = await Deployment.CreateAsync(token);
+        await deployment.StartWorkerAsync(PayloadMode.Automatic, token);
+        var instanceId = Guid.NewGuid().ToString("N");
+        Document[] documents =
+        [
+            new("first", new string('a', 128 * 1024)),
+            new("second", new string('b', 160 * 1024)),
+            new("third", new string('c', 192 * 1024))
+        ];
+        var resolver = deployment.Services.GetRequiredService<IWorkflowPayloadResolver>();
+        var references = await Task.WhenAll(documents.Select(document =>
+            resolver.StoreAsync(document, instanceId, token)));
+        Assert.Equal(documents.Length, references.Select(reference => reference.Key).Distinct().Count());
+        Assert.All(references, reference =>
+            Assert.True(reference.Size > new BinaryStorePayloadOptions().OffloadThreshold));
+
+        await deployment.Client.ScheduleNewWorkflowAsync(nameof(MultipleDocumentWorkflow), instanceId, references,
+            startTime: null, cancellation: token);
+        await deployment.WaitForCheckpointAsync(instanceId, "waiting", token);
+        var original = await deployment.GetHistoryAsync(instanceId, token);
+        Assert.Equal(documents.Length, original.Events.Count(e => e.TaskCompleted is not null));
+        Assert.Equal(documents.Length, deployment.Calls.Count(instanceId, nameof(EchoActivity)));
+
+        await deployment.StartWorkerAsync(after, token);
+        await deployment.Client.RaiseEventAsync(instanceId, "resume", true, token);
+        var result = await deployment.Client.WaitForWorkflowCompletionAsync(instanceId, true, token);
+        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+        var expected = documents.Select(document => document with { Name = document.Name + ":echo:echo" }).ToArray();
+        Assert.Equal(expected, result.ReadOutputAs<Document[]>());
+        Assert.Equal(references.Select(reference => reference.ToEnvelope()),
+            result.ReadInputAs<PayloadReference<Document>[]>()!.Select(reference => reference.ToEnvelope()));
+        Assert.Equal(documents.Length * 2, deployment.Calls.Count(instanceId, nameof(EchoActivity)));
+
+        var history = await deployment.GetHistoryAsync(instanceId, token);
+        Assert.Equal(original.Events, history.Events.Take(original.Events.Count));
+        var scheduled = history.Events.Where(e => e.TaskScheduled is not null).ToArray();
+        var completed = history.Events.Where(e => e.TaskCompleted is not null).ToArray();
+        Assert.Equal(documents.Length * 2, scheduled.Length);
+        Assert.Equal(scheduled.Length, completed.Length);
+        var firstStageKeys = new HashSet<string>();
+        for (var i = 0; i < scheduled.Length; i++)
+        {
+            var firstStage = i < documents.Length;
+            var document = documents[i % documents.Length];
+            var input = firstStage ? document : document with { Name = document.Name + ":echo" };
+            var task = scheduled[i];
+            Assert.Equal(nameof(EchoActivity), task.TaskScheduled.Name);
+            await deployment.AssertWireAsync(task.TaskScheduled.Input, input,
+                firstStage || after != PayloadMode.PreferInline, token);
+            var completion = Assert.Single(completed, e => e.TaskCompleted.TaskScheduledId == task.EventId);
+            await deployment.AssertWireAsync(completion.TaskCompleted.Result,
+                input with { Name = input.Name + ":echo" }, firstStage || after == PayloadMode.Automatic, token);
+
+            if (firstStage)
+            {
+                Assert.Equal(references[i].ToEnvelope(), task.TaskScheduled.Input);
+                Assert.True(PayloadReference.TryParse(completion.TaskCompleted.Result, out var reference));
+                Assert.NotNull(reference);
+                Assert.StartsWith($"workflow-payloads/{instanceId}/", reference.Key);
+                Assert.True(firstStageKeys.Add(reference.Key), "Different documents must not share an output key.");
+                Assert.DoesNotContain(reference.Key, references.Select(value => value.Key));
+                if (after != PayloadMode.PreferInline)
+                    Assert.Equal(completion.TaskCompleted.Result, scheduled[i + documents.Length].TaskScheduled.Input);
+            }
+        }
+
+        var persisted = await deployment.GetInstanceAsync(instanceId, token);
+        Assert.Equal(Assert.Single(original.Events, e => e.ExecutionStarted is not null).ExecutionStarted.Input,
+            persisted.WorkflowState.Input);
+        await deployment.AssertWireAsync(persisted.WorkflowState.Output, expected, after == PayloadMode.Automatic, token);
+    }
+
+    [MinimumDaprRuntimeTheory("1.19")]
+    [InlineData(PayloadMode.ReadOnly)]
+    [InlineData(PayloadMode.Automatic)]
+    [InlineData(PayloadMode.PreferInline)]
+    public async Task ShouldApplyClientEventPoliciesAndReplayOriginalWireValues(PayloadMode mode)
+    {
+        using var timeout = CreateTimeout();
+        var token = timeout.Token;
+        await using var deployment = await Deployment.CreateAsync(token);
+        await deployment.StartWorkerAsync(mode, token);
+        var receiverId = Guid.NewGuid().ToString("N");
+        var reference = await deployment.Services.GetRequiredService<IWorkflowPayloadResolver>()
+            .StoreAsync(Input, receiverId, token);
+        await deployment.Client.ScheduleNewWorkflowAsync(nameof(EventReceiverWorkflow), receiverId, input: null,
+            startTime: null, cancellation: token);
+        await deployment.WaitForCheckpointAsync(receiverId, "waiting", token);
+        await deployment.Client.RaiseEventAsync(receiverId, "inline", Input, token);
+        await deployment.Client.RaiseEventAsync(receiverId, "reference", reference, token);
+        await deployment.WaitForCheckpointAsync(receiverId, "received", token);
+        var original = await deployment.GetHistoryAsync(receiverId, token);
+        var raised = original.Events.Where(e => e.EventRaised is not null).Select(e => e.EventRaised).ToArray();
+        Assert.Equal(2, raised.Length);
+        await deployment.AssertWireAsync(Assert.Single(raised, e => e.Name == "inline").Input,
+            Input, mode == PayloadMode.Automatic, token);
+        var referenceWire = Assert.Single(raised, e => e.Name == "reference").Input;
+        Assert.Equal(mode == PayloadMode.PreferInline ? deployment.Serializer.Serialize(Input) : reference.ToEnvelope(),
+            referenceWire);
+
+        await deployment.StartWorkerAsync(mode, token);
+        await deployment.Client.RaiseEventAsync(receiverId, "finish", true, token);
+        var completed = await deployment.Client.WaitForWorkflowCompletionAsync(receiverId, true, token);
+        Assert.Equal(WorkflowRuntimeStatus.Completed, completed.RuntimeStatus);
+        Assert.Equal("input|input", completed.ReadOutputAs<string>());
+        var replayed = await deployment.GetHistoryAsync(receiverId, token);
+        Assert.Equal(original.Events, replayed.Events.Take(original.Events.Count));
     }
 
     [MinimumDaprRuntimeTheory("1.19")]
@@ -243,7 +361,7 @@ public sealed class WorkflowPayloadMigrationTests
         var result = await deployment.Client.WaitForWorkflowCompletionAsync(instanceId, true, token);
         Assert.Equal(WorkflowRuntimeStatus.Failed, result.RuntimeStatus);
         Assert.NotNull(result.FailureDetails);
-        Assert.Contains("storeName", result.FailureDetails.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("payload is inline", result.FailureDetails.ErrorMessage, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, deployment.Calls.Count(instanceId, "patch-body"));
     }
 
@@ -254,7 +372,7 @@ public sealed class WorkflowPayloadMigrationTests
         return timeout;
     }
 
-    public enum PayloadMode { Inline, Automatic, ReadOnly }
+    public enum PayloadMode { Inline, Automatic, ReadOnly, PreferInline }
 
     internal sealed record Document(string Name, string Content);
 
@@ -339,6 +457,8 @@ public sealed class WorkflowPayloadMigrationTests
                 configureRuntime: runtime =>
                 {
                     runtime.RegisterWorkflow<MigrationWorkflow>();
+                    runtime.RegisterWorkflow<MultipleDocumentWorkflow>();
+                    runtime.RegisterWorkflow<EventReceiverWorkflow>();
                     runtime.RegisterActivity<EchoActivity>();
                     runtime.RegisterActivity<MeasureActivity>();
                     runtime.RegisterActivity<StoreActivity>();
@@ -356,7 +476,12 @@ public sealed class WorkflowPayloadMigrationTests
                 workflowBuilder.WithBinaryStorePayloads(options =>
                 {
                     options.StoreName = Constants.DaprComponentNames.BinaryStoreComponentName;
-                    options.OffloadSites = mode == PayloadMode.Automatic ? PayloadKind.All : PayloadKind.None;
+                    options.WritePreference = mode switch
+                    {
+                        PayloadMode.Automatic => PayloadWritePreference.PreferReference,
+                        PayloadMode.PreferInline => PayloadWritePreference.PreferInline,
+                        _ => PayloadWritePreference.Preserve
+                    };
                 });
             }
 
@@ -395,7 +520,7 @@ public sealed class WorkflowPayloadMigrationTests
             await Grpc.GetInstanceHistoryAsync(new WorkflowGrpc.GetInstanceHistoryRequest { InstanceId = instanceId },
                 new CallOptions(cancellationToken: token));
 
-        public async Task AssertWireAsync(string wire, Document expected, bool offloaded, CancellationToken token)
+        public async Task AssertWireAsync<T>(string wire, T expected, bool offloaded, CancellationToken token)
         {
             var serialized = Serializer.Serialize(expected);
             Assert.Equal(offloaded, PayloadReference.TryParse(wire, out var reference));
@@ -446,6 +571,33 @@ public sealed class WorkflowPayloadMigrationTests
                     await environment.DisposeAsync();
                 }
             }
+        }
+    }
+
+    internal sealed class MultipleDocumentWorkflow : Workflow<PayloadReference<Document>[], Document[]>
+    {
+        public override async Task<Document[]> RunAsync(WorkflowContext context, PayloadReference<Document>[] input)
+        {
+            var references = await Task.WhenAll(input.Select(reference =>
+                context.CallActivityAsync<PayloadReference<Document>>(nameof(EchoActivity), reference)));
+            context.SetCustomStatus("waiting");
+            await context.WaitForExternalEventAsync<bool>("resume");
+            return await Task.WhenAll(references.Select(reference =>
+                context.CallActivityAsync<Document>(nameof(EchoActivity), reference)));
+        }
+    }
+
+    internal sealed class EventReceiverWorkflow : Workflow<object?, string>
+    {
+        public override async Task<string> RunAsync(WorkflowContext context, object? input)
+        {
+            context.SetCustomStatus("waiting");
+            var inline = await context.WaitForExternalEventAsync<Document>("inline");
+            var reference = await context.WaitForExternalEventAsync<Document>("reference");
+            Assert.Equal(inline, reference);
+            context.SetCustomStatus("received");
+            await context.WaitForExternalEventAsync<bool>("finish");
+            return $"{inline.Name}|{reference.Name}";
         }
     }
 

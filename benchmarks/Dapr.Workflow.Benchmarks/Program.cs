@@ -129,6 +129,8 @@ async Task<Sample> RunAsync(BenchmarkMode mode, int iteration, CancellationToken
         workflowBuilder.WithBinaryStorePayloads(options =>
         {
             options.StoreName = storeName;
+            options.WritePreference = mode == BenchmarkMode.Automatic
+                ? PayloadWritePreference.PreferReference : PayloadWritePreference.Preserve;
             options.KeyPrefix = "benchmark";
             options.OffloadThreshold = 64 * 1024;
         });

@@ -18,6 +18,8 @@ exceeds the scheduler's default 2 MiB message ceiling in Dapr 1.19.0-rc.3.
 The offloaded cases call `WithBinaryStorePayloads` on the workflow builder returned
 by `AddDaprWorkflowBuilder(...)`. The inline case keeps workflow registration but
 does not enable payload storage.
+The automatic case selects `PayloadWritePreference.PreferReference`; the explicit-reference
+case uses the default `Preserve` preference.
 
 Both offloaded cases initially store the document through `StoreAsync` before
 scheduling, so initial serialization/upload time can be reported separately from

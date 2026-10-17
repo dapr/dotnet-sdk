@@ -22,8 +22,8 @@ namespace Dapr.Workflow.Payloads;
 /// </summary>
 /// <param name="site">The boundary at which the reference was encountered.</param>
 internal sealed class PayloadNotResolvableException(PayloadSite site) : Exception($"A payload reference was received at {site.Kind} for workflow instance '{site.InstanceId}' " +
-    "but not payload converter capable of resolving references is registered. " +
-    "Register one (for example via WithBinaryStorePayloads) or declare the parameter as PayloadReference<T>.")
+    "but no payload converter capable of resolving references is registered. " +
+    "Register payload support with WithBinaryStorePayloads. Cross-app inlining requires access to the stored payload.")
 {
     /// <summary>
     /// Gets the bounary at which the reference was encountered.

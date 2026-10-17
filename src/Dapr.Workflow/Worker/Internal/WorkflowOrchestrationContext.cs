@@ -89,6 +89,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     private bool _turnInitialized;
     private bool _preserveUnprocessedEvents;
     private readonly WorkflowPayloadHandler? _payloads;
+    private readonly Dictionary<int, PayloadSite> _unresolvableCallInputs = [];
     private readonly WorkflowFeatureCollection? _features;
     private string? _serializedCustomStatus;
 
@@ -163,6 +164,17 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     /// </summary>
     internal IReadOnlyCollection<WorkflowAction> PendingActions => _pendingActions.Values;
 
+    internal void ValidatePendingCallInputs()
+    {
+        foreach (var actionId in _pendingActions.Keys)
+        {
+            if (_unresolvableCallInputs.TryGetValue(actionId, out var site))
+            {
+                throw new PayloadNotResolvableException(site);
+            }
+        }
+    }
+
     /// <summary>
     /// Gets the custom status set by the workflow, if any.
     /// </summary>
@@ -218,7 +230,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         var scheduleTaskAction = new ScheduleTaskAction
         {
             Name = name,
-            Input = Snapshot(input),
+            Input = SnapshotCallInput(input, options, taskId, PayloadKind.ActivityInput, name),
             Router = router,
             TaskExecutionId = taskExecutionId
         };
@@ -485,7 +497,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         {
             Name = workflowName,
             InstanceId = childInstanceId,
-            Input = Snapshot(input),
+            Input = SnapshotCallInput(input, options, taskId, PayloadKind.ChildWorkflowInput, workflowName),
             Router = router
         };
 
@@ -530,9 +542,20 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         string workflowName,
         string? instanceId = null,
         object? input = null,
-        DateTimeOffset? startTime = null)
+        DateTimeOffset? startTime = null) =>
+        ScheduleNewDetachedWorkflowAsync(workflowName, instanceId, input, startTime, new WorkflowTaskOptions());
+
+    /// <inheritdoc />
+    public override Task<string> ScheduleNewDetachedWorkflowAsync(
+        string workflowName, string? instanceId, object? input, DateTimeOffset? startTime,
+        WorkflowTaskOptions options)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
+        ArgumentNullException.ThrowIfNull(options);
+        if (options.RetryPolicy is not null || options.PropagationScope != HistoryPropagationScope.None)
+        {
+            throw new ArgumentException("Detached workflows do not support retries or history propagation.", nameof(options));
+        }
 
         var detachedInstanceId = instanceId ?? NewGuid().ToString();
         ArgumentException.ThrowIfNullOrWhiteSpace(detachedInstanceId, nameof(instanceId));
@@ -548,11 +571,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         }
 
         var taskId = _sequenceNumber++;
+        var router = CreateRouter(options.TargetAppId);
         var action = new CreateDetachedWorkflowAction
         {
             Name = workflowName,
             InstanceId = detachedInstanceId,
-            Input = Snapshot(input)
+            Input = SnapshotCallInput(input, options, taskId, PayloadKind.WorkflowInput, workflowName),
+            Router = router
         };
 
         if (startTime is { } scheduledStart)
@@ -563,7 +588,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         _pendingActions.Add(taskId, new WorkflowAction
         {
             Id = taskId,
-            CreateDetachedWorkflow = action
+            CreateDetachedWorkflow = action,
+            Router = router
         });
 
         return Task.FromResult(detachedInstanceId);
@@ -1016,11 +1042,24 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         _externalEventBuffer.Add(historyEvent);
     }
 
+    private string SnapshotCallInput(object? input, WorkflowTaskOptions? options, int actionId,
+        PayloadKind kind, string name)
+    {
+        _payloads?.ConfigureCallInput(actionId, _appId, options);
+        if (options?.AllowPayloadReferences != true && _payloads is null && input is PayloadReference &&
+            !string.IsNullOrWhiteSpace(options?.TargetAppId) &&
+            !string.Equals(options.TargetAppId, _appId, StringComparison.Ordinal))
+        {
+            // Validate only after replay has removed calls already recorded in history.
+            _unresolvableCallInputs[actionId] = new(kind, InstanceId, name, RequireInline: true);
+        }
+
+        return Snapshot(input);
+    }
+
     /// <summary>
-    /// Creates a new TaskRouter in a centralized location.
+    /// Creates a router when both the source and destination app IDs are available.
     /// </summary>
-    /// <param name="targetAppId">The app ID containing the target workflow resource.</param>
-    /// <returns>Either a <see cref="TaskRouter"/> if the requisite values are provided or a <c>null</c>.</returns>
     private TaskRouter? CreateRouter(string? targetAppId)
     {
         return !string.IsNullOrWhiteSpace(targetAppId) && !string.IsNullOrWhiteSpace(_appId)

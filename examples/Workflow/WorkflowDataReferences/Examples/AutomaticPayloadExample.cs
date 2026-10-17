@@ -32,6 +32,7 @@ internal sealed class AutomaticPayloadExample : PayloadExample
         }).WithBinaryStorePayloads(options =>
         {
             options.StoreName = "workflow-payloads";
+            options.WritePreference = PayloadWritePreference.PreferReference;
             options.KeyPrefix = "payload-example";
             options.OffloadThreshold = 64 * 1024;
         });

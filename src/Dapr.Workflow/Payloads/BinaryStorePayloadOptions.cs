@@ -32,7 +32,21 @@ public sealed class BinaryStorePayloadOptions
     public string KeyPrefix { get; set; } = "workflow-payloads";
 
     /// <summary>
-    /// Gets or sets the payload boundaries where offloading is enabled.
+    /// Gets or sets the conversion preference for future writes. Defaults to
+    /// <see cref="PayloadWritePreference.Preserve"/>, which performs no automatic conversion.
+    /// </summary>
+    /// <remarks>
+    /// Existing references remain readable. Explicit calls to
+    /// <see cref="IWorkflowPayloadResolver.StoreAsync{T}"/> still store payloads under every preference.
+    /// This host-wide option affects new writes for both new and running workflows; it does not
+    /// rewrite history. Use a new workflow version when changing explicit reference contracts
+    /// to ordinary payload types, and retain the old version for existing instances.
+    /// </remarks>
+    public PayloadWritePreference WritePreference { get; set; } = PayloadWritePreference.Preserve;
+
+    /// <summary>
+    /// Gets or sets the payload boundaries where <see cref="PayloadWritePreference.PreferReference"/>
+    /// may automatically create references. Does not restrict reference reads or inlining.
     /// </summary>
     public PayloadKind OffloadSites { get; set; } = PayloadKind.All;
 
@@ -49,7 +63,8 @@ public sealed class BinaryStorePayloadOptions
 
     /// <summary>
     /// Gets or sets the maximum payload size, in bytes, that can be buffered for automatic
-    /// deserialization. Larger payloads must be consumed through a <see cref="PayloadReference{T}"/>.
+    /// deserialization or outbound inlining. Larger payloads must be consumed through a
+    /// <see cref="PayloadReference{T}"/>. This is not a transport message-size limit.
     /// </summary>
     public long MaxInMemoryRehydrationSize { get; set; } = 16 * 1024 * 1024;
 
@@ -73,6 +88,10 @@ public sealed class BinaryStorePayloadOptions
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(StoreName);
         ArgumentException.ThrowIfNullOrWhiteSpace(KeyPrefix);
+        if (!Enum.IsDefined(WritePreference))
+        {
+            throw new ArgumentOutOfRangeException(nameof(WritePreference));
+        }
 
         if (KeyPrefix.StartsWith('/') || KeyPrefix.EndsWith('/') ||
             KeyPrefix.Split('/').Any(segment => segment.Length == 0 || segment is "." or "..") ||

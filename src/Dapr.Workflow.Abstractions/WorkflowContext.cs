@@ -289,6 +289,12 @@ public abstract class WorkflowContext : IWorkflowContext
         object? input = null,
         DateTimeOffset? startTime = null) =>
         throw new NotSupportedException("Detached workflow scheduling is not supported by this workflow context.");
+
+    /// <inheritdoc />
+    public virtual Task<string> ScheduleNewDetachedWorkflowAsync(
+        string workflowName, string? instanceId, object? input, DateTimeOffset? startTime,
+        WorkflowTaskOptions options) =>
+        throw new NotSupportedException("Detached workflow routing is not supported by this workflow context.");
         
     /// <summary>
     /// Returns an instance of <see cref="ILogger"/> that is replay-safe, meaning that the logger only

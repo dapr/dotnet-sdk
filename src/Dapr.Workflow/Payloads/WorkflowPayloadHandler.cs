@@ -14,6 +14,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.ExceptionServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Common.Serialization;
@@ -31,7 +32,13 @@ internal sealed class WorkflowPayloadHandler(
     CancellationToken stoppingToken = default)
 {
     private readonly Queue<Func<Task>> _reads = new();
+    private readonly Dictionary<int, bool> _inlineCallInputs = [];
     internal CancellationToken StoppingToken => stoppingToken;
+
+    internal void ConfigureCallInput(int actionId, string? sourceAppId, WorkflowTaskOptions? options) =>
+        _inlineCallInputs[actionId] = options?.AllowPayloadReferences != true &&
+                                     !string.IsNullOrWhiteSpace(options?.TargetAppId) &&
+                                     !string.Equals(options.TargetAppId, sourceAppId, StringComparison.Ordinal);
 
     internal string Snapshot(object? value) => value switch
     {
@@ -63,9 +70,9 @@ internal sealed class WorkflowPayloadHandler(
     internal async ValueTask<T?> DecodeAsync<T>(string? wire, PayloadSite site,
         CancellationToken cancellationToken = default)
     {
-        if (PayloadReference.IsReferenceType(typeof(T)) && PayloadReferenceParser.Parse(wire) is { } reference)
+        if (PayloadReference.IsReferenceType(typeof(T)))
         {
-            return DeserializeReference<T>(reference, serializer);
+            return (T?)ReadReference(wire, typeof(T), serializer);
         }
 
         var serialized = await codec.DecodeAsync(wire, site,
@@ -76,11 +83,9 @@ internal sealed class WorkflowPayloadHandler(
     internal async ValueTask<object?> DecodeAsync(string? wire, Type type, PayloadSite site,
         CancellationToken cancellationToken = default)
     {
-        if (PayloadReference.IsReferenceType(type) && PayloadReferenceParser.Parse(wire) is { } reference)
+        if (PayloadReference.IsReferenceType(type))
         {
-            return type == typeof(PayloadReference)
-                ? reference
-                : serializer.Deserialize(serializer.Serialize(reference), type);
+            return ReadReference(wire, type, serializer);
         }
 
         var serialized = await codec.DecodeAsync(wire, site,
@@ -88,10 +93,37 @@ internal sealed class WorkflowPayloadHandler(
         return string.IsNullOrEmpty(serialized) ? null : serializer.Deserialize(serialized, type);
     }
 
-    internal static T? DeserializeReference<T>(PayloadReference reference, IDaprSerializer serializer)
-        => typeof(T) == typeof(PayloadReference)
-            ? (T)(object)reference
-            : serializer.Deserialize<T>(serializer.Serialize(reference));
+    internal static object? ReadReference(string? wire, Type type, IDaprSerializer serializer)
+    {
+        if (string.IsNullOrEmpty(wire))
+        {
+            return null;
+        }
+
+        if (PayloadReferenceParser.Parse(wire) is { } reference)
+        {
+            return type == typeof(PayloadReference)
+                ? reference
+                : serializer.Deserialize(serializer.Serialize(reference), type);
+        }
+
+        const string message = "The receiving contract requires a PayloadReference, but the payload is inline. " +
+                               "Use an ordinary input type or explicitly allow references on the sending call.";
+        try
+        {
+            // Preserve compatibility with references serialized as record objects by older callers.
+            if (serializer.Deserialize(wire, type) is PayloadReference legacy)
+            {
+                return legacy;
+            }
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException)
+        {
+            throw new InvalidOperationException(message, ex);
+        }
+
+        throw new InvalidOperationException(message);
+    }
 
     internal Task<T> QueueAsync<T>(Func<Task<T>> read)
     {
@@ -129,21 +161,27 @@ internal sealed class WorkflowPayloadHandler(
     {
         foreach (var action in response.Actions)
         {
+            var router = action.ScheduleTask?.Router ?? action.CreateChildWorkflow?.Router ??
+                         action.CreateDetachedWorkflow?.Router ?? action.Router;
+            var requireInline = _inlineCallInputs.TryGetValue(action.Id, out var configured)
+                ? configured
+                : !string.IsNullOrWhiteSpace(router?.TargetAppID) &&
+                  !string.Equals(router.TargetAppID, router.SourceAppID, StringComparison.Ordinal);
             switch (action)
             {
                 case { ScheduleTask: { } activity }:
                     activity.Input = await EncodeAsync(activity.Input ?? string.Empty,
-                            new(PayloadKind.ActivityInput, instanceId, activity.Name), cancellationToken)
+                            new(PayloadKind.ActivityInput, instanceId, activity.Name, requireInline), cancellationToken)
                         .ConfigureAwait(false);
                     break;
                 case { CreateChildWorkflow: { } child }:
                     child.Input = await EncodeAsync(child.Input ?? string.Empty,
-                            new(PayloadKind.ChildWorkflowInput, child.InstanceId, child.Name), cancellationToken)
+                            new(PayloadKind.ChildWorkflowInput, child.InstanceId, child.Name, requireInline), cancellationToken)
                         .ConfigureAwait(false);
                     break;
                 case { CreateDetachedWorkflow: { } detached }:
                     detached.Input = await EncodeAsync(detached.Input ?? string.Empty,
-                            new(PayloadKind.WorkflowInput, detached.InstanceId, detached.Name), cancellationToken)
+                            new(PayloadKind.WorkflowInput, detached.InstanceId, detached.Name, requireInline), cancellationToken)
                         .ConfigureAwait(false);
                     break;
                 case { SendEvent: { } sent }:

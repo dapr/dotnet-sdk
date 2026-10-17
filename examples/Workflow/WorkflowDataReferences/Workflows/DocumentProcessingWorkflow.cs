@@ -20,7 +20,7 @@ namespace WorkflowDataReferences.Workflows;
 /// Shared by the inline and automatic examples: the same workflow processes ordinary documents in both.
 /// </summary>
 /// <remarks>
-/// When the host opts in with <c>WithBinaryStorePayloads</c>, the SDK stores serialized values
+/// When the host selects <c>PreferReference</c> with <c>WithBinaryStorePayloads</c>, the SDK stores serialized values
 /// exceeding the configured threshold in a binary store and records reference envelopes in history.
 /// It resolves those references before delivering documents to this workflow or its activity.
 /// Storage I/O stays outside deterministic workflow execution. Without opt-in, the same code

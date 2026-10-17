@@ -24,7 +24,8 @@ Each approach has its own class containing its service registration and client c
 Inline and automatic deliberately share
 [DocumentProcessingWorkflow](./Workflows/DocumentProcessingWorkflow.cs) and
 [UppercaseDocumentActivity](./Activities/UppercaseDocumentActivity.cs). Only
-registration changes: automatic chains `WithBinaryStorePayloads(...)` from
+registration changes: automatic selects `WritePreference = PayloadWritePreference.PreferReference`
+in `WithBinaryStorePayloads(...)`, chained from
 `services.AddDaprWorkflow(...)`. Each class explicitly registers its workflows and
 activities. The SDK handles offloading and rehydration without
 changing their `DocumentPayload` parameters or return types.
@@ -155,9 +156,93 @@ Merely having the component available does not enable this capability.
 
 Every run creates fresh workflows. Before rerunning, let any workflows from a
 previous interrupted run finish with their original configuration. Do **not**
-disable readers for existing offloaded histories. To stop new automatic writes while continuing to read old
-references, keep `WithBinaryStorePayloads` and set
-`options.OffloadSites = PayloadKind.None` instead.
+disable readers for existing offloaded histories.
+
+### Switch back to inline payloads
+
+To stop automatic offloading while continuing to read old references, keep
+`WithBinaryStorePayloads` on every participating client and worker and disable
+automatic writes:
+
+```csharp
+services.AddDaprWorkflow()
+    .WithBinaryStorePayloads(options =>
+    {
+        options.StoreName = "workflow-payloads";
+        options.WritePreference = PayloadWritePreference.Preserve;
+    });
+```
+
+`WritePreference` defaults to `Preserve`. Under this preference, ordinary serialized
+payloads stay inline regardless of `OffloadSites` or `OffloadThreshold`. Existing
+references are still resolved with the configured integrity and size checks.
+This is a host-wide write policy, not a per-instance or version selector: future
+writes from running workflows also become inline. Existing history is unchanged.
+`OffloadSites = PayloadKind.None` remains an alternative for disabling all automatic
+offload boundaries. Inline payloads must fit the runtime's normal payload limits.
+
+For workflows already using ordinary inputs and outputs, such as
+`DocumentProcessingWorkflow`, no contract change is needed. For explicit references,
+the switch intentionally does **not** turn `PayloadReference<T>` into `T` or disable
+`IWorkflowPayloadResolver.StoreAsync`; doing so would break existing contracts.
+To move those workflows back to inline data:
+
+1. Add a new workflow version using ordinary `T` inputs/results and ordinary-payload
+   activities instead of reference-typed ones. Remove explicit `StoreAsync` calls
+   from that new path and pass values directly when scheduling it.
+2. Route new instances to that version with automatic offloading disabled. Keep
+   the previous workflow version and its reference-typed activities registered so
+   existing instances replay with their original contracts.
+3. Retain `WithBinaryStorePayloads`, storage access, and stored bytes for as long as
+   any retained history, result, or old instance needs them.
+
+Do not replace a reference-typed workflow or activity in place under the same
+registered name. The option does not add versioning patches or migrate stored data.
+
+### Write preferences and cross-app calls
+
+| `PayloadWritePreference` | New outgoing top-level payloads |
+|---|---|
+| `Preserve` (default) | Ordinary values stay inline; references remain references. |
+| `PreferReference` | Ordinary values meeting `OffloadThreshold` at enabled `OffloadSites` become references. |
+| `PreferInline` | Ordinary values stay inline; references are resolved to the original serialized content. |
+
+These preferences govern future writes, not retained history or instance-wide policy.
+Under `Preserve`, a reference read as an ordinary `T` and returned as `T` is a new inline
+value. Explicit `StoreAsync` still writes under every preference.
+
+`PreferInline` is not safe for receivers expecting `PayloadReference<T>`. When keeping
+old reference-typed versions alongside a new ordinary-payload version, use `Preserve`
+and remove explicit reference creation from the new version. Do not globally inline
+references still needed by old contracts.
+
+Cross-app inputs require inline data by default even under `PreferReference`. The SDK
+resolves outgoing references before submitting the activity, child, or detached call.
+Known reference-aware destinations can opt out per call:
+
+```csharp
+await context.CallActivityAsync<int>("MeasureReferenceActivity", reference,
+    new WorkflowTaskOptions(TargetAppId: "document-service", AllowPayloadReferences: true));
+```
+
+Child calls use `ChildWorkflowTaskOptions`. The detached overload accepts
+`ScheduleNewDetachedWorkflowAsync(name, instanceId, input, startTime, options)`, with
+`WorkflowTaskOptions` for routing and payload permission; retries and history propagation
+are not supported for detached calls. An explicit same-app target follows the normal
+write preference.
+
+Permission is not capability negotiation: currently only .NET supports these envelopes,
+and the destination must also register payload support and access the same stored objects.
+Inlining requires sender-side storage access, respects `MaxInMemoryRehydrationSize` and
+integrity settings, and fails explicitly on unsupported envelopes, inaccessible data,
+corruption, or exceeded limits. It never falls back to sending a reference.
+Runtime/transport limits and message overhead still apply after materialization.
+
+Inbound ordinary `T` contracts accept either representation regardless of write preference.
+Reference-typed inputs receive references without automatic resolution, but reject inline
+values rather than uploading them. Decoding does not change history. The outbound
+cross-app rule covers only top-level call inputs: nested references, return values, and
+propagated history need separate compatibility planning.
 
 ## Retention and production use
 

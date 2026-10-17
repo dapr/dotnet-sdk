@@ -38,6 +38,9 @@ public static class BinaryStorePayloadServiceCollectionExtensions
     /// Payload storage is opt-in and does not change the workflow runtime protocol.
     /// Register on each participating client and worker. Offloading applies after the configured
     /// serializer runs; historical references remain readable even when new offloading is disabled.
+    /// The default <see cref="PayloadWritePreference.Preserve"/> performs no automatic conversion.
+    /// Set <see cref="BinaryStorePayloadOptions.WritePreference"/> to
+    /// <see cref="PayloadWritePreference.PreferReference"/> to enable automatic offloading.
     /// </remarks>
     /// <returns>The workflow builder, for chaining.</returns>
     public static WorkflowServiceCollectionExtensions.DaprWorkflowBuilder WithBinaryStorePayloads(

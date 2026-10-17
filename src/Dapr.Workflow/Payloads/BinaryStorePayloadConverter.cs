@@ -30,12 +30,15 @@ namespace Dapr.Workflow.Payloads;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Outbound: the caller supplies a serialized snapshot. If the boundary is
+/// Outbound: the caller supplies a serialized snapshot. If
+/// <see cref="BinaryStorePayloadOptions.WritePreference"/> is
+/// <see cref="PayloadWritePreference.PreferReference"/>, the boundary is
 /// enabled in <see cref="BinaryStorePayloadOptions.OffloadSites"/> and the UTF-8 size of the
 /// serialized string meets <see cref="BinaryStorePayloadOptions.OffloadThreshold"/>, the bytes are
 /// written to the store under a content-addressed key scoped to the workflow instance and a
 /// reference envelope is returned instead. Values that are already a <see cref="PayloadReference"/>
-/// are passed through unchanged and never re-offloaded.
+/// are passed through unchanged unless inlining is requested. Inlining resolves the original
+/// serialized content with the same integrity and buffering checks as inbound resolution.
 /// </para>
 /// <para>
 /// Inbound: reference envelopes are resolved to their original serialized bytes. The boundary
@@ -73,7 +76,16 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
     public ValueTask<string> EncodeAsync(string serialized, PayloadSite site, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (serialized.Length == 0 || PayloadReferenceParser.Parse(serialized) is not null)
+        var reference = PayloadReferenceParser.Parse(serialized);
+        if (site.RequireInline || _options.WritePreference == PayloadWritePreference.PreferInline)
+        {
+            return reference is null
+                ? new(serialized)
+                : new(ResolveStringAsync(reference, cancellationToken));
+        }
+
+        if (serialized.Length == 0 || reference is not null ||
+            _options.WritePreference == PayloadWritePreference.Preserve)
         {
             return new(serialized);
         }

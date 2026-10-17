@@ -27,7 +27,8 @@ namespace Dapr.Workflow.Payloads;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The JSON form of this type is the cross-SDK wire format. It is a single-property object whose
+/// The JSON form of this type is a versioned wire format intended for cross-SDK interoperability.
+/// Currently only the .NET SDK supports it. It is a single-property object whose
 /// property name is <see cref="SentinelProperty"/>, which allows a converter to distinguish a
 /// reference from any user payload without a wrapper type. The format is versioned via
 /// <see cref="Version"/>; readers must reject versions they do not understand.
@@ -223,9 +224,9 @@ public record PayloadReference
 
 /// <summary>
 /// A <see cref="PayloadReference"/> that carries the expected deserialized type of the payload.
-/// Declaring an activity parameter or return type as <see cref="PayloadReference{T}"/> instructs
-/// the SDK to pass the reference through without
-/// rehydrating or re-offloading it.
+/// Declaring an input as <see cref="PayloadReference{T}"/> bypasses automatic materialization on read.
+/// Outgoing references are subject to the write preference and cross-app inlining policy.
+/// A receiver expecting a reference must not be sent inline data.
 /// </summary>
 /// <typeparam name="T">The type the payload is expected to deserialize to.</typeparam>
 public sealed record PayloadReference<T> : PayloadReference

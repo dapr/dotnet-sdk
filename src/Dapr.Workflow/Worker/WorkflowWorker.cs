@@ -449,6 +449,7 @@ internal sealed class WorkflowWorker(
             }
 
             // Add all actions that were scheduled during workflow execution
+            context.ValidatePendingCallInputs();
             response.Actions.AddRange(context.PendingActions);
 
             // Set custom status if provided

@@ -23,9 +23,9 @@ internal sealed record PreparedWorkflowPayload(
 {
     internal T? ReadAs<T>(IDaprSerializer serializer)
     {
-        if (PayloadReference.IsReferenceType(typeof(T)) && PayloadReferenceParser.Parse(Wire) is { } reference)
+        if (PayloadReference.IsReferenceType(typeof(T)))
         {
-            return WorkflowPayloadHandler.DeserializeReference<T>(reference, serializer);
+            return (T?)WorkflowPayloadHandler.ReadReference(Wire, typeof(T), serializer);
         }
 
         ReadError?.Throw();

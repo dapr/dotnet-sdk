@@ -259,6 +259,7 @@ public sealed class WorkflowBinaryStoreIntegrationTests
                         workflowBuilder.WithBinaryStorePayloads(payloadOptions =>
                         {
                             payloadOptions.StoreName = StoreName;
+                            payloadOptions.WritePreference = PayloadWritePreference.PreferReference;
                             payloadOptions.KeyPrefix = KeyPrefix;
                             payloadOptions.OffloadThreshold = 1024;
                             payloadOptions.OffloadSites = PayloadKind.All;

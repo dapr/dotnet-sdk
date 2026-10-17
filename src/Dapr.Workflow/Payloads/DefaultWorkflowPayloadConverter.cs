@@ -19,7 +19,16 @@ namespace Dapr.Workflow.Payloads;
 internal sealed class DefaultWorkflowPayloadConverter : IWorkflowPayloadConverter
 {
     public ValueTask<string> EncodeAsync(string serialized, PayloadSite site,
-        CancellationToken cancellationToken = default) => new(serialized);
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (site.RequireInline && PayloadReferenceParser.Parse(serialized) is not null)
+        {
+            throw new PayloadNotResolvableException(site);
+        }
+
+        return new(serialized);
+    }
 
     public ValueTask<string?> DecodeAsync(string? wire, PayloadSite site,
         CancellationToken cancellationToken = default)
