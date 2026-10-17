@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- In your own projects, reference the single Dapr.BinaryStore NuGet package instead.
+             Abstractions, Runtime, and Generators are bundled and not published separately. -->
+        <ProjectReference Include="..\..\..\src\Dapr.BinaryStore.Abstractions\Dapr.BinaryStore.Abstractions.csproj" />
+        <ProjectReference Include="..\..\..\src\Dapr.BinaryStore.Runtime\Dapr.BinaryStore.Runtime.csproj" />
+        <ProjectReference Include="..\..\..\src\Dapr.BinaryStore.Generators\Dapr.BinaryStore.Generators.csproj"
+                          ReferenceOutputAssembly="false"
+                          OutputItemType="Analyzer" />
+    </ItemGroup>
+
+</Project>
