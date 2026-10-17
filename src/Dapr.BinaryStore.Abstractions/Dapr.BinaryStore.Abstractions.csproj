@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Dapr.BinaryStore</RootNamespace>
+        <PackageId>Dapr.BinaryStore.Abstractions</PackageId>
+        <Title>Dapr Binary Store Abstractions</Title>
+        <Description>Provides abstractions for the Dapr Binary Store SDK implementation.</Description>
+        <!-- This assembly ships bundled inside the Dapr.BinaryStore NuGet package; it is not published as a standalone package. -->
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+    </ItemGroup>
+
+</Project>

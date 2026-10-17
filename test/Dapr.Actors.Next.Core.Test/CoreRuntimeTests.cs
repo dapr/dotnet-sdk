@@ -43,7 +43,7 @@ public sealed class CoreRuntimeTests
     {
         var harness = new InMemoryTransportHarness();
         await using var provider = CreateProvider(harness, out _);
-        var service = provider.GetServices<IHostedService>().OfType<SubscribeActorEventsStreamManager>().Single();
+        var service = provider.GetRequiredService<SubscribeActorEventsStreamManager>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         await service.StartAsync(cts.Token);
@@ -107,7 +107,7 @@ public sealed class CoreRuntimeTests
     {
         var harness = new InMemoryTransportHarness();
         await using var provider = CreateProvider(harness, out _);
-        var service = provider.GetServices<IHostedService>().OfType<SubscribeActorEventsStreamManager>().Single();
+        var service = provider.GetRequiredService<SubscribeActorEventsStreamManager>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         await service.StartAsync(cts.Token);
@@ -202,7 +202,7 @@ public sealed class CoreRuntimeTests
     {
         var harness = new InMemoryTransportHarness();
         await using var provider = CreateProvider(harness, out _);
-        var service = provider.GetServices<IHostedService>().OfType<SubscribeActorEventsStreamManager>().Single();
+        var service = provider.GetRequiredService<SubscribeActorEventsStreamManager>();
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         await service.StartAsync(cts.Token);

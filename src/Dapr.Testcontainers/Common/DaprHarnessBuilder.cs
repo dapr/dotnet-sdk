@@ -111,6 +111,14 @@ public sealed class DaprHarnessBuilder
          new(_componentsDirectory, _startApp, keysDir, _options, _environment);
 
     /// <summary>
+    /// Builds a binary store harness.
+    /// </summary>
+    /// <param name="maxSize">Optional maximum size in bytes of a single file.</param>
+    /// <param name="maxTotalSize">Optional maximum total size in bytes of the store.</param>
+    public BinaryStoreHarness BuildBinaryStore(long? maxSize = null, long? maxTotalSize = null) =>
+        new(_componentsDirectory, _startApp, _options, maxSize, maxTotalSize, _environment);
+
+    /// <summary>
     /// Builds a jobs harness.
     /// </summary>
 	public JobsHarness BuildJobs() => new(_componentsDirectory, _startApp, _options, _environment);
