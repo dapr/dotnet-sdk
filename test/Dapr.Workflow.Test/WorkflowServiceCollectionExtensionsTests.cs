@@ -25,7 +25,7 @@ public class WorkflowServiceCollectionExtensionsTests
     public void AddDaprWorkflow_Parameterless_ShouldThrowArgumentNullException_WhenServiceCollectionIsNull()
     {
         IServiceCollection services = null!;
-        Assert.Throws<ArgumentNullException>(services.AddDaprWorkflow);
+        Assert.Throws<ArgumentNullException>(() => services.AddDaprWorkflow());
     }
 
     [Fact]

@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -9,12 +9,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//  ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 using Dapr.DurableTask.Protobuf;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Dapr.Workflow.Client;
 using Dapr.Common.Serialization;
 using Dapr.Workflow.Serialization;
+using Dapr.Workflow.Payloads;
+using DelayedPayloadConverter = Dapr.Workflow.Test.Payloads.BinaryStorePayloadTests.DelayedPayloadConverter;
 using Grpc.Core;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -24,6 +27,104 @@ namespace Dapr.Workflow.Test.Client;
 
 public class WorkflowGrpcClientTests
 {
+    [MinimumDaprRuntimeFact("1.19")]
+    public async Task PayloadCodecTransformsClientWritesAfterConfiguredSerialization()
+    {
+        var codec = new DelayedPayloadConverter();
+        var serializer = new StubSerializer { SerializeResult = "custom-serialized" };
+        var grpc = CreateGrpcClientMock();
+        CreateInstanceRequest? scheduled = null;
+        RaiseEventRequest? raised = null;
+        TerminateRequest? terminated = null;
+        RerunWorkflowFromEventRequest? rerun = null;
+        grpc.Setup(c => c.StartInstanceAsync(It.IsAny<CreateInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Callback<CreateInstanceRequest, CallOptions>((request, _) => scheduled = request)
+            .Returns(CreateAsyncUnaryCall(new CreateInstanceResponse { InstanceId = "instance" }));
+        grpc.Setup(c => c.RaiseEventAsync(It.IsAny<RaiseEventRequest>(), It.IsAny<CallOptions>()))
+            .Callback<RaiseEventRequest, CallOptions>((request, _) => raised = request)
+            .Returns(CreateAsyncUnaryCall(new RaiseEventResponse()));
+        grpc.Setup(c => c.TerminateInstanceAsync(It.IsAny<TerminateRequest>(), It.IsAny<CallOptions>()))
+            .Callback<TerminateRequest, CallOptions>((request, _) => terminated = request)
+            .Returns(CreateAsyncUnaryCall(new TerminateResponse()));
+        grpc.Setup(c => c.RerunWorkflowFromEventAsync(It.IsAny<RerunWorkflowFromEventRequest>(), It.IsAny<CallOptions>()))
+            .Callback<RerunWorkflowFromEventRequest, CallOptions>((request, _) => rerun = request)
+            .Returns(CreateAsyncUnaryCall(new RerunWorkflowFromEventResponse { NewInstanceID = "rerun" }));
+        var client = new WorkflowGrpcClient(grpc.Object, NullLogger<WorkflowGrpcClient>.Instance,
+            serializer, payloadConverter: codec);
+        var token = TestContext.Current.CancellationToken;
+
+        await client.ScheduleNewWorkflowAsync("workflow", 42, new StartWorkflowOptions { InstanceId = "instance" }, token);
+        await client.RaiseEventAsync("instance", "event", 42, token);
+        await client.TerminateWorkflowAsync("instance", 42, token);
+        await client.RerunWorkflowFromEventAsync("instance", 1, new() { OverwriteInput = true, Input = 42 }, token);
+
+        Assert.Equal("wire:custom-serialized", scheduled!.Input);
+        Assert.Equal("wire:custom-serialized", raised!.Input);
+        Assert.Equal("wire:custom-serialized", terminated!.Output);
+        Assert.Equal("wire:custom-serialized", rerun!.Input);
+        Assert.False(string.IsNullOrWhiteSpace(rerun.NewInstanceID));
+        Assert.Equal([PayloadKind.WorkflowInput, PayloadKind.ExternalEvent, PayloadKind.WorkflowOutput, PayloadKind.WorkflowInput],
+            codec.Writes.Select(write => write.Site.Kind));
+        Assert.Equal(rerun.NewInstanceID, codec.Writes[^1].Site.InstanceId);
+    }
+
+    [MinimumDaprRuntimeTheory("1.19")]
+    [InlineData("get")]
+    [InlineData("start")]
+    [InlineData("complete")]
+    public async Task MetadataPayloadsArePreparedBeforeSynchronousReads(string operation)
+    {
+        var codec = new DelayedPayloadConverter();
+        var grpc = CreateGrpcClientMock();
+        var response = new GetInstanceResponse
+        {
+            Exists = true,
+            WorkflowState = new()
+            {
+                InstanceId = "instance", Name = "workflow",
+                Input = "wire:1", Output = "wire:2", CustomStatus = "wire:3"
+            }
+        };
+        grpc.Setup(c => c.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCall(response));
+        grpc.Setup(c => c.WaitForInstanceStartAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCall(response));
+        grpc.Setup(c => c.WaitForInstanceCompletionAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCall(response));
+        var client = new WorkflowGrpcClient(grpc.Object, NullLogger<WorkflowGrpcClient>.Instance,
+            new JsonDaprSerializer(), payloadConverter: codec);
+        var token = TestContext.Current.CancellationToken;
+
+        var metadata = operation switch
+        {
+            "get" => await client.GetWorkflowMetadataAsync("instance", true, token),
+            "start" => await client.WaitForWorkflowStartAsync("instance", true, token),
+            _ => await client.WaitForWorkflowCompletionAsync("instance", true, token)
+        };
+
+        Assert.NotNull(metadata);
+        Assert.Equal(1, metadata.ReadInputAs<int>());
+        Assert.Equal(2, metadata.ReadOutputAs<int>());
+        Assert.Equal(3, metadata.ReadCustomStatusAs<int>());
+        Assert.Equal(3, codec.Reads.Count);
+    }
+
+    [MinimumDaprRuntimeFact("1.19")]
+    public async Task MissingPayloadMustNotBeReportedAsMissingWorkflowMetadata()
+    {
+        var codec = new Mock<IWorkflowPayloadConverter>();
+        codec.Setup(c => c.DecodeAsync(It.IsAny<string>(), It.IsAny<PayloadSite>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new RpcException(new Status(StatusCode.NotFound, "missing payload")));
+        var grpc = CreateGrpcClientMock();
+        grpc.Setup(c => c.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCall(new GetInstanceResponse { Exists = true, WorkflowState = new() { Input = "wire" } }));
+        var client = new WorkflowGrpcClient(grpc.Object, NullLogger<WorkflowGrpcClient>.Instance,
+            new JsonDaprSerializer(), payloadConverter: codec.Object);
+
+        await Assert.ThrowsAsync<RpcException>(() =>
+            client.GetWorkflowMetadataAsync("instance", true, TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task ScheduleNewWorkflowAsync_ShouldUseProvidedInstanceId_WhenOptionsHasInstanceId()
     {
