@@ -4,6 +4,7 @@
 
   <PropertyGroup>  
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(DaprEnableNet11)' == 'true'">$(TargetFrameworks);net11.0</TargetFrameworks>
       
     <!-- Set Output Path for tests-->
     <OutputPath>$(RepoRoot)bin\$(Configuration)\test\$(MSBuildProjectName)\</OutputPath>
@@ -18,7 +19,7 @@
   </PropertyGroup>
 
   <!-- Used to annotate PR with test failures: https://github.com/Tyrrrz/GitHubActionsTestLogger -->
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' != 'net11.0'">
     <PackageReference Include="GitHubActionsTestLogger" />
   </ItemGroup>
 </Project>
