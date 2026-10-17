@@ -110,7 +110,15 @@ public static class DaprActorsCoreServiceCollectionExtensions
 
         services.AddSingleton(static sp => sp.GetRequiredService<ActorRuntimeRegistrationBuilder>().Build(sp));
         services.TryAddSingleton<SubscribeActorEventsStreamManager>();
-        services.TryAddSingleton<IHostedService>(sp => sp.GetRequiredService<SubscribeActorEventsStreamManager>());
+        // Register the stream manager behind a dedicated hosted-service wrapper with TryAddEnumerable,
+        // NOT TryAddSingleton<IHostedService>: TryAdd deduplicates by service type alone, so any hosted
+        // service the application registered before the first AddDaprActorsCore call (OpenTelemetry,
+        // workflows, app services, ...) suppresses this registration entirely. The stream manager then
+        // never starts, no actor types are announced to placement, and every actor lookup fails with
+        // "did not find address for actor". TryAddEnumerable deduplicates by implementation type, which
+        // is exactly once across repeated AddDaprActorsCore calls and never collides with other
+        // hosted services.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, SubscribeActorEventsStreamHostedService>());
 
         return services;
     }
@@ -220,4 +228,21 @@ public static class DaprActorsCoreServiceCollectionExtensions
     /// </summary>
     private static Lazy<P.Dapr.DaprClient> CreateDaprClientAccessor(IServiceProvider serviceProvider) =>
         new(serviceProvider.GetRequiredService<P.Dapr.DaprClient>);
+}
+
+/// <summary>
+/// Starts and stops the <see cref="Transport.SubscribeActorEventsStreamManager"/> as an
+/// <see cref="IHostedService"/>. The dedicated type exists so the registration can go through
+/// <c>TryAddEnumerable</c>, which deduplicates by implementation type. A plain TryAdd of
+/// <see cref="IHostedService"/> would be suppressed by any hosted service the application registered
+/// before the first AddDaprActorsCore call, silently preventing actor types from ever being announced
+/// to placement.
+/// </summary>
+internal sealed class SubscribeActorEventsStreamHostedService(SubscribeActorEventsStreamManager manager) : IHostedService
+{
+    /// <inheritdoc />
+    public Task StartAsync(CancellationToken cancellationToken) => manager.StartAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public Task StopAsync(CancellationToken cancellationToken) => manager.StopAsync(cancellationToken);
 }
