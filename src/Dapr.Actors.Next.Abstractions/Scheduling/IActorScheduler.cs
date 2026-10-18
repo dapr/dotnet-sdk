@@ -21,6 +21,10 @@ public interface IActorScheduler
     /// <summary>
     /// Schedules execution for an actor mailbox.
     /// </summary>
+    /// <remarks>
+    /// The runtime schedules accepted work independently of caller cancellation. Each queued turn
+    /// retains its own cancellation token; cancelling one caller must not prevent other turns from running.
+    /// </remarks>
     ValueTask ScheduleAsync(IActorMailbox mailbox, CancellationToken cancellationToken = default);
 
     /// <summary>

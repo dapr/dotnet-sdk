@@ -42,6 +42,8 @@ internal sealed class ActorManager
     private readonly ActorMessageSerializersManager serializersManager;
     private readonly IActorMessageBodyFactory messageBodyFactory;
     private readonly JsonSerializerOptions jsonSerializerOptions;
+    private readonly ActorTurnLock turnLock = new ActorTurnLock();
+    private readonly bool reentrancyEnabled;
 
     // method dispatchermap used by remoting calls.
     private readonly ActorMethodDispatcherMap methodDispatcherMap;
@@ -60,7 +62,8 @@ internal sealed class ActorManager
         bool useJsonSerialization,
         ILoggerFactory loggerFactory,
         IActorProxyFactory proxyFactory,
-        IDaprInteractor daprInteractor)
+        IDaprInteractor daprInteractor,
+        ActorReentrancyConfig reentrancyConfig = null)
     {
         this.registration = registration;
         this.activator = activator;
@@ -68,6 +71,7 @@ internal sealed class ActorManager
         this.loggerFactory = loggerFactory;
         this.proxyFactory = proxyFactory;
         this.daprInteractor = daprInteractor;
+        this.reentrancyEnabled = (registration.TypeOptions?.ReentrancyConfig ?? reentrancyConfig)?.Enabled == true;
 
         this.timerManager = new DefaultActorTimerManager(this.daprInteractor);
 
@@ -310,6 +314,12 @@ internal sealed class ActorManager
 
     internal async Task ActivateActorAsync(ActorId actorId)
     {
+        using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
+        await this.ActivateActorCoreAsync(actorId);
+    }
+
+    private async Task ActivateActorCoreAsync(ActorId actorId)
+    {
         // An actor is activated by "Dapr" runtime when a call is to be made for an actor.
         var state = await this.CreateActorAsync(actorId);
 
@@ -357,6 +367,7 @@ internal sealed class ActorManager
 
     internal async Task DeactivateActorAsync(ActorId actorId)
     {
+        using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
         if (this.activeActors.TryRemove(actorId, out var deactivatedActor))
         {
             await DeactivateActorCore(deactivatedActor);
@@ -402,9 +413,16 @@ internal sealed class ActorManager
 
     private async Task<T> DispatchInternalAsync<T>(ActorId actorId, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
     {
+        var reentrancyId = this.reentrancyEnabled ? ActorReentrancyContextAccessor.ReentrancyContext : null;
+        if (string.IsNullOrEmpty(reentrancyId))
+        {
+            reentrancyId = null;
+        }
+        using var turn = await this.turnLock.AcquireAsync(actorId, reentrancyId, cancellationToken);
+
         if (!this.activeActors.ContainsKey(actorId))
         {
-            await this.ActivateActorAsync(actorId);
+            await this.ActivateActorCoreAsync(actorId);
         }
 
         if (!this.activeActors.TryGetValue(actorId, out var state))
@@ -414,6 +432,7 @@ internal sealed class ActorManager
         }
 
         var actor = state.Actor;
+        turn.AllowReentrancy();
 
         T retval;
         try
