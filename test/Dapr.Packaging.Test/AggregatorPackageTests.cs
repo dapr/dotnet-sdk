@@ -272,6 +272,7 @@ public sealed class AggregatorPackageTests
 
     [Fact]
     public void DaprMessagingPackage_ContainsRuntimeAnalyzersCodeFixAndSourceGenerator()
+    public async Task DaprMessagingPackage_ContainsRuntimeAnalyzersCodeFixAndSourceGenerator()
     {
         var repoRoot = FindRepoRoot();
         var outputDirectory = Path.Combine(Path.GetTempPath(), $"dapr-messaging-package-{Guid.NewGuid():N}");
@@ -283,6 +284,7 @@ public sealed class AggregatorPackageTests
             var result = RunDotNet(repoRoot, "pack",
                 Path.Combine("src", "Dapr.Messaging", "Dapr.Messaging.csproj"),
                 "--configuration", "Release", "--output", outputDirectory);
+            var result = await PackDaprMessagingAsync(repoRoot, outputDirectory);
             Assert.True(
                 result.ExitCode == 0,
                 $"dotnet pack failed with exit code {result.ExitCode}.{Environment.NewLine}{result.Output}");
@@ -336,7 +338,7 @@ public sealed class AggregatorPackageTests
         }
     }
 
-    private static (int ExitCode, string Output) RunDotNet(string repoRoot, params string[] arguments)
+    private static async Task<(int ExitCode, string Output)> PackDaprMessagingAsync(string repoRoot, string outputDirectory)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -345,16 +347,29 @@ public sealed class AggregatorPackageTests
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
+            CreateNoWindow = true,
         };
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
+        startInfo.Environment["MSBUILDDISABLENODEREUSE"] = "1";
+        startInfo.Environment["DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER"] = "1";
+        startInfo.ArgumentList.Add("pack");
+        startInfo.ArgumentList.Add(Path.Combine("src", "Dapr.Messaging", "Dapr.Messaging.csproj"));
+        startInfo.ArgumentList.Add("--configuration");
+        startInfo.ArgumentList.Add("Release");
+        startInfo.ArgumentList.Add("--output");
+        startInfo.ArgumentList.Add(outputDirectory);
+        startInfo.ArgumentList.Add("/nr:false");
+        startInfo.ArgumentList.Add("/p:UseSharedCompilation=false");
+        // No --no-restore: CI only restores the test project's dependency graph before running
+        // tests, so the bundled src projects may not have assets files yet.
 
         using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Could not start dotnet.");
-        var output = process.StandardOutput.ReadToEnd() + Environment.NewLine + process.StandardError.ReadToEnd();
-        process.WaitForExit();
+            ?? throw new InvalidOperationException("Could not start dotnet pack.");
+
+        var stdOutTask = process.StandardOutput.ReadToEndAsync();
+        var stdErrTask = process.StandardError.ReadToEndAsync();
+
+        await Task.WhenAll(process.WaitForExitAsync(), stdOutTask, stdErrTask);
+        var output = (await stdOutTask) + Environment.NewLine + (await stdErrTask);
         return (process.ExitCode, output);
     }
 
