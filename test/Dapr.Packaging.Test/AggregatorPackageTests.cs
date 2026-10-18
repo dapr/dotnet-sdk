@@ -230,8 +230,9 @@ public sealed class AggregatorPackageTests
             Assert.True(graphResult.ExitCode == 0, graphResult.Output);
 
             using var graph = JsonDocument.Parse(File.ReadAllText(graphPath));
-            Assert.Contains(graph.RootElement.GetProperty("projects").EnumerateObject(),
-                project => GetProjectFileName(project.Name) == "Dapr.BinaryStore.Generators.csproj");
+            var restoredProjects = graph.RootElement.GetProperty("projects").EnumerateObject()
+                .Select(project => GetProjectFileName(project.Name));
+            Assert.Contains("Dapr.BinaryStore.Generators.csproj", restoredProjects);
 
             var restoreResult = RunDotNet(repoRoot, "restore", projectPath);
             Assert.True(restoreResult.ExitCode == 0, restoreResult.Output);
