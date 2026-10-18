@@ -26,6 +26,9 @@ using Microsoft.Extensions.Logging;
 /// The base type for actors, that provides the common functionality
 /// for actors that derive from <see cref="Actor"/>.
 /// The state is preserved across actor garbage collections and fail-overs.
+/// Cancelling an invocation does not forcibly stop actor code. The host retains the turn
+/// until the method and its lifecycle callbacks finish, including state persistence or
+/// failure cleanup. Methods should observe their cancellation token to stop work promptly.
 /// </remarks>
 public abstract class Actor
 {

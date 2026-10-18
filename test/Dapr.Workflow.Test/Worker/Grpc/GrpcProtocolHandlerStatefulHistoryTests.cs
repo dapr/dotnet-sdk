@@ -82,7 +82,7 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
             untilCondition: () => capturedRequest is not null, timeout: TimeSpan.FromSeconds(2));
 
         Assert.NotNull(capturedRequest);
-        Assert.Empty(capturedRequest!.Capabilities);
+        Assert.Equal([WorkerCapability.HealthPing], capturedRequest!.Capabilities);
     }
 
     [Fact]

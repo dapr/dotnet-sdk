@@ -11,12 +11,14 @@ using System.Threading.Tasks;
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Dispatching;
 using Dapr.Actors.Next.Abstractions.Options;
+using Dapr.Actors.Next.Abstractions.Scheduling;
 using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.DependencyInjection;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.State;
 using Dapr.Actors.Next.Core.Runtime;
+using Dapr.Actors.Next.Core.Scheduling;
 using Dapr.Actors.Next.Core.Timers;
 using Dapr.Actors.Next.Core.Transport;
 using Dapr.Testcontainers.Common;
@@ -158,6 +160,9 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
             var endpoint = builder.Configuration["DAPR_GRPC_ENDPOINT"] ?? throw new InvalidOperationException("Missing Dapr gRPC endpoint.");
             return new P.Dapr.DaprClient(GrpcChannel.ForAddress(endpoint));
         });
+        builder.Services.AddSingleton<RecordingActorStateStore>(sp =>
+            new RecordingActorStateStore(new DaprSidecarActorStateStore(sp.GetRequiredService<P.Dapr.DaprClient>())));
+        builder.Services.AddSingleton<IActorStateStore>(sp => sp.GetRequiredService<RecordingActorStateStore>());
         builder.Services.AddSingleton<ISubscribeActorEventsTransport>(sp =>
             new RecordingActorEventsTransport(sp.GetRequiredService<P.Dapr.DaprClient>()));
         builder.Services.AddSingleton<Probe>();
@@ -179,7 +184,7 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
                     sp.GetRequiredService<IActorTimerScheduler>(),
                     sp.GetRequiredService<IActorReminderScheduler>(),
                     sp.GetRequiredService<IActorRuntime>(),
-                    sp.GetRequiredService<IActorStateStore>(),
+                    sp.GetRequiredService<RecordingActorStateStore>(),
                     sp.GetRequiredService<IActorWireSerializer>(),
                     sp.GetRequiredService<Probe>()),
                 new ProtocolActorDispatcher(),
@@ -190,6 +195,8 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
                     static (_, _, _, _) => ValueTask.CompletedTask),
                 typeOptions: new DaprActorTypeOptions { IdleTimeout = TimeSpan.FromSeconds(2) });
         });
+        builder.Services.AddSingleton<RecordingActorScheduler>();
+        builder.Services.AddSingleton<IActorScheduler>(sp => sp.GetRequiredService<RecordingActorScheduler>());
     }
 
     private static void WriteActorConfigYaml(string componentsDirectory)
@@ -228,6 +235,58 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         Assert.Equal(7, result.Number);
         Assert.Equal("application/json", result.ContentType);
         Assert.Equal("metadata", result.Metadata);
+    }
+
+    /// <summary>
+    /// A cancelled local inline invocation must hand off to an already-queued sidecar invocation.
+    /// </summary>
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Cancelled_inline_turn_does_not_strand_queued_sidecar_call()
+    {
+        using var timeout = new CancellationTokenSource(Timeout);
+        using var firstCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+        var runtime = app!.Services.GetRequiredService<IActorRuntime>();
+        var probe = app.Services.GetRequiredService<Probe>();
+        var scheduler = app.Services.GetRequiredService<RecordingActorScheduler>();
+        var actorId = $"cancel-handoff-{Guid.NewGuid():N}";
+
+        // The stream's token belongs to the whole stream, not an individual RPC.
+        // Invoke locally to cancel exactly one inline turn without shutting down the host.
+        var first = runtime.InvokeAsync("ProtocolActor", actorId, "HoldForCancellation",
+            ReadOnlyMemory<byte>.Empty, new Dictionary<string, string>(), firstCancellation.Token);
+        try
+        {
+            await probe.CancellationTurnEntered.Task.WaitAsync(timeout.Token);
+            using var next = client!.InvokeActorAsync(
+                CreateInvoke("ProtocolActor", actorId, "Echo",
+                    JsonSerializer.SerializeToUtf8Bytes(new ProtocolRequest("after-cancellation", 42))),
+                cancellationToken: timeout.Token);
+            await WaitUntilAsync(
+                () => scheduler.LastMailbox is { } mailbox && mailbox.ActorId.Value == actorId && mailbox.PendingCount == 1,
+                timeout.Token, () => "The sidecar invocation did not reach the occupied actor mailbox.");
+            Assert.False(next.ResponseAsync.IsCompleted);
+            // Let the production drain observe the occupied slot and exit before the handoff.
+            await Task.Delay(TimeSpan.FromMilliseconds(250), timeout.Token);
+            await firstCancellation.CancelAsync();
+            Assert.True(scheduler.LastMailbox!.IsExecuting);
+            Assert.False(probe.CancellationTurnFinished.Task.IsCompleted);
+            Assert.False(next.ResponseAsync.IsCompleted);
+            probe.ReleaseCancellationTurn.TrySetResult();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first.WaitAsync(timeout.Token));
+
+            // No third call is issued to wake the mailbox.
+            var response = await next.ResponseAsync.WaitAsync(TimeSpan.FromSeconds(5), timeout.Token);
+            var result = JsonSerializer.Deserialize<ProtocolResponse>(response.Data.Span)!;
+            Assert.Equal("after-cancellation", result.Text);
+            Assert.Equal(42, result.Number);
+            Assert.True(probe.CancellationTurnFinished.Task.IsCompleted);
+        }
+        finally
+        {
+            probe.ReleaseCancellationTurn.TrySetResult();
+            await firstCancellation.CancelAsync();
+            await timeout.CancelAsync();
+        }
     }
 
     /// <summary>
@@ -368,6 +427,31 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         await client.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "StopStateReminder", ReadOnlyMemory<byte>.Empty), cancellationToken: cts.Token);
     }
 
+    /// <summary>
+    /// Verifies missing actor state is fetched from the real sidecar once per activation and then cached.
+    /// </summary>
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Repeated_missing_state_reads_are_cached_per_activation()
+    {
+        using var cts = new CancellationTokenSource(Timeout);
+        var actorId = $"missing-state-{Guid.NewGuid():N}";
+
+        var firstResponse = await client!.InvokeActorAsync(
+            CreateInvoke("ProtocolActor", actorId, "ProbeMissingState", ReadOnlyMemory<byte>.Empty),
+            cancellationToken: cts.Token);
+        var first = JsonSerializer.Deserialize<MissingStateProbe>(firstResponse.Data.Span)!;
+
+        var secondResponse = await client.InvokeActorAsync(
+            CreateInvoke("ProtocolActor", actorId, "ProbeMissingState", ReadOnlyMemory<byte>.Empty),
+            cancellationToken: cts.Token);
+        var second = JsonSerializer.Deserialize<MissingStateProbe>(secondResponse.Data.Span)!;
+
+        Assert.False(first.HasValue);
+        Assert.Equal(1, first.ReadCount);
+        Assert.False(second.HasValue);
+        Assert.Equal(0, second.ReadCount);
+    }
+
     private static P.InvokeActorRequest CreateInvoke(
         string actorType,
         string actorId,
@@ -480,6 +564,11 @@ public sealed record ReminderManagementResult(
     int ActorScopedCountAfterCancelAll);
 
 /// <summary>
+/// Result of probing an absent actor state value.
+/// </summary>
+public sealed record MissingStateProbe(bool HasValue, int ReadCount);
+
+/// <summary>
 /// Legacy state DTO persisted with schema version one.
 /// </summary>
 public sealed record LegacyProfile(string Name);
@@ -494,6 +583,10 @@ public sealed record CurrentProfile(string FullName, int SchemaVersion);
 /// </summary>
 public sealed class Probe
 {
+    public TaskCompletionSource CancellationTurnEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource ReleaseCancellationTurn { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource CancellationTurnFinished { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     /// <summary>
     /// Gets actor ids that received reminder callbacks.
     /// </summary>
@@ -552,6 +645,23 @@ public sealed class Probe
         while (InitialConfigs.TryTake(out _))
         {
         }
+    }
+}
+
+/// <summary>
+/// Observes queue admission without changing production scheduling behavior.
+/// </summary>
+public sealed class RecordingActorScheduler : IActorScheduler
+{
+    private readonly ProductionActorScheduler inner = new();
+    private RuntimeActorMailbox? lastMailbox;
+    public RuntimeActorMailbox? LastMailbox => Volatile.Read(ref lastMailbox);
+    public bool AllowsInlineExecution => inner.AllowsInlineExecution;
+
+    public ValueTask ScheduleAsync(IActorMailbox mailbox, CancellationToken cancellationToken = default)
+    {
+        Volatile.Write(ref lastMailbox, (RuntimeActorMailbox)mailbox);
+        return inner.ScheduleAsync(mailbox, cancellationToken);
     }
 }
 
@@ -652,7 +762,7 @@ public sealed class ProtocolActor(
     IActorTimerScheduler timerScheduler,
     IActorReminderScheduler reminderScheduler,
     IActorRuntime runtime,
-    IActorStateStore stateStore,
+    RecordingActorStateStore stateStore,
     IActorWireSerializer serializer,
     Probe probe) : Actor
 {
@@ -694,6 +804,20 @@ public sealed class ProtocolActor(
     /// Health probe method.
     /// </summary>
     public Task PingAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public async Task HoldForCancellationAsync(CancellationToken cancellationToken)
+    {
+        probe.CancellationTurnEntered.TrySetResult();
+        try
+        {
+            await probe.ReleaseCancellationTurn.Task;
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        finally
+        {
+            probe.CancellationTurnFinished.TrySetResult();
+        }
+    }
 
     /// <summary>
     /// Echoes the request and selected request metadata.
@@ -878,6 +1002,22 @@ public sealed class ProtocolActor(
     }
 
     /// <summary>
+    /// Looks up a missing value repeatedly and reports how many store reads those lookups caused.
+    /// </summary>
+    public async Task<MissingStateProbe> ProbeMissingStateAsync(CancellationToken cancellationToken)
+    {
+        const string stateName = "missing-state-probe";
+        var readsBefore = stateStore.GetReadCount("ProtocolActor", Id.Value, stateName);
+        IActorState<int>? state = null;
+        for (var i = 0; i < 100; i++)
+        {
+            state = await State.TryGetAsync<int>(stateName, cancellationToken);
+        }
+
+        return new MissingStateProbe(state is not null, stateStore.GetReadCount("ProtocolActor", Id.Value, stateName) - readsBefore);
+    }
+
+    /// <summary>
     /// Stops the reminder used by the reentrancy state test.
     /// </summary>
     public async Task StopStateReminderAsync(CancellationToken cancellationToken)
@@ -909,6 +1049,7 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
         return request.MethodName switch
         {
             "Ping" => await CompleteAsync(protocol.PingAsync(cancellationToken)),
+            "HoldForCancellation" => await CompleteAsync(protocol.HoldForCancellationAsync(cancellationToken)),
             "Echo" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.EchoAsync(JsonSerializer.Deserialize<ProtocolRequest>(request.Payload.Span)!, request.Headers, cancellationToken))),
             "ScheduleReminder" => await CompleteAsync(protocol.ScheduleReminderAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),
             "ScheduleTimer" => await CompleteAsync(protocol.ScheduleTimerAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),
@@ -923,6 +1064,7 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
             "WriteStateReentrantly" => await CompleteAsync(protocol.WriteStateReentrantlyAsync(JsonSerializer.Deserialize<int>(request.Payload.Span), cancellationToken)),
             "SetReminderState" => await CompleteAsync(protocol.SetReminderStateAsync(JsonSerializer.Deserialize<int>(request.Payload.Span), cancellationToken)),
             "ReadReminderState" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ReadReminderStateAsync(cancellationToken))),
+            "ProbeMissingState" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ProbeMissingStateAsync(cancellationToken))),
             "StopStateReminder" => await CompleteAsync(protocol.StopStateReminderAsync(cancellationToken)),
             "Deactivate" => await CompleteAsync(protocol.ForceDeactivateAsync(cancellationToken)),
             _ => throw new InvalidOperationException($"Unknown method '{request.MethodName}'."),
@@ -934,4 +1076,30 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
         await task.ConfigureAwait(false);
         return new ActorDispatchResponse(null);
     }
+}
+
+/// <summary>
+/// Counts real sidecar state reads so integration tests can verify activation-level cache behavior.
+/// </summary>
+public sealed class RecordingActorStateStore(IActorStateStore inner) : IActorStateStore
+{
+    private readonly ConcurrentDictionary<(string ActorType, string ActorId, string Name), int> readCounts = new();
+
+    /// <inheritdoc />
+    public async ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default)
+    {
+        readCounts.AddOrUpdate((actorType, actorId, name), 1, static (_, count) => count + 1);
+        return await inner.ReadAsync(actorType, actorId, name, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public ValueTask WriteAsync(string actorType, string actorId, string name, ReadOnlyMemory<byte> value, CancellationToken cancellationToken = default) =>
+        inner.WriteAsync(actorType, actorId, name, value, cancellationToken);
+
+    /// <inheritdoc />
+    public ValueTask DeleteAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default) =>
+        inner.DeleteAsync(actorType, actorId, name, cancellationToken);
+
+    public int GetReadCount(string actorType, string actorId, string name) =>
+        readCounts.TryGetValue((actorType, actorId, name), out var count) ? count : 0;
 }

@@ -32,6 +32,7 @@ internal sealed class DaprJobsAppCallbackService(
     /// <param name="request">The job event request containing the job name and payload.</param>
     /// <param name="context">The gRPC server call context.</param>
     /// <returns>An empty <see cref="JobEventResponse"/>.</returns>
+    [Obsolete("Use the stable AppCallback.OnJobEvent RPC instead.")]
     public override async Task<JobEventResponse> OnJobEventAlpha1(
         JobEventRequest request, ServerCallContext context)
     {

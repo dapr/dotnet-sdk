@@ -1009,6 +1009,54 @@ public sealed class GrpcProtocolHandlerTests
     }
     
     [Fact]
+    public async Task StartAsync_ShouldAdvertiseHealthPing_AndIgnorePingsWithoutLogging()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+        using var loggerFactory = new CapturingLoggerFactory();
+
+        // The trailing unknown item follows the pings, so its log line means the pings were handled.
+        WorkItem[] workItems =
+        [
+            new() { HealthPing = new HealthPing() },
+            new() { HealthPing = new HealthPing() },
+            new() // RequestCase = None
+        ];
+
+        const string unknownPrefix = "Received unknown work item type";
+        var unknownLogged = CreateTcs<LogEntry>();
+        loggerFactory.Logged += entry =>
+        {
+            if (entry.Message.StartsWith(unknownPrefix, StringComparison.Ordinal))
+            {
+                unknownLogged.TrySetResult(entry);
+            }
+        };
+
+        GetWorkItemsRequest? capturedRequest = null;
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Callback<GetWorkItemsRequest, CallOptions>((request, _) => capturedRequest = request)
+            .Returns(CreateServerStreamingCall(workItems));
+
+        var handler = new GrpcProtocolHandler(grpcClientMock.Object, loggerFactory);
+
+        await RunHandlerUntilAsync(
+            handler,
+            workflowHandler: (_,_) => Task.FromResult(new WorkflowResponse()),
+            activityHandler: (_,_) => Task.FromResult(new ActivityResponse()),
+            until: unknownLogged.Task,
+            timeout: TimeSpan.FromSeconds(2));
+
+        Assert.NotNull(capturedRequest);
+        Assert.Contains(WorkerCapability.HealthPing, capturedRequest.Capabilities);
+        var unknownEntries = loggerFactory.Entries
+            .Where(e => e.Message.StartsWith(unknownPrefix, StringComparison.Ordinal))
+            .ToList();
+        var unknownEntry = Assert.Single(unknownEntries);
+        Assert.Contains("'None'", unknownEntry.Message);
+    }
+
+    [Fact]
     public async Task StartAsync_ShouldRethrow_WhenReceiveLoopThrowsBeforeAnyItemsAreRead()
     {
         var grpcClientMock = CreateGrpcClientMock();

@@ -202,6 +202,7 @@ public class ProtoConvertersTests
     [InlineData(HistoryEvent.EventTypeOneofCase.EventRaised, WorkflowHistoryEventType.EventRaised)]
     [InlineData(HistoryEvent.EventTypeOneofCase.ExecutionSuspended, WorkflowHistoryEventType.ExecutionSuspended)]
     [InlineData(HistoryEvent.EventTypeOneofCase.ExecutionResumed, WorkflowHistoryEventType.ExecutionResumed)]
+    [InlineData(HistoryEvent.EventTypeOneofCase.DetachedWorkflowInstanceCreated, WorkflowHistoryEventType.DetachedWorkflowInstanceCreated)]
     public void ToHistoryEventType_ShouldMapKnownEventTypes(
         HistoryEvent.EventTypeOneofCase protoEventType,
         WorkflowHistoryEventType expected)

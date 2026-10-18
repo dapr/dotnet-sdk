@@ -28,7 +28,7 @@ namespace Dapr.Jobs.Test;
 public class DaprJobsAppCallbackServiceTest
 {
     [Fact]
-    public async Task OnJobEventAlpha1_InvokesHandlerWithJobNameAndPayload()
+    public async Task OnJobEvent_InvokesHandlerWithJobNameAndPayload()
     {
         string? capturedJobName = null;
         ReadOnlyMemory<byte> capturedPayload = default;
@@ -44,7 +44,8 @@ public class DaprJobsAppCallbackServiceTest
         };
 
         var services = new ServiceCollection().BuildServiceProvider();
-        var service = new DaprJobsAppCallbackService(registry, services);
+        var handler = new DaprJobsAppCallbackHandler(registry, services);
+        var service = new DaprJobsAppCallbackV1Service(handler);
 
         var payloadBytes = Encoding.UTF8.GetBytes("test-payload");
         var request = new JobEventRequest
@@ -58,7 +59,7 @@ public class DaprJobsAppCallbackServiceTest
         };
 
         var context = new Mock<ServerCallContext>().Object;
-        var response = await service.OnJobEventAlpha1(request, context);
+        var response = await service.OnJobEvent(request, context);
 
         Assert.NotNull(response);
         Assert.Equal("myJob", capturedJobName);
@@ -66,7 +67,7 @@ public class DaprJobsAppCallbackServiceTest
     }
 
     [Fact]
-    public async Task OnJobEventAlpha1_ResolvesServicesFromDependencyInjection()
+    public async Task OnJobEvent_ResolvesServicesFromDependencyInjection()
     {
         var testService = new TestInjectableService();
         var registry = new DaprJobsHandlerRegistry
@@ -82,7 +83,8 @@ public class DaprJobsAppCallbackServiceTest
             .AddSingleton(testService)
             .BuildServiceProvider();
 
-        var service = new DaprJobsAppCallbackService(registry, services);
+        var handler = new DaprJobsAppCallbackHandler(registry, services);
+        var service = new DaprJobsAppCallbackV1Service(handler);
 
         var request = new JobEventRequest
         {
@@ -95,13 +97,13 @@ public class DaprJobsAppCallbackServiceTest
         };
 
         var context = new Mock<ServerCallContext>().Object;
-        await service.OnJobEventAlpha1(request, context);
+        await service.OnJobEvent(request, context);
 
         Assert.True(testService.WasInvoked);
     }
 
     [Fact]
-    public async Task OnJobEventAlpha1_HandlesNullPayload()
+    public async Task OnJobEvent_HandlesNullPayload()
     {
         ReadOnlyMemory<byte> capturedPayload = new byte[] { 0xFF };
 
@@ -115,28 +117,30 @@ public class DaprJobsAppCallbackServiceTest
         };
 
         var services = new ServiceCollection().BuildServiceProvider();
-        var service = new DaprJobsAppCallbackService(registry, services);
+        var handler = new DaprJobsAppCallbackHandler(registry, services);
+        var service = new DaprJobsAppCallbackV1Service(handler);
 
         var request = new JobEventRequest { Name = "emptyJob" };
 
         var context = new Mock<ServerCallContext>().Object;
-        await service.OnJobEventAlpha1(request, context);
+        await service.OnJobEvent(request, context);
 
         Assert.True(capturedPayload.IsEmpty);
     }
 
     [Fact]
-    public async Task OnJobEventAlpha1_ThrowsWhenNoHandlerConfigured()
+    public async Task OnJobEvent_ThrowsWhenNoHandlerConfigured()
     {
         var registry = new DaprJobsHandlerRegistry();
         var services = new ServiceCollection().BuildServiceProvider();
-        var service = new DaprJobsAppCallbackService(registry, services);
+        var handler = new DaprJobsAppCallbackHandler(registry, services);
+        var service = new DaprJobsAppCallbackV1Service(handler);
 
         var request = new JobEventRequest { Name = "noHandler" };
         var context = new Mock<ServerCallContext>().Object;
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.OnJobEventAlpha1(request, context));
+            service.OnJobEvent(request, context));
     }
 
     internal sealed class TestInjectableService

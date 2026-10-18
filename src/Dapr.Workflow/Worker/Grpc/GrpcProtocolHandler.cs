@@ -80,6 +80,7 @@ internal sealed class GrpcProtocolHandler(
         // Establish the bidirectional stream. Advertise stateful-history support so the
         // sidecar can send deltas instead of the full history each turn.
         var request = new GetWorkItemsRequest();
+        request.Capabilities.Add(WorkerCapability.HealthPing);
         if (!_disableStatefulHistory)
         {
             request.Capabilities.Add(WorkerCapability.StatefulHistory);
@@ -252,6 +253,7 @@ internal sealed class GrpcProtocolHandler(
                     WorkItem.RequestOneofCase.ActivityRequest => Task.Run(
                         () => ProcessActivityAsync(workItem.ActivityRequest, completionToken, activityHandler, cancellationToken),
                         cancellationToken),
+                    WorkItem.RequestOneofCase.HealthPing => Task.CompletedTask,
                     _ => Task.Run(
                         () => _logger.LogGrpcProtocolHandlerUnknownWorkItemType(workItem.RequestCase),
                         cancellationToken)

@@ -9,3 +9,4 @@ This repository contains a samples that highlight the Dapr .NET SDK capabilities
 | [3. ASP.NET Core](./AspNetCore)  | Demonstrates ASP.NET Core integration with Dapr by creating Controllers and Routes. |
 | [4. Workflow](./Workflow)        | Demonstrates creating durable, long-running Dapr workflows using code. |
 | [5. Cryptography](./Cryptography) | Demonstrates encryption and decryption operations using Dapr. |
+| [6. Binary Store](./BinaryStore) | Demonstrates typed and direct binary store clients, streaming uploads and downloads, and an in-memory Dapr component. |
