@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -92,11 +93,41 @@ public class ActorsEndpointRouteBuilderExtensionsTests
             "/actors/DoesNotExist/id1/method/Foo");
 
         // The TestServer propagates the unhandled exception from the route handler.
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => httpClient.SendAsync(request, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            httpClient.SendAsync(request, TestContext.Current.CancellationToken));
     }
 
-    private static IHost CreateHost<TStartup>(Action<ActorRuntimeOptions> configure) where TStartup : class
+    [Theory]
+    [InlineData("Reminder")]
+    [InlineData("Timer")]
+    public async Task MapActorsHandlers_CallbacksPropagateReentrancyContext(string callback)
+    {
+        var probe = new CallbackContextProbe();
+        using var host = CreateHost<ActorsStartup>(
+            options => options.Actors.RegisterActor<CallbackContextActor>(),
+            services => services.AddSingleton(probe));
+        using var client = host.GetTestServer().CreateClient();
+        var path = callback == "Timer"
+            ? "/actors/CallbackContextActor/id/method/timer/test"
+            : "/actors/CallbackContextActor/id/method/remind/test";
+        var body = callback == "Timer"
+            ? "{\"callback\":\"TimerCallback\"}"
+            : "{\"data\":\"\",\"dueTime\":\"0h0m0s0ms\",\"period\":\"0h0m1s0ms\"}";
+
+        using var request = new HttpRequestMessage(HttpMethod.Put, path);
+        request.Headers.Add("Dapr-Reentrancy-Id", "callback-chain");
+        request.Content = new StringContent(body);
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("callback-chain", probe.Context);
+
+        using var next = await client.PutAsync(path, new StringContent(body), TestContext.Current.CancellationToken);
+        next.EnsureSuccessStatusCode();
+        Assert.Null(probe.Context);
+    }
+
+    private static IHost CreateHost<TStartup>(Action<ActorRuntimeOptions> configure,
+        Action<IServiceCollection> configureServices = null) where TStartup : class
     {
         var builder = Host
             .CreateDefaultBuilder()
@@ -113,6 +144,7 @@ public class ActorsEndpointRouteBuilderExtensionsTests
             .ConfigureServices(services =>
             {
                 services.AddActors(configure);
+                configureServices?.Invoke(services);
             });
         var host = builder.Build();
         try
@@ -163,5 +195,28 @@ public class ActorsEndpointRouteBuilderExtensionsTests
     {
         public RealMethodActor(ActorHost host) : base(host) { }
         public Task PingAsync() => Task.CompletedTask;
+    }
+
+    public sealed class CallbackContextProbe
+    {
+        public string Context { get; set; }
+    }
+
+    public sealed class CallbackContextActor(ActorHost host, CallbackContextProbe probe)
+        : Actor(host), IRealMethodActor, IRemindable
+    {
+        public Task PingAsync() => Task.CompletedTask;
+
+        public Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
+        {
+            probe.Context = ActorReentrancyContextAccessor.ReentrancyContext;
+            return Task.CompletedTask;
+        }
+
+        public Task TimerCallback()
+        {
+            probe.Context = ActorReentrancyContextAccessor.ReentrancyContext;
+            return Task.CompletedTask;
+        }
     }
 }
