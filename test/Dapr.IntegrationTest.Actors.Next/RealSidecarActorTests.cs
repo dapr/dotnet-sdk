@@ -42,7 +42,7 @@ namespace Dapr.IntegrationTest.Actors.Next;
 /// <summary>
 /// Real-sidecar integration tests for the Actors Next app-callback stream.
 /// </summary>
-public sealed class RealSidecarActorTests : IAsyncLifetime
+public sealed partial class RealSidecarActorTests : IAsyncLifetime
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(90);
     private DaprTestEnvironment? environment;
@@ -193,7 +193,10 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
                     static (_, _, _, _) => ValueTask.CompletedTask),
                 typeOptions: new DaprActorTypeOptions { IdleTimeout = TimeSpan.FromSeconds(2) });
         });
+        ConfigureConcurrencyActors(builder);
     }
+
+    private static partial void ConfigureConcurrencyActors(WebApplicationBuilder builder);
 
     private static void WriteActorConfigYaml(string componentsDirectory)
     {

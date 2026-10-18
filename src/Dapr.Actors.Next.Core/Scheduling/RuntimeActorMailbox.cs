@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.Scheduling;
 using Dapr.Actors.Next.Core.Runtime;
 
@@ -26,6 +27,13 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
     private readonly object syncRoot = new();
     private bool executing;
     private bool drainScheduled;
+    private string? callChain;
+    private int reentrantTurns;
+    private bool closing;
+    private bool completing;
+    private bool activated;
+    private bool deactivateAfterTurn;
+    private TaskCompletionSource? reentrantTurnsFinished;
 
     /// <inheritdoc />
     public string ActorType { get; } = actorType;
@@ -95,7 +103,7 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
 
         try
         {
-            item.Complete(await runtime.ExecuteTurnAsync(item.Request, CreateExecutionCancellationToken(item, cancellationToken)).ConfigureAwait(false));
+            item.Complete(await runtime.ExecuteTurnAsync(item.Request, CreateExecutionCancellationToken(item, cancellationToken), this).ConfigureAwait(false));
         }
         catch (Exception ex)
         {
@@ -114,7 +122,7 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
     /// enqueue + thread-pool hop. Succeeds only when the mailbox is idle and empty, preserving the
     /// one-turn-at-a-time guarantee. When it fails the caller must fall back to the enqueue + schedule path.
     /// </summary>
-    internal bool TryClaimInlineTurn()
+    internal bool TryClaimInlineTurn(ActorRuntimeRequest request)
     {
         lock (syncRoot)
         {
@@ -123,8 +131,111 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
                 return false;
             }
 
-            executing = true;
+            StartExecution(request);
             return true;
+        }
+    }
+
+    internal bool TryClaimReentrantTurn(ActorRuntimeRequest request, bool enabled, int maxDepth)
+    {
+        lock (syncRoot)
+        {
+            if (!executing || closing || !activated || request.Kind != ActorTurnKind.Invoke
+                || !ActorHeaders.TryGetReentrancy(request.Headers, out _, out var incomingChain)
+                || !string.Equals(callChain, incomingChain, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!enabled)
+            {
+                throw new ActorInvocationException($"Reentrancy is disabled for actor '{ActorType}/{ActorId}'.");
+            }
+
+            if (reentrantTurns + 1 >= maxDepth)
+            {
+                throw new ActorInvocationException($"Maximum reentrant depth ({maxDepth}) exceeded for actor '{ActorType}/{ActorId}'.");
+            }
+
+            reentrantTurns++;
+            return true;
+        }
+    }
+
+    internal void ReleaseReentrantTurn()
+    {
+        lock (syncRoot)
+        {
+            if (--reentrantTurns == 0)
+            {
+                closing = completing;
+                reentrantTurnsFinished?.TrySetResult();
+                reentrantTurnsFinished = null;
+            }
+        }
+    }
+
+    internal void MarkActivated()
+    {
+        lock (syncRoot)
+        {
+            activated = true;
+        }
+    }
+
+    internal Task CloseTurnAsync()
+    {
+        lock (syncRoot)
+        {
+            completing = true;
+            closing = reentrantTurns == 0;
+            return reentrantTurns == 0
+                ? Task.CompletedTask
+                : (reentrantTurnsFinished ??= new(TaskCreationOptions.RunContinuationsAsynchronously)).Task;
+        }
+    }
+
+    internal Task WaitForReentrantTurnsAsync()
+    {
+        lock (syncRoot)
+        {
+            return reentrantTurns == 0
+                ? Task.CompletedTask
+                : (reentrantTurnsFinished ??= new(TaskCreationOptions.RunContinuationsAsynchronously)).Task;
+        }
+    }
+
+    internal void ResumeAfterFailedCompletion()
+    {
+        lock (syncRoot)
+        {
+            completing = false;
+            closing = false;
+        }
+    }
+
+    internal bool TryDeferDeactivation(IReadOnlyDictionary<string, string> headers)
+    {
+        lock (syncRoot)
+        {
+            if (!executing || closing || !ActorHeaders.TryGetReentrancy(headers, out _, out var incomingChain)
+                || !string.Equals(callChain, incomingChain, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            deactivateAfterTurn = true;
+            return true;
+        }
+    }
+
+    internal bool TakeDeferredDeactivation()
+    {
+        lock (syncRoot)
+        {
+            var requested = deactivateAfterTurn;
+            deactivateAfterTurn = false;
+            return requested;
         }
     }
 
@@ -136,7 +247,7 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
     {
         lock (syncRoot)
         {
-            executing = false;
+            EndExecution();
             return work.Count > 0;
         }
     }
@@ -193,7 +304,7 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
 
             try
             {
-                item.Complete(await runtime.ExecuteTurnAsync(item.Request, item.CancellationToken).ConfigureAwait(false));
+                item.Complete(await runtime.ExecuteTurnAsync(item.Request, item.CancellationToken, this).ConfigureAwait(false));
             }
             catch (Exception ex)
             {
@@ -226,7 +337,7 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
                 return null;
             }
 
-            executing = true;
+            StartExecution(item.Request);
             return item;
         }
     }
@@ -235,8 +346,24 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
     {
         lock (syncRoot)
         {
-            executing = false;
+            EndExecution();
         }
+    }
+
+    private void StartExecution(ActorRuntimeRequest request)
+    {
+        executing = true;
+        closing = false;
+        completing = false;
+        activated = false;
+        ActorHeaders.TryGetReentrancy(request.Headers, out _, out callChain!);
+    }
+
+    private void EndExecution()
+    {
+        executing = false;
+        callChain = null;
+        activated = false;
     }
 
     private static CancellationToken CreateExecutionCancellationToken(ActorTurnWork item, CancellationToken schedulerCancellationToken)

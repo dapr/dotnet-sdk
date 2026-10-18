@@ -29,6 +29,12 @@ namespace Dapr.Actors.Next.Core.Transport;
 /// <summary>
 /// Hosted service that owns the app-initiated SubscribeActorEvents stream.
 /// </summary>
+/// <remarks>
+/// Callback admission is not globally bounded: an accepted turn can await another callback on the
+/// same stream. Memory therefore scales with outstanding calls, while actor mailboxes enforce turn
+/// serialization. Disconnects cancel accepted work; cancellation-ignoring actor code can outlive its
+/// stream, but its eventual completion is still observed.
+/// </remarks>
 public sealed class SubscribeActorEventsStreamManager(
     ISubscribeActorEventsTransport transport,
     ActorRuntimeRegistry registry,
@@ -37,7 +43,6 @@ public sealed class SubscribeActorEventsStreamManager(
     IOptions<DaprActorsOptions> options,
     ILogger<SubscribeActorEventsStreamManager> logger) : BackgroundService
 {
-    private const int DefaultBackpressureCapacity = 64;
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
     private readonly ConcurrentDictionary<string, StreamLease> streams = new(StringComparer.Ordinal);
     private readonly CancellationTokenSource shutdown = new();
@@ -53,11 +58,13 @@ public sealed class SubscribeActorEventsStreamManager(
             return ValueTask.CompletedTask;
         }
 
-        var streamCts = CancellationTokenSource.CreateLinkedTokenSource(shutdown.Token, cancellationToken);
-        var task = Task.Run(() => RunTypeStreamLoopAsync(actorType, streamCts.Token), CancellationToken.None);
+        var streamCts = new StreamCancellation(shutdown.Token, cancellationToken);
+        var streamToken = streamCts.Token;
+        var task = Task.Run(() => RunTypeStreamLoopAsync(actorType, streamToken), CancellationToken.None);
+        Observe(task);
         if (!streams.TryAdd(actorType, new StreamLease(streamCts, task)))
         {
-            streamCts.Cancel();
+            Observe(streamCts.CancelAsync());
             streamCts.Dispose();
         }
 
@@ -127,8 +134,9 @@ public sealed class SubscribeActorEventsStreamManager(
         {
             try
             {
-                await using var stream = await transport.OpenStreamAsync(stoppingToken).ConfigureAwait(false);
-                await RunStreamAsync(registration, stream, stoppingToken).ConfigureAwait(false);
+                using var streamCancellation = new StreamCancellation(stoppingToken);
+                var stream = await transport.OpenStreamAsync(streamCancellation.Token).ConfigureAwait(false);
+                await RunStreamAsync(registration, stream, streamCancellation, stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -153,52 +161,114 @@ public sealed class SubscribeActorEventsStreamManager(
         }
     }
 
-    private async Task RunStreamAsync(ActorRuntimeRegistration registration, ISubscribeActorEventsStream stream, CancellationToken stoppingToken)
+    private async Task RunStreamAsync(
+        ActorRuntimeRegistration registration,
+        ISubscribeActorEventsStream stream,
+        StreamCancellation streamCancellation,
+        CancellationToken stoppingToken)
     {
-        var inbound = Channel.CreateBounded<SubscribeActorEventsRequest>(new BoundedChannelOptions(DefaultBackpressureCapacity)
-        {
-            FullMode = BoundedChannelFullMode.Wait,
-            SingleReader = false,
-            SingleWriter = true,
-        });
+        var cancellationToken = streamCancellation.Token;
         var outbound = Channel.CreateUnbounded<SubscribeActorEventsResponse>(new UnboundedChannelOptions
         {
             SingleReader = true,
             SingleWriter = false,
         });
-        var writer = PumpWriterAsync(stream, outbound.Reader, stoppingToken);
-        var workerCount = Math.Max(1, Math.Min(Environment.ProcessorCount, 8));
-        var workers = Enumerable.Range(0, workerCount)
-            .Select(_ => ProcessInboundAsync(inbound.Reader, outbound.Writer, stoppingToken))
-            .ToArray();
+        outbound.Writer.TryWrite(SubscribeActorEventsResponse.RegisteredActors(
+            [registration.ActorType],
+            CreateInitialConfig(registration.Options ?? options.Value, registration.TypeOptions)));
+        var dispatches = new InFlightDispatches();
+        var writer = PumpWriterAsync(stream, outbound.Reader, cancellationToken);
+        var reader = Task.Run(async () =>
+        {
+            await foreach (var request in stream.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // A callback can await another callback on this stream. Neither a worker limit nor a
+                // bounded inbound queue may hold that child behind its waiting parent. Actor mailboxes
+                // serialize turns; transport memory necessarily scales with accepted outstanding calls.
+                dispatches.Add(Task.Run(async () =>
+                {
+                    var response = await DispatchOneAsync(request, cancellationToken).ConfigureAwait(false);
+                    await outbound.Writer.WriteAsync(response, cancellationToken).ConfigureAwait(false);
+                }, cancellationToken));
+            }
+        }, cancellationToken);
 
         try
         {
-            await outbound.Writer.WriteAsync(
-                SubscribeActorEventsResponse.RegisteredActors(
-                    [registration.ActorType],
-                    CreateInitialConfig(registration.Options ?? options.Value, registration.TypeOptions)),
-                stoppingToken).ConfigureAwait(false);
-
-            await foreach (var request in stream.ReadAllAsync(stoppingToken).ConfigureAwait(false))
-            {
-                await inbound.Writer.WriteAsync(request, stoppingToken).ConfigureAwait(false);
-            }
+            await SuperviseAsync(reader, writer, dispatches.Failure, cancellationToken).ConfigureAwait(false);
+            // EOF is graceful: finish accepted turns, then flush their responses through the sole writer.
+            await SuperviseAsync(dispatches.DrainAsync(), writer, dispatches.Failure, cancellationToken).ConfigureAwait(false);
+            outbound.Writer.TryComplete();
+            await writer.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
-            inbound.Writer.TryComplete();
-            await Task.WhenAll(workers).ConfigureAwait(false);
+            // Cancel the call-level token before disposing: the gRPC transport completes its request
+            // stream during disposal, which otherwise can wait behind a failed or blocked write.
+            Observe(streamCancellation.CancelAsync());
             outbound.Writer.TryComplete();
-            await writer.ConfigureAwait(false);
+            Observe(reader);
+            Observe(writer);
+            // Actor code and third-party transports may ignore cancellation. Do not keep a failed
+            // stream alive waiting for actor code; late completions remain observed by the supervisor.
+            var disposal = stream.DisposeAsync().AsTask();
+            Observe(disposal);
+            await disposal.WaitAsync(stoppingToken).ConfigureAwait(false);
         }
     }
 
-    private async Task ProcessInboundAsync(ChannelReader<SubscribeActorEventsRequest> reader, ChannelWriter<SubscribeActorEventsResponse> writer, CancellationToken cancellationToken)
+    private static async Task SuperviseAsync(Task operation, Task writer, Task<Exception> failure, CancellationToken cancellationToken)
     {
-        await foreach (var request in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        var completed = await Task.WhenAny(operation, writer, failure).WaitAsync(cancellationToken).ConfigureAwait(false);
+        if (completed == failure)
         {
-            await writer.WriteAsync(await DispatchOneAsync(request, cancellationToken).ConfigureAwait(false), cancellationToken).ConfigureAwait(false);
+            throw await failure.ConfigureAwait(false);
+        }
+
+        await completed.ConfigureAwait(false);
+    }
+
+    private static void Observe(Task task) =>
+        _ = task.ContinueWith(static completed => _ = completed.Exception,
+            CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+
+    private sealed class InFlightDispatches
+    {
+        private readonly HashSet<Task> tasks = [];
+        private readonly TaskCompletionSource<Exception> failure = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<Exception> Failure => failure.Task;
+
+        public void Add(Task task)
+        {
+            lock (tasks)
+            {
+                tasks.Add(task);
+            }
+
+            _ = task.ContinueWith(completed =>
+            {
+                lock (tasks)
+                {
+                    if (completed.Exception is { } exception)
+                    {
+                        failure.TrySetResult(exception);
+                    }
+
+                    tasks.Remove(completed);
+                }
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
+
+        public Task DrainAsync()
+        {
+            lock (tasks)
+            {
+                var drain = Task.WhenAll(tasks);
+                Observe(drain);
+                return drain;
+            }
         }
     }
 
@@ -294,13 +364,61 @@ public sealed class SubscribeActorEventsStreamManager(
             typeOptions?.EnableReentrancy ?? options.EnableReentrancy,
             typeOptions?.MaxReentrantDepth ?? options.MaxReentrantDepth);
 
-    private sealed record StreamLease(CancellationTokenSource Cancellation, Task Task)
+    internal sealed class StreamCancellation : IDisposable
+    {
+        private readonly CancellationTokenSource source = new();
+        private readonly object sync = new();
+        private readonly CancellationTokenRegistration stoppingRegistration;
+        private readonly CancellationTokenRegistration cancellationRegistration;
+        private Task? cancellation;
+
+        public StreamCancellation(CancellationToken stoppingToken, CancellationToken cancellationToken = default)
+        {
+            stoppingRegistration = stoppingToken.UnsafeRegister(
+                static state => Observe(((StreamCancellation)state!).CancelAsync()), this);
+            cancellationRegistration = cancellationToken.UnsafeRegister(
+                static state => Observe(((StreamCancellation)state!).CancelAsync()), this);
+        }
+
+        public CancellationToken Token => source.Token;
+
+        public Task CancelAsync()
+        {
+            lock (sync)
+            {
+                return cancellation ??= source.CancelAsync();
+            }
+        }
+
+        public void Dispose() => Observe(DisposeAfterCancellationAsync());
+
+        private async Task DisposeAfterCancellationAsync()
+        {
+            try
+            {
+                // CancelAsync queues callbacks. Disposing the source before that task finishes can
+                // discard registrations before they run, leaving otherwise cooperative turns stuck.
+                // All cancellation paths share this task, including parent-token cancellation.
+                await CancelAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                stoppingRegistration.Dispose();
+                cancellationRegistration.Dispose();
+                source.Dispose();
+            }
+        }
+    }
+
+    private sealed record StreamLease(StreamCancellation Cancellation, Task Task)
     {
         public async ValueTask DisposeAsync(CancellationToken cancellationToken)
         {
-            await Cancellation.CancelAsync().ConfigureAwait(false);
+            var cancellation = Cancellation.CancelAsync();
+            Observe(cancellation);
             try
             {
+                await cancellation.WaitAsync(cancellationToken).ConfigureAwait(false);
                 await Task.WaitAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)

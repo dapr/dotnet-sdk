@@ -47,13 +47,16 @@ public sealed class ActorTestRuntime : IAsyncDisposable
         services.AddLogging();
         services.AddSingleton(Time);
         services.AddSingleton<TimeProvider>(Time);
-        services.AddSingleton<IActorTimerScheduler>(Time);
-        services.AddSingleton<IActorReminderScheduler>(Time);
+        services.AddSingleton<IActorTimerScheduler>(sp => new CoreActorTimerScheduler(
+            sp.GetRequiredService<IActorRuntime>(), sp.GetRequiredService<IActorWireSerializer>(), Time));
+        services.AddSingleton<IActorReminderScheduler>(sp => new CoreActorReminderScheduler(
+            sp.GetRequiredService<IActorRuntime>(), sp.GetRequiredService<IActorWireSerializer>(), Time));
         services.AddSingleton(Faults);
         services.AddSingleton<IActorStateFaultInjector>(Faults);
         services.AddSingleton<IActorStateStore>(StateStore);
         services.AddSingleton<IActorScheduler>(Scheduler);
-        services.AddSingleton<IActorInvocationClient>(sp => new ActorTestInvocationClient(sp.GetRequiredService<IActorRuntime>(), sp.GetRequiredService<ActorFaults>()));
+        services.AddSingleton<IActorInvocationClient>(sp => new ActorTestInvocationClient(
+            sp.GetRequiredService<IActorRuntime>(), sp.GetRequiredService<ActorFaults>(), options?.SimulateRemoteCalls ?? false));
 
         configureServices?.Invoke(services);
 
@@ -139,6 +142,13 @@ public sealed class ActorTestRuntime : IAsyncDisposable
     /// Starts one scheduled turn if an executable turn exists.
     /// </summary>
     public Task<bool> StepAsync(CancellationToken cancellationToken = default) => Scheduler.StepAsync(cancellationToken);
+
+    /// <summary>
+    /// Requests deactivation through the real runtime. With a controlled scheduler, advance the scheduler
+    /// before awaiting completion. A request made by the active call chain is deferred until its turn ends.
+    /// </summary>
+    public Task DeactivateAsync(string actorType, ActorId actorId, CancellationToken cancellationToken = default) =>
+        Runtime.DeactivateAsync(actorType, actorId, cancellationToken);
 
     /// <summary>
     /// Seeds a named actor state value directly into the in-memory store.

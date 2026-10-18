@@ -22,4 +22,10 @@ public sealed class ActorTestRuntimeOptions
     /// Gets or sets the scheduler used by the runtime.
     /// </summary>
     public ControlledActorScheduler? Scheduler { get; set; }
+
+    /// <summary>
+    /// Simulates a transport boundary for actor-to-actor calls: headers are propagated, but the caller's
+    /// execution context is not. Serialization and dispatch still use the in-memory runtime.
+    /// </summary>
+    public bool SimulateRemoteCalls { get; set; }
 }

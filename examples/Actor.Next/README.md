@@ -13,3 +13,6 @@ These are the worked examples for the six-part Dapr.Actors.Next tutorial.
 Prerequisites: Dapr runtime 1.18+ for integration-style actor callback stream behavior, and the .NET 10 or .NET 11 SDK. The unit tests in these examples run with no sidecar, no state store, and no Docker.
 
 The throughline is that each example pairs the authoring model with its test. The tests progressively need less infrastructure and reach further: no sidecar, then without a database, then without a broker, then a deterministic race, then verification as a deploy gate.
+
+For remote-call simulation, paused state commits, virtual timer races, and callback-stream
+fault injection, see [Deterministic actor concurrency tests](../../src/Dapr.Actors.Next.Testing/README.md).
