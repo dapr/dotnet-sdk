@@ -19,6 +19,7 @@ using Dapr.IntegrationTest.Actors.Regression;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Harnesses;
+using Dapr.Testcontainers.Xunit.Attributes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,6 +29,11 @@ namespace Dapr.IntegrationTest.Actors;
 /// Real-sidecar compatibility coverage for the host turn lock, beyond cancellation isolation.
 /// Uses real placement, scheduler and actor state storage; DAPR_RUNTIME_VERSION selects the release.
 /// </summary>
+/// <remarks>
+/// Turn serialization is checked on every runtime. Timer self-unregistration is checked separately
+/// on Dapr 1.18.2 and later, where dapr/dapr#10158 fixed re-enqueueing a timer deleted during its callback.
+/// Reminder self-unregistration has no additional version requirement.
+/// </remarks>
 public sealed class ActorTurnCompatibilityTests(ITestOutputHelper output)
 {
     [Theory]
@@ -192,9 +198,10 @@ public sealed class ActorTurnCompatibilityTests(ITestOutputHelper output)
             var completed = await typed.Read(true, timeout.Token);
             Assert.Equal(initial.InstanceId, completed.InstanceId);
             Assert.Equal(1, completed.Value);
-            Assert.Equal(2, completed.CallbackCount);
-            Assert.Equal(2, probe.CallsFromCallbacks);
-            Assert.Equal(2, probe.Payloads.Count);
+            // Older runtimes can re-enqueue a self-unregistered timer. Exact stopping is tested separately.
+            Assert.True(completed.CallbackCount >= 2);
+            Assert.True(probe.CallsFromCallbacks >= 2);
+            Assert.True(probe.Payloads.Count >= 2);
             Assert.All(probe.Payloads, actual => Assert.Equal(payload, actual));
 
             var events = probe.Events.ToArray();
@@ -203,11 +210,6 @@ public sealed class ActorTurnCompatibilityTests(ITestOutputHelper output)
             Assert.True(Array.IndexOf(events, "callback-enter:2") > Array.IndexOf(events, "callback-exit:1"));
             Assert.False(methodIndex > Array.IndexOf(events, "callback-enter:2") &&
                          methodIndex < Array.IndexOf(events, "callback-exit:2"));
-
-            // Observe several periods after unregistering, not just the instant it completes.
-            await Task.Delay(TimeSpan.FromSeconds(1), timeout.Token);
-            Assert.Equal(2, (await typed.Read(true, timeout.Token)).CallbackCount);
-            Assert.Equal(2, probe.Payloads.Count);
         }
         finally
         {
@@ -217,6 +219,42 @@ public sealed class ActorTurnCompatibilityTests(ITestOutputHelper output)
                 await queued.WaitAsync(timeout.Token);
             }
         }
+    }
+
+    [MinimumDaprRuntimeTheory("1.18.2")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task TimerCallbacksStopAfterUnregistering(bool reentrancy) =>
+        ScheduledCallbacksStopAfterUnregisteringAsync(false, reentrancy);
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task ReminderCallbacksStopAfterUnregistering(bool reentrancy) =>
+        ScheduledCallbacksStopAfterUnregisteringAsync(true, reentrancy);
+
+    private async Task ScheduledCallbacksStopAfterUnregisteringAsync(bool reminder, bool reentrancy)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        var probe = new TurnCompatibilityProbe();
+        probe.Release.TrySetResult();
+        await using var app = await CreateTestAppAsync(probe, reentrancy, false, timeout.Token);
+        using var scope = app.CreateScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IActorProxyFactory>();
+        var typed = factory.CreateActorProxy<ITurnCompatibilityActor>(
+            ActorId.CreateRandom(), nameof(TurnCompatibilityActor));
+        await ActorRuntimeHelper.WaitForActorRuntimeAsync(typed, timeout.Token);
+
+        await typed.StartSchedule(
+            new TurnScheduleRequest { Reminder = reminder, CallbackActorId = ActorId.CreateRandom().ToString() },
+            timeout.Token);
+        await probe.ScheduleFinished.Task.WaitAsync(timeout.Token);
+
+        // Observe several periods after unregistering, not just the instant it completes.
+        await Task.Delay(TimeSpan.FromSeconds(1), timeout.Token);
+        Assert.Equal(2, (await typed.Read(true, timeout.Token)).CallbackCount);
+        Assert.Equal(2, probe.CallsFromCallbacks);
+        Assert.Equal(2, probe.Payloads.Count);
     }
 
     private async Task<ActorTestContext> CreateTestAppAsync(TurnCompatibilityProbe probe,
