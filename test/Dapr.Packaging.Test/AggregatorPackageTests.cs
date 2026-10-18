@@ -2,6 +2,7 @@ using System.Xml.Linq;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Reflection;
+using System.Text.Json;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -213,6 +214,62 @@ public sealed class AggregatorPackageTests
     }
 
     [Fact]
+    public void DaprBinaryStorePackage_RestoresAndBundlesGeneratorPrivately()
+    {
+        var repoRoot = FindRepoRoot();
+        var projectPath = Path.Combine("src", "Dapr.BinaryStore", "Dapr.BinaryStore.csproj");
+        var outputDirectory = Path.Combine(Path.GetTempPath(), $"dapr-binary-store-package-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outputDirectory);
+
+        try
+        {
+            // Inspect the restore graph so existing generator assets cannot mask a missing reference.
+            var graphPath = Path.Combine(outputDirectory, "restore-graph.json");
+            var graphResult = RunDotNet(repoRoot, "msbuild", projectPath,
+                "-t:GenerateRestoreGraphFile", $"-p:RestoreGraphOutputPath={graphPath}");
+            Assert.True(graphResult.ExitCode == 0, graphResult.Output);
+
+            using var graph = JsonDocument.Parse(File.ReadAllText(graphPath));
+            Assert.Contains(graph.RootElement.GetProperty("projects").EnumerateObject(),
+                project => GetProjectFileName(project.Name) == "Dapr.BinaryStore.Generators.csproj");
+
+            var restoreResult = RunDotNet(repoRoot, "restore", projectPath);
+            Assert.True(restoreResult.ExitCode == 0, restoreResult.Output);
+
+            var packResult = RunDotNet(repoRoot, "pack", projectPath, "--no-restore",
+                "--configuration", "Release", "--output", outputDirectory);
+            Assert.True(packResult.ExitCode == 0, packResult.Output);
+
+            var packagePath = Assert.Single(Directory.EnumerateFiles(outputDirectory, "Dapr.BinaryStore.*.nupkg"));
+            using var package = ZipFile.OpenRead(packagePath);
+            var entries = package.Entries.Select(entry => entry.FullName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var framework in new[] { "net8.0", "net9.0", "net10.0" })
+            {
+                Assert.Contains($"lib/{framework}/Dapr.BinaryStore.Abstractions.dll", entries);
+                Assert.Contains($"lib/{framework}/Dapr.BinaryStore.Runtime.dll", entries);
+            }
+
+            Assert.Contains("analyzers/dotnet/cs/Dapr.BinaryStore.Generators.dll", entries);
+
+            using var manifestStream = package.GetEntry("Dapr.BinaryStore.nuspec")!.Open();
+            var manifest = XDocument.Load(manifestStream);
+            var dependencies = manifest.Descendants()
+                .Where(element => element.Name.LocalName == "dependency")
+                .Select(element => (string?)element.Attribute("id"))
+                .ToArray();
+            Assert.Contains("Dapr.Common", dependencies);
+            Assert.DoesNotContain("Dapr.BinaryStore.Generators", dependencies);
+            Assert.DoesNotContain("Dapr.BinaryStore.Abstractions", dependencies);
+            Assert.DoesNotContain("Dapr.BinaryStore.Runtime", dependencies);
+        }
+        finally
+        {
+            Directory.Delete(outputDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
     public void DaprMessagingPackage_ContainsRuntimeAnalyzersCodeFixAndSourceGenerator()
     {
         var repoRoot = FindRepoRoot();
@@ -221,7 +278,10 @@ public sealed class AggregatorPackageTests
 
         try
         {
-            var result = PackDaprMessaging(repoRoot, outputDirectory);
+            // CI only restores the test project's dependency graph, so pack must restore its own graph.
+            var result = RunDotNet(repoRoot, "pack",
+                Path.Combine("src", "Dapr.Messaging", "Dapr.Messaging.csproj"),
+                "--configuration", "Release", "--output", outputDirectory);
             Assert.True(
                 result.ExitCode == 0,
                 $"dotnet pack failed with exit code {result.ExitCode}.{Environment.NewLine}{result.Output}");
@@ -275,7 +335,7 @@ public sealed class AggregatorPackageTests
         }
     }
 
-    private static (int ExitCode, string Output) PackDaprMessaging(string repoRoot, string outputDirectory)
+    private static (int ExitCode, string Output) RunDotNet(string repoRoot, params string[] arguments)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -285,17 +345,13 @@ public sealed class AggregatorPackageTests
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        startInfo.ArgumentList.Add("pack");
-        startInfo.ArgumentList.Add(Path.Combine("src", "Dapr.Messaging", "Dapr.Messaging.csproj"));
-        startInfo.ArgumentList.Add("--configuration");
-        startInfo.ArgumentList.Add("Release");
-        startInfo.ArgumentList.Add("--output");
-        startInfo.ArgumentList.Add(outputDirectory);
-        // No --no-restore: CI only restores the test project's dependency graph before running
-        // tests, so the bundled src projects may not have assets files yet.
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
 
         using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Could not start dotnet pack.");
+            ?? throw new InvalidOperationException("Could not start dotnet.");
         var output = process.StandardOutput.ReadToEnd() + Environment.NewLine + process.StandardError.ReadToEnd();
         process.WaitForExit();
         return (process.ExitCode, output);
