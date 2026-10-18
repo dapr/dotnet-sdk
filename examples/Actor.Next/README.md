@@ -16,3 +16,10 @@ The throughline is that each example pairs the authoring model with its test. Th
 
 For remote-call simulation, paused state commits, virtual timer races, and callback-stream
 fault injection, see [Deterministic actor concurrency tests](../../src/Dapr.Actors.Next.Testing/README.md).
+
+Generated actor modules compose across loaded assemblies: inject `IActorProxyFactory` and `IActorRegistry`
+to access their combined contracts and metadata. State migration families from those modules are combined
+as well. Load the actor assemblies before calling `AddDaprActors` so their module registrations are available.
+Nested generic return types and `ActorId` payloads use the same generated invocation path as other DTOs;
+actors and interfaces may share simple CLR names in different namespaces, while Dapr actor type names
+must remain unique.

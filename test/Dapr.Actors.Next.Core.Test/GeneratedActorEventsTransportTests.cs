@@ -251,6 +251,85 @@ public sealed class GeneratedActorEventsTransportTests
         Assert.Equal("deactivate-1", deactivateAck.DeactivateResponse.Id);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Transport_unwraps_sidecar_callback_bytes_without_changing_actor_payload(bool reminder)
+    {
+        var harness = new GeneratedActorEventsHarness();
+        var transport = new DaprActorEventsTransport(harness.Client);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await using var stream = await transport.OpenStreamAsync(cts.Token);
+        await using var reader = stream.ReadAllAsync(cts.Token).GetAsyncEnumerator(cts.Token);
+        byte[][] payloads =
+        [
+            System.Text.Encoding.UTF8.GetBytes("""{"Name":"__stateTimeout","State":"Waiting"}"""),
+            System.Text.Encoding.UTF8.GetBytes("\"a string containing YWJj\""),
+            System.Text.Encoding.UTF8.GetBytes("\"YWJj\""),
+            [0, 255, 10, 128],
+            [],
+        ];
+
+        foreach (var payload in payloads)
+        {
+            var data = Google.Protobuf.WellKnownTypes.Any.Pack(new Google.Protobuf.WellKnownTypes.BytesValue
+            {
+                Value = ByteString.CopyFrom(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(payload)),
+            });
+            await harness.SendAsync(reminder
+                ? new P.SubscribeActorEventsResponseAlpha1
+                {
+                    ReminderRequest = new P.SubscribeActorEventsResponseReminderRequestAlpha1
+                    {
+                        Id = "callback", ActorType = "Counter", ActorId = "one", Name = "Wake", Data = data,
+                    },
+                }
+                : new P.SubscribeActorEventsResponseAlpha1
+                {
+                    TimerRequest = new P.SubscribeActorEventsResponseTimerRequestAlpha1
+                    {
+                        Id = "callback", ActorType = "Counter", ActorId = "one", Name = "timer", Callback = "Tick", Data = data,
+                    },
+                }, cts.Token);
+
+            Assert.True(await reader.MoveNextAsync());
+            Assert.Equal(payload, reader.Current.Payload.ToArray());
+            Assert.Equal(reminder ? SubscribeActorEventsFrameKind.Reminder : SubscribeActorEventsFrameKind.Timer,
+                reader.Current.Kind);
+        }
+    }
+
+    [Fact]
+    public async Task Transport_preserves_non_base64_and_non_wrapper_callback_data()
+    {
+        var harness = new GeneratedActorEventsHarness();
+        var transport = new DaprActorEventsTransport(harness.Client);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await using var stream = await transport.OpenStreamAsync(cts.Token);
+        await using var reader = stream.ReadAllAsync(cts.Token).GetAsyncEnumerator(cts.Token);
+        var cases = new[]
+        {
+            (Google.Protobuf.WellKnownTypes.Any.Pack(new Google.Protobuf.WellKnownTypes.BytesValue
+                { Value = ByteString.CopyFromUtf8("""{"x":1}""") }), """{"x":1}"""),
+            (Google.Protobuf.WellKnownTypes.Any.Pack(new Google.Protobuf.WellKnownTypes.BytesValue
+                { Value = ByteString.CopyFromUtf8("raw bytes") }), "raw bytes"),
+            (new Google.Protobuf.WellKnownTypes.Any { Value = ByteString.CopyFromUtf8("\"YWJj\"") }, "\"YWJj\""),
+            (new Google.Protobuf.WellKnownTypes.Any { TypeUrl = "type.googleapis.com/test.Payload", Value = ByteString.CopyFromUtf8("\"YWJj\"") }, "\"YWJj\""),
+        };
+        foreach (var (data, expected) in cases)
+        {
+            await harness.SendAsync(new P.SubscribeActorEventsResponseAlpha1
+            {
+                TimerRequest = new P.SubscribeActorEventsResponseTimerRequestAlpha1
+                {
+                    Id = "timer", ActorType = "Counter", ActorId = "one", Name = "Tick", Data = data,
+                },
+            }, cts.Token);
+            Assert.True(await reader.MoveNextAsync());
+            Assert.Equal(expected, System.Text.Encoding.UTF8.GetString(reader.Current.Payload.Span));
+        }
+    }
+
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Transport_adds_dapr_api_token_to_stream_call_options()
     {

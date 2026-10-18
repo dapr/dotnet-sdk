@@ -24,6 +24,12 @@ namespace Dapr.Actors.Next.StateMachine;
 /// <summary>
 /// Base type for actor implementations authored as state machines.
 /// </summary>
+/// <remarks>
+/// A new machine enters its initial state from the outermost parent inward and processes
+/// events raised by entry actions before accepting its first command. Restoring a persisted
+/// machine does not replay entry actions. Failed initialization can be retried, so entry
+/// actions that perform external side effects should be idempotent.
+/// </remarks>
 public abstract class StateMachineActor<TState, TData> : Actor
     where TState : struct, Enum
 {
@@ -181,23 +187,49 @@ public abstract class StateMachineActor<TState, TData> : Actor
         }
 
         EnsureConfigured();
-        var envelope = await State.TryGetAsync<StateMachineEnvelope<TState, TData>>(StateMachineConstants.EnvelopeStateName, cancellationToken).ConfigureAwait(false);
-        if (envelope is null)
-        {
-            currentState = table!.InitialState ?? throw new StateMachineDefinitionException(
-                "State machine initial state was not configured.",
-                GetType());
-            data = initialData;
-            deferredEvents = [];
-        }
-        else
+        var envelope = await State
+            .TryGetAsync<StateMachineEnvelope<TState, TData>>(StateMachineConstants.EnvelopeStateName,
+                cancellationToken).ConfigureAwait(false);
+        if (envelope is not null)
         {
             currentState = envelope.Value.CurrentState;
             data = envelope.Value.Data;
             deferredEvents = envelope.Value.DeferredEvents.ToList();
+            restored = true;
+            return;
         }
 
+        currentState = table!.InitialState ?? throw new StateMachineDefinitionException(
+            "State machine initial state was not configured.",
+            GetType());
+        data = initialData;
+        deferredEvents = [];
+
+        // Reentrant Raise calls from entry actions must enqueue rather than initialize again.
         restored = true;
+        processing = true;
+        try
+        {
+            await EnterStatesAsync(AncestorsFromChild(currentState).Reverse(), new object(), cancellationToken)
+                .ConfigureAwait(false);
+            while (raisedEvents.Count > 0)
+            {
+                await ProcessEventAsync(raisedEvents.Dequeue(), allowDefer: true, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            await PersistAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            restored = false;
+            raisedEvents.Clear();
+            throw;
+        }
+        finally
+        {
+            processing = false;
+        }
     }
 
     private void EnsureConfigured()
@@ -382,7 +414,15 @@ public abstract class StateMachineActor<TState, TData> : Actor
     private async ValueTask EnterFromAsync(TState source, TState target, object evt, CancellationToken cancellationToken)
     {
         var lca = FindLeastCommonAncestor(source, target);
-        foreach (var state in AncestorsFromChild(target).TakeWhile(state => !lca.HasValue || !EqualityComparer<TState>.Default.Equals(state, lca.Value)).Reverse())
+        var states = AncestorsFromChild(target)
+            .TakeWhile(state => !lca.HasValue || !EqualityComparer<TState>.Default.Equals(state, lca.Value)).Reverse();
+        await EnterStatesAsync(states, evt, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask EnterStatesAsync(IEnumerable<TState> states, object evt,
+        CancellationToken cancellationToken)
+    {
+        foreach (var state in states)
         {
             if (table!.RuntimeStates.TryGetValue(state, out var configuration))
             {

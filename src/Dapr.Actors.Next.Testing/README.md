@@ -5,6 +5,20 @@ and the Core timer/reminder adapters without a sidecar. Supply your application'
 registrations as `configureServices` (`Action<IServiceCollection>`), then control
 mailbox execution with `StepAsync` and `RunToIdle`.
 
+## Isolated runtime instances
+
+`CreateActor<TActor>` resolves proxies from that runtime's `IActorProxyFactory`.
+Overlapping runtimes keep separate invocation clients, schedulers, faults, and
+state stores; constructing or disposing one does not configure or reset the
+process-wide `ActorProxy` facade. Use `CreateActor` in tests and inject
+`IActorProxyFactory` into actors that call other actors. Register generated actor
+services before creating typed proxies; without a factory, weakly typed
+`InvokeAsync` remains available but `CreateActor` throws.
+
+Failed or cancelled activation is disposed and retried on the next invocation.
+This differs from ordinary turn failure: dirty state from a failed turn remains
+in the activation for a subsequent successful save.
+
 ## Exercise remote reentrancy
 
 ```csharp

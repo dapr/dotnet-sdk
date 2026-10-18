@@ -52,8 +52,17 @@ public sealed class ActorStateUnitOfWork(
                 return typed;
             }
 
-            var snapshot = existing.PersistedSnapshot ?? existing.CreateSnapshot(serializer);
-            return await ReadStateAsync<T>(name, snapshot, cancellationToken).ConfigureAwait(false);
+            var snapshot = existing.CreateSnapshot(serializer);
+            var dirty = existing.Dirty || (existing.PersistedSnapshot is not null
+                && !snapshot.AsSpan().SequenceEqual(existing.PersistedSnapshot));
+            var converted = await ReadStateAsync<T>(name, snapshot, cancellationToken).ConfigureAwait(false);
+            var entry = entries[name];
+            // Conversion must not acknowledge unsaved changes as durable. For clean plain
+            // conversions, compare future in-place mutations against the converted shape.
+            entries[name] = dirty
+                ? entry.AsClean(null).AsDirty()
+                : entry.Dirty ? entry : entry.AsClean(entry.CreateSnapshot(serializer));
+            return converted;
         }
 
         var bytes = await store.ReadAsync(actorType, actorId.Value, name, cancellationToken).ConfigureAwait(false);
@@ -283,34 +292,23 @@ public sealed class ActorStateUnitOfWork(
 
     private T ReadLegacy<T>(string name, ReadOnlyMemory<byte> bytes)
     {
-        JsonException? rawJsonException = null;
-        try
+        using var document = JsonDocument.Parse(bytes);
+        if (document.RootElement.ValueKind == JsonValueKind.Object
+            && TryGetProperty(document.RootElement, nameof(LegacyActorStateEnvelope<T>.SchemaVersion), out var version)
+            && TryGetProperty(document.RootElement, nameof(LegacyActorStateEnvelope<T>.Value), out _))
         {
-            var value = serializer.DeserializeFromBytes<T>(bytes);
-            if (value is not null)
+            if (version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out _))
             {
-                return value;
+                throw new JsonException("Legacy actor state schema version must be an integer.");
             }
-        }
-        catch (JsonException ex)
-        {
-            rawJsonException = ex;
-        }
-        catch (InvalidCastException)
-        {
-            throw;
+
+            var envelope = serializer.DeserializeFromBytes<LegacyActorStateEnvelope<T>>(bytes)
+                ?? throw new InvalidOperationException($"State '{name}' could not be deserialized.");
+            return envelope.Value;
         }
 
-        try
-        {
-            var legacyEnvelope = serializer.DeserializeFromBytes<LegacyActorStateEnvelope<T>>(bytes)
-                ?? throw new InvalidOperationException($"State '{name}' could not be deserialized.");
-            return legacyEnvelope.Value;
-        }
-        catch (JsonException) when (rawJsonException is not null)
-        {
-            throw rawJsonException;
-        }
+        return serializer.DeserializeFromBytes<T>(bytes)
+            ?? throw new InvalidOperationException($"State '{name}' could not be deserialized.");
     }
 
     private void MarkDirty(string name)

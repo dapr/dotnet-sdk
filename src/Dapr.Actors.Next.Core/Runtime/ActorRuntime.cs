@@ -283,15 +283,36 @@ public sealed class ActorRuntime(
         // The provider owns the scope's lifetime and is disposed with the activation, preserving disposal of
         // any scoped or transient services it resolves.
         var provider = new ActorActivationServiceProvider(scopeFactory, activationContext);
-        var actor = registration.Factory(provider, actorId);
-        var activation = new ActorActivation(registration.ActorType, actorId, actor, state, state, provider, registration.Lifecycle);
+        ActorActivation activation;
+        try
+        {
+            var actor = registration.Factory(provider, actorId);
+            activation = new ActorActivation(registration.ActorType, actorId, actor, state, state, provider, registration.Lifecycle);
+        }
+        catch
+        {
+            await provider.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+
+        try
+        {
+            await activation.OnActivateAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            await activation.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+
+        // Mailbox admission serializes activation. Publish only after initialization succeeds,
+        // so a failed or cancelled activation can never be reused by a later turn.
         if (!activations.TryAdd(key, activation))
         {
             await activation.DisposeAsync().ConfigureAwait(false);
             return activations[key];
         }
 
-        await activation.OnActivateAsync(cancellationToken).ConfigureAwait(false);
         return activation;
     }
 

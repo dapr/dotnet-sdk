@@ -155,6 +155,7 @@ public sealed partial class RealSidecarActorTests : IAsyncLifetime
 
     private static void ConfigureActorHost(WebApplicationBuilder builder)
     {
+        ConfigureGeneratedRegressionActors(builder);
         builder.Services.AddSingleton(_ =>
         {
             var endpoint = builder.Configuration["DAPR_GRPC_ENDPOINT"] ?? throw new InvalidOperationException("Missing Dapr gRPC endpoint.");
@@ -201,6 +202,7 @@ public sealed partial class RealSidecarActorTests : IAsyncLifetime
     }
 
     private static partial void ConfigureConcurrencyActors(WebApplicationBuilder builder);
+    private static partial void ConfigureGeneratedRegressionActors(WebApplicationBuilder builder);
 
     private static void WriteActorConfigYaml(string componentsDirectory)
     {

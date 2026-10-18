@@ -31,6 +31,7 @@ namespace Dapr.Actors.Next.Testing;
 public sealed class ActorTestRuntime : IAsyncDisposable
 {
     private readonly ServiceProvider provider;
+    private readonly IActorProxyFactory? proxyFactory;
     private readonly Dictionary<object, ActorReference> proxies = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>
@@ -65,10 +66,7 @@ public sealed class ActorTestRuntime : IAsyncDisposable
         Serializer = provider.GetRequiredService<IActorWireSerializer>();
         Time.Attach(Runtime, Serializer);
 
-        if (provider.GetService<IActorProxyFactory>() is { } proxyFactory)
-        {
-            ActorProxy.Configure(proxyFactory);
-        }
+        proxyFactory = provider.GetService<IActorProxyFactory>();
     }
 
     /// <summary>
@@ -103,7 +101,9 @@ public sealed class ActorTestRuntime : IAsyncDisposable
     public TActor CreateActor<TActor>(ActorId actorId, string actorType)
         where TActor : IActor
     {
-        var actor = ActorProxy.Create<TActor>(actorId, actorType);
+        var actor = (proxyFactory ?? throw new InvalidOperationException(
+            "No IActorProxyFactory is registered in this ActorTestRuntime. Register generated actor services to create typed proxies."))
+            .Create<TActor>(actorId, actorType);
         proxies[actor!] = new ActorReference(actorType, actorId.Value);
         return actor;
     }
@@ -217,7 +217,6 @@ public sealed class ActorTestRuntime : IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        ActorProxy.Reset();
         await provider.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -250,15 +249,22 @@ public sealed class ActorTestRuntime : IAsyncDisposable
             }
         }
 
-        var value = Serializer.DeserializeFromBytes<T>(bytes.Value);
-        if (value is not null)
+        using var document = System.Text.Json.JsonDocument.Parse(bytes.Value);
+        if (document.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+            && TryGetProperty(document.RootElement, nameof(LegacyActorStateEnvelope<T>.SchemaVersion), out var version)
+            && TryGetProperty(document.RootElement, nameof(LegacyActorStateEnvelope<T>.Value), out _))
         {
-            return value;
+            if (version.ValueKind != System.Text.Json.JsonValueKind.Number || !version.TryGetInt32(out _))
+            {
+                throw new System.Text.Json.JsonException("Legacy actor state schema version must be an integer.");
+            }
+
+            var envelope = Serializer.DeserializeFromBytes<LegacyActorStateEnvelope<T>>(bytes.Value)
+                ?? throw new InvalidOperationException($"State '{name}' could not be deserialized.");
+            return envelope.Value;
         }
 
-        return Serializer.DeserializeFromBytes<LegacyActorStateEnvelope<T>>(bytes.Value) is { } envelope
-            ? envelope.Value
-            : default;
+        return Serializer.DeserializeFromBytes<T>(bytes.Value);
     }
 
     private byte[] CreateEnvelopedSeed<T>(T value)

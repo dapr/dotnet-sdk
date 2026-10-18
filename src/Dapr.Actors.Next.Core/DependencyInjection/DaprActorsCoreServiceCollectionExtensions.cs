@@ -133,9 +133,29 @@ public static class DaprActorsCoreServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(families);
 
-        services.TryAddSingleton<Dapr.Actors.Next.Abstractions.State.Versioning.IActorStateMigrator>(_ => new ActorStateMigrationRegistry(families));
+        return services.AddDaprActorStateMigration(_ => families);
+    }
+
+    /// <summary>
+    /// Adds actor state migration families resolved from the final service provider.
+    /// Contributions from all calls are combined into one migrator.
+    /// </summary>
+    public static IServiceCollection AddDaprActorStateMigration(
+        this IServiceCollection services,
+        Func<IServiceProvider, IEnumerable<ActorStateMigrationFamilyRegistration>> families)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(families);
+
+        services.AddSingleton(new ActorStateMigrationContribution(families));
+        services.TryAddSingleton<Dapr.Actors.Next.Abstractions.State.Versioning.IActorStateMigrator>(sp =>
+            new ActorStateMigrationRegistry(sp.GetServices<ActorStateMigrationContribution>()
+                .SelectMany(contribution => contribution.CreateFamilies(sp))));
         return services;
     }
+
+    private sealed record ActorStateMigrationContribution(
+        Func<IServiceProvider, IEnumerable<ActorStateMigrationFamilyRegistration>> CreateFamilies);
 
     private static void EnsureDaprActorGrpcClientRegistered(IServiceCollection services)
     {

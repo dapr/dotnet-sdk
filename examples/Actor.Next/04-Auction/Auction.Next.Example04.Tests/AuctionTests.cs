@@ -36,6 +36,57 @@ public sealed class AuctionTests
 
         Assert.Equal(AuctionState.Open, await ReadState(runtime, auction));
         Assert.Equal("bob", (await ReadData(runtime, auction)).HighBidder);
+
+        runtime.Time.Advance(TimeSpan.FromSeconds(28));
+        await runtime.RunToIdle();
+        Assert.Equal(AuctionState.Sold, await ReadState(runtime, auction));
+        Assert.True((await ReadData(runtime, auction)).FulfillmentStarted);
+        Assert.Equal(BidResult.Closed, await PlaceBid(runtime, auction, new Bid(120, "late")));
+    }
+
+    [Fact]
+    public async Task Initial_timeout_closes_auction_without_a_bid()
+    {
+        await using var runtime = CreateRuntime();
+        var auction = runtime.CreateActor<IAuctionActor>(ActorId.Create("no-bids"), "Auction");
+        Assert.Equal(AuctionState.Open, await ReadState(runtime, auction));
+
+        runtime.Time.Advance(TimeSpan.FromSeconds(29));
+        await runtime.RunToIdle();
+        Assert.Equal(AuctionState.Open, await ReadState(runtime, auction));
+        runtime.Time.Advance(TimeSpan.FromSeconds(1));
+        await runtime.RunToIdle();
+        Assert.Equal(AuctionState.Sold, await ReadState(runtime, auction));
+        Assert.True((await ReadData(runtime, auction)).FulfillmentStarted);
+    }
+
+    [Fact]
+    public async Task Rejected_bid_does_not_extend_timeout()
+    {
+        await using var runtime = CreateRuntime();
+        var auction = runtime.CreateActor<IAuctionActor>(ActorId.Create("rejected"), "Auction");
+        Assert.Equal(BidResult.Accepted, await PlaceBid(runtime, auction, new Bid(100, "alice")));
+        runtime.Time.Advance(TimeSpan.FromSeconds(29));
+        Assert.Equal(BidResult.TooLow, await PlaceBid(runtime, auction, new Bid(99, "bob")));
+        runtime.Time.Advance(TimeSpan.FromSeconds(1));
+        await runtime.RunToIdle();
+        Assert.Equal(AuctionState.Sold, await ReadState(runtime, auction));
+        Assert.Equal("alice", (await ReadData(runtime, auction)).HighBidder);
+    }
+
+    [Fact]
+    public async Task Explicit_expiry_cancels_timeout_without_fulfillment()
+    {
+        await using var runtime = CreateRuntime();
+        var auction = runtime.CreateActor<IAuctionActor>(ActorId.Create("expired"), "Auction");
+        var expire = auction.Expire();
+        await runtime.RunToIdle();
+        await expire;
+        runtime.Time.Advance(TimeSpan.FromSeconds(30));
+        await runtime.RunToIdle();
+        Assert.Equal(AuctionState.Expired, await ReadState(runtime, auction));
+        Assert.False((await ReadData(runtime, auction)).FulfillmentStarted);
+        Assert.Equal(BidResult.Closed, await PlaceBid(runtime, auction, new Bid(100, "late")));
     }
 
     [Fact]

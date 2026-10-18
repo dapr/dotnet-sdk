@@ -87,15 +87,20 @@ public sealed class ActorActivation : IAsyncDisposable
         }
 
         disposed = true;
-        if (Instance is IAsyncDisposable asyncDisposable)
+        try
         {
-            await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+            if (Instance is IAsyncDisposable asyncDisposable)
+            {
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+            }
+            else if (Instance is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
         }
-        else if (Instance is IDisposable disposable)
+        finally
         {
-            disposable.Dispose();
+            await activationServices.DisposeAsync().ConfigureAwait(false);
         }
-
-        await activationServices.DisposeAsync().ConfigureAwait(false);
     }
 }
