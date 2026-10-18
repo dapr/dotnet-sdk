@@ -187,7 +187,9 @@ public sealed class AggregatorPackageTests
 
         var projectReferences = GetItemIncludes(elements, "ProjectReference");
         var packageReferences = GetItemIncludes(elements, "PackageReference");
-        var bundledProjectReferences = GetItemIncludes(elements, element => element.Name.LocalName.EndsWith("ChildLib", StringComparison.Ordinal));
+        var bundledProjectReferences = GetItemIncludes(
+            elements,
+            element => element.Name.LocalName.EndsWith("ChildLib", StringComparison.Ordinal));
         var projectPathMentions = GetProjectPathMentions(elements);
 
         foreach (var requiredProjectReference in package.RequiredProjectReferences)
@@ -214,7 +216,7 @@ public sealed class AggregatorPackageTests
     }
 
     [Fact]
-    public void DaprBinaryStorePackage_RestoresAndBundlesGeneratorPrivately()
+    public async Task DaprBinaryStorePackage_RestoresAndBundlesGeneratorPrivately()
     {
         var repoRoot = FindRepoRoot();
         var projectPath = Path.Combine("src", "Dapr.BinaryStore", "Dapr.BinaryStore.csproj");
@@ -225,7 +227,7 @@ public sealed class AggregatorPackageTests
         {
             // Inspect the restore graph so existing generator assets cannot mask a missing reference.
             var graphPath = Path.Combine(outputDirectory, "restore-graph.json");
-            var graphResult = RunDotNet(repoRoot, "msbuild", projectPath,
+            var graphResult = await RunDotNetAsync(repoRoot, "msbuild", projectPath,
                 "-t:GenerateRestoreGraphFile", $"-p:RestoreGraphOutputPath={graphPath}");
             Assert.True(graphResult.ExitCode == 0, graphResult.Output);
 
@@ -234,10 +236,10 @@ public sealed class AggregatorPackageTests
                 .Select(project => GetProjectFileName(project.Name));
             Assert.Contains("Dapr.BinaryStore.Generators.csproj", restoredProjects);
 
-            var restoreResult = RunDotNet(repoRoot, "restore", projectPath);
+            var restoreResult = await RunDotNetAsync(repoRoot, "restore", projectPath);
             Assert.True(restoreResult.ExitCode == 0, restoreResult.Output);
 
-            var packResult = RunDotNet(repoRoot, "pack", projectPath, "--no-restore",
+            var packResult = await RunDotNetAsync(repoRoot, "pack", projectPath, "--no-restore",
                 "--configuration", "Release", "--output", outputDirectory);
             Assert.True(packResult.ExitCode == 0, packResult.Output);
 
@@ -271,7 +273,6 @@ public sealed class AggregatorPackageTests
     }
 
     [Fact]
-    public void DaprMessagingPackage_ContainsRuntimeAnalyzersCodeFixAndSourceGenerator()
     public async Task DaprMessagingPackage_ContainsRuntimeAnalyzersCodeFixAndSourceGenerator()
     {
         var repoRoot = FindRepoRoot();
@@ -281,10 +282,10 @@ public sealed class AggregatorPackageTests
         try
         {
             // CI only restores the test project's dependency graph, so pack must restore its own graph.
-            var result = RunDotNet(repoRoot, "pack",
+            var result = await RunDotNetAsync(repoRoot, "pack",
                 Path.Combine("src", "Dapr.Messaging", "Dapr.Messaging.csproj"),
-                "--configuration", "Release", "--output", outputDirectory);
-            var result = await PackDaprMessagingAsync(repoRoot, outputDirectory);
+                "--configuration", "Release", "--output", outputDirectory,
+                "/nr:false", "/p:UseSharedCompilation=false");
             Assert.True(
                 result.ExitCode == 0,
                 $"dotnet pack failed with exit code {result.ExitCode}.{Environment.NewLine}{result.Output}");
@@ -338,7 +339,9 @@ public sealed class AggregatorPackageTests
         }
     }
 
-    private static async Task<(int ExitCode, string Output)> PackDaprMessagingAsync(string repoRoot, string outputDirectory)
+    private static async Task<(int ExitCode, string Output)> RunDotNetAsync(
+        string repoRoot,
+        params string[] arguments)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -351,19 +354,13 @@ public sealed class AggregatorPackageTests
         };
         startInfo.Environment["MSBUILDDISABLENODEREUSE"] = "1";
         startInfo.Environment["DOTNET_CLI_DO_NOT_USE_MSBUILD_SERVER"] = "1";
-        startInfo.ArgumentList.Add("pack");
-        startInfo.ArgumentList.Add(Path.Combine("src", "Dapr.Messaging", "Dapr.Messaging.csproj"));
-        startInfo.ArgumentList.Add("--configuration");
-        startInfo.ArgumentList.Add("Release");
-        startInfo.ArgumentList.Add("--output");
-        startInfo.ArgumentList.Add(outputDirectory);
-        startInfo.ArgumentList.Add("/nr:false");
-        startInfo.ArgumentList.Add("/p:UseSharedCompilation=false");
-        // No --no-restore: CI only restores the test project's dependency graph before running
-        // tests, so the bundled src projects may not have assets files yet.
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
 
         using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Could not start dotnet pack.");
+            ?? throw new InvalidOperationException("Could not start dotnet.");
 
         var stdOutTask = process.StandardOutput.ReadToEndAsync();
         var stdErrTask = process.StandardError.ReadToEndAsync();
