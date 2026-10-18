@@ -47,6 +47,7 @@ This repo builds the following packages:
 - Dapr.Actors.Generators
 - Dapr.AI
 - Dapr.AI.A2A
+- Dapr.BinaryStore
 - Dapr.Cryptography
 - Dapr.DistributedLock
 - Dapr.Extensions.Configuration

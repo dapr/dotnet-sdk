@@ -40,6 +40,10 @@ public static class Constants
         /// </summary>
         public const string CryptographyComponentName = "cryptography";
         /// <summary>
+        /// The name of the Binary Store component.
+        /// </summary>
+        public const string BinaryStoreComponentName = "binarystore";
+        /// <summary>
         /// The name of the Distributed Lock component.
         /// </summary>
         public const string DistributedLockComponentName = "distributed-lock";
