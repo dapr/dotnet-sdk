@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2022 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,6 +16,7 @@ using System.Text.Json;
 using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
+using Dapr.Workflow.Payloads;
 using Dapr.Workflow.Grpc.Extensions;
 using Dapr.Workflow.Registration;
 using Dapr.Workflow.Serialization;
@@ -94,23 +95,25 @@ public static class WorkflowServiceCollectionExtensions
     /// <summary>
     /// Adds Dapr Workflow support with defaults.
     /// </summary>
-    public static IServiceCollection AddDaprWorkflow(this IServiceCollection services)
+    /// <returns>A builder for additional workflow configuration.</returns>
+    public static DaprWorkflowBuilder AddDaprWorkflow(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
         AddDaprWorkflowCore(services, _ => { }, ServiceLifetime.Singleton);
-        return services;
+        return new DaprWorkflowBuilder(services);
     }
 
     /// <summary>
     /// Adds Dapr Workflow support to the service collection.
     /// </summary>
-    public static IServiceCollection AddDaprWorkflow(this IServiceCollection services, Action<WorkflowRuntimeOptions> configure, ServiceLifetime lifetime = ServiceLifetime.Singleton)
+    /// <returns>A builder for additional workflow configuration.</returns>
+    public static DaprWorkflowBuilder AddDaprWorkflow(this IServiceCollection services, Action<WorkflowRuntimeOptions> configure, ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
         AddDaprWorkflowCore(services, configure, lifetime);
-        return services;
+        return new DaprWorkflowBuilder(services);
     }
 
     /// <summary>
@@ -219,7 +222,8 @@ public static class WorkflowServiceCollectionExtensions
             var logger = loggerFactory.CreateLogger<WorkflowGrpcClient>();
             var serializer = sp.GetRequiredService<IDaprSerializer>();
             var daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
-            return new WorkflowGrpcClient(grpcClient, logger, serializer, daprApiToken);
+            return new WorkflowGrpcClient(grpcClient, logger, serializer, daprApiToken,
+                sp.GetService<IWorkflowPayloadConverter>());
         });
 
         // Register gRPC client for communicating with Dapr sidecar

@@ -68,4 +68,19 @@ public interface IWorkflowContext
         object? input = null,
         DateTimeOffset? startTime = null) =>
         throw new NotSupportedException("Detached workflow scheduling is not supported by this workflow context.");
+
+    /// <summary>
+    /// Schedules an independent workflow with explicit routing and payload options.
+    /// Cross-app inputs are inlined unless <see cref="WorkflowTaskOptions.AllowPayloadReferences"/> is set.
+    /// </summary>
+    /// <param name="workflowName">The registered workflow name.</param>
+    /// <param name="instanceId">The instance ID, or null to generate a deterministic ID.</param>
+    /// <param name="input">The input value or reference.</param>
+    /// <param name="startTime">The scheduled start time, or null to start immediately.</param>
+    /// <param name="options">Routing and payload options. Retry policies and history propagation are not supported.</param>
+    /// <returns>The scheduled instance ID.</returns>
+    Task<string> ScheduleNewDetachedWorkflowAsync(
+        string workflowName, string? instanceId, object? input, DateTimeOffset? startTime,
+        WorkflowTaskOptions options) =>
+        throw new NotSupportedException("Detached workflow routing is not supported by this workflow context.");
 }
