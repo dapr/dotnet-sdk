@@ -25,10 +25,12 @@ public class ActorStateResponse<T>
     /// </summary>
     /// <param name="value">The response value.</param>
     /// <param name="ttlExpireTime">The time to live expiration time.</param>
-    public ActorStateResponse(T value, DateTimeOffset? ttlExpireTime)
+    /// <param name="httpStatusCode">The HTTP status code provided alongside the state response.</param>
+    public ActorStateResponse(T value, DateTimeOffset? ttlExpireTime, int httpStatusCode = 200)
     {
         this.Value = value;
         this.TTLExpireTime = ttlExpireTime;
+        this.HttpStatusCode = httpStatusCode;
     }
 
     /// <summary>
@@ -46,4 +48,9 @@ public class ActorStateResponse<T>
     /// The time to live expiration time.
     /// </value>
     public DateTimeOffset? TTLExpireTime { get; }
+    
+    /// <summary>
+    /// The HTTP status code provided alongside the state response.
+    /// </summary>
+    public int HttpStatusCode { get; }
 }

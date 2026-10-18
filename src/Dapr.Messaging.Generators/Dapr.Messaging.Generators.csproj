@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- Clear the multi-target list set by Directory.Build.props so that
+             this project targets only netstandard2.0 as required by Roslyn generators. -->
+        <TargetFrameworks></TargetFrameworks>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+
+        <!-- Roslyn analyzer / source generator project settings -->
+        <IsRoslynComponent>true</IsRoslynComponent>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <NoWarn>$(NoWarn);RS1038</NoWarn>
+
+        <RootNamespace>Dapr.Messaging.Generators</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" VersionOverride="$(ShippingAnalyzerRoslynVersion)" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="$(ShippingAnalyzerRoslynVersion)" PrivateAssets="all" />
+    </ItemGroup>
+
+</Project>

@@ -1,4 +1,6 @@
-# Dapr .NET SDK pub/sub example
+# Dapr .NET SDK pub/sub example (Deprecated)
+
+> **DEPRECATION NOTICE**: Publishing events via `DaprClient` (`PublishEventAsync`, `PublishByteEventAsync`) is legacy. For all new development, use the modern, AOT-capable, DI-integrated **`Dapr.Messaging`** package and `IDaprPublishSubscribeClient`. See the [Dapr.Messaging Examples](../../Messaging) for the recommended usage patterns.
 
 ## Prerequisites
 

@@ -49,4 +49,23 @@ public interface IWorkflowContext
     /// (which should not be used).
     /// </remarks>
     DateTime CurrentUtcDateTime { get; }
+
+    /// <summary>
+    /// Schedules a new workflow instance that has no parent-child relationship with the current workflow.
+    /// </summary>
+    /// <param name="workflowName">The name of the workflow to schedule.</param>
+    /// <param name="instanceId">
+    /// The unique ID for the new workflow instance. If not specified, a deterministic GUID is generated.
+    /// </param>
+    /// <param name="input">The serializable input to pass to the new workflow.</param>
+    /// <param name="startTime">
+    /// The time when the workflow should start. If in the past or <c>null</c>, the workflow starts immediately.
+    /// </param>
+    /// <returns>The instance ID of the scheduled workflow.</returns>
+    Task<string> ScheduleNewDetachedWorkflowAsync(
+        string workflowName,
+        string? instanceId = null,
+        object? input = null,
+        DateTimeOffset? startTime = null) =>
+        throw new NotSupportedException("Detached workflow scheduling is not supported by this workflow context.");
 }

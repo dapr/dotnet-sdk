@@ -15,6 +15,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using Dapr.Actors.Next.Streams;
 using Dapr.Actors.Next.Core.Client;
+using Dapr.Messaging;
 using Dapr.Messaging.PublishSubscribe;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
@@ -52,6 +53,17 @@ public sealed class StreamsTests
         Assert.Throws<ArgumentException>(() => extractor.ExtractActorId(Subscription, Event("""{"other":"x"}""")));
         Assert.Throws<ArgumentException>(() => extractor.ExtractActorId(Subscription, Event("""{"cartId":{"nested":"x"}}""")));
         Assert.Throws<ArgumentException>(() => extractor.ExtractActorId(Subscription, new ActorStreamEvent("1", "pubsub", "topic", ReadOnlyMemory<byte>.Empty, new Dictionary<string, string>())));
+    }
+
+    [Fact]
+    public void Subscription_validation_rejects_invalid_delivery_options()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            (Subscription with { MessageTimeout = TimeSpan.Zero }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            (Subscription with { MaximumQueuedMessages = 0 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            (Subscription with { MaximumQueuedMessages = -1 }).Validate());
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -241,6 +253,23 @@ public sealed class StreamsTests
         Assert.All(client.Disposables, disposable => Assert.True(disposable.Disposed));
     }
 
+    [Fact]
+    public async Task Hosted_service_disposes_opened_subscriptions_when_startup_fails()
+    {
+        var client = new FakePublishSubscribeClient { FailOnSubscription = 2 };
+        var registry = new ActorStreamSubscriptionRegistry()
+            .Add(Subscription)
+            .Add(Subscription with { Topic = "other" });
+        var service = new ActorStreamSubscriptionHostedService(
+            registry,
+            new DaprMessagingActorStreamSubscriber(client, Runner(new FakeInvocationClient())),
+            NullLogger<ActorStreamSubscriptionHostedService>.Instance);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.StartAsync(CancellationToken.None));
+        Assert.Single(client.Disposables);
+        Assert.True(client.Disposables[0].Disposed);
+    }
+
     [MinimumDaprRuntimeFact("1.18")]
     public void Invalid_route_is_poison()
     {
@@ -272,6 +301,17 @@ public sealed class StreamsTests
         Assert.NotNull(provider.GetRequiredService<ActorStreamSubscriptionRunner>());
         Assert.NotNull(provider.GetRequiredService<DaprMessagingActorStreamSubscriber>());
         Assert.IsType<DefaultActorStreamFailureClassifier>(provider.GetRequiredService<IActorStreamFailureClassifier>());
+        Assert.Equal(1, services.Count(descriptor => descriptor.ServiceType == typeof(DaprPublishSubscribeClient)));
+    }
+
+    [Fact]
+    public void Service_collection_extension_adds_messaging_client_when_not_preconfigured()
+    {
+        var services = new ServiceCollection();
+
+        services.AddDaprActorStreams();
+
+        Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(DaprPublishSubscribeClient));
     }
 
     private static ActorStreamSubscriptionRunner Runner(FakeInvocationClient client) =>
@@ -337,6 +377,8 @@ public sealed class StreamsTests
 
         public TopicMessageHandler? Handler { get; private set; }
 
+        public int? FailOnSubscription { get; init; }
+
         public override Task<IAsyncDisposable> SubscribeAsync(
             string pubSubName,
             string topicName,
@@ -344,12 +386,55 @@ public sealed class StreamsTests
             TopicMessageHandler messageHandler,
             CancellationToken cancellationToken = default)
         {
+            if (FailOnSubscription == Subscriptions.Count + 1)
+            {
+                throw new InvalidOperationException("Subscription failed.");
+            }
+
             Subscriptions.Add((pubSubName, topicName, options));
             Handler = messageHandler;
             var disposable = new TrackingAsyncDisposable();
             Disposables.Add(disposable);
             return Task.FromResult<IAsyncDisposable>(disposable);
         }
+
+        public override Task PublishEventAsync<TData>(
+            string pubsubName,
+            string topicName,
+            TData data,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public override Task PublishEventAsync<TData>(
+            string pubsubName,
+            string topicName,
+            TData data,
+            PublishOptions options,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public override Task PublishEventAsync(
+            string pubsubName,
+            string topicName,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public override Task PublishByteEventAsync(
+            string pubsubName,
+            string topicName,
+            ReadOnlyMemory<byte> data,
+            string dataContentType = MessagingConstants.ContentTypeApplicationJson,
+            PublishOptions? options = null,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public override Task<BulkPublishResponse<TValue>> BulkPublishEventAsync<TValue>(
+            string pubsubName,
+            string topicName,
+            IReadOnlyList<TValue> events,
+            PublishOptions? options = null,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class TrackingAsyncDisposable : IAsyncDisposable

@@ -37,11 +37,11 @@ internal class StateTestClient : DaprClientGrpc
 
     private sealed class AlwaysAvailableCapabilities : IDaprRuntimeCapabilities
     {
-        public Task<bool> SupportsMethodAsync(string fullyQualifiedMethodName, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
+        public Task<DaprRuntimeSupport> GetMethodSupportAsync(string fullyQualifiedMethodName, CancellationToken cancellationToken = default)
+            => Task.FromResult(DaprRuntimeSupport.Supported);
 
-        public Task<bool> SupportsServiceAsync(string serviceName, CancellationToken cancellationToken = default)
-            => Task.FromResult(true);
+        public Task<DaprRuntimeSupport> GetServiceSupportAsync(string serviceName, CancellationToken cancellationToken = default)
+            => Task.FromResult(DaprRuntimeSupport.Supported);
     }
 
     public override Task<TValue> GetStateAsync<TValue>(string storeName, string key, ConsistencyMode? consistencyMode = default, IReadOnlyDictionary<string, string> metadata = default, CancellationToken cancellationToken = default)

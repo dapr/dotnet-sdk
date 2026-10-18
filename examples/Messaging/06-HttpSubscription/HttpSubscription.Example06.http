@@ -1,0 +1,48 @@
+@baseUrl = http://localhost:5000
+
+### 1. Inspect Dapr subscriptions manifest (discovered by Dapr sidecar at startup)
+GET {{baseUrl}}/dapr/subscribe
+
+### 2. Publish valid invoice (Success)
+POST {{baseUrl}}/publish/invoice
+Content-Type: application/json
+
+{
+  "invoiceId": "INV-2026-001",
+  "customerId": "ACME-CORP",
+  "totalAmount": 1250.00,
+  "currency": "USD",
+  "dueDate": "2026-05-01T00:00:00Z"
+}
+
+### 3. Publish invalid invoice (Drop - non-positive amount)
+POST {{baseUrl}}/publish/invoice
+Content-Type: application/json
+
+{
+  "invoiceId": "INV-2026-002",
+  "customerId": "ACME-CORP",
+  "totalAmount": 0.00,
+  "currency": "USD",
+  "dueDate": "2026-05-01T00:00:00Z"
+}
+
+### 4. Direct HTTP push test (simulating Dapr sidecar calling the handler route)
+POST {{baseUrl}}/api/events/invoices
+Content-Type: application/cloudevents+json
+
+{
+  "specversion": "1.0",
+  "id": "ce-msg-001",
+  "source": "billing-service",
+  "type": "com.dapr.invoice.generated",
+  "pubsubname": "pubsub",
+  "topic": "invoices",
+  "data": {
+    "invoiceId": "INV-2026-003",
+    "customerId": "BETA-LLC",
+    "totalAmount": 450.75,
+    "currency": "USD",
+    "dueDate": "2026-06-15T00:00:00Z"
+  }
+}

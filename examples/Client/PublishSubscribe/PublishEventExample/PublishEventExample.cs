@@ -18,9 +18,10 @@ using Dapr.Client;
 
 namespace Samples.Client;
 
+[Obsolete("Publishing events via DaprClient is legacy. Use the Dapr.Messaging package and IDaprPublishSubscribeClient instead. See examples/Messaging/ for modern examples.")]
 public class PublishEventExample : Example
 {
-    public override string DisplayName => "Publishing Events";
+    public override string DisplayName => "Publishing Events (Legacy DaprClient - see Dapr.Messaging for new applications)";
 
     public override async Task RunAsync(CancellationToken cancellationToken)
     {

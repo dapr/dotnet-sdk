@@ -4,7 +4,9 @@
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Deterministic>true</Deterministic>
+    <GenerateMSBuildEditorConfig>true</GenerateMSBuildEditorConfig>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(MSBuildProjectDirectory.Contains(`\src\`))' == 'true' Or '$(MSBuildProjectDirectory.EndsWith(`\src`))' == 'true'">

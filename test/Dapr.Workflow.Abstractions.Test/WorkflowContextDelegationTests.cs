@@ -39,6 +39,11 @@ public class WorkflowContextDelegationTests
         public object? LastChildInput { get; private set; }
         public ChildWorkflowTaskOptions? LastChildOptions { get; private set; }
 
+        public string? LastDetachedName { get; private set; }
+        public string? LastDetachedInstanceId { get; private set; }
+        public object? LastDetachedInput { get; private set; }
+        public DateTimeOffset? LastDetachedStartTime { get; private set; }
+
         public override Task<T> CallActivityAsync<T>(string name, object? input = null, WorkflowTaskOptions? options = null)
         {
             LastActivityName = name;
@@ -65,6 +70,19 @@ public class WorkflowContextDelegationTests
             LastChildInput = input;
             LastChildOptions = options;
             return Task.FromResult(default(TResult)!);
+        }
+
+        public override Task<string> ScheduleNewDetachedWorkflowAsync(
+            string workflowName,
+            string? instanceId = null,
+            object? input = null,
+            DateTimeOffset? startTime = null)
+        {
+            LastDetachedName = workflowName;
+            LastDetachedInstanceId = instanceId;
+            LastDetachedInput = input;
+            LastDetachedStartTime = startTime;
+            return Task.FromResult(instanceId ?? "generated");
         }
 
         public override Microsoft.Extensions.Logging.ILogger CreateReplaySafeLogger(string categoryName) => new NullLogger();
@@ -115,5 +133,23 @@ public class WorkflowContextDelegationTests
         Assert.Equal("child", ctx.LastChildName);
         Assert.NotNull(ctx.LastChildInput);
         Assert.Same(options, ctx.LastChildOptions);
+    }
+
+    [Fact]
+    public async Task ScheduleNewDetachedWorkflowAsync_IsAvailableThroughInterface()
+    {
+        IWorkflowContext context = new ProbeContext();
+        var input = new { X = 1 };
+        var startTime = new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero);
+
+        var instanceId = await context.ScheduleNewDetachedWorkflowAsync(
+            "detached", "detached-1", input, startTime);
+
+        var probe = Assert.IsType<ProbeContext>(context);
+        Assert.Equal("detached-1", instanceId);
+        Assert.Equal("detached", probe.LastDetachedName);
+        Assert.Equal("detached-1", probe.LastDetachedInstanceId);
+        Assert.Same(input, probe.LastDetachedInput);
+        Assert.Equal(startTime, probe.LastDetachedStartTime);
     }
 }

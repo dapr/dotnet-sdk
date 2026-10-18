@@ -37,4 +37,9 @@ public enum StateChangeKind
     /// The state needs to be removed.
     /// </summary>
     Remove = 3,
+    
+    /// <summary>
+    /// There is no state.
+    /// </summary>
+    NotFound = 4,
 }

@@ -99,32 +99,49 @@ public class DaprStateProviderTest
             .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(new ActorStateResponse<string>("", null)));
         var resp = await provider.TryLoadStateAsync<string>("actorType", "actorId", "key", token);
-        Assert.False(resp.HasValue);
+        Assert.Null(resp.Response);
 
         interactor
             .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(new ActorStateResponse<string>("\"value\"", null)));
         resp = await provider.TryLoadStateAsync<string>("actorType", "actorId", "key", token);
-        Assert.True(resp.HasValue);
-        Assert.Equal("value", resp.Value.Value);
-        Assert.False(resp.Value.TTLExpireTime.HasValue);
+        Assert.NotNull(resp.Response);
+        Assert.Equal(200, resp.HttpStatusCode);
+        Assert.Equal("value", resp.Response.Value);
+        Assert.False(resp.Response.TTLExpireTime.HasValue);
 
         var ttl = DateTime.UtcNow.AddSeconds(1);
         interactor
             .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(new ActorStateResponse<string>("\"value\"", ttl)));
         resp = await provider.TryLoadStateAsync<string>("actorType", "actorId", "key", token);
-        Assert.True(resp.HasValue);
-        Assert.Equal("value", resp.Value.Value);
-        Assert.True(resp.Value.TTLExpireTime.HasValue);
-        Assert.Equal(ttl, resp.Value.TTLExpireTime.Value);
+        Assert.NotNull(resp.Response);
+        Assert.Equal("value", resp.Response.Value);
+        Assert.True(resp.Response.TTLExpireTime.HasValue);
+        Assert.Equal(ttl, resp.Response.TTLExpireTime.Value);
 
         ttl = DateTime.UtcNow.AddSeconds(-1);
         interactor
             .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.FromResult(new ActorStateResponse<string>("\"value\"", ttl)));
         resp = await provider.TryLoadStateAsync<string>("actorType", "actorId", "key", token);
-        Assert.False(resp.HasValue);
+        Assert.Null(resp.Response);
+    }
+
+    [Fact]
+    public async Task TryLoadStateAsync_ReturnsNoValueForNonSuccessStatusCode()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var provider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var token = new CancellationToken();
+
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new ActorStateResponse<string>("\"value\"", null, 204)));
+
+        var resp = await provider.TryLoadStateAsync<string>("actorType", "actorId", "key", token);
+        Assert.Null(resp.Response);
+        Assert.Equal(204, resp.HttpStatusCode);
     }
 
     [Fact]
@@ -182,6 +199,38 @@ public class DaprStateProviderTest
     }
 
     [Fact]
+    public async Task SaveStateAsync_AddAndUpdateEmitEquivalentUpserts()
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var provider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var token = CancellationToken.None;
+        var capturedContents = new List<string>();
+
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, CancellationToken>((_, _, data, _) => capturedContents.Add(data))
+            .Returns(Task.CompletedTask);
+
+        await provider.SaveStateAsync(
+            "actorType",
+            "actorId",
+            new[] { new ActorStateChange("key1", typeof(string), "value", StateChangeKind.Add, null) },
+            token);
+        await provider.SaveStateAsync(
+            "actorType",
+            "actorId",
+            new[] { new ActorStateChange("key1", typeof(string), "value", StateChangeKind.Update, null) },
+            token);
+
+        Assert.Equal(2, capturedContents.Count);
+        Assert.Equal(capturedContents[0], capturedContents[1]);
+        Assert.Equal(
+            "[{\"operation\":\"upsert\",\"request\":{\"key\":\"key1\",\"value\":\"value\"}}]",
+            capturedContents[0]);
+    }
+
+    [Fact]
     public async Task TryLoadStateAsync_ReturnsFalseWhenTTLExpireTimeIsExactlyNow()
     {
         var interactor = new Mock<TestDaprInteractor>();
@@ -195,6 +244,6 @@ public class DaprStateProviderTest
             .Returns(Task.FromResult(new ActorStateResponse<string>("\"value\"", ttl)));
 
         var resp = await provider.TryLoadStateAsync<string>("actorType", "actorId", "key", token);
-        Assert.False(resp.HasValue);
+        Assert.Null(resp.Response);
     }
 }

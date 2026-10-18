@@ -87,6 +87,18 @@ jobs:
           PROJECTS=$(find test -name "Dapr.*.Test.csproj" ! -name "*E2E*" | jq -R -s -c 'split("\n")[:-1]')
           echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
 
+  discover-example-test-projects:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: set-matrix
+        run: |
+          # Find all example test csproj files recursively
+          PROJECTS=$(find examples -name "*Tests.csproj" | sort | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix=$PROJECTS" >> $GITHUB_OUTPUT
+
   get-dapr-versions:
     runs-on: ubuntu-latest
     outputs:
@@ -252,9 +264,63 @@ jobs:
         with:
           TRX_PATH: ${{ github.workspace }}/TestResults
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#  # The stateful-history delta path (dapr/durabletask-go#110, reaching dapr via dapr/dapr#10142) is
+#  # not in any dapr release, so the matrix above -- which only ever selects released tags -- cannot
+#  # exercise it. This job builds the runtime images from dapr master under a private tag and points
+#  # DAPR_RUNTIME_VERSION at it. DaprRuntimeOptions derives all three image tags from that one
+#  # variable, so no test-infrastructure change is needed. Tests that need this sidecar skip
+#  # themselves on every other leg.
+#  integration-tests-dapr-head:
+#    name: dapr-head-Workflow
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 45
+#    steps:
+#      - uses: actions/checkout@v6
+#      - name: Parse release version
+#        run: python ./.github/scripts/get_release_version.py
+#      - name: Setup .NET 10.0
+#        uses: actions/setup-dotnet@v5
+#        with:
+#          dotnet-version: '10.0'
+#          dotnet-quality: 'ga'
+#      - name: Checkout dapr/dapr at master
+#        uses: actions/checkout@v6
+#        with:
+#          repository: dapr/dapr
+#          ref: master
+#          path: dapr
+#      - name: Setup Go from dapr/go.mod
+#        uses: actions/setup-go@v5
+#        with:
+#          go-version-file: dapr/go.mod
+#      # Build all three from the same commit so the control plane cannot drift against daprd. The
+#      # tag is what DAPR_RUNTIME_VERSION resolves to for daprd, placement and scheduler alike.
+#      - name: Build dapr master runtime images
+#        run: |
+#          cd dapr
+#          make build-linux BINARIES="daprd placement scheduler"
+#          make docker-build DAPR_REGISTRY=daprio DAPR_TAG=dapr-head \
+#            BINARIES="daprd placement scheduler"
+#          # docker-build tags as $(DAPR_TAG)-$(DOCKER_IMAGE_VARIANT), i.e. dapr-head-linux-amd64
+#          # (dapr docker/docker.mk). DaprRuntimeOptions derives image tags from
+#          # DAPR_RUNTIME_VERSION verbatim, so alias the unqualified tag it actually pulls.
+#          for image in daprd placement scheduler; do
+#            docker tag "daprio/$image:dapr-head-linux-amd64" "daprio/$image:dapr-head"
+#          done
+#      - name: Stateful-history integration tests
+#        env:
+#          DAPR_RUNTIME_VERSION: dapr-head
+#        run: |
+#          dotnet test test/Dapr.IntegrationTest.Workflow/Dapr.IntegrationTest.Workflow.csproj \
+#          --configuration release \
+#          --framework net10.0 \
+#          --logger "console;verbosity=detailed" \
+#          /p:RuntimeIdentifier=linux-x64 \
+#          /p:GITHUB_ACTIONS=false
+#        timeout-minutes: 30
   ci-integration-tests-gate:
     runs-on: ubuntu-latest
-    needs: [integration-tests-v2, integration-test]
+    needs: [integration-tests-v2, integration-test] #, integration-tests-dapr-head]
     steps:
       - name: "All integration tests passed"
         run: echo "All unit tests passed"
@@ -333,11 +399,61 @@ jobs:
     steps:
       - name: "All unit tests passed"
         run: echo "All unit tests passed"
+  example-tests:
+    name: Example Tests - ${{ matrix.project }}
+    needs: discover-example-test-projects
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJson(needs.discover-example-test-projects.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Parse release version
+        run: python ./.github/scripts/get_release_version.py
+      - name: Setup .NET 10.0
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          dotnet-quality: 'ga'
+      - name: Test
+        id: tests
+        continue-on-error: true
+        run: |
+          dotnet test "${{ matrix.project }}" \
+          --configuration release \
+          --framework net10.0 \
+          --logger "trx;LogFilePrefix=examples" \
+          --logger "GitHubActions;report-warnings=false" \
+          --logger "console;verbosity=detailed" \
+          --results-directory "${{ github.workspace }}/TestResults" \
+          /p:RuntimeIdentifier=linux-x64 \
+          /p:GITHUB_ACTIONS=false
+        timeout-minutes: 15
+      - name: Check test failure in PR
+        if: github.event_name == 'pull_request' && steps.tests.outcome != 'success'
+        run: exit 1
+      - name: Check test failure on push
+        if: github.event_name != 'pull_request' && steps.tests.outcome != 'success'
+        run: exit 1
+      - name: Parse Trx files
+        uses: NasAmin/trx-parser@v0.2.0
+        id: trx-parser
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          TRX_PATH: ${{ github.workspace }}/TestResults
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ci-example-tests-gate:
+    runs-on: ubuntu-latest
+    needs: [example-tests]
+    steps:
+      - name: "All example tests passed"
+        run: echo "All example tests passed"
   integration-test:
     uses: ./.github/workflows/itests.yml
   discover:
     name: 'Discover Packages'
-    needs: ['build', 'ci-unit-tests-gate', 'ci-integration-tests-gate']
+    needs: ['build', 'ci-unit-tests-gate', 'ci-integration-tests-gate', 'ci-example-tests-gate']
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -358,6 +474,9 @@ jobs:
             | map(select(
                 ((test("/Dapr\\.Workflow\\.Versioning\\.(Abstractions|Generators|Runtime)\\.")) | not) and
                 ((test("/Dapr\\.SecretsManagement\\.(Abstractions|Generators|Runtime)\\.")) | not)
+              ))
+            | map(select(
+                (test("/Dapr\\.BinaryStore\\.(Abstractions|Generators|Runtime)\\.")) | not
               ))
             | map(select(
                 (test("/Dapr\\.StateManagement\\.(Abstractions|Generators|Runtime)\\.")) | not

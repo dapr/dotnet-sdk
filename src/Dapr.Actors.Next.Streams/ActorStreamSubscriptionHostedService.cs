@@ -29,16 +29,25 @@ public sealed class ActorStreamSubscriptionHostedService(
     /// <inheritdoc />
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        foreach (var subscription in registry.Subscriptions)
+        try
         {
-            var handle = await subscriber.SubscribeAsync(subscription, cancellationToken).ConfigureAwait(false);
-            subscriptions.Add(handle);
-            logger.LogInformation(
-                "Opened actor stream subscription {PubsubName}/{Topic} for {ActorType}.{MethodName}.",
-                subscription.PubsubName,
-                subscription.Topic,
-                subscription.ActorType,
-                subscription.MethodName);
+            foreach (var subscription in registry.Subscriptions)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var handle = await subscriber.SubscribeAsync(subscription, cancellationToken).ConfigureAwait(false);
+                subscriptions.Add(handle);
+                logger.LogInformation(
+                    "Opened actor stream subscription {PubsubName}/{Topic} for {ActorType}.{MethodName}.",
+                    subscription.PubsubName,
+                    subscription.Topic,
+                    subscription.ActorType,
+                    subscription.MethodName);
+            }
+        }
+        catch
+        {
+            await DisposeAsync().ConfigureAwait(false);
+            throw;
         }
     }
 
@@ -51,9 +60,9 @@ public sealed class ActorStreamSubscriptionHostedService(
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        foreach (var subscription in subscriptions)
+        for (var index = subscriptions.Count - 1; index >= 0; index--)
         {
-            await subscription.DisposeAsync().ConfigureAwait(false);
+            await subscriptions[index].DisposeAsync().ConfigureAwait(false);
         }
 
         subscriptions.Clear();

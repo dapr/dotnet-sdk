@@ -1,5 +1,7 @@
 # ASP.NET Core Controller example
 
+> **Note on Pub/Sub Messaging**: While this legacy sample demonstrates subscribing to pub/sub topics using ASP.NET Core controllers (`[Topic]`, `[BulkSubscribe]`), all modern Dapr .NET pub/sub applications should use the dedicated **`Dapr.Messaging`** package. `Dapr.Messaging` provides compile-time source-generated dispatchers, zero runtime reflection, full native AOT support, and streaming gRPC delivery. See the [Dapr.Messaging Examples](../../Messaging) for details.
+
 This sample shows using Dapr with ASP.NET Core controllers. This application is a simple and not-so-secure banking application. The application uses the Dapr state-store for its data storage.
 
 It exposes the following endpoints over HTTP:

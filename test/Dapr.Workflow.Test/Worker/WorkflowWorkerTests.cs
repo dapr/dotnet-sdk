@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2025 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -115,7 +115,7 @@ public class WorkflowWorkerTests
 
         await worker.StopAsync(CancellationToken.None);
     }
-    
+
     [Fact]
     public async Task ExecuteAsync_ShouldComplete_WhenGrpcStreamCompletesImmediately()
     {
@@ -149,7 +149,65 @@ public class WorkflowWorkerTests
 
         await executeTask;
     }
-    
+
+    /// <summary>
+    /// The stateful-history options are a user-facing escape hatch, so they have to survive the trip
+    /// from <see cref="WorkflowRuntimeOptions"/> through the worker into the protocol handler. This
+    /// asserts it behaviourally, on the capability the handler actually puts on the wire; all four
+    /// options are forwarded together on the same construction, so proving one proves the wiring.
+    /// </summary>
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task ExecuteAsync_ShouldForwardDisableStatefulHistory_ToTheProtocolHandler(
+        bool disableStatefulHistory, bool expectCapabilityAdvertised)
+    {
+        var services = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var factory = new StubWorkflowsFactory();
+
+        var startedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        GetWorkItemsRequest? capturedRequest = null;
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
+            .Callback<GetWorkItemsRequest, CallOptions>((r, _) =>
+            {
+                capturedRequest ??= r;
+                startedTcs.TrySetResult();
+            })
+            .Returns(CreateServerStreamingCall(EmptyWorkItems()));
+
+        var options = new WorkflowRuntimeOptions
+        {
+            DisableStatefulHistory = disableStatefulHistory,
+            HistoryCacheTtl = TimeSpan.FromMinutes(2),
+            HistoryCacheMaxInstances = 50,
+            HistoryCacheMaxBytes = 4096
+        };
+
+        var worker = new WorkflowWorker(
+            grpcClientMock.Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            services,
+            configuration: null,
+            options: options);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var executeTask = InvokeExecuteAsync(worker, cts.Token);
+
+        await startedTcs.Task.WaitAsync(cts.Token);
+        await cts.CancelAsync();
+        await executeTask;
+
+        Assert.NotNull(capturedRequest);
+        Assert.Equal(expectCapabilityAdvertised,
+            capturedRequest!.Capabilities.Contains(WorkerCapability.StatefulHistory));
+    }
+
     [Fact]
     public async Task HandleWorkflowResponseAsync_ShouldReturnTerminatedCompletion_WhenReplayLatestEventIsExecutionTerminated()
     {
@@ -191,7 +249,7 @@ public class WorkflowWorkerTests
         Assert.NotNull(action.CompleteWorkflow);
         Assert.Equal(OrchestrationStatus.Terminated, action.CompleteWorkflow!.WorkflowStatus);
     }
-    
+
     [Fact]
     public async Task HandleWorkflowResponseAsync_ShouldNotReturnTerminatedCompletion_WhenReplayLatestEventIsNotExecutionTerminated()
     {
@@ -238,7 +296,7 @@ public class WorkflowWorkerTests
         Assert.NotEqual(OrchestrationStatus.Terminated, action.CompleteWorkflow!.WorkflowStatus);
         Assert.Equal(OrchestrationStatus.Failed, action.CompleteWorkflow.WorkflowStatus);
     }
-    
+
     [Fact]
     public async Task HandleWorkflowResponseAsync_ShouldReturnEmptyResponse_WhenLatestEventIsExecutionSuspended()
     {
@@ -276,7 +334,7 @@ public class WorkflowWorkerTests
         Assert.Equal("i", response.InstanceId);
         Assert.Empty(response.Actions);
     }
-    
+
     [Fact]
     public async Task HandleWorkflowResponseAsync_ShouldNotShortCircuit_WhenLatestEventIsExecutionResumed()
     {
@@ -404,7 +462,7 @@ public class WorkflowWorkerTests
         Assert.False(HasHeader(callOptions, "dapr-api-token", out _));
         Assert.True(HasHeader(callOptions, "User-Agent", out _));
     }
-    
+
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldComplete_WhenCompletionEventArrivesLater()
     {
@@ -452,13 +510,13 @@ public class WorkflowWorkerTests
         Assert.Equal(99, value);
         Assert.Empty(context.PendingActions);
     }
-    
+
     [Fact]
     public void CallChildWorkflowAsync_ShouldPreserveRouterTargetAppId_OnScheduledAction()
     {
         const string appId1 = "this-app";
         const string appId2 = "remote-app";
-        
+
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var context = new WorkflowOrchestrationContext(
             "wf", "parent", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
@@ -472,7 +530,7 @@ public class WorkflowWorkerTests
         Assert.Equal(appId1, action.Router.SourceAppID);
         Assert.Equal(appId2, action.Router.TargetAppID);
     }
-    
+
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldComplete_WhenCompletionArrivedBeforeCall()
     {
@@ -512,7 +570,7 @@ public class WorkflowWorkerTests
         Assert.Equal(13, value);
         Assert.Empty(context.PendingActions);
     }
-    
+
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldIgnoreDuplicateCompletionEvents()
     {
@@ -552,7 +610,7 @@ public class WorkflowWorkerTests
         var value = await task;
         Assert.Equal(200, value);
     }
-    
+
     [Fact]
     public async Task HandleWorkflowResponseAsync_ShouldAllowWorkflowToComplete_OnSecondPass_WhenChildCompletionInHistory()
     {
@@ -629,7 +687,79 @@ public class WorkflowWorkerTests
         Assert.Contains(resp2.Actions, a => a.CompleteWorkflow != null);
         Assert.Equal(OrchestrationStatus.Completed, resp2.Actions.Single(a => a.CompleteWorkflow != null).CompleteWorkflow!.WorkflowStatus);
     }
-    
+
+    [Fact]
+    public async Task HandleWorkflowResponseAsync_ShouldNotRescheduleDetachedWorkflow_OnReplay()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var factory = new StubWorkflowsFactory();
+
+        factory.AddWorkflow("InitialWorkflow", new InlineWorkflow(
+            inputType: typeof(object),
+            run: async (ctx, _) =>
+            {
+                await ctx.ScheduleNewDetachedWorkflowAsync(
+                    "DetachedWorkflow", "detached-workflow-instance", 7);
+                await ctx.WaitForExternalEventAsync<string>("never");
+                return null;
+            }));
+
+        var worker = new WorkflowWorker(
+            CreateGrpcClientMock().Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp);
+
+        var first = await InvokeHandleWorkflowResponseAsync(worker, new WorkflowRequest
+        {
+            InstanceId = "initial-workflow-instance",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent
+                    {
+                        Name = "InitialWorkflow",
+                        Input = ""
+                    }
+                }
+            }
+        });
+
+        var createAction = Assert.Single(first.Actions);
+        Assert.Equal("DetachedWorkflow", createAction.CreateDetachedWorkflow.Name);
+        Assert.Equal("detached-workflow-instance", createAction.CreateDetachedWorkflow.InstanceId);
+        Assert.Equal("7", createAction.CreateDetachedWorkflow.Input);
+
+        var replay = await InvokeHandleWorkflowResponseAsync(worker, new WorkflowRequest
+        {
+            InstanceId = "initial-workflow-instance",
+            PastEvents =
+            {
+                new HistoryEvent
+                {
+                    ExecutionStarted = new ExecutionStartedEvent
+                    {
+                        Name = "InitialWorkflow",
+                        Input = ""
+                    }
+                },
+                new HistoryEvent
+                {
+                    EventId = createAction.Id,
+                    DetachedWorkflowInstanceCreated = new DetachedWorkflowInstanceCreatedEvent
+                    {
+                        InstanceId = "detached-workflow-instance"
+                    }
+                }
+            }
+        });
+
+        Assert.DoesNotContain(replay.Actions, action => action.CreateDetachedWorkflow is not null);
+    }
+
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldOnlyCompleteAfterCreation_WhenCompletionArrivesFirst()
     {
@@ -663,7 +793,7 @@ public class WorkflowWorkerTests
         var value = await task;
         Assert.Equal(21, value);
     }
-    
+
     [Fact]
     public async Task CallChildWorkflowAsync_ShouldCompleteOnlyForMatchingTaskScheduledId_WhenReplaySchedulesAgain()
     {
@@ -856,7 +986,7 @@ public class WorkflowWorkerTests
 
         var completion = response.Actions
             .FirstOrDefault(a => a.CompleteWorkflow != null)?.CompleteWorkflow;
-        
+
         Assert.NotNull(completion);
         Assert.Equal(OrchestrationStatus.Completed, completion.WorkflowStatus);
         Assert.Equal("42", completion.Result);
@@ -1235,7 +1365,7 @@ public class WorkflowWorkerTests
         Assert.Equal(expectedTraceId, logProvider.GetTraceIdForMessage("workflow-user-log"));
         Assert.Equal(expectedTraceId, logProvider.GetTraceIdForMessage("Workflow execution completed"));
     }
-    
+
     [Fact]
     public async Task ExecuteAsync_ShouldRetry_WhenGrpcProtocolHandlerStartFailsWithException()
     {
@@ -1343,7 +1473,7 @@ public class WorkflowWorkerTests
                 Assert.Equal(beginDateTime, ctx.CurrentUtcDateTime);
                 await ctx.CreateTimer(TimeSpan.FromSeconds(5));
                 Assert.Equal(beginDateTime.AddSeconds(5), ctx.CurrentUtcDateTime);
-                
+
                 return null;
             }));
 
@@ -1568,7 +1698,7 @@ public class WorkflowWorkerTests
                 }
             }
         };
-        
+
 
         var response = await InvokeHandleWorkflowResponseAsync(worker, request);
 
@@ -1646,7 +1776,7 @@ public class WorkflowWorkerTests
                 new HistoryEvent { EventRaised = new EventRaisedEvent { Name = "myevent" } }
             }
         };
-        
+
 
         var response = await InvokeHandleWorkflowResponseAsync(worker, request);
 
@@ -1689,62 +1819,62 @@ public class WorkflowWorkerTests
         Assert.Null(response.FailureDetails);
         Assert.Equal(string.Empty, response.Result);
     }
-    
+
     // -------------------------------------------------------------------------
     // RequiresHistoryStreaming
     // -------------------------------------------------------------------------
 
-    // [Fact]
-    // public async Task HandleWorkflowResponseAsync_ShouldStreamHistory_WhenRequiresHistoryStreamingIsTrue()
-    // {
-    //     // When RequiresHistoryStreaming is set, the worker must fetch past history
-    //     // via StreamInstanceHistory and merge it with the inline PastEvents before
-    //     // running the workflow. Here we put the ExecutionStarted event inside the
-    //     // stream (not in PastEvents) so the workflow can only complete if streaming works.
-    //     var sp = new ServiceCollection().BuildServiceProvider();
-    //     var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-    //
-    //     var factory = new StubWorkflowsFactory();
-    //     factory.AddWorkflow("wf", new InlineWorkflow(
-    //         inputType: typeof(int),
-    //         run: (_, input) => Task.FromResult<object?>((int)input! + 1)));
-    //
-    //     // The streamed chunk carries the ExecutionStarted event.
-    //     var streamedChunk = new HistoryChunk();
-    //     streamedChunk.Events.Add(new HistoryEvent
-    //     {
-    //         ExecutionStarted = new ExecutionStartedEvent { Name = "wf", Input = "10" }
-    //     });
-    //
-    //     var grpcClientMock = CreateGrpcClientMock();
-    //     grpcClientMock
-    //         .Setup(x => x.GetInstanceHistoryAsync(It.IsAny<GetInstanceHistoryRequest>(), It.IsAny<CallOptions>()))
-    //         .Returns(CreateHistoryStreamingCall(SingleItemAsync(streamedChunk)));
-    //
-    //     var worker = new WorkflowWorker(
-    //         grpcClientMock.Object,
-    //         factory,
-    //         NullLoggerFactory.Instance,
-    //         serializer,
-    //         sp);
-    //
-    //     var request = new WorkflowRequest
-    //     {
-    //         InstanceId = "stream-i",
-    //         RequiresHistoryStreaming = true
-    //     };
-    //
-    //     var response = await InvokeHandleWorkflowResponseAsync(worker, request);
-    //
-    //     Assert.Equal("stream-i", response.InstanceId);
-    //     var complete = response.Actions.Single(a => a.CompleteWorkflow != null).CompleteWorkflow!;
-    //     Assert.Equal(OrchestrationStatus.Completed, complete.WorkflowStatus);
-    //     Assert.Equal("11", complete.Result);
-    //
-    //     grpcClientMock.Verify(
-    //         x => x.StreamInstanceHistory(It.IsAny<StreamInstanceHistoryRequest>(), It.IsAny<CallOptions>()),
-    //         Times.Once());
-    // }
+    [Fact]
+    public async Task HandleWorkflowResponseAsync_ShouldFetchHistory_WhenRequiresHistoryStreamingIsTrue()
+    {
+        var sp = new ServiceCollection().BuildServiceProvider();
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var factory = new StubWorkflowsFactory();
+        factory.AddWorkflow("wf", new InlineWorkflow(
+            inputType: typeof(int),
+            run: (_, input) => Task.FromResult<object?>((int)input! + 1)));
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.GetInstanceHistoryAsync(
+                It.Is<GetInstanceHistoryRequest>(request => request.InstanceId == "stream-i"),
+                It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCall(new GetInstanceHistoryResponse
+            {
+                Events =
+                {
+                    new HistoryEvent
+                    {
+                        ExecutionStarted = new ExecutionStartedEvent { Name = "wf", Input = "10" }
+                    }
+                }
+            }));
+
+        var worker = new WorkflowWorker(
+            grpcClientMock.Object,
+            factory,
+            NullLoggerFactory.Instance,
+            serializer,
+            sp);
+
+        var response = await InvokeHandleWorkflowResponseAsync(worker, new WorkflowRequest
+        {
+            InstanceId = "stream-i",
+            RequiresHistoryStreaming = true
+        });
+
+        Assert.Equal("stream-i", response.InstanceId);
+        var complete = response.Actions.Single(a => a.CompleteWorkflow != null).CompleteWorkflow!;
+        Assert.Equal(OrchestrationStatus.Completed, complete.WorkflowStatus);
+        Assert.Equal("11", complete.Result);
+
+        grpcClientMock.Verify(
+            x => x.GetInstanceHistoryAsync(
+                It.Is<GetInstanceHistoryRequest>(request => request.InstanceId == "stream-i"),
+                It.IsAny<CallOptions>()),
+            Times.Once());
+    }
 
     // -------------------------------------------------------------------------
     // Workflow-name extraction fallbacks
@@ -2421,6 +2551,9 @@ public class WorkflowWorkerTests
         var task = (Task<ActivityResponse>)method.Invoke(worker, [request, CompletionTokenValue])!;
         return await task;
     }
+
+    private static AsyncUnaryCall<T> CreateAsyncUnaryCall<T>(T response) =>
+        new(Task.FromResult(response), Task.FromResult(new Metadata()), () => Status.DefaultSuccess, () => [], () => { });
 
     private static Mock<TaskHubSidecarService.TaskHubSidecarServiceClient> CreateGrpcClientMock()
     {

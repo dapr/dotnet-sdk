@@ -27,7 +27,14 @@ public class WorkflowTraceTests
         listener.ShouldListenTo = src => src.Name == "Dapr.Workflow";
         listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
         listener.SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllDataAndRecorded;
-        listener.ActivityStarted = _ => startedCount++;
+        // Other test classes run in parallel on the same ActivitySource; only count this test's trace.
+        listener.ActivityStarted = activity =>
+        {
+            if (activity.TraceId.ToHexString() == "0af7651916cd43dd8448eb211c80319c")
+            {
+                startedCount++;
+            }
+        };
         ActivitySource.AddActivityListener(listener);
 
         const string traceParent = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01";
@@ -49,16 +56,24 @@ public class WorkflowTraceTests
     [Fact]
     public void StartOrchestrationTrace_ShouldRestoreAmbientTraceContext_WithoutEmittingActivitySourceSpan()
     {
+        const string expectedTraceId = "0af7651916cd43dd8448eb211c80319c";
+        const string expectedParentSpanId = "b7ad6b7169203331";
+
         using var listener = new ActivityListener();
         var startedCount = 0;
         listener.ShouldListenTo = src => src.Name == "Dapr.Workflow";
         listener.Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded;
         listener.SampleUsingParentId = (ref ActivityCreationOptions<string> _) => ActivitySamplingResult.AllDataAndRecorded;
-        listener.ActivityStarted = _ => startedCount++;
+        // Other test classes run in parallel on the same ActivitySource; only count this test's trace.
+        listener.ActivityStarted = activity =>
+        {
+            if (activity.TraceId.ToHexString() == expectedTraceId)
+            {
+                startedCount++;
+            }
+        };
         ActivitySource.AddActivityListener(listener);
 
-        const string expectedTraceId = "0af7651916cd43dd8448eb211c80319c";
-        const string expectedParentSpanId = "b7ad6b7169203331";
         const string traceParent = $"00-{expectedTraceId}-{expectedParentSpanId}-01";
         var events = new[]
         {

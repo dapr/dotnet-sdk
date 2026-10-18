@@ -12,7 +12,12 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
+using Dapr;
+using Grpc.Core;
+using Grpc.Net.Client;
 using Xunit;
 
 namespace Dapr.Client;
@@ -66,6 +71,36 @@ public partial class DaprClientTest
         });
 
         Assert.Contains("The URI scheme of the Dapr endpoint must be http or https.", ex.Message);
+    }
+
+    [Fact]
+    public async Task CreateInvocationInvoker_UsesGrpcChannelOptions()
+    {
+        await using var testClient = TestClient.CreateForMessageHandler();
+        using var httpClient = new HttpClient(testClient.InnerClient);
+        var invoker = DaprClient.CreateInvocationInvoker(
+            appId: "bank",
+            grpcChannelOptions: new GrpcChannelOptions { HttpClient = httpClient },
+            daprEndpoint: "http://localhost");
+        var method = new Method<string, string>(
+            MethodType.Unary,
+            "test.Service",
+            "TestMethod",
+            Marshallers.StringMarshaller,
+            Marshallers.StringMarshaller);
+
+        var request = await testClient.CaptureGrpcRequestAsync(
+            _ => invoker.AsyncUnaryCall(method, null, new CallOptions(), "request").ResponseAsync);
+
+        Assert.Equal("bank", request.Request.Headers.GetValues("dapr-app-id").Single());
+        request.Dismiss();
+    }
+
+    [Fact]
+    public void CreateInvocationInvoker_WithNullGrpcChannelOptions_Throws()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => DaprClient.CreateInvocationInvoker(grpcChannelOptions: null!, appId: "bank"));
     }
 
     [Fact]

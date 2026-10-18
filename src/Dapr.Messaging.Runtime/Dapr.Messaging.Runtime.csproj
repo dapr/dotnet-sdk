@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <PackageId>Dapr.Messaging.Runtime</PackageId>
+        <Title>Dapr Messaging Runtime</Title>
+        <Description>Provides the runtime implementation for the Dapr Messaging SDK.</Description>
+        <!-- This assembly ships bundled inside the Dapr.Messaging NuGet package; it is not published as a standalone package. -->
+        <IsPackable>false</IsPackable>
+        <RootNamespace>Dapr.Messaging</RootNamespace>
+        <!-- Keep the output assembly named Dapr.Messaging so Dapr.Common's existing
+             InternalsVisibleTo("Dapr.Messaging") (for IDaprRuntimeCapabilities) still
+             applies, and the bundled lib matches the meta-package's expected file name. -->
+        <AssemblyName>Dapr.Messaging</AssemblyName>
+        <!-- Enables the DaprVersionAwareGenerator to emit IVersionAwareDaprClient and
+             VersionAwareDaprClient (used by the bulk-publish version-aware fallback). -->
+        <IsDaprSdkProject>true</IsDaprSdkProject>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" />
+        <PackageReference Include="Grpc.Net.Client" />
+        <PackageReference Include="Grpc.AspNetCore" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Options" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+        <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+        <ProjectReference Include="..\Dapr.Messaging.Abstractions\Dapr.Messaging.Abstractions.csproj" />
+        <!-- Generator reference: emits IVersionAwareDaprClient + VersionAwareDaprClient -->
+        <ProjectReference Include="..\Dapr.Common.Generators\Dapr.Common.Generators.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+</Project>

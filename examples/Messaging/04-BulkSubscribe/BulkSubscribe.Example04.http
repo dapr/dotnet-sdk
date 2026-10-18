@@ -1,0 +1,37 @@
+@baseUrl = http://localhost:5000
+
+### 1. Publish single telemetry event
+POST {{baseUrl}}/publish/telemetry
+Content-Type: application/json
+
+{
+  "deviceId": "SENSOR-HVAC-01",
+  "temperatureCelsius": 22.4,
+  "humidityPercent": 48.0,
+  "timestampUnixMs": 1711800000000
+}
+
+### 2. Bulk-publish batch of telemetry events
+POST {{baseUrl}}/publish/telemetry-batch
+Content-Type: application/json
+
+[
+  {
+    "deviceId": "SENSOR-HVAC-01",
+    "temperatureCelsius": 22.5,
+    "humidityPercent": 48.1,
+    "timestampUnixMs": 1711800001000
+  },
+  {
+    "deviceId": "SENSOR-HVAC-02",
+    "temperatureCelsius": 21.9,
+    "humidityPercent": 45.3,
+    "timestampUnixMs": 1711800001000
+  },
+  {
+    "deviceId": "SENSOR-FREEZER-01",
+    "temperatureCelsius": -18.2,
+    "humidityPercent": 82.0,
+    "timestampUnixMs": 1711800001000
+  }
+]

@@ -41,13 +41,26 @@ public static class DaprActorsCoreServiceCollectionExtensions
     /// <summary>
     /// Adds Core actor runtime services and generated actor registrations.
     /// </summary>
+    /// <remarks>
+    /// Multiple registration entry points (generated compiled actors, interpreted actors, manual
+    /// registrations) each route through this method. The runtime and the SubscribeActorEvents stream
+    /// manager resolve a single <see cref="ActorRuntimeRegistry"/>, so registrations from every call
+    /// must accumulate into one shared builder; otherwise whichever call registered its registry last
+    /// silently replaces the earlier calls' actor types, and those types are never announced to
+    /// placement (their invocations fail actor lookup).
+    /// </remarks>
     public static IServiceCollection AddDaprActorsCore(this IServiceCollection services, Action<ActorRuntimeRegistrationBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        var builder = new ActorRuntimeRegistrationBuilder();
-        configure(builder);
+        if (services.LastOrDefault(static descriptor => descriptor.ServiceType == typeof(ActorRuntimeRegistrationBuilder))?.ImplementationInstance is not ActorRuntimeRegistrationBuilder registrationBuilder)
+        {
+            registrationBuilder = new ActorRuntimeRegistrationBuilder();
+            services.AddSingleton(registrationBuilder);
+        }
+
+        configure(registrationBuilder);
 
         EnsureDaprActorGrpcClientRegistered(services);
 
@@ -85,9 +98,27 @@ public static class DaprActorsCoreServiceCollectionExtensions
             ShouldUseSidecar(sp)
                 ? new DaprActorEventsTransport(CreateDaprClientAccessor(sp), GetDaprApiToken(sp), GetDaprGrpcEndpoint(sp))
                 : new DisabledSubscribeActorEventsTransport());
-        services.AddSingleton(sp => builder.Build(sp));
-        services.AddSingleton<SubscribeActorEventsStreamManager>();
-        services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<SubscribeActorEventsStreamManager>());
+
+        // The registry is always rebuilt over the shared builder, so it reflects every registration
+        // made by this and any prior AddDaprActorsCore call. Replace the previous descriptor instead
+        // of appending: single-instance resolution takes the last registration.
+        var previousRegistry = services.FirstOrDefault(static descriptor => descriptor.ServiceType == typeof(ActorRuntimeRegistry));
+        if (previousRegistry is not null)
+        {
+            services.Remove(previousRegistry);
+        }
+
+        services.AddSingleton(static sp => sp.GetRequiredService<ActorRuntimeRegistrationBuilder>().Build(sp));
+        services.TryAddSingleton<SubscribeActorEventsStreamManager>();
+        // Register the stream manager behind a dedicated hosted-service wrapper with TryAddEnumerable,
+        // NOT TryAddSingleton<IHostedService>: TryAdd deduplicates by service type alone, so any hosted
+        // service the application registered before the first AddDaprActorsCore call (OpenTelemetry,
+        // workflows, app services, ...) suppresses this registration entirely. The stream manager then
+        // never starts, no actor types are announced to placement, and every actor lookup fails with
+        // "did not find address for actor". TryAddEnumerable deduplicates by implementation type, which
+        // is exactly once across repeated AddDaprActorsCore calls and never collides with other
+        // hosted services.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, SubscribeActorEventsStreamHostedService>());
 
         return services;
     }
@@ -197,4 +228,21 @@ public static class DaprActorsCoreServiceCollectionExtensions
     /// </summary>
     private static Lazy<P.Dapr.DaprClient> CreateDaprClientAccessor(IServiceProvider serviceProvider) =>
         new(serviceProvider.GetRequiredService<P.Dapr.DaprClient>);
+}
+
+/// <summary>
+/// Starts and stops the <see cref="Transport.SubscribeActorEventsStreamManager"/> as an
+/// <see cref="IHostedService"/>. The dedicated type exists so the registration can go through
+/// <c>TryAddEnumerable</c>, which deduplicates by implementation type. A plain TryAdd of
+/// <see cref="IHostedService"/> would be suppressed by any hosted service the application registered
+/// before the first AddDaprActorsCore call, silently preventing actor types from ever being announced
+/// to placement.
+/// </summary>
+internal sealed class SubscribeActorEventsStreamHostedService(SubscribeActorEventsStreamManager manager) : IHostedService
+{
+    /// <inheritdoc />
+    public Task StartAsync(CancellationToken cancellationToken) => manager.StartAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public Task StopAsync(CancellationToken cancellationToken) => manager.StopAsync(cancellationToken);
 }

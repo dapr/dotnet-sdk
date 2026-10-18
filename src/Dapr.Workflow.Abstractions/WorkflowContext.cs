@@ -270,6 +270,25 @@ public abstract class WorkflowContext : IWorkflowContext
     {
         return this.CallChildWorkflowAsync<object>(workflowName, input, options);
     }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <para>
+    /// The scheduled workflow is independent of the current workflow. The current workflow does not wait for it,
+    /// its failures are not propagated to the current workflow, and recursively terminating the current workflow
+    /// does not terminate the scheduled workflow.
+    /// </para>
+    /// <para>
+    /// This operation is replay-safe. When <paramref name="instanceId"/> is omitted, the generated instance ID is
+    /// deterministic for the current workflow execution.
+    /// </para>
+    /// </remarks>
+    public virtual Task<string> ScheduleNewDetachedWorkflowAsync(
+        string workflowName,
+        string? instanceId = null,
+        object? input = null,
+        DateTimeOffset? startTime = null) =>
+        throw new NotSupportedException("Detached workflow scheduling is not supported by this workflow context.");
         
     /// <summary>
     /// Returns an instance of <see cref="ILogger"/> that is replay-safe, meaning that the logger only

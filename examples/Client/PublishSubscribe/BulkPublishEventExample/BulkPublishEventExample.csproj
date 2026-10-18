@@ -4,6 +4,7 @@
         <OutputType>Exe</OutputType>
         <RootNamespace>Samples.Client</RootNamespace>
         <Nullable>enable</Nullable>
+        <NoWarn>$(NoWarn);CS0618</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
