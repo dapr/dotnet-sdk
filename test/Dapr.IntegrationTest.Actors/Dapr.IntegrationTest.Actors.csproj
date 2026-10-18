@@ -25,6 +25,7 @@
       <ProjectReference Include="..\..\src\Dapr.Actors\Dapr.Actors.csproj" />
       <ProjectReference Include="..\..\src\Dapr.Actors.AspNetCore\Dapr.Actors.AspNetCore.csproj" />
       <ProjectReference Include="..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
+      <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
     </ItemGroup>
 
 </Project>
