@@ -11,12 +11,14 @@ using System.Threading.Tasks;
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Dispatching;
 using Dapr.Actors.Next.Abstractions.Options;
+using Dapr.Actors.Next.Abstractions.Scheduling;
 using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.DependencyInjection;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.State;
 using Dapr.Actors.Next.Core.Runtime;
+using Dapr.Actors.Next.Core.Scheduling;
 using Dapr.Actors.Next.Core.Timers;
 using Dapr.Actors.Next.Core.Transport;
 using Dapr.Testcontainers.Common;
@@ -234,6 +236,58 @@ public sealed partial class RealSidecarActorTests : IAsyncLifetime
         Assert.Equal(7, result.Number);
         Assert.Equal("application/json", result.ContentType);
         Assert.Equal("metadata", result.Metadata);
+    }
+
+    /// <summary>
+    /// A cancelled local inline invocation must hand off to an already-queued sidecar invocation.
+    /// </summary>
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Cancelled_inline_turn_does_not_strand_queued_sidecar_call()
+    {
+        using var timeout = new CancellationTokenSource(Timeout);
+        using var firstCancellation = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
+        var runtime = app!.Services.GetRequiredService<IActorRuntime>();
+        var probe = app.Services.GetRequiredService<Probe>();
+        var scheduler = app.Services.GetRequiredService<RecordingActorScheduler>();
+        var actorId = $"cancel-handoff-{Guid.NewGuid():N}";
+
+        // The stream's token belongs to the whole stream, not an individual RPC.
+        // Invoke locally to cancel exactly one inline turn without shutting down the host.
+        var first = runtime.InvokeAsync("ProtocolActor", actorId, "HoldForCancellation",
+            ReadOnlyMemory<byte>.Empty, new Dictionary<string, string>(), firstCancellation.Token);
+        try
+        {
+            await probe.CancellationTurnEntered.Task.WaitAsync(timeout.Token);
+            using var next = client!.InvokeActorAsync(
+                CreateInvoke("ProtocolActor", actorId, "Echo",
+                    JsonSerializer.SerializeToUtf8Bytes(new ProtocolRequest("after-cancellation", 42))),
+                cancellationToken: timeout.Token);
+            await WaitUntilAsync(
+                () => scheduler.LastMailbox is { } mailbox && mailbox.ActorId.Value == actorId && mailbox.PendingCount == 1,
+                timeout.Token, () => "The sidecar invocation did not reach the occupied actor mailbox.");
+            Assert.False(next.ResponseAsync.IsCompleted);
+            // Let the production drain observe the occupied slot and exit before the handoff.
+            await Task.Delay(TimeSpan.FromMilliseconds(250), timeout.Token);
+            await firstCancellation.CancelAsync();
+            Assert.True(scheduler.LastMailbox!.IsExecuting);
+            Assert.False(probe.CancellationTurnFinished.Task.IsCompleted);
+            Assert.False(next.ResponseAsync.IsCompleted);
+            probe.ReleaseCancellationTurn.TrySetResult();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first.WaitAsync(timeout.Token));
+
+            // No third call is issued to wake the mailbox.
+            var response = await next.ResponseAsync.WaitAsync(TimeSpan.FromSeconds(5), timeout.Token);
+            var result = JsonSerializer.Deserialize<ProtocolResponse>(response.Data.Span)!;
+            Assert.Equal("after-cancellation", result.Text);
+            Assert.Equal(42, result.Number);
+            Assert.True(probe.CancellationTurnFinished.Task.IsCompleted);
+        }
+        finally
+        {
+            probe.ReleaseCancellationTurn.TrySetResult();
+            await firstCancellation.CancelAsync();
+            await timeout.CancelAsync();
+        }
     }
 
     /// <summary>
@@ -530,6 +584,10 @@ public sealed record CurrentProfile(string FullName, int SchemaVersion);
 /// </summary>
 public sealed class Probe
 {
+    public TaskCompletionSource CancellationTurnEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource ReleaseCancellationTurn { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public TaskCompletionSource CancellationTurnFinished { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     /// <summary>
     /// Gets actor ids that received reminder callbacks.
     /// </summary>
@@ -588,6 +646,23 @@ public sealed class Probe
         while (InitialConfigs.TryTake(out _))
         {
         }
+    }
+}
+
+/// <summary>
+/// Observes queue admission without changing production scheduling behavior.
+/// </summary>
+public sealed class RecordingActorScheduler : IActorScheduler
+{
+    private readonly ProductionActorScheduler inner = new();
+    private RuntimeActorMailbox? lastMailbox;
+    public RuntimeActorMailbox? LastMailbox => Volatile.Read(ref lastMailbox);
+    public bool AllowsInlineExecution => inner.AllowsInlineExecution;
+
+    public ValueTask ScheduleAsync(IActorMailbox mailbox, CancellationToken cancellationToken = default)
+    {
+        Volatile.Write(ref lastMailbox, (RuntimeActorMailbox)mailbox);
+        return inner.ScheduleAsync(mailbox, cancellationToken);
     }
 }
 
@@ -730,6 +805,20 @@ public sealed class ProtocolActor(
     /// Health probe method.
     /// </summary>
     public Task PingAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public async Task HoldForCancellationAsync(CancellationToken cancellationToken)
+    {
+        probe.CancellationTurnEntered.TrySetResult();
+        try
+        {
+            await probe.ReleaseCancellationTurn.Task;
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        finally
+        {
+            probe.CancellationTurnFinished.TrySetResult();
+        }
+    }
 
     /// <summary>
     /// Echoes the request and selected request metadata.
@@ -961,6 +1050,7 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
         return request.MethodName switch
         {
             "Ping" => await CompleteAsync(protocol.PingAsync(cancellationToken)),
+            "HoldForCancellation" => await CompleteAsync(protocol.HoldForCancellationAsync(cancellationToken)),
             "Echo" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.EchoAsync(JsonSerializer.Deserialize<ProtocolRequest>(request.Payload.Span)!, request.Headers, cancellationToken))),
             "ScheduleReminder" => await CompleteAsync(protocol.ScheduleReminderAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),
             "ScheduleTimer" => await CompleteAsync(protocol.ScheduleTimerAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),

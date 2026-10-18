@@ -103,14 +103,16 @@ public sealed class ActorRuntime(
             {
                 if (mailbox.ReleaseInlineTurn())
                 {
-                    await scheduler.ScheduleAsync(mailbox, cancellationToken).ConfigureAwait(false);
+                    // Queued turns must progress even when the completed inline caller cancelled.
+                    await scheduler.ScheduleAsync(mailbox, CancellationToken.None).ConfigureAwait(false);
                 }
             }
         }
 
         var work = new ActorTurnWork(request, cancellationToken);
         await mailbox.EnqueueWorkAsync(work, cancellationToken).ConfigureAwait(false);
-        await scheduler.ScheduleAsync(mailbox, cancellationToken).ConfigureAwait(false);
+        // Once accepted, scheduling belongs to the mailbox, not to an individual caller.
+        await scheduler.ScheduleAsync(mailbox, CancellationToken.None).ConfigureAwait(false);
         return await work.Task.ConfigureAwait(false);
     }
 
