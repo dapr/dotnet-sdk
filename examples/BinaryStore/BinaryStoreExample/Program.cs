@@ -11,11 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System;
-using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Dapr.BinaryStore;
 using Dapr.BinaryStore.Extensions;
 using Microsoft.Extensions.DependencyInjection;

@@ -106,9 +106,13 @@ public sealed class RegistrationOrderRegressionIntegrationTests
         try
         {
             var packageVersion = $"1.18.1-regression.{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
-            RunDotNet(repoRoot, "pack", "src\\Dapr.Workflow\\Dapr.Workflow.csproj", "--no-restore", "-c", "Debug",
-                "-p:TargetFrameworks=net8.0", "-p:BuildInParallel=false", $"-p:MinVerVersionOverride={packageVersion}",
-                $"-p:PackageOutputPath={packageFeed}");
+            // Packing Workflow does not pack its project references; consumers need matching local dependencies.
+            foreach (var project in new[] { "Dapr.Protos", "Dapr.Common", "Dapr.BinaryStore", "Dapr.Workflow" })
+            {
+                RunDotNet(repoRoot, "pack", Path.Combine("src", project, $"{project}.csproj"), "--no-restore", "-c", "Debug",
+                    "-p:BuildInParallel=false", $"-p:MinVerVersionOverride={packageVersion}",
+                    $"-p:PackageOutputPath={packageFeed}");
+            }
 
             var packagePath = Directory.GetFiles(packageFeed, "Dapr.Workflow.*.nupkg")
                 .Single(path => !path.EndsWith(".snupkg", StringComparison.OrdinalIgnoreCase));
@@ -133,6 +137,7 @@ public sealed class RegistrationOrderRegressionIntegrationTests
                     <TargetFramework>net8.0</TargetFramework>
                     <ImplicitUsings>enable</ImplicitUsings>
                     <Nullable>enable</Nullable>
+                    <WarningsAsErrors>$(WarningsAsErrors);NU1603</WarningsAsErrors>
                   </PropertyGroup>
                   <ItemGroup>
                     <PackageReference Include="Dapr.Workflow" Version="{packageVersion}" />

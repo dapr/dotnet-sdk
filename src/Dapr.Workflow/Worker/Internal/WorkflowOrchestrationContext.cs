@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
+using Dapr.Workflow.Payloads;
 using Dapr.Workflow.Versioning;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
@@ -38,7 +39,7 @@ namespace Dapr.Workflow.Worker.Internal;
 /// Subsequent executions: History is replayed, tasks complete from history, workflow advances further
 /// Completion: When no more awaitable operations exist, workflow returns the final result
 /// </remarks>
-internal sealed class WorkflowOrchestrationContext : WorkflowContext
+internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowFeatureSource
 {
     /// <summary>
     /// Used to track patch-based versioning semantics.
@@ -87,14 +88,22 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private bool _isReplaying;
     private bool _turnInitialized;
     private bool _preserveUnprocessedEvents;
+    private readonly WorkflowPayloadHandler? _payloads;
+    private readonly Dictionary<int, PayloadSite> _unresolvableCallInputs = [];
+    private readonly WorkflowFeatureCollection? _features;
+    private string? _serializedCustomStatus;
 
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
         IDaprSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
         string? appId = null, string? executionId = null,
         IReadOnlyList<HistoryEvent>? ownHistory = null,
         IEnumerable<PropagatedHistoryChunk>? incomingPropagatedHistory = null,
-        string? historyExecutionId = null)
+        string? historyExecutionId = null,
+        WorkflowPayloadHandler? payloads = null,
+        WorkflowFeatureCollection? features = null)
     {
+        _payloads = payloads;
+        _features = features;
         _workflowSerializer = workflowSerializer;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<WorkflowOrchestrationContext>() ??
@@ -148,15 +157,29 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <inheritdoc />
     public override bool IsPatched(string patchName) => _versionTracker.RequestPatch(patchName, isReplaying: this.IsReplaying);
 
+    TFeature? IWorkflowFeatureSource.GetFeature<TFeature>() where TFeature : class => _features?.Get<TFeature>();
+
     /// <summary>
     /// Gets the list of pending orchestrator actions to be sent to the Dapr sidecar.
     /// </summary>
     internal IReadOnlyCollection<WorkflowAction> PendingActions => _pendingActions.Values;
 
+    internal void ValidatePendingCallInputs()
+    {
+        foreach (var actionId in _pendingActions.Keys)
+        {
+            if (_unresolvableCallInputs.TryGetValue(actionId, out var site))
+            {
+                throw new PayloadNotResolvableException(site);
+            }
+        }
+    }
+
     /// <summary>
     /// Gets the custom status set by the workflow, if any.
     /// </summary>
     internal object? CustomStatus => _customStatus;
+    internal string? SerializedCustomStatus => _serializedCustomStatus;
 
     /// <inheritdoc />
     public override async Task<T> CallActivityAsync<T>(string name, object? input = null,
@@ -207,7 +230,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var scheduleTaskAction = new ScheduleTaskAction
         {
             Name = name,
-            Input = _workflowSerializer.Serialize(input),
+            Input = SnapshotCallInput(input, options, taskId, PayloadKind.ActivityInput, name),
             Router = router,
             TaskExecutionId = taskExecutionId
         };
@@ -365,7 +388,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     {
         if (TryTakeExternalEvent(eventName, out string? eventData))
         {
-            return DeserializeResult<T>(eventData!);
+            return await DeserializeResultAsync<T>(eventData!, PayloadKind.ExternalEvent, eventName);
         }
 
         // Create a task completion source that will be set when the external event arrives.
@@ -389,7 +412,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var historyEvent = await eventSource.Task;
 
         eventData = historyEvent.EventRaised.Input ?? string.Empty;
-        return DeserializeResult<T>(eventData);
+        return await DeserializeResultAsync<T>(eventData, PayloadKind.ExternalEvent, eventName);
     }
 
     /// <summary>
@@ -423,13 +446,20 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             {
                 Instance = new WorkflowInstance { InstanceId = instanceId },
                 Name = eventName,
-                Data = _workflowSerializer.Serialize(payload)
+                Data = Snapshot(payload)
             }
         });
     }
 
     /// <inheritdoc />
-    public override void SetCustomStatus(object? customStatus) => _customStatus = customStatus;
+    public override void SetCustomStatus(object? customStatus)
+    {
+        _customStatus = customStatus;
+        if (_payloads is not null)
+        {
+            _serializedCustomStatus = _payloads.Snapshot(customStatus);
+        }
+    }
 
     public override async Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null,
         ChildWorkflowTaskOptions? options = null)
@@ -467,7 +497,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         {
             Name = workflowName,
             InstanceId = childInstanceId,
-            Input = _workflowSerializer.Serialize(input),
+            Input = SnapshotCallInput(input, options, taskId, PayloadKind.ChildWorkflowInput, workflowName),
             Router = router
         };
 
@@ -512,9 +542,20 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         string workflowName,
         string? instanceId = null,
         object? input = null,
-        DateTimeOffset? startTime = null)
+        DateTimeOffset? startTime = null) =>
+        ScheduleNewDetachedWorkflowAsync(workflowName, instanceId, input, startTime, new WorkflowTaskOptions());
+
+    /// <inheritdoc />
+    public override Task<string> ScheduleNewDetachedWorkflowAsync(
+        string workflowName, string? instanceId, object? input, DateTimeOffset? startTime,
+        WorkflowTaskOptions options)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
+        ArgumentNullException.ThrowIfNull(options);
+        if (options.RetryPolicy is not null || options.PropagationScope != HistoryPropagationScope.None)
+        {
+            throw new ArgumentException("Detached workflows do not support retries or history propagation.", nameof(options));
+        }
 
         var detachedInstanceId = instanceId ?? NewGuid().ToString();
         ArgumentException.ThrowIfNullOrWhiteSpace(detachedInstanceId, nameof(instanceId));
@@ -530,11 +571,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         }
 
         var taskId = _sequenceNumber++;
+        var router = CreateRouter(options.TargetAppId);
         var action = new CreateDetachedWorkflowAction
         {
             Name = workflowName,
             InstanceId = detachedInstanceId,
-            Input = _workflowSerializer.Serialize(input)
+            Input = SnapshotCallInput(input, options, taskId, PayloadKind.WorkflowInput, workflowName),
+            Router = router
         };
 
         if (startTime is { } scheduledStart)
@@ -545,7 +588,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         _pendingActions.Add(taskId, new WorkflowAction
         {
             Id = taskId,
-            CreateDetachedWorkflow = action
+            CreateDetachedWorkflow = action,
+            Router = router
         });
 
         return Task.FromResult(detachedInstanceId);
@@ -560,7 +604,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             CompleteWorkflow = new CompleteWorkflowAction
             {
                 WorkflowStatus = OrchestrationStatus.ContinuedAsNew,
-                Result = _workflowSerializer.Serialize(newInput),
+                Result = Snapshot(newInput),
             }
         };
 
@@ -686,6 +730,21 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
                     HandleEventRaisedEvent(historyEvent, raised.Name);
                     break;
             }
+        }
+    }
+
+    internal async Task ProcessEventsAsync(IEnumerable<HistoryEvent> events, bool isReplaying)
+    {
+        if (_payloads is null)
+        {
+            ProcessEvents(events, isReplaying);
+            return;
+        }
+
+        foreach (var historyEvent in events)
+        {
+            ProcessEvents([historyEvent], isReplaying);
+            await _payloads.DrainAsync().ConfigureAwait(false);
         }
     }
 
@@ -983,11 +1042,24 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         _externalEventBuffer.Add(historyEvent);
     }
 
+    private string SnapshotCallInput(object? input, WorkflowTaskOptions? options, int actionId,
+        PayloadKind kind, string name)
+    {
+        _payloads?.ConfigureCallInput(actionId, _appId, options);
+        if (options?.AllowPayloadReferences != true && _payloads is null && input is PayloadReference &&
+            !string.IsNullOrWhiteSpace(options?.TargetAppId) &&
+            !string.Equals(options.TargetAppId, _appId, StringComparison.Ordinal))
+        {
+            // Validate only after replay has removed calls already recorded in history.
+            _unresolvableCallInputs[actionId] = new(kind, InstanceId, name, RequireInline: true);
+        }
+
+        return Snapshot(input);
+    }
+
     /// <summary>
-    /// Creates a new TaskRouter in a centralized location.
+    /// Creates a router when both the source and destination app IDs are available.
     /// </summary>
-    /// <param name="targetAppId">The app ID containing the target workflow resource.</param>
-    /// <returns>Either a <see cref="TaskRouter"/> if the requisite values are provided or a <c>null</c>.</returns>
     private TaskRouter? CreateRouter(string? targetAppId)
     {
         return !string.IsNullOrWhiteSpace(targetAppId) && !string.IsNullOrWhiteSpace(_appId)
@@ -1001,7 +1073,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private Task<T> HandleCompletedActivityFromHistory<T>(string activityName, TaskCompletedEvent completed)
     {
         _logger.LogActivityCompletedFromHistory(activityName, InstanceId);
-        return Task.FromResult(DeserializeResult<T>(completed.Result ?? string.Empty));
+        return DeserializeResultAsync<T>(completed.Result ?? string.Empty, PayloadKind.ActivityOutput, activityName);
     }
 
     /// <summary>
@@ -1046,7 +1118,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         ChildWorkflowInstanceCompletedEvent completed)
     {
         _logger.LogChildWorkflowCompletedFromHistory(workflowName, InstanceId);
-        return Task.FromResult(DeserializeResult<TResult>(completed.Result ?? string.Empty));
+        return DeserializeResultAsync<TResult>(completed.Result ?? string.Empty, PayloadKind.ChildWorkflowOutput, workflowName);
     }
 
     /// <summary>
@@ -1113,8 +1185,17 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <param name="value">The string value to deserialize.</param>
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <returns>The strongly typed deserialized data.</returns>
-    private T DeserializeResult<T>(string value)
-        => string.IsNullOrEmpty(value) ? default! : _workflowSerializer.Deserialize<T>(value)!;
+    /// <param name="kind">The inbound payload boundary.</param>
+    /// <param name="name">The activity, workflow, or event name.</param>
+    private Task<T> DeserializeResultAsync<T>(string value, PayloadKind kind, string name)
+        => _payloads is null
+            ? Task.FromResult(string.IsNullOrEmpty(value) ? default! : _workflowSerializer.Deserialize<T>(value)!)
+            : _payloads.QueueAsync(async () =>
+                (await _payloads.DecodeAsync<T>(value, new(kind, InstanceId, name)).ConfigureAwait(false))!);
+
+    private string Snapshot(object? value) => _payloads is null
+        ? _workflowSerializer.Serialize(value)
+        : _payloads.Snapshot(value);
 
     /// <summary>
     /// An exception that represents a task failed event.

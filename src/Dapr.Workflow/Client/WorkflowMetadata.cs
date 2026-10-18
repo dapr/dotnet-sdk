@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -13,6 +13,7 @@
 
 using System;
 using Dapr.Common.Serialization;
+using Dapr.Workflow.Payloads;
 
 namespace Dapr.Workflow.Client;
 
@@ -48,6 +49,10 @@ internal sealed record WorkflowMetadata(
     /// </summary>
     public string? SerializedCustomStatus { get; init; }
 
+    internal PreparedWorkflowPayload? PreparedInput { get; init; }
+    internal PreparedWorkflowPayload? PreparedOutput { get; init; }
+    internal PreparedWorkflowPayload? PreparedCustomStatus { get; init; }
+
     /// <summary>
     /// Gets the failure details if the workflow failed.
     /// </summary>
@@ -63,19 +68,23 @@ internal sealed record WorkflowMetadata(
     /// </summary>
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <returns>The deserialized input, or default if not available.</returns>
-    public T? ReadInputAs<T>() => string.IsNullOrEmpty(SerializedInput) ? default : Serializer.Deserialize<T>(SerializedInput);
+    public T? ReadInputAs<T>() => ReadAs<T>(SerializedInput, PreparedInput);
 
     /// <summary>
     /// Deserializes the workflow output.
     /// </summary>
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <returns>The deserialized output, or default if not available.</returns>
-    public T? ReadOutputAs<T>() => string.IsNullOrEmpty(SerializedOutput) ? default : Serializer.Deserialize<T>(SerializedOutput);
+    public T? ReadOutputAs<T>() => ReadAs<T>(SerializedOutput, PreparedOutput);
 
     /// <summary>
     /// Deserializes the custom status.
     /// </summary>
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <returns>The deserialized custom status, or default if not available.</returns>
-    public T? ReadCustomStatusAs<T>() => string.IsNullOrEmpty(SerializedCustomStatus) ? default : Serializer.Deserialize<T>(SerializedCustomStatus);
+    public T? ReadCustomStatusAs<T>() => ReadAs<T>(SerializedCustomStatus, PreparedCustomStatus);
+
+    private T? ReadAs<T>(string? serialized, PreparedWorkflowPayload? prepared)
+        => prepared is not null ? prepared.ReadAs<T>(Serializer)
+            : string.IsNullOrEmpty(serialized) ? default : Serializer.Deserialize<T>(serialized);
 }
