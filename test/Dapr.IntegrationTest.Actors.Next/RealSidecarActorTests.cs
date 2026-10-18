@@ -165,6 +165,8 @@ public sealed partial class RealSidecarActorTests : IAsyncLifetime
         builder.Services.AddSingleton<IActorStateStore>(sp => sp.GetRequiredService<RecordingActorStateStore>());
         builder.Services.AddSingleton<ISubscribeActorEventsTransport>(sp =>
             new RecordingActorEventsTransport(sp.GetRequiredService<P.Dapr.DaprClient>()));
+        builder.Services.AddSingleton<RecordingActorScheduler>();
+        builder.Services.AddSingleton<IActorScheduler>(sp => sp.GetRequiredService<RecordingActorScheduler>());
         builder.Services.AddSingleton<Probe>();
         builder.Services.AddDaprActors(options =>
         {
