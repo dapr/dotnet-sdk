@@ -204,6 +204,21 @@ public class DaprBinaryStoreGrpcClientTests
     }
 
     [Fact]
+    public async Task SetBinaryFile_PooledBuffersPreserveChunkLimitAndPreviouslySentBytes()
+    {
+        var invoker = new FakeCallInvoker();
+        using var client = CreateClient(invoker);
+        var data = Enumerable.Range(0, 103).Select(i => (byte)i).ToArray();
+        await client.SetBinaryFileAsync("store", "first", new MemoryStream(data), chunkSize: 17,
+            cancellationToken: TestContext.Current.CancellationToken);
+        var firstPayloads = invoker.Written.Skip(1).Select(message => message.Payload).ToArray();
+        Assert.All(firstPayloads, payload => Assert.InRange(payload.Data.Length, 1, 17));
+        await client.SetBinaryFileAsync("store", "second", new MemoryStream(new byte[103]), chunkSize: 17,
+            cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal(data, firstPayloads.SelectMany(payload => payload.Data.ToByteArray()));
+    }
+
+    [Fact]
     public async Task SetBinaryFile_ServerError_IsWrappedInDaprException()
     {
         var invoker = new FakeCallInvoker { ResponseError = new RpcException(new Status(StatusCode.AlreadyExists, "exists")) };

@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -33,10 +34,74 @@ using WorkflowGrpc = Dapr.DurableTask.Protobuf;
 
 namespace Dapr.IntegrationTest.Workflow.BinaryStore;
 
+[Collection("Workflow payload cache")]
 public sealed class WorkflowBinaryStoreIntegrationTests
 {
     private const string StoreName = Constants.DaprComponentNames.BinaryStoreComponentName;
     private const string KeyPrefix = "workflow-integration";
+
+    [MinimumDaprRuntimeTheory("1.19")]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task ShouldPreserveReplayIsolationSerializerContractsAndCleanup(bool cacheEnabled, bool customSerializer)
+    {
+        const string cacheSwitch = "Dapr.Workflow.EnablePayloadByteCache";
+        AppContext.TryGetSwitch(cacheSwitch, out var previous);
+        AppContext.SetSwitch(cacheSwitch, cacheEnabled);
+        try
+        {
+            var (environment, app) = await StartAsync(configureServices: services =>
+            {
+                var factory = Assert.Single(services, descriptor => descriptor.ServiceType == typeof(DaprBinaryStoreClient))
+                    .ImplementationFactory;
+                Assert.NotNull(factory);
+                services.AddSingleton<DaprBinaryStoreClient>(sp =>
+                    new CountingStore(Assert.IsAssignableFrom<DaprBinaryStoreClient>(factory(sp))));
+                if (customSerializer)
+                    services.AddSingleton<IDaprSerializer>(new PrefixedSerializer());
+            });
+            await using var environmentLifetime = environment;
+            await using var appLifetime = app;
+            using var scope = app.CreateScope();
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            timeout.CancelAfter(TimeSpan.FromMinutes(2));
+            var services = scope.ServiceProvider;
+            var client = services.GetRequiredService<DaprWorkflowClient>();
+            var instanceId = Guid.NewGuid().ToString("N");
+            var input = new MutableDocument { Content = new string('x', 2_000_000) + "\u00e9\U0001f642" };
+            await client.ScheduleNewWorkflowAsync(nameof(ReplayIsolationWorkflow), instanceId, input,
+                startTime: null, cancellation: timeout.Token);
+            var result = await client.WaitForWorkflowCompletionAsync(instanceId, true, timeout.Token);
+            Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+            Assert.Equal(input.Content, result.ReadOutputAs<string>());
+            Assert.Equal(0, result.ReadInputAs<MutableDocument>()!.Mutations);
+
+            var store = Assert.IsType<CountingStore>(services.GetRequiredService<DaprBinaryStoreClient>());
+            // Input, mutated activity input, and output each have distinct serialized contents.
+            if (cacheEnabled)
+            {
+                Assert.All(store.Reads.Values, count => Assert.Equal(1, count));
+            }
+            else
+            {
+                Assert.Contains(store.Reads.Values, count => count >= 4);
+            }
+            Assert.Contains(store.Writes.Values, count => count >= 3);
+
+            var reference = result.ReadInputAs<PayloadReference<MutableDocument>>()!;
+            Assert.NotNull(reference);
+            Assert.True(await client.PurgeInstanceAsync(instanceId, timeout.Token));
+            Assert.True(await services.GetRequiredService<WorkflowPayloadCleaner>().PurgeAsync(instanceId, timeout.Token) >= 3);
+            await Assert.ThrowsAsync<PayloadNotFoundException>(() =>
+                services.GetRequiredService<IWorkflowPayloadResolver>().ResolveAsync<MutableDocument>(reference, timeout.Token));
+        }
+        finally
+        {
+            AppContext.SetSwitch(cacheSwitch, previous);
+        }
+    }
 
     [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(false)]
@@ -245,6 +310,8 @@ public sealed class WorkflowBinaryStoreIntegrationTests
                             runtime.RegisterWorkflow<UnconfiguredPayloadWorkflow>();
                             runtime.RegisterWorkflow<UnconfiguredEnvelopeWorkflow>();
                             runtime.RegisterActivity<EchoEnvelopeActivity>();
+                            runtime.RegisterWorkflow<ReplayIsolationWorkflow>();
+                            runtime.RegisterActivity<ReadMutableDocumentActivity>();
                         },
                         configureClient: (services, clientBuilder) =>
                         {
@@ -290,6 +357,80 @@ public sealed class WorkflowBinaryStoreIntegrationTests
 
     internal sealed record PayloadDocument(string Name, string Content);
 
+    public sealed class MutableDocument
+    {
+        public string Content { get; set; } = "";
+        public int Mutations { get; set; }
+    }
+
+    internal sealed class ReplayIsolationWorkflow : Workflow<MutableDocument, string>
+    {
+        public override async Task<string> RunAsync(WorkflowContext context, MutableDocument input)
+        {
+            Assert.Equal(0, input.Mutations);
+            input.Mutations++;
+            for (var i = 0; i < 3; i++)
+            {
+                Assert.Equal(input.Content.Length,
+                    await context.CallActivityAsync<int>(nameof(ReadMutableDocumentActivity), input));
+            }
+            return input.Content;
+        }
+    }
+
+    private sealed class ReadMutableDocumentActivity : WorkflowActivity<MutableDocument, int>
+    {
+        public override Task<int> RunAsync(WorkflowActivityContext context, MutableDocument input)
+        {
+            Assert.Equal(1, input.Mutations);
+            input.Mutations++;
+            return Task.FromResult(input.Content.Length);
+        }
+    }
+
+    private sealed class PrefixedSerializer : IDaprSerializer
+    {
+        private readonly JsonDaprSerializer _inner = new();
+        public string Serialize<T>(T value) => "custom:" + _inner.Serialize(value);
+        public string Serialize(object? value, Type? inputType = null) => "custom:" + _inner.Serialize(value, inputType);
+        public T? Deserialize<T>(string? data) => _inner.Deserialize<T>(Unwrap(data));
+        public object? Deserialize(string? data, Type returnType) => _inner.Deserialize(Unwrap(data), returnType);
+        private static string? Unwrap(string? data) =>
+            string.IsNullOrEmpty(data) ? data :
+            data.StartsWith("custom:", StringComparison.Ordinal) ? data[7..] :
+            throw new InvalidOperationException("The configured serializer was bypassed.");
+    }
+
+    internal sealed class CountingStore(DaprBinaryStoreClient inner) : DaprBinaryStoreClient
+    {
+        internal ConcurrentDictionary<string, int> Reads { get; } = new();
+        internal ConcurrentDictionary<string, int> Writes { get; } = new();
+
+        public override async IAsyncEnumerable<ReadOnlyMemory<byte>> GetBinaryFileChunksAsync(string storeName,
+            string fileName, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            Reads.AddOrUpdate(fileName, 1, (_, count) => count + 1);
+            await foreach (var chunk in inner.GetBinaryFileChunksAsync(storeName, fileName, cancellationToken))
+                yield return chunk;
+        }
+
+        public override Task SetBinaryFileAsync(string storeName, string fileName, Stream content,
+            bool overwrite = false, int chunkSize = DefaultChunkSize, CancellationToken cancellationToken = default)
+        {
+            Writes.AddOrUpdate(fileName, 1, (_, count) => count + 1);
+            return inner.SetBinaryFileAsync(storeName, fileName, content, overwrite, chunkSize, cancellationToken);
+        }
+
+        public override Task DeleteBinaryFileAsync(string storeName, string fileName, CancellationToken cancellationToken = default) =>
+            inner.DeleteBinaryFileAsync(storeName, fileName, cancellationToken);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) inner.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+
     private sealed class InMemoryPayloadManifest : IWorkflowPayloadManifest
     {
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, PayloadReference>> _references =
@@ -303,6 +444,9 @@ public sealed class WorkflowBinaryStoreIntegrationTests
                 .TryAdd(reference.Key, reference);
             return Task.CompletedTask;
         }
+
+        [CollectionDefinition("Workflow payload cache", DisableParallelization = true)]
+        public sealed class WorkflowPayloadCacheCollection;
 
         public Task<IReadOnlyCollection<PayloadReference>> ListAsync(string instanceId,
             CancellationToken cancellationToken = default)

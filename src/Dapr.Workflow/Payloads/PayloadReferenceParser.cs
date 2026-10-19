@@ -26,6 +26,22 @@ internal static class PayloadReferenceParser
             return null;
         }
 
+        var firstProperty = wire.AsSpan().TrimStart()[1..].TrimStart();
+        if (firstProperty.Length > 1 && firstProperty[0] == '"')
+        {
+            var end = firstProperty[1..].IndexOf('"');
+            if (end >= 0)
+            {
+                var name = firstProperty.Slice(1, end);
+                // Escaped names need JSON decoding. Preserve the existing malformed-envelope errors.
+                if (name.IndexOf('\\') < 0 && !name.SequenceEqual(PayloadReference.SentinelProperty.AsSpan()) &&
+                    !PayloadReference.LooksLikeEnvelope(wire))
+                {
+                    return null;
+                }
+            }
+        }
+
         JsonDocument document;
         try
         {
