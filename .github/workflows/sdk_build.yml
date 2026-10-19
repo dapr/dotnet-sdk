@@ -320,7 +320,7 @@ jobs:
 #        timeout-minutes: 30
   ci-integration-tests-gate:
     runs-on: ubuntu-latest
-    needs: [integration-tests-v2, integration-test] #, integration-tests-dapr-head]
+    needs: [integration-tests-v2] #, integration-tests-dapr-head]
     steps:
       - name: "All integration tests passed"
         run: echo "All unit tests passed"
@@ -449,8 +449,6 @@ jobs:
     steps:
       - name: "All example tests passed"
         run: echo "All example tests passed"
-  integration-test:
-    uses: ./.github/workflows/itests.yml
   discover:
     name: 'Discover Packages'
     needs: ['build', 'ci-unit-tests-gate', 'ci-integration-tests-gate', 'ci-example-tests-gate']
