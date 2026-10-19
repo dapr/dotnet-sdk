@@ -55,6 +55,7 @@ public sealed class ActorRuntime(
     private bool stopping;
     private Task? disposal;
     private TaskCompletionSource lifecycleChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    internal event Action<string, ActorId>? ActivationEnded;
 
     private void SignalLifecycleChange()
     {
@@ -248,8 +249,20 @@ public sealed class ActorRuntime(
             }
             finally
             {
-                await activation.DisposeAsync().ConfigureAwait(false);
+                await DisposeActivationAsync(activation).ConfigureAwait(false);
             }
+        }
+    }
+
+    private async ValueTask DisposeActivationAsync(ActorActivation activation)
+    {
+        try
+        {
+            await activation.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            ActivationEnded?.Invoke(activation.ActorType, activation.ActorId);
         }
     }
 
@@ -392,7 +405,14 @@ public sealed class ActorRuntime(
         }
         catch
         {
-            await provider.DisposeAsync().ConfigureAwait(false);
+            try
+            {
+                await provider.DisposeAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                ActivationEnded?.Invoke(registration.ActorType, actorId);
+            }
             throw;
         }
 
@@ -402,7 +422,7 @@ public sealed class ActorRuntime(
         }
         catch
         {
-            await activation.DisposeAsync().ConfigureAwait(false);
+            await DisposeActivationAsync(activation).ConfigureAwait(false);
             throw;
         }
 

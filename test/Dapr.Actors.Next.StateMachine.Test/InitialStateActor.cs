@@ -24,6 +24,7 @@ public interface IInitialStateActor : IActor
     Task<InitialSnapshot> Read(CancellationToken cancellationToken = default);
     Task<string> Command(CancellationToken cancellationToken = default);
     Task Extend(CancellationToken cancellationToken = default);
+    Task CancelTimeout(CancellationToken cancellationToken = default);
     Task ScheduleCustom(CancellationToken cancellationToken = default);
     Task CancelCustom(CancellationToken cancellationToken = default);
     Task Finish(CancellationToken cancellationToken = default);
@@ -43,6 +44,7 @@ public sealed record InitialFollowUp;
 public sealed record InitialCommand;
 
 public sealed record ExtendInitial;
+public sealed record CancelInitialTimeout;
 
 public sealed record ScheduleInitialCustom;
 
@@ -139,6 +141,8 @@ public sealed class InitialStateActor(
             .On<ExtendInitial>().Do(ctx =>
                 ctx.Timers.Reschedule(StateMachineConstants.StateTimeoutTimerName, TimeSpan.FromSeconds(10)));
         sm.In(InitialState.Open)
+            .On<CancelInitialTimeout>().Do(ctx => ctx.Timers.Cancel(StateMachineConstants.StateTimeoutTimerName));
+        sm.In(InitialState.Open)
             .On<ScheduleInitialCustom>().Do(ctx => ctx.Timers.Schedule("custom", TimeSpan.FromSeconds(1)));
         sm.In(InitialState.Open)
             .On<CancelInitialCustom>().Do(ctx => ctx.Timers.Cancel("custom"));
@@ -161,6 +165,9 @@ public sealed class InitialStateActor(
 
     public Task Extend(CancellationToken cancellationToken = default) =>
         Raise<object?>(new ExtendInitial(), cancellationToken);
+
+    public Task CancelTimeout(CancellationToken cancellationToken = default) =>
+        Raise<object?>(new CancelInitialTimeout(), cancellationToken);
 
     public Task ScheduleCustom(CancellationToken cancellationToken = default) =>
         Raise<object?>(new ScheduleInitialCustom(), cancellationToken);

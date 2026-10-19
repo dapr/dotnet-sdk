@@ -18,8 +18,10 @@ using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Attributes;
 using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Core.Activation;
+using Dapr.Actors.Next.Core.Client;
 using Dapr.Actors.Next.Core.Timers;
 using Dapr.Actors.Next.StateMachine;
+using Dapr.Actors.Next.Testing;
 
 namespace Dapr.IntegrationTest.Actors.Next;
 
@@ -30,6 +32,7 @@ public interface IGeneratedDeadlineActor : IActor
     Task RestartAsync(CancellationToken cancellationToken = default);
     Task FailAsync(CancellationToken cancellationToken = default);
     Task CommandAsync(CancellationToken cancellationToken = default);
+    Task<GeneratedDeadlineSnapshot> RestartAndReplayAsync(byte[] payload, CancellationToken cancellationToken = default);
 }
 public sealed record RestartDeadline;
 public sealed record FailDeadline;
@@ -71,6 +74,96 @@ public sealed class GeneratedDeadlineActor(ActorActivationContext context, IActo
     public Task RestartAsync(CancellationToken cancellationToken = default) => Raise<object?>(new RestartDeadline(), cancellationToken);
     public Task FailAsync(CancellationToken cancellationToken = default) => Raise<object?>(new FailDeadline(), cancellationToken);
     public Task CommandAsync(CancellationToken cancellationToken = default) => Raise<object?>(new DeadlineCommand(), cancellationToken);
+    public async Task<GeneratedDeadlineSnapshot> RestartAndReplayAsync(byte[] payload, CancellationToken cancellationToken = default)
+    {
+        await RestartAsync(cancellationToken);
+        await DispatchStateMachineTimerAsync(System.Text.Encoding.UTF8.GetString(payload), cancellationToken);
+        return await ReadAsync(cancellationToken);
+    }
+}
+
+[GenerateActorClient]
+public interface IGeneratedReentrantStateActor : IActor
+{
+    Task<int> ReadAsync(CancellationToken cancellationToken = default);
+    Task ChildAsync(CancellationToken cancellationToken = default);
+    Task RevertAsync(CancellationToken cancellationToken = default);
+}
+
+public sealed class GeneratedReentrantStateProbe
+{
+    public ActorFaultPause? Pause { get; set; }
+}
+
+[DaprActor("GeneratedReentrantState")]
+public sealed class GeneratedReentrantStateActor(
+    ActorActivationContext context, IActorProxyFactory proxies, GeneratedReentrantStateProbe probe)
+    : Actor, IGeneratedReentrantStateActor
+{
+    protected override ActorId Id => context.ActorId;
+    protected override IActorStateAccessor State => context.State;
+    public async Task<int> ReadAsync(CancellationToken cancellationToken = default) =>
+        (await State.GetOrCreateAsync("value", () => 0, cancellationToken)).Value;
+    public async Task ChildAsync(CancellationToken cancellationToken = default) =>
+        (await State.TryGetAsync<int>("value", cancellationToken))!.Value = 1;
+    public async Task RevertAsync(CancellationToken cancellationToken = default)
+    {
+        var state = (await State.TryGetAsync<int>("value", cancellationToken))!;
+        var pause = probe.Pause ?? throw new InvalidOperationException("Missing state-write pause.");
+        var child = proxies.Create<IGeneratedReentrantStateActor>(Id, "GeneratedReentrantState")
+            .ChildAsync(cancellationToken);
+        try
+        {
+            await pause.Reached.WaitAsync(cancellationToken);
+            state.Value = 0;
+        }
+        finally
+        {
+            pause.Release();
+        }
+        await child;
+    }
+}
+
+[GenerateActorClient]
+public interface IGeneratedParentDeadlineActor : IActor
+{
+    Task EnterAndMoveAsync(CancellationToken cancellationToken = default);
+    Task<GeneratedParentDeadlineSnapshot> ReadAsync(CancellationToken cancellationToken = default);
+}
+
+public enum GeneratedParentDeadlineState { Outside, Parent, First, Second, Done }
+public sealed record GeneratedParentDeadlineSnapshot(GeneratedParentDeadlineState State, int ChildTimeouts);
+public sealed record EnterParentDeadline;
+public sealed record MoveParentDeadline;
+
+[DaprActor("GeneratedParentDeadline")]
+public sealed class GeneratedParentDeadlineActor(ActorActivationContext context, IActorTimerScheduler timers)
+    : StateMachineActor<GeneratedParentDeadlineState, int>(context, timers, "GeneratedParentDeadline", 0),
+        IGeneratedParentDeadlineActor
+{
+    protected override void Configure(IStateMachine<GeneratedParentDeadlineState, int> sm)
+    {
+        sm.InitialState(GeneratedParentDeadlineState.Outside);
+        sm.In(GeneratedParentDeadlineState.Outside).On<EnterParentDeadline>().GoTo(GeneratedParentDeadlineState.First);
+        sm.In(GeneratedParentDeadlineState.Parent).After(TimeSpan.FromMilliseconds(500));
+        sm.In(GeneratedParentDeadlineState.Parent).On<StateTimeout<GeneratedParentDeadlineState>>()
+            .When((_, evt) => evt.State == GeneratedParentDeadlineState.Parent).GoTo(GeneratedParentDeadlineState.Done)
+            .Otherwise().Do(ctx => ctx.Update(count => count + 1));
+        sm.In(GeneratedParentDeadlineState.First).SubstateOf(GeneratedParentDeadlineState.Parent)
+            .After(TimeSpan.FromMilliseconds(100));
+        sm.In(GeneratedParentDeadlineState.First).On<MoveParentDeadline>().GoTo(GeneratedParentDeadlineState.Second);
+        sm.In(GeneratedParentDeadlineState.Second).SubstateOf(GeneratedParentDeadlineState.Parent)
+            .After(TimeSpan.FromMilliseconds(100));
+        sm.In(GeneratedParentDeadlineState.Done).Ignore<StateTimeout<GeneratedParentDeadlineState>>();
+    }
+    public async Task EnterAndMoveAsync(CancellationToken cancellationToken = default)
+    {
+        await Raise<object?>(new EnterParentDeadline(), cancellationToken);
+        await Raise<object?>(new MoveParentDeadline(), cancellationToken);
+    }
+    public Task<GeneratedParentDeadlineSnapshot> ReadAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(new GeneratedParentDeadlineSnapshot(CurrentState, Data));
 }
 
 [GenerateActorClient]

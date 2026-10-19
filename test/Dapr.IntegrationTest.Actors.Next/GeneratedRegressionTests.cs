@@ -24,6 +24,9 @@ using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.Registry;
 using Dapr.Actors.Next.Abstractions.Filters;
 using Dapr.Actors.Next.Interpreted;
+using Dapr.Actors.Next.Testing;
+using Dapr.Actors.Next.StateMachine;
+using Dapr.Actors.Next.Core.Transport;
 using Google.Protobuf;
 using P = Dapr.Client.Autogen.Grpc.v1;
 using Dapr.Actors.Next.Abstractions.State;
@@ -45,6 +48,54 @@ namespace Dapr.IntegrationTest.Actors.Next;
 
 public sealed partial class RealSidecarActorTests
 {
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Sidecar_reentrant_commit_preserves_reversion_to_precommit_value()
+    {
+        using var timeout = new CancellationTokenSource(Timeout);
+        var services = app!.Services;
+        var id = new ActorId("reentrant-reversion");
+        var actor = services.GetRequiredService<IActorProxyFactory>()
+            .Create<IGeneratedReentrantStateActor>(id, "GeneratedReentrantState");
+        Assert.Equal(0, await actor.ReadAsync(timeout.Token));
+        using var pause = services.GetRequiredService<ActorFaults>().PauseNextStateWrite<int>("value");
+        services.GetRequiredService<GeneratedReentrantStateProbe>().Pause = pause;
+        await actor.RevertAsync(timeout.Token);
+        await services.GetRequiredService<IActorRuntime>().DeactivateAsync("GeneratedReentrantState", id, timeout.Token);
+        Assert.Equal(0, await actor.ReadAsync(timeout.Token));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Sidecar_superseded_timeout_cannot_expire_reentered_state()
+    {
+        using var timeout = new CancellationTokenSource(Timeout);
+        var services = app!.Services;
+        var id = new ActorId("superseded-timeout");
+        var actor = services.GetRequiredService<IActorProxyFactory>()
+            .Create<IGeneratedDeadlineActor>(id, "GeneratedDeadline");
+        await WaitUntilAsync(async () => (await actor.ReadAsync(timeout.Token)).State == GeneratedDeadlineState.Done,
+            timeout.Token, () => "Initial timeout did not fire.");
+        var frame = services.GetRequiredService<ConcurrencyProbe>().Frames.First(frame =>
+            frame.ActorId == id.Value && frame.Kind == SubscribeActorEventsFrameKind.Timer
+            && frame.MethodName == StateMachineConstants.TimerOperationName);
+        var result = await actor.RestartAndReplayAsync(frame.Payload.ToArray(), timeout.Token);
+        Assert.Equal(GeneratedDeadlineState.Waiting, result.State);
+        Assert.Equal(2, result.Entries);
+        await WaitUntilAsync(async () => (await actor.ReadAsync(timeout.Token)).State == GeneratedDeadlineState.Done,
+            timeout.Token, () => "Replacement timeout did not fire.");
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Sidecar_parent_timeout_survives_sibling_transition_and_child_timeout()
+    {
+        using var timeout = new CancellationTokenSource(Timeout);
+        var actor = app!.Services.GetRequiredService<IActorProxyFactory>()
+            .Create<IGeneratedParentDeadlineActor>(new ActorId("parent-timeout"), "GeneratedParentDeadline");
+        await actor.EnterAndMoveAsync(timeout.Token);
+        await WaitUntilAsync(async () => (await actor.ReadAsync(timeout.Token)).State == GeneratedParentDeadlineState.Done,
+            timeout.Token, () => "Parent timeout was lost during the sibling transition.");
+        Assert.Equal(1, (await actor.ReadAsync(timeout.Token)).ChildTimeouts);
+    }
+
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Sidecar_state_preserves_custom_envelopes_and_struct_reference_mutations()
     {
@@ -122,6 +173,7 @@ public sealed partial class RealSidecarActorTests
         RuntimeHelpers.RunModuleConstructor(typeof(First.AccountActor).Module.ModuleHandle);
         builder.Services.AddSingleton<CalculatorDependency>();
         builder.Services.AddSingleton<GeneratedActivationProbe>();
+        builder.Services.AddSingleton<GeneratedReentrantStateProbe>();
         builder.Services.AddSingleton<IInterpretedMachineStore, InMemoryInterpretedMachineStore>();
         builder.Services.AddSingleton<ICapabilityRegistry>(new EmptyCapabilityRegistry());
         builder.Services.AddDaprInterpretedActors("RegressionMachine");

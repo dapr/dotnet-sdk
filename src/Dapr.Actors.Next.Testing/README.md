@@ -29,6 +29,17 @@ when work is still pending and may need to activate another actor.
 Idle mailboxes are reclaimed after deactivation, but queued or admitted work
 retains its mailbox until it finishes.
 
+Core timers are activation-owned: deactivation and failed activation remove their
+registrations, even if lifecycle hooks or disposal fail. Reminders are unaffected
+and can activate the actor again. A timer turn admitted before cancellation may
+still finish.
+
+State-machine timeouts carry a registration identity and belong to the state
+that declared them. Re-entering a state or rescheduling its timeout invalidates
+older queued callbacks. A parent's timeout survives transitions between its
+children, and parent/child timeouts have separate registrations. Restoring a
+machine does not restart timeouts from an earlier activation.
+
 ## Exercise remote reentrancy
 
 ```csharp

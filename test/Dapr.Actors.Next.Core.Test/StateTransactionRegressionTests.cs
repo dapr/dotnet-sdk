@@ -26,6 +26,30 @@ public sealed class StateTransactionRegressionTests
     private static ActorStateUnitOfWork Cache(IActorStateStore store, ActorFaults? faults = null) =>
         new("Actor", ActorId.Create("one"), store, new ActorWireSerializer(new JsonDaprSerializer()), faults);
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task Mutation_during_commit_uses_the_new_durable_baseline(int finalValue)
+    {
+        var store = new InMemoryActorStateStore();
+        var faults = new ActorFaults();
+        var cache = Cache(store, faults);
+        var state = await cache.GetOrCreateAsync("value", () => 0);
+        await cache.SaveStateAsync();
+        state.Value = 1;
+        using var pause = faults.PauseNextStateWrite<int>("value");
+        var save = cache.SaveStateAsync().AsTask();
+        await pause.Reached.WaitAsync(Deadline);
+        state.Value = finalValue;
+        pause.Release();
+        await save.WaitAsync(Deadline);
+        await cache.SaveStateAsync();
+        await cache.EvictCacheAsync();
+        Assert.Equal(finalValue, (await cache.TryGetAsync<int>("value"))!.Value);
+        Assert.Equal(finalValue, (await Cache(store).TryGetAsync<int>("value"))!.Value);
+    }
+
     [Fact]
     public async Task Eviction_waits_for_commit_without_blocking_reentrant_cache_access()
     {

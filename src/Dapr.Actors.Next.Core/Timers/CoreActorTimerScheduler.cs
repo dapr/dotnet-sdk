@@ -27,16 +27,32 @@ namespace Dapr.Actors.Next.Core.Timers;
 /// prevents new callback admissions; an already admitted actor turn may finish. Callbacks start
 /// independent call chains, without the registering actor's execution context or reentrancy headers.
 /// A disposed scheduler rejects further operations.
+/// Timers are removed when their owning activation ends, including failed activation.
+/// Reminders have a separate lifetime and are not affected.
 /// </remarks>
-public sealed class CoreActorTimerScheduler(
-    IActorRuntime runtime,
-    IActorWireSerializer serializer,
-    TimeProvider timeProvider,
-    ILogger<CoreActorTimerScheduler>? logger) : IActorTimerScheduler, IDisposable
+public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
 {
+    private readonly IActorRuntime runtime;
+    private readonly IActorWireSerializer serializer;
+    private readonly TimeProvider timeProvider;
+    private readonly ILogger<CoreActorTimerScheduler>? logger;
     private readonly object sync = new();
     private readonly Dictionary<TimerKey, ScheduledActorCallback> timers = [];
     private bool disposed;
+
+    /// <summary>
+    /// Initializes an activation-scoped timer scheduler with callback failure reporting.
+    /// </summary>
+    public CoreActorTimerScheduler(IActorRuntime runtime, IActorWireSerializer serializer,
+        TimeProvider timeProvider, ILogger<CoreActorTimerScheduler>? logger)
+    {
+        this.runtime = runtime;
+        this.serializer = serializer;
+        this.timeProvider = timeProvider;
+        this.logger = logger;
+        if (runtime is ActorRuntime actorRuntime)
+            actorRuntime.ActivationEnded += CancelActivationTimers;
+    }
 
     /// <summary>
     /// Initializes a timer scheduler with trace-based callback failure reporting.
@@ -272,12 +288,26 @@ public sealed class CoreActorTimerScheduler(
             }
 
             disposed = true;
+            if (runtime is ActorRuntime actorRuntime)
+                actorRuntime.ActivationEnded -= CancelActivationTimers;
             foreach (var timer in timers.Values)
             {
                 timer.Stop();
             }
 
             timers.Clear();
+        }
+    }
+
+    private void CancelActivationTimers(string actorType, ActorId actorId)
+    {
+        lock (sync)
+        {
+            foreach (var key in timers.Keys.Where(key => key.ActorType == actorType && key.ActorId == actorId.Value).ToArray())
+            {
+                timers[key].Stop();
+                timers.Remove(key);
+            }
         }
     }
 

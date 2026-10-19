@@ -24,6 +24,41 @@ public sealed class InitialStateTests
     private static readonly ActorId Id = ActorId.Create("initial");
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
+    [Theory]
+    [InlineData(nameof(IInitialStateActor.Restart))]
+    [InlineData(nameof(IInitialStateActor.Extend))]
+    [InlineData(nameof(IInitialStateActor.CancelTimeout))]
+    public async Task Queued_timeout_is_ignored_after_replacement_or_cancellation(string operation)
+    {
+        await using var runtime = CreateRuntime();
+        await Invoke<InitialSnapshot>(runtime, nameof(IInitialStateActor.Read));
+        var change = runtime.InvokeAsync("InitialState", Id, operation);
+        runtime.Time.Advance(TimeSpan.FromSeconds(10));
+        await runtime.RunToIdle();
+        await change;
+        Assert.Equal(InitialState.Open,
+            (await Invoke<InitialSnapshot>(runtime, nameof(IInitialStateActor.Read))).State);
+        runtime.Time.Advance(TimeSpan.FromSeconds(10));
+        await runtime.RunToIdle();
+        Assert.Equal(operation == nameof(IInitialStateActor.CancelTimeout) ? InitialState.Open : InitialState.Done,
+            (await Invoke<InitialSnapshot>(runtime, nameof(IInitialStateActor.Read))).State);
+    }
+
+    [Fact]
+    public async Task Deactivation_stops_timers_without_reactivating_the_machine()
+    {
+        await using var runtime = CreateRuntime();
+        await Invoke<InitialSnapshot>(runtime, nameof(IInitialStateActor.Read));
+        var deactivate = runtime.DeactivateAsync("InitialState", Id);
+        await runtime.RunToIdle();
+        await deactivate;
+        runtime.Time.Advance(TimeSpan.FromSeconds(20));
+        await runtime.RunToIdle();
+        Assert.Equal(InitialState.Open, runtime.StateOf("InitialState", Id).CurrentState<InitialState>());
+        Assert.Equal(InitialState.Open,
+            (await Invoke<InitialSnapshot>(runtime, nameof(IInitialStateActor.Read))).State);
+    }
+
     [Fact]
     public async Task Failed_command_does_not_leak_raised_events_into_next_command()
     {

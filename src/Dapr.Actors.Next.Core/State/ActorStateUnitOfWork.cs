@@ -233,7 +233,19 @@ public sealed class ActorStateUnitOfWork(
                         ((ICollection<KeyValuePair<string, CacheEntry>>)entries).Remove(new(item.Name, item.Entry));
                 }
                 else
-                    ReplaceEntry(item.Name, item.Entry.AsClean(item.Snapshot), item.Entry);
+                {
+                    lock (cacheLock)
+                    {
+                        if (entries.TryGetValue(item.Name, out var current))
+                        {
+                            if (ReferenceEquals(current, item.Entry))
+                                entries[item.Name] = current.AsClean(item.Snapshot);
+                            else if (!current.Removed && !current.Missing && !current.Unloaded)
+                                // The commit changed durable state even if a reentrant turn changed the cache.
+                                entries[item.Name] = current.AsClean(item.Snapshot).AsDirty();
+                        }
+                    }
+                }
             }
         }
         finally

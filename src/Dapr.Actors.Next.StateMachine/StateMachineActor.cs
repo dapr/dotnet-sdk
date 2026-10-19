@@ -29,6 +29,9 @@ namespace Dapr.Actors.Next.StateMachine;
 /// events raised by entry actions before accepting its first command. Restoring a persisted
 /// machine does not replay entry actions. Failed initialization can be retried, so entry
 /// actions that perform external side effects should be idempotent.
+/// Timeouts belong to the state declaring them and remain active across sibling transitions.
+/// Each registration has its own identity, so queued callbacks from canceled or replaced
+/// timeouts cannot expire a later entry into the same state.
 /// </remarks>
 public abstract class StateMachineActor<TState, TData> : Actor
     where TState : struct, Enum
@@ -38,6 +41,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
     private readonly string actorType;
     private readonly TData initialData;
     private readonly Queue<object> raisedEvents = [];
+    private readonly Dictionary<TState, Guid> timeouts = [];
     private TransitionTable<TState, TData>? table;
     private object? unhandled;
     private List<DeferredEventEnvelope> deferredEvents = [];
@@ -145,12 +149,16 @@ public abstract class StateMachineActor<TState, TData> : Actor
 
         if (string.Equals(payload.Name, StateMachineConstants.StateTimeoutTimerName, StringComparison.Ordinal))
         {
-            if (!string.Equals(payload.State, currentState.ToString(), StringComparison.Ordinal))
+            if (!Enum.TryParse<TState>(payload.State, out var owner)
+                || !payload.Generation.HasValue
+                || !timeouts.TryGetValue(owner, out var generation)
+                || generation != payload.Generation.Value
+                || !AncestorsFromChild(currentState).Contains(owner))
             {
                 return;
             }
 
-            await RaiseAsync<object?>(new StateTimeout<TState>(currentState), cancellationToken).ConfigureAwait(false);
+            await RaiseAsync<object?>(new StateTimeout<TState>(owner), cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -410,10 +418,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
         {
             if (table!.RuntimeStates.TryGetValue(state, out var configuration))
             {
-                if (configuration.Timeout.HasValue)
-                {
-                    await timerScheduler.CancelAsync(actorType, Id, StateMachineConstants.StateTimeoutTimerName, cancellationToken).ConfigureAwait(false);
-                }
+                await CancelTimeoutAsync(state, cancellationToken).ConfigureAwait(false);
 
                 foreach (var action in configuration.ExitActions)
                 {
@@ -445,8 +450,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
 
                 if (configuration.Timeout.HasValue)
                 {
-                    new ActorTimerEffects<TState>(timerScheduler, actorType, Id, () => currentState)
-                        .Reschedule(StateMachineConstants.StateTimeoutTimerName, configuration.Timeout.Value);
+                    ScheduleTimeout(state, configuration.Timeout.Value, reschedule: true);
                 }
             }
         }
@@ -489,7 +493,35 @@ public abstract class StateMachineActor<TState, TData> : Actor
     }
 
     private EffectContext<TState, TData, object> CreateContext(TState state, object evt) =>
-        new(state, () => data, value => data = value, evt, new ActorTimerEffects<TState>(timerScheduler, actorType, Id, () => currentState), raisedEvents);
+        new(state, () => data, value => data = value, evt, CreateTimerEffects(state), raisedEvents);
+
+    private ActorTimerEffects CreateTimerEffects(TState state) =>
+        new(timerScheduler, actorType, Id,
+            (dueTime, reschedule) => ScheduleTimeout(state, dueTime, reschedule),
+            () => CancelTimeoutAsync(state, CancellationToken.None).AsTask().GetAwaiter().GetResult());
+
+    private static string TimeoutName(TState state) => $"{StateMachineConstants.StateTimeoutTimerName}:{state}";
+
+    private void ScheduleTimeout(TState owner, TimeSpan dueTime, bool reschedule)
+    {
+        var generation = Guid.NewGuid();
+        var payload = JsonSerializer.Serialize(new StateMachineTimerPayload(
+            StateMachineConstants.StateTimeoutTimerName, owner.ToString(), generation));
+        if (reschedule)
+            timerScheduler.RescheduleAsync(actorType, Id, TimeoutName(owner), dueTime,
+                StateMachineConstants.TimerOperationName, payload).AsTask().GetAwaiter().GetResult();
+        else
+            timerScheduler.ScheduleAsync(actorType, Id, TimeoutName(owner), dueTime,
+                StateMachineConstants.TimerOperationName, payload).AsTask().GetAwaiter().GetResult();
+        timeouts[owner] = generation;
+    }
+
+    private async ValueTask CancelTimeoutAsync(TState owner, CancellationToken cancellationToken)
+    {
+        if (!timeouts.ContainsKey(owner)) return;
+        await timerScheduler.CancelAsync(actorType, Id, TimeoutName(owner), cancellationToken).ConfigureAwait(false);
+        timeouts.Remove(owner);
+    }
 
     private IRuntimeEffectContext CreateRuntimeContext(TState state, object evt)
     {
@@ -500,7 +532,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
             new Func<TData>(() => data),
             new Action<TData>(value => data = value),
             evt,
-            new ActorTimerEffects<TState>(timerScheduler, actorType, Id, () => currentState),
+            CreateTimerEffects(state),
             raisedEvents)!;
     }
 
