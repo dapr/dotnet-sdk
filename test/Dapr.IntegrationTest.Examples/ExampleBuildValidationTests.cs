@@ -5,6 +5,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.Versioning;
+using System.Text;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
@@ -17,7 +18,7 @@ namespace Dapr.IntegrationTest.Examples;
 public class ExampleBuildValidationTests
 {
     /// <summary>
-    /// Timeout for each individual project build.
+    /// Timeout for each individual project build, including output collection.
     /// </summary>
     private static readonly TimeSpan BuildTimeout = TimeSpan.FromMinutes(5);
 
@@ -81,46 +82,59 @@ public class ExampleBuildValidationTests
             ?? throw new InvalidOperationException("The test assembly has no build configuration.");
 
         return await RunDotnetCommandAsync(
-            $"build \"{projectPath}\" --framework {framework} --configuration {configuration} -consoleLoggerParameters:NoSummary");
+            $"build \"{projectPath}\" --framework {framework} --configuration {configuration} --disable-build-servers -nodeReuse:false -consoleLoggerParameters:NoSummary");
     }
 
-    private static async Task<(int ExitCode, string Output)> RunDotnetCommandAsync(string arguments)
+    private static Task<(int ExitCode, string Output)> RunDotnetCommandAsync(string arguments)
     {
         var psi = new ProcessStartInfo("dotnet", arguments)
         {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
 
-        using var process = new Process();
-        process.StartInfo = psi;
+        return RunProcessAsync(psi, BuildTimeout);
+    }
+
+    internal static async Task<(int ExitCode, string Output)> RunProcessAsync(ProcessStartInfo startInfo, TimeSpan timeout)
+    {
+        startInfo.RedirectStandardOutput = true;
+        startInfo.RedirectStandardError = true;
+
+        using var process = new Process { StartInfo = startInfo };
+        using var cts = new CancellationTokenSource(timeout);
+        var standardOutput = new StringBuilder();
+        var standardError = new StringBuilder();
 
         process.Start();
-        var standardOutput = process.StandardOutput.ReadToEndAsync();
-        var standardError = process.StandardError.ReadToEndAsync();
-
-        using var cts = new CancellationTokenSource(BuildTimeout);
-        var timedOut = false;
+        // Build servers can retain the output pipes after the parent process exits.
+        // Apply the same deadline to process exit and both output streams.
+        var outputTask = CaptureOutputAsync(process.StandardOutput, standardOutput, cts.Token);
+        var errorTask = CaptureOutputAsync(process.StandardError, standardError, cts.Token);
 
         try
         {
-            await process.WaitForExitAsync(cts.Token);
+            await Task.WhenAll(process.WaitForExitAsync(cts.Token), outputTask, errorTask);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
-            process.Kill(entireProcessTree: true);
+            if (!process.HasExited)
+                process.Kill(entireProcessTree: true);
             await process.WaitForExitAsync();
-            timedOut = true;
+
+            throw new TimeoutException(
+                $"Command '{startInfo.FileName} {startInfo.Arguments}' exceeded {timeout.TotalSeconds} second(s) limit.{Environment.NewLine}{standardOutput}{standardError}");
         }
 
-        var output = await standardOutput + await standardError;
-        if (timedOut)
-            throw new TimeoutException(
-                $"Build exceeded {BuildTimeout.TotalMinutes} minute(s) limit.{Environment.NewLine}{output}");
+        return (process.ExitCode, standardOutput.ToString() + standardError);
+    }
 
-        return (process.ExitCode, output);
+    private static async Task CaptureOutputAsync(StreamReader reader, StringBuilder output, CancellationToken cancellationToken)
+    {
+        var buffer = new char[4096];
+        int count;
+        while ((count = await reader.ReadAsync(buffer.AsMemory(), cancellationToken)) != 0)
+            output.Append(buffer, 0, count);
     }
 
     private static string FindRepoRoot()
