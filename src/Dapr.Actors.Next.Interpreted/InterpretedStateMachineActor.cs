@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,21 +105,16 @@ public sealed class InterpretedStateMachineActor(
             return;
         }
 
-        definition = await definitions.GetAsync(actorType, Id, cancellationToken).ConfigureAwait(false)
+        var loadedDefinition = await definitions.GetAsync(actorType, Id, cancellationToken).ConfigureAwait(false)
             ?? throw new InvalidOperationException($"No interpreted machine definition is deployed for '{actorType}/{Id}'.");
-        verifier.Verify(definition).ThrowIfInvalid();
+        verifier.Verify(loadedDefinition).ThrowIfInvalid();
 
         var persisted = await State.TryGetAsync<InterpretedActorState>(StateName, cancellationToken).ConfigureAwait(false);
-        if (persisted is null)
-        {
-            currentState = definition.InitialState;
-            data = new DynamicStateBag(definition.InitialData);
-        }
-        else
-        {
-            currentState = persisted.Value.CurrentState;
-            data = new DynamicStateBag(persisted.Value.Data);
-        }
+        var loadedState = persisted is null ? loadedDefinition.InitialState : persisted.Value.CurrentState;
+        var loadedData = new DynamicStateBag(persisted is null ? loadedDefinition.InitialData : persisted.Value.Data);
+        currentState = loadedState;
+        data = loadedData;
+        definition = loadedDefinition;
     }
 
     private async ValueTask<InterpretedBranchDefinition?> SelectBranchAsync(

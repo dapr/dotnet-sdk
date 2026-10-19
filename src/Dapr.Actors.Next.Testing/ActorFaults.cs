@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Actors.Next.Core.State;
+using Dapr.Actors.Next.Core.Transport;
 
 namespace Dapr.Actors.Next.Testing;
 
@@ -24,7 +25,29 @@ public sealed class ActorFaults : IActorStateFaultInjector
     private readonly Queue<MigrationFault> migrationFaults = [];
     private readonly Queue<UpcastHopFault> upcastHopFaults = [];
     private readonly Queue<InvocationFault> invocationFaults = [];
+    private readonly Queue<RemoteInvocation> remoteInvocations = [];
+    private readonly Queue<StreamFault> streamFaults = [];
+    private readonly Queue<StateWritePause> stateWritePauses = [];
     private readonly object syncRoot = new();
+    private readonly Queue<bool> transactionFaults = [];
+
+    /// <summary>Fails the next atomic state transaction, including delete-only saves, before any mutation commits.</summary>
+    public void FailNextStateTransaction(bool transient = true)
+    {
+        lock (syncRoot) transactionFaults.Enqueue(transient);
+    }
+
+    /// <inheritdoc />
+    public ValueTask BeforeCommitAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations,
+        CancellationToken cancellationToken = default)
+    {
+        lock (syncRoot)
+        {
+            if (transactionFaults.TryDequeue(out var transient))
+                throw CreateException("Injected state transaction failure.", transient);
+        }
+        return ValueTask.CompletedTask;
+    }
 
     /// <summary>
     /// Fails the next state write for the given state type.
@@ -92,8 +115,49 @@ public sealed class ActorFaults : IActorStateFaultInjector
         }
     }
 
+    /// <summary>
+    /// Removes the execution context from the next matching actor-to-actor invocation while preserving
+    /// its propagated headers, simulating a remote callback boundary.
+    /// </summary>
+    public void SimulateNextRemoteInvocation(string? actorType = null, string? methodName = null)
+    {
+        lock (syncRoot)
+        {
+            remoteInvocations.Enqueue(new(actorType, methodName));
+        }
+    }
+
+    /// <summary>
+    /// Pauses the next matching state write before persistence. Await the returned pause's
+    /// <see cref="ActorFaultPause.Reached"/> task, exercise a competing operation, then release the write.
+    /// </summary>
+    public ActorFaultPause PauseNextStateWrite<T>(string? stateName = null)
+    {
+        var pause = new ActorFaultPause();
+        lock (syncRoot)
+        {
+            stateWritePauses.Enqueue(new(typeof(T), stateName, pause));
+        }
+
+        return pause;
+    }
+
+    /// <summary>
+    /// Fails the next matching outbound frame of a <see cref="FaultInjectingActorEventsTransport"/>.
+    /// An invoke response is written after state commit, allowing response-loss and retry tests.
+    /// </summary>
+    public void FailNextStreamWrite(SubscribeActorEventsFrameKind? kind = null, bool transient = true) =>
+        AddStreamFault(write: true, kind, transient);
+
+    /// <summary>
+    /// Fails after receiving the next matching inbound frame, before delivering it to the runtime.
+    /// Requires a <see cref="FaultInjectingActorEventsTransport"/>.
+    /// </summary>
+    public void FailNextStreamRead(SubscribeActorEventsFrameKind? kind = null, bool transient = true) =>
+        AddStreamFault(write: false, kind, transient);
+
     /// <inheritdoc />
-    public ValueTask BeforeWriteAsync(Type stateType, string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
+    public async ValueTask BeforeWriteAsync(Type stateType, string actorType, string actorId, string stateName, CancellationToken cancellationToken = default)
     {
         StateWriteFault? fault = null;
         lock (syncRoot)
@@ -109,7 +173,17 @@ public sealed class ActorFaults : IActorStateFaultInjector
             throw CreateException("Injected state write failure.", fault.Transient);
         }
 
-        return ValueTask.CompletedTask;
+        StateWritePause? pause;
+        lock (syncRoot)
+        {
+            pause = DequeueFirstMatch(stateWritePauses, next => next.StateType == stateType
+                && (next.StateName is null || string.Equals(next.StateName, stateName, StringComparison.Ordinal)));
+        }
+
+        if (pause is not null)
+        {
+            await pause.Pause.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <inheritdoc />
@@ -170,6 +244,39 @@ public sealed class ActorFaults : IActorStateFaultInjector
         }
     }
 
+    internal bool TakeRemoteInvocation(string actorType, string methodName)
+    {
+        lock (syncRoot)
+        {
+            return DequeueFirstMatch(remoteInvocations, next =>
+                (next.ActorType is null || next.ActorType == actorType)
+                && (next.MethodName is null || next.MethodName == methodName)) is not null;
+        }
+    }
+
+    internal void BeforeStreamFrame(bool write, SubscribeActorEventsFrameKind kind)
+    {
+        StreamFault? fault;
+        lock (syncRoot)
+        {
+            fault = DequeueFirstMatch(streamFaults, next => next.Write == write
+                && (next.Kind is null || next.Kind == kind));
+        }
+
+        if (fault is not null)
+        {
+            throw CreateException($"Injected actor stream {(write ? "write" : "read")} failure.", fault.Transient);
+        }
+    }
+
+    private void AddStreamFault(bool write, SubscribeActorEventsFrameKind? kind, bool transient)
+    {
+        lock (syncRoot)
+        {
+            streamFaults.Enqueue(new(write, kind, transient));
+        }
+    }
+
     private static Exception CreateException(string message, bool transient) =>
         transient ? new ActorInjectedTransientException(message) : new ActorInjectedPermanentException(message);
 
@@ -200,4 +307,10 @@ public sealed class ActorFaults : IActorStateFaultInjector
     private sealed record UpcastHopFault(Type FromStateType, Type ToStateType, bool Transient, string? StateName);
 
     private sealed record InvocationFault(bool Transient, string? ActorType, string? MethodName);
+
+    private sealed record RemoteInvocation(string? ActorType, string? MethodName);
+
+    private sealed record StreamFault(bool Write, SubscribeActorEventsFrameKind? Kind, bool Transient);
+
+    private sealed record StateWritePause(Type StateType, string? StateName, ActorFaultPause Pause);
 }

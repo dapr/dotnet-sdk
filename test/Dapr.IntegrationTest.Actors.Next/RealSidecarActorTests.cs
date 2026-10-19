@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -44,7 +44,7 @@ namespace Dapr.IntegrationTest.Actors.Next;
 /// <summary>
 /// Real-sidecar integration tests for the Actors Next app-callback stream.
 /// </summary>
-public sealed class RealSidecarActorTests : IAsyncLifetime
+public sealed partial class RealSidecarActorTests : IAsyncLifetime
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(90);
     private DaprTestEnvironment? environment;
@@ -155,6 +155,7 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
 
     private static void ConfigureActorHost(WebApplicationBuilder builder)
     {
+        ConfigureGeneratedRegressionActors(builder);
         builder.Services.AddSingleton(_ =>
         {
             var endpoint = builder.Configuration["DAPR_GRPC_ENDPOINT"] ?? throw new InvalidOperationException("Missing Dapr gRPC endpoint.");
@@ -165,6 +166,8 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         builder.Services.AddSingleton<IActorStateStore>(sp => sp.GetRequiredService<RecordingActorStateStore>());
         builder.Services.AddSingleton<ISubscribeActorEventsTransport>(sp =>
             new RecordingActorEventsTransport(sp.GetRequiredService<P.Dapr.DaprClient>()));
+        builder.Services.AddSingleton<RecordingActorScheduler>();
+        builder.Services.AddSingleton<IActorScheduler>(sp => sp.GetRequiredService<RecordingActorScheduler>());
         builder.Services.AddSingleton<Probe>();
         builder.Services.AddDaprActors(options =>
         {
@@ -195,9 +198,11 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
                     static (_, _, _, _) => ValueTask.CompletedTask),
                 typeOptions: new DaprActorTypeOptions { IdleTimeout = TimeSpan.FromSeconds(2) });
         });
-        builder.Services.AddSingleton<RecordingActorScheduler>();
-        builder.Services.AddSingleton<IActorScheduler>(sp => sp.GetRequiredService<RecordingActorScheduler>());
+        ConfigureConcurrencyActors(builder);
     }
+
+    private static partial void ConfigureConcurrencyActors(WebApplicationBuilder builder);
+    private static partial void ConfigureGeneratedRegressionActors(WebApplicationBuilder builder);
 
     private static void WriteActorConfigYaml(string componentsDirectory)
     {
@@ -1083,11 +1088,19 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
 /// </summary>
 public sealed class RecordingActorStateStore(IActorStateStore inner) : IActorStateStore
 {
+    internal bool FailNextInterpretedRead;
+    public ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default) =>
+        inner.ApplyAsync(actorType, actorId, operations, cancellationToken);
     private readonly ConcurrentDictionary<(string ActorType, string ActorId, string Name), int> readCounts = new();
 
     /// <inheritdoc />
     public async ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default)
     {
+        if (name == "__interpreted" && FailNextInterpretedRead)
+        {
+            FailNextInterpretedRead = false;
+            throw new IOException("Injected interpreted state read failure.");
+        }
         readCounts.AddOrUpdate((actorType, actorId, name), 1, static (_, count) => count + 1);
         return await inner.ReadAsync(actorType, actorId, name, cancellationToken);
     }

@@ -103,6 +103,9 @@ public interface IStateConfiguration<TState, TData>
 
     /// <summary>
     /// Schedules a declarative timeout whenever this state is entered.
+    /// A parent timeout remains active across transitions between its children.
+    /// Parent and child timeouts are independent and identify their declaring state
+    /// in <see cref="StateTimeout{TState}"/>.
     /// </summary>
     IStateConfiguration<TState, TData> After(TimeSpan timeout);
 }
@@ -221,6 +224,8 @@ public interface IActorTimerEffects
 
     /// <summary>
     /// Reschedules a named timer.
+    /// The reserved state-timeout name applies to the effect context's state and
+    /// invalidates callbacks queued by its previous registration.
     /// </summary>
     void Reschedule(string name, TimeSpan dueTime);
 

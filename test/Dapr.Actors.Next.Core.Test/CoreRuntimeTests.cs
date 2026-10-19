@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -275,15 +275,20 @@ public sealed class CoreRuntimeTests
         await releaser;
     }
 
-    [MinimumDaprRuntimeFact("1.18")]
-    public async Task Activation_deactivation_disposes_actor_scope_and_instance()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Activation_deactivation_disposes_actor_scope_and_instance(bool disposeProvider)
     {
         await using var provider = CreateProvider(null, out var created);
         var runtime = provider.GetRequiredService<IActorRuntime>();
 
         await runtime.InvokeAsync("Counter", "dispose", "Increment", System.Text.Encoding.UTF8.GetBytes("1"), new Dictionary<string, string>());
         var actor = Assert.Single(created);
-        await runtime.DeactivateAsync("Counter", ActorId.Create("dispose"));
+        if (disposeProvider)
+            await provider.DisposeAsync();
+        else
+            await runtime.DeactivateAsync("Counter", ActorId.Create("dispose"));
 
         Assert.True(actor.Disposed);
         Assert.True(actor.Probe.Disposed);

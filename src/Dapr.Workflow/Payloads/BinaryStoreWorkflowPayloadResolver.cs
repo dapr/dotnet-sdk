@@ -25,8 +25,11 @@ internal sealed class BinaryStoreWorkflowPayloadResolver(
 {
     public async Task<T> ResolveAsync<T>(PayloadReference reference, CancellationToken cancellationToken = default)
     {
-        var serialized = await codec.ResolveStringAsync(reference, cancellationToken).ConfigureAwait(false);
-        return serializer.Deserialize<T>(serialized)
+        var value = serializer.GetType() == typeof(JsonDaprSerializer)
+            ? WorkflowPayloadJsonSerializer.Deserialize<T>((JsonDaprSerializer)serializer,
+                (await codec.ResolveBytesAsync(reference, cancellationToken).ConfigureAwait(false)).Span)
+            : serializer.Deserialize<T>(await codec.ResolveStringAsync(reference, cancellationToken).ConfigureAwait(false));
+        return value
                ?? throw new InvalidOperationException(
                    $"Payload '{reference.Key}' deserialized to null for type {typeof(T)}.");
     }
@@ -37,8 +40,19 @@ internal sealed class BinaryStoreWorkflowPayloadResolver(
     public async Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId,
         CancellationToken cancellationToken = default)
     {
-        var reference = await codec.StoreSerializedAsync(serializer.Serialize(value), instanceId, cancellationToken)
-            .ConfigureAwait(false);
+        ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
+        cancellationToken.ThrowIfCancellationRequested();
+        PayloadReference reference;
+        if (serializer.GetType() == typeof(JsonDaprSerializer))
+        {
+            var bytes = ((JsonDaprSerializer)serializer).SerializeToUtf8Bytes(value);
+            reference = await codec.StoreBytesAsync(bytes, bytes.Length, instanceId, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            reference = await codec.StoreSerializedAsync(serializer.Serialize(value), instanceId, cancellationToken)
+                .ConfigureAwait(false);
+        }
         return reference.AsTyped<T>();
     }
 }

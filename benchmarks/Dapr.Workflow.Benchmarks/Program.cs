@@ -34,6 +34,8 @@ var configuration = new ConfigurationBuilder().AddEnvironmentVariables().AddComm
 var iterations = configuration.GetValue("Iterations", 5);
 var warmupRounds = configuration.GetValue("WarmupRounds", 1);
 var historyCache = configuration.GetValue("HistoryCache", true);
+var payloadByteCache = configuration.GetValue("PayloadByteCache", false);
+AppContext.SetSwitch("Dapr.Workflow.EnablePayloadByteCache", payloadByteCache);
 var endpoint = configuration["DAPR_GRPC_ENDPOINT"] ?? "http://localhost:50001";
 var storeName = configuration["StoreName"] ?? "workflow-benchmark";
 var output = configuration["Output"] ?? "workflow-data-references.json";
@@ -67,7 +69,7 @@ for (var round = 0; round < warmupRounds + iterations; round++)
 var jsonOptions = new JsonSerializerOptions { WriteIndented = true, Converters = { new JsonStringEnumConverter() } };
 var report = new
 {
-    SchemaVersion = 1,
+    SchemaVersion = 2,
     TimestampUtc = DateTimeOffset.UtcNow,
     Framework = RuntimeInformation.FrameworkDescription,
     SdkAssemblyVersion = typeof(DaprWorkflowClient).Assembly.GetName().Version?.ToString(),
@@ -76,6 +78,8 @@ var report = new
     SerializedDocumentBytes = BenchmarkDocument.SerializedSize,
     Activities = 9,
     HistoryCache = historyCache,
+    PayloadByteCache = payloadByteCache,
+    SerializerInstrumentation = "JsonConverter",
     Iterations = iterations,
     WarmupRounds = warmupRounds,
     Samples = samples
@@ -101,7 +105,7 @@ Console.WriteLine($"Per-execution byte counts and all samples: {Path.GetFullPath
 async Task<Sample> RunAsync(BenchmarkMode mode, int iteration, CancellationToken cancellationToken)
 {
     var window = new MeasurementWindow();
-    var serializer = new MeasuringSerializer(window);
+    var serializer = MeasuringSerializer.Create(window);
     using var channel = GrpcChannel.ForAddress(endpoint, new GrpcChannelOptions
     {
         MaxReceiveMessageSize = 32 * 1024 * 1024,
@@ -193,7 +197,7 @@ async Task<Sample> RunAsync(BenchmarkMode mode, int iteration, CancellationToken
             new CallOptions(headers, cancellationToken: token));
         if (!state.Exists || JsonSerializer.Deserialize<string>(state.WorkflowState.Output) != expectedChecksum)
             throw new InvalidOperationException($"Incorrect checksum for {instanceId}.");
-        ValidateMeasurements(mode, measurement);
+        ValidateMeasurements(mode, measurement, payloadByteCache);
 
         if (!await client.PurgeInstanceAsync(instanceId, token))
             throw new InvalidOperationException($"Could not purge completed benchmark {instanceId}.");
@@ -217,7 +221,7 @@ static void EnsureCompleted(Dapr.Workflow.WorkflowState state, string instanceId
         throw new InvalidOperationException($"{instanceId}: {state.RuntimeStatus}: {state.FailureDetails?.ErrorMessage}");
 }
 
-static void ValidateMeasurements(BenchmarkMode mode, Measurements measurements)
+static void ValidateMeasurements(BenchmarkMode mode, Measurements measurements, bool payloadByteCache)
 {
     if (measurements.ActivityExecutions != 9 || measurements.Turns.Count < 2)
         throw new InvalidOperationException("Expected nine activities and multiple orchestration executions; use a dedicated sidecar.");
@@ -232,9 +236,13 @@ static void ValidateMeasurements(BenchmarkMode mode, Measurements measurements)
          measurements.BinaryDownloadBytes != BenchmarkDocument.SerializedSize ||
          measurements.BinaryUploadBytes != BenchmarkDocument.SerializedSize))
         throw new InvalidOperationException("The reference case must upload once and retrieve once.");
-    if (mode == BenchmarkMode.Automatic &&
-        measurements.BinaryDownloadBytes != (long)measurements.DocumentDeserializations * BenchmarkDocument.SerializedSize)
-        throw new InvalidOperationException("Automatic hydration download bytes do not match document materializations.");
+    if (mode == BenchmarkMode.Automatic)
+    {
+        if (measurements.BinaryReads < 1 || measurements.BinaryReads > measurements.DocumentDeserializations ||
+            measurements.BinaryDownloadBytes != (long)measurements.BinaryReads * BenchmarkDocument.SerializedSize ||
+            (!payloadByteCache && measurements.BinaryReads != measurements.DocumentDeserializations))
+            throw new InvalidOperationException("Automatic hydration downloads do not match the configured cache policy.");
+    }
 }
 
 static double Median(IEnumerable<double> values)

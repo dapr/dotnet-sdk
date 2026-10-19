@@ -26,6 +26,10 @@ public interface ICalculatorActor : IActor
     Task<int> SumAsync(int left, int right, CancellationToken cancellationToken = default);
 
     ValueTask<CalculationResult> GetAsync(CancellationToken cancellationToken = default);
+
+    Task<List<ActorId>> EchoAsync(List<ActorId> payload, CancellationToken cancellationToken = default);
+
+    ValueTask<Dictionary<string, List<int>>> MapAsync(string request, int typed, CancellationToken cancellationToken = default);
 }
 
 public sealed record CalculationInput(int Value);
@@ -61,6 +65,12 @@ public sealed class CalculatorActor : Actor, ICalculatorActor
 
     public Task<int> SumAsync(int left, int right, CancellationToken cancellationToken = default) =>
         Task.FromResult(left + right + dependency.Bias);
+
+    public Task<List<ActorId>> EchoAsync(List<ActorId> payload, CancellationToken cancellationToken = default) =>
+        Task.FromResult(payload);
+
+    public ValueTask<Dictionary<string, List<int>>> MapAsync(string request, int typed, CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult(new Dictionary<string, List<int>> { [request] = [typed] });
 
     public async ValueTask<CalculationResult> GetAsync(CancellationToken cancellationToken = default)
     {

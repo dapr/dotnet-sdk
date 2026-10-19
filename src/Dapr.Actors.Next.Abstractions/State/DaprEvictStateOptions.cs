@@ -36,6 +36,8 @@ public sealed class DaprEvictStateOptions
     /// <summary>
     /// Gets or sets a value indicating whether cached state may be unloaded and discarded when it has unpersisted changes.
     /// When <see langword="false"/>, cache eviction fails if any cached state entry is dirty.
+    /// Eviction waits for in-flight persistence; it does not cancel an already submitted transaction.
+    /// Forced eviction discards only the changes still pending when eviction acquires the persistence gate.
     /// </summary>
     public bool EvictOnDirtyState { get; set; } = false;
 }

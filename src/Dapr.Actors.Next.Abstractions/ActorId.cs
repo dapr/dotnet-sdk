@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Text.Json.Serialization;
+
 namespace Dapr.Actors.Next.Abstractions;
 
 /// <summary>
@@ -23,6 +25,7 @@ public readonly record struct ActorId
     /// </summary>
     /// <param name="value">The non-empty actor id value.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="value"/> is null, empty, or whitespace.</exception>
+    [JsonConstructor]
     public ActorId(string value)
     {
         if (string.IsNullOrWhiteSpace(value))

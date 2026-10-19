@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,13 @@ namespace Dapr.Actors.Next.Core.State;
 public interface IActorStateStore
 {
     /// <summary>
+    /// Atomically applies all operations for one actor: either all mutations commit or none do.
+    /// A lost response can leave the commit outcome unknown. Implementations must not emulate
+    /// this with independent writes.
+    /// </summary>
+    ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Reads a state value.
     /// </summary>
     ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default);
@@ -33,3 +40,8 @@ public interface IActorStateStore
     /// </summary>
     ValueTask DeleteAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// A transactional state mutation. A null value deletes the named state.
+/// </summary>
+public sealed record ActorStateOperation(string Name, ReadOnlyMemory<byte>? Value);

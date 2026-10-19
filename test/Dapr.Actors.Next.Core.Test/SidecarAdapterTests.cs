@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,25 @@ namespace Dapr.Actors.Next.Core.Test;
 
 public sealed class SidecarAdapterTests
 {
+    [Fact]
+    public async Task State_batch_uses_one_transaction_with_upserts_and_deletes()
+    {
+        var client = new RecordingDaprClient();
+        var store = new DaprSidecarActorStateStore(client, "actors", "token");
+        using var cancellation = new CancellationTokenSource();
+        await store.ApplyAsync("Counter Type", "id/1",
+            [new("first", ByteString.CopyFromUtf8("42").Memory), new("second", null)], cancellation.Token);
+        var request = Assert.IsType<P.ExecuteStateTransactionRequest>(client.TransactionRequest);
+        Assert.Equal("actors", request.StoreName);
+        Assert.Equal(["upsert", "delete"], request.Operations.Select(operation => operation.OperationType));
+        Assert.Equal("actors-next:Counter%20Type:id%2F1:first", request.Operations[0].Request.Key);
+        Assert.Equal("42", request.Operations[0].Request.Value.ToStringUtf8());
+        Assert.Equal("actors-next:Counter%20Type:id%2F1:second", request.Operations[1].Request.Key);
+        Assert.Equal(cancellation.Token, client.TransactionOptions.CancellationToken);
+        Assert.Equal("token", client.TransactionOptions.Headers!.GetValue("dapr-api-token"));
+        Assert.Null(client.SaveStateRequest);
+        Assert.Null(client.DeleteStateRequest);
+    }
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Invocation_client_maps_actor_invoke_request_and_response()
     {
@@ -331,6 +350,14 @@ public sealed class SidecarAdapterTests
 
     private sealed class RecordingDaprClient : P.Dapr.DaprClient
     {
+        public P.ExecuteStateTransactionRequest? TransactionRequest { get; private set; }
+        public CallOptions TransactionOptions { get; private set; }
+        public override AsyncUnaryCall<Empty> ExecuteStateTransactionAsync(P.ExecuteStateTransactionRequest request, CallOptions options)
+        {
+            TransactionRequest = request;
+            TransactionOptions = options;
+            return Unary(new Empty());
+        }
         public P.InvokeActorRequest? InvokeActorRequest { get; private set; }
 
         public CallOptions InvokeActorOptions { get; private set; }

@@ -120,8 +120,11 @@ public sealed class StateMachineEdgeTests
     public void Builder_and_analyzer_cover_named_table_shapes()
     {
         var table = StateMachineActor<EdgeState, EdgeData>.BuildDefinitionFor(typeof(EdgeActor));
+        var namedEntryBuilder = new StateMachineBuilder<EdgeState, EdgeData>();
+        namedEntryBuilder.InitialState(EdgeState.A);
+        namedEntryBuilder.In(EdgeState.A).OnEntry("named-entry");
 
-        Assert.Contains(table.States, state => state.Entry.Any(entry => entry.Name == "named-entry"));
+        Assert.Contains(namedEntryBuilder.Build().States, state => state.Entry.Any(entry => entry.Name == "named-entry"));
         Assert.Contains(table.Transitions.SelectMany(transition => transition.Branches), branch => branch.Guard == "named-guard");
         Assert.Contains(StateMachineAnalyzer.Analyze(typeof(EdgeActor)).StructuralDefects, defect => defect.Contains("no reachable branch", StringComparison.Ordinal));
         Assert.Contains(StateMachineAnalyzer.Analyze(typeof(MissingInitialActor)).StructuralDefects, defect => defect.Contains("Initial state", StringComparison.Ordinal));

@@ -98,6 +98,14 @@ public class JsonDaprSerializer : IDaprSerializer
     public T? DeserializeFromUtf8Bytes<T>(ReadOnlySpan<byte> utf8Json) =>
         utf8Json.IsEmpty ? default : JsonSerializer.Deserialize(utf8Json, GetTypeInfo<T>());
 
+    [RequiresUnreferencedCode("JSON deserialization with a runtime Type may require types that cannot be statically analyzed.")]
+    [RequiresDynamicCode("JSON deserialization with a runtime Type requires dynamic code generation.")]
+    internal object? DeserializeFromUtf8Bytes(ReadOnlySpan<byte> utf8Json, Type returnType)
+    {
+        ArgumentNullException.ThrowIfNull(returnType);
+        return utf8Json.IsEmpty ? null : JsonSerializer.Deserialize(utf8Json, returnType, _options);
+    }
+
     /// <inheritdoc />
     [RequiresUnreferencedCode("JSON deserialization with a runtime Type may require types that cannot be statically analyzed.")]
     [RequiresDynamicCode("JSON deserialization with a runtime Type requires dynamic code generation.")]
