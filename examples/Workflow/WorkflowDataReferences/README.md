@@ -184,6 +184,12 @@ not application objects. Every hydration still deserializes a fresh value, so
 mutations do not leak between replays or activity calls. Streaming through
 `OpenAsync` still reads storage directly.
 
+Cancellation passed to a stream's `ReadAsync` also aborts an outstanding chunk
+download. After cancellation, dispose the stream and open a new one to retry;
+the canceled stream is not reusable. Disposal waits for an in-flight chunk
+operation to finish before disposing its iterator. Concurrent reads on a single
+payload stream are not supported.
+
 The current cache is limited to 64 MiB of payload array capacity and 256 entries
 per payload converter/service provider, with least-recently-used eviction and
 one-minute absolute validity. These are implementation limits, not tuning APIs.

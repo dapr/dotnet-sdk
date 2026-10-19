@@ -13,6 +13,24 @@ This Dapr workflow example shows how to create a Dapr workflow (`Workflow`) and 
 ## Optional Setup
 Dapr workflow, as well as this example program, now support authentication through the use of API tokens. For more information on this, view the following document: [API Token](https://github.com/dapr/dotnet-sdk/blob/master/docs/api-tokens.md)
 
+### Execution and recovery
+
+`WithSerializer` and `WithJsonSerializer` configure both the worker and the
+DI-registered public client, with or without binary-store payloads. Explicit
+client-builder serializer overrides still take precedence.
+
+Suspension defers history delivery until resume; termination remains terminal
+even when other events follow it in a batch. `ContinueAsNew` preserves late,
+unprocessed external events by default, including events for abandoned waits.
+Return immediately after calling it.
+
+History-fetch and completion-delivery failures retire the affected worker stream
+so the sidecar can redeliver its work. Activities must remain idempotent: a failed
+acknowledgment can cause a successful activity to run again. Queued work from a
+retired stream is canceled, but already-running user activities cannot be forcibly
+stopped. Completion waits return state and requested payloads from one runtime
+snapshot rather than fetching the instance again.
+
 ### Optional binary-store payloads
 
 For a runnable comparison of inline payloads, automatic offloading, and explicit

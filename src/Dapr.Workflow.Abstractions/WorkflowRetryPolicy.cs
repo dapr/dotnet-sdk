@@ -114,14 +114,8 @@ public class WorkflowRetryPolicy
         if (attemptNumber <= 0)
             return TimeSpan.Zero;
         
-        // Calculate: firstRetryInterval * (backoffCoefficient ^ (attemptNumber - 1))
-        var nextDelayInMilliseconds = this.FirstRetryInterval.TotalMilliseconds *
-                                      Math.Pow(this.BackoffCoefficient, attemptNumber - 1);
-
-        var nextDelay = TimeSpan.FromMilliseconds(nextDelayInMilliseconds);
-
-        // Cap at max retry interval
-        return this.MaxRetryInterval is null ? nextDelay :
-            nextDelay > this.MaxRetryInterval ? (TimeSpan)this.MaxRetryInterval : nextDelay;
+        var ticks = this.FirstRetryInterval.Ticks * Math.Pow(this.BackoffCoefficient, attemptNumber - 1);
+        var cap = this.MaxRetryInterval ?? TimeSpan.MaxValue;
+        return ticks >= cap.Ticks ? cap : TimeSpan.FromTicks((long)ticks);
     }
 }

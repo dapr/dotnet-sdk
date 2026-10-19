@@ -24,6 +24,9 @@ internal sealed class BinaryStorePayloadStream : Stream
 {
     private readonly IAsyncEnumerator<ReadOnlyMemory<byte>> _chunks;
     private readonly PayloadReference _reference;
+    private readonly CancellationTokenSource _readCts;
+    private Task<bool>? _pendingMoveNext;
+    private int _reading;
     private ReadOnlyMemory<byte> _currentChunk;
     private int _currentOffset;
     private bool _completed;
@@ -32,10 +35,12 @@ internal sealed class BinaryStorePayloadStream : Stream
     public BinaryStorePayloadStream(
         IAsyncEnumerator<ReadOnlyMemory<byte>> chunks,
         PayloadReference reference,
-        bool hasFirstChunk)
+        bool hasFirstChunk,
+        CancellationTokenSource? readCts = null)
     {
         _chunks = chunks;
         _reference = reference;
+        _readCts = readCts ?? new CancellationTokenSource();
         if (hasFirstChunk)
         {
             _currentChunk = chunks.Current;
@@ -83,37 +88,60 @@ internal sealed class BinaryStorePayloadStream : Stream
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         cancellationToken.ThrowIfCancellationRequested();
+        _readCts.Token.ThrowIfCancellationRequested();
         if (buffer.IsEmpty || _completed)
         {
             return 0;
         }
 
-        while (_currentOffset >= _currentChunk.Length)
+        if (Interlocked.CompareExchange(ref _reading, 1, 0) != 0)
+            throw new InvalidOperationException("Concurrent payload reads are not supported.");
+
+        try
         {
-            bool hasNext;
-            try
+            // A canceled read aborts the download. Keep its pending MoveNext fenced until
+            // disposal; never run or dispose an async iterator concurrently with that move.
+            while (_currentOffset >= _currentChunk.Length)
             {
-                hasNext = await _chunks.MoveNextAsync().ConfigureAwait(false);
-            }
-            catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
-            {
-                throw new PayloadNotFoundException(_reference, ex);
+                bool hasNext;
+                try
+                {
+                    _pendingMoveNext = _chunks.MoveNextAsync().AsTask();
+                    hasNext = await _pendingMoveNext.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    _readCts.Token.ThrowIfCancellationRequested();
+                    _pendingMoveNext = null;
+                }
+                catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
+                {
+                    throw new PayloadNotFoundException(_reference, ex);
+                }
+
+                if (!hasNext)
+                {
+                    _completed = true;
+                    return 0;
+                }
+
+                _currentChunk = _chunks.Current;
+                _currentOffset = 0;
             }
 
-            if (!hasNext)
-            {
-                _completed = true;
-                return 0;
-            }
-
-            _currentChunk = _chunks.Current;
-            _currentOffset = 0;
+            cancellationToken.ThrowIfCancellationRequested();
+            var count = Math.Min(buffer.Length, _currentChunk.Length - _currentOffset);
+            _currentChunk.Slice(_currentOffset, count).CopyTo(buffer);
+            _currentOffset += count;
+            return count;
         }
-
-        var count = Math.Min(buffer.Length, _currentChunk.Length - _currentOffset);
-        _currentChunk.Slice(_currentOffset, count).CopyTo(buffer);
-        _currentOffset += count;
-        return count;
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            await _readCts.CancelAsync().ConfigureAwait(false);
+            throw;
+        }
+        finally
+        {
+            Volatile.Write(ref _reading, 0);
+        }
     }
 
     public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -137,8 +165,7 @@ internal sealed class BinaryStorePayloadStream : Stream
     {
         if (disposing && !_disposed)
         {
-            _chunks.DisposeAsync().AsTask().GetAwaiter().GetResult();
-            _disposed = true;
+            DisposeChunksAsync().AsTask().GetAwaiter().GetResult();
         }
 
         base.Dispose(disposing);
@@ -148,10 +175,28 @@ internal sealed class BinaryStorePayloadStream : Stream
     {
         if (!_disposed)
         {
-            await _chunks.DisposeAsync().ConfigureAwait(false);
-            _disposed = true;
+            await DisposeChunksAsync().ConfigureAwait(false);
         }
 
         await base.DisposeAsync().ConfigureAwait(false);
+    }
+
+    private async ValueTask DisposeChunksAsync()
+    {
+        _disposed = true;
+        try
+        {
+            await _readCts.CancelAsync().ConfigureAwait(false);
+            if (_pendingMoveNext is { } pending)
+            {
+                try { await pending.ConfigureAwait(false); }
+                catch (Exception) { } // The read owns the exception; disposal must still release the iterator.
+            }
+            await _chunks.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _readCts.Dispose();
+        }
     }
 }

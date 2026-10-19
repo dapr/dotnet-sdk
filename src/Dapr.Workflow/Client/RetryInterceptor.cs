@@ -34,6 +34,9 @@ public sealed class RetryInterceptor<T>(
 
         for (var retryCount = 0; retryCount < retryPolicy.MaxNumberOfAttempts; retryCount++)
         {
+            if (retryCount > 0 && RemainingTime(firstAttempt) <= TimeSpan.Zero)
+                break;
+
             try
             {
                 return await retryCall();
@@ -49,7 +52,7 @@ public sealed class RetryInterceptor<T>(
                 break;
             }
 
-            var nextDelay = ComputeNextDelay(retryCount, firstAttempt, lastException);
+            var nextDelay = ComputeNextDelay(retryCount, firstAttempt);
             if (nextDelay == TimeSpan.Zero)
                 break;
 
@@ -82,32 +85,24 @@ public sealed class RetryInterceptor<T>(
     /// </summary>
     private static bool IsFatal(Exception ex) => (ex is OutOfMemoryException or StackOverflowException);
 
-    private TimeSpan ComputeNextDelay(int attempt, DateTime firstAttempt, Exception failure)
+    private TimeSpan RemainingTime(DateTime firstAttempt)
     {
-        var nextDelay = TimeSpan.Zero;
-        try
-        {
-            var retryExpiration = (retryPolicy.RetryTimeout != Timeout.InfiniteTimeSpan &&
-                                   retryPolicy.RetryTimeout != TimeSpan.MaxValue)
-                ? firstAttempt.Add(retryPolicy.RetryTimeout)
-                : DateTime.MaxValue;
+        var available = DateTime.MaxValue - context.CurrentUtcDateTime;
+        if (retryPolicy.RetryTimeout != Timeout.InfiniteTimeSpan && retryPolicy.RetryTimeout != TimeSpan.MaxValue)
+            available = TimeSpan.FromTicks(Math.Min(available.Ticks,
+                retryPolicy.RetryTimeout.Ticks - (context.CurrentUtcDateTime - firstAttempt).Ticks));
+        return available;
+    }
 
-            if (context.CurrentUtcDateTime < retryExpiration)
-            {
-                var nextDelayInMilliseconds = retryPolicy.FirstRetryInterval.TotalMilliseconds *
-                                              Math.Pow(retryPolicy.BackoffCoefficient, attempt);
-                nextDelay = TimeSpan.FromMilliseconds(nextDelayInMilliseconds);
-                if (retryPolicy.MaxRetryInterval is { } maxInterval && nextDelay > maxInterval)
-                {
-                    nextDelay = maxInterval;
-                }
-            }
-        }
-        catch (Exception ex) when (!IsFatal(ex))
-        {
-            
-        }
+    private TimeSpan ComputeNextDelay(int attempt, DateTime firstAttempt)
+    {
+        var remaining = RemainingTime(firstAttempt);
+        if (remaining <= TimeSpan.Zero)
+            return TimeSpan.Zero;
 
-        return nextDelay;
+        var cap = retryPolicy.MaxRetryInterval is { } maximum && maximum < remaining ? maximum : remaining;
+        var ticks = retryPolicy.FirstRetryInterval.Ticks * Math.Pow(retryPolicy.BackoffCoefficient, attempt);
+        // Clamp before converting: exponential backoff can exceed both Int64 and Double ranges.
+        return ticks >= cap.Ticks ? cap : TimeSpan.FromTicks((long)ticks);
     }
 }
