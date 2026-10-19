@@ -61,13 +61,11 @@ public enum BidResult
 [DaprActor("Auction")]
 public sealed class AuctionActor : StateMachineActor<AuctionState, AuctionData>, IAuctionActor
 {
-    private readonly IActorTimerScheduler timers;
     private static readonly TimeSpan SoftClose = TimeSpan.FromSeconds(30);
 
     public AuctionActor(ActorActivationContext context, IActorTimerScheduler timers)
         : base(context, timers, "Auction", AuctionData.Empty)
     {
-        this.timers = timers;
     }
 
     protected override void Configure(IStateMachine<AuctionState, AuctionData> sm)
@@ -75,12 +73,13 @@ public sealed class AuctionActor : StateMachineActor<AuctionState, AuctionData>,
         sm.InitialState(AuctionState.Open);
 
         sm.In(AuctionState.Open)
+            .After(SoftClose)
             .On<Bid>()
                 .When((data, bid) => bid.Amount > data.HighBid)
-                    .Do(async ctx =>
+                    .Do(ctx =>
                     {
                         ctx.Update(data => data with { HighBid = ctx.Event.Amount, HighBidder = ctx.Event.Bidder });
-                        await timers.RescheduleAsync("Auction", Id, "soft-close", SoftClose, nameof(Close), string.Empty);
+                        ctx.Timers.Reschedule(StateMachineConstants.StateTimeoutTimerName, SoftClose);
                         ctx.Reply(BidResult.Accepted);
                     })
                 .Otherwise()
@@ -88,6 +87,9 @@ public sealed class AuctionActor : StateMachineActor<AuctionState, AuctionData>,
 
         sm.In(AuctionState.Open)
             .On<CloseAuction>().GoTo(AuctionState.Sold);
+
+        sm.In(AuctionState.Open)
+            .On<StateTimeout<AuctionState>>().GoTo(AuctionState.Sold);
 
         sm.In(AuctionState.Open)
             .On<ExpireAuction>().GoTo(AuctionState.Expired);

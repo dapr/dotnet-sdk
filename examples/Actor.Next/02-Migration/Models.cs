@@ -41,25 +41,25 @@ public sealed class RenamedStateV2
     public string DisplayName { get; init; } = "";
 }
 
-public sealed class MyStateV2
+public abstract class NamedState
 {
     public string Name { get; init; } = "";
+}
 
+public sealed class MyStateV2 : NamedState
+{
     public int Age { get; init; }
 }
 
-public sealed class MyStateV3
+public sealed class MyStateV3 : NamedState
 {
-    public string Name { get; init; } = "";
-
     public int Age { get; init; }
 
     public bool Active { get; init; }
 }
 
-public sealed class MyState
+public sealed class MyState : NamedState
 {
-    public string Name { get; init; } = "";
 }
 
 public sealed record CartLine(string Sku, int Quantity);

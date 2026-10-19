@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,9 +22,11 @@ namespace Dapr.Actors.Next.Core.State;
 public sealed class CachedActorState<T> : IActorState<T>
 {
     private T value;
+    internal object SyncRoot { get; }
 
-    internal CachedActorState(string name, T value, Action onChanged, ActorStateMigrationNode? migrationNode, bool storePlain)
+    internal CachedActorState(string name, T value, Action onChanged, ActorStateMigrationNode? migrationNode, bool storePlain, object syncRoot)
     {
+        SyncRoot = syncRoot;
         Name = name;
         this.value = value;
         this.onChanged = onChanged;
@@ -44,18 +46,24 @@ public sealed class CachedActorState<T> : IActorState<T>
     /// <inheritdoc />
     public T Value
     {
-        get => value;
+        get { lock (SyncRoot) return value; }
         set
         {
-            this.value = value;
-            onChanged();
+            lock (SyncRoot)
+            {
+                this.value = value;
+                onChanged();
+            }
         }
     }
 
     internal void StoreAsPlain()
     {
-        MigrationNode = null;
-        StorePlain = true;
-        onChanged();
+        lock (SyncRoot)
+        {
+            MigrationNode = null;
+            StorePlain = true;
+            onChanged();
+        }
     }
 }

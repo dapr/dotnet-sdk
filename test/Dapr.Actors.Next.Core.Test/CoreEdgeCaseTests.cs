@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -721,6 +721,11 @@ public sealed class CoreEdgeCaseTests
 
     private sealed class RecordingActorStateStore : IActorStateStore
     {
+        public ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default)
+        {
+            WriteCount += operations.Count(operation => operation.Value.HasValue);
+            return inner.ApplyAsync(actorType, actorId, operations, cancellationToken);
+        }
         private readonly InMemoryActorStateStore inner = new();
 
         public int ReadCount { get; private set; }

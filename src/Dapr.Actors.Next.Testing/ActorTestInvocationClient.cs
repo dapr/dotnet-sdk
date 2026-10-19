@@ -12,10 +12,11 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Actors.Next.Core.Client;
+using Dapr.Actors.Next.Core;
 
 namespace Dapr.Actors.Next.Testing;
 
-internal sealed class ActorTestInvocationClient(IActorInvocationClient inner, ActorFaults faults) : IActorInvocationClient
+internal sealed class ActorTestInvocationClient(IActorInvocationClient inner, ActorFaults faults, bool simulateRemoteCalls = false) : IActorInvocationClient
 {
     public Task<byte[]?> InvokeAsync(
         string actorType,
@@ -26,6 +27,21 @@ internal sealed class ActorTestInvocationClient(IActorInvocationClient inner, Ac
         CancellationToken cancellationToken = default)
     {
         faults.BeforeInvocation(actorType, methodName);
+        var simulateRemote = faults.TakeRemoteInvocation(actorType, methodName) || simulateRemoteCalls;
+        if (simulateRemote)
+        {
+            headers = ActorHeaders.WithCurrentReentrancy(headers);
+            if (ExecutionContext.IsFlowSuppressed())
+            {
+                return Task.Run(() => inner.InvokeAsync(actorType, actorId, methodName, payload, headers, cancellationToken), CancellationToken.None);
+            }
+
+            using (ExecutionContext.SuppressFlow())
+            {
+                return Task.Run(() => inner.InvokeAsync(actorType, actorId, methodName, payload, headers, cancellationToken), CancellationToken.None);
+            }
+        }
+
         return inner.InvokeAsync(actorType, actorId, methodName, payload, headers, cancellationToken);
     }
 }

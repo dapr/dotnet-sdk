@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,21 @@ public sealed class ActorTestRuntimeTests
     private const string MigrationTestingStateV1ShapeHash = "h1:manual-migration-testing-state-v1";
     private const string MigrationTestingStateV2ShapeHash = "h1:manual-migration-testing-state-v2";
     private const string MigrationTestingStateV3ShapeHash = "h1:manual-migration-testing-state-v3";
+
+    [Fact]
+    public async Task Transaction_fault_preserves_durable_state_and_retry_saves_dirty_state()
+    {
+        await using var runtime = CreateTestingRuntime(new SeededRandomActorScheduler(1));
+        var id = ActorId.Create("transaction-fault");
+        runtime.Faults.FailNextStateTransaction();
+        var failed = runtime.InvokeAsync("Testing", id, "Add", "5");
+        await runtime.RunToIdle();
+        await Assert.ThrowsAsync<ActorInjectedTransientException>(() => failed);
+        Assert.Null(runtime.StateOf("Testing", id).Get<TestingState>("state"));
+        var retry = runtime.InvokeAsync("Testing", id, "Add", "0");
+        await runtime.RunToIdle();
+        Assert.Equal(5, int.Parse(System.Text.Encoding.UTF8.GetString((await retry)!)));
+    }
 
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Generated_proxy_runs_against_in_memory_runtime_and_exposes_state()
@@ -148,7 +163,7 @@ public sealed class ActorTestRuntimeTests
         runtime.Time.Advance(TimeSpan.FromSeconds(3));
         await runtime.RunToIdle();
 
-        Assert.Equal(2, runtime.Transcript.Count(entry => entry.ActorId == id.Value && entry.OperationName == "Reminder"));
+        Assert.Single(runtime.Transcript, entry => entry.ActorId == id.Value && entry.OperationName == "Reminder");
 
         await reminders.CancelAllAsync("Testing", id);
         Assert.Null(await reminders.GetAsync("Testing", id, "Reminder"));

@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ namespace Dapr.Actors.Next.Testing;
 public sealed class ActorTestRuntime : IAsyncDisposable
 {
     private readonly ServiceProvider provider;
+    private readonly IActorProxyFactory? proxyFactory;
     private readonly Dictionary<object, ActorReference> proxies = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>
@@ -47,13 +48,16 @@ public sealed class ActorTestRuntime : IAsyncDisposable
         services.AddLogging();
         services.AddSingleton(Time);
         services.AddSingleton<TimeProvider>(Time);
-        services.AddSingleton<IActorTimerScheduler>(Time);
-        services.AddSingleton<IActorReminderScheduler>(Time);
+        services.AddSingleton<IActorTimerScheduler>(sp => new CoreActorTimerScheduler(
+            sp.GetRequiredService<IActorRuntime>(), sp.GetRequiredService<IActorWireSerializer>(), Time));
+        services.AddSingleton<IActorReminderScheduler>(sp => new CoreActorReminderScheduler(
+            sp.GetRequiredService<IActorRuntime>(), sp.GetRequiredService<IActorWireSerializer>(), Time));
         services.AddSingleton(Faults);
         services.AddSingleton<IActorStateFaultInjector>(Faults);
         services.AddSingleton<IActorStateStore>(StateStore);
         services.AddSingleton<IActorScheduler>(Scheduler);
-        services.AddSingleton<IActorInvocationClient>(sp => new ActorTestInvocationClient(sp.GetRequiredService<IActorRuntime>(), sp.GetRequiredService<ActorFaults>()));
+        services.AddSingleton<IActorInvocationClient>(sp => new ActorTestInvocationClient(
+            sp.GetRequiredService<IActorRuntime>(), sp.GetRequiredService<ActorFaults>(), options?.SimulateRemoteCalls ?? false));
 
         configureServices?.Invoke(services);
 
@@ -62,10 +66,7 @@ public sealed class ActorTestRuntime : IAsyncDisposable
         Serializer = provider.GetRequiredService<IActorWireSerializer>();
         Time.Attach(Runtime, Serializer);
 
-        if (provider.GetService<IActorProxyFactory>() is { } proxyFactory)
-        {
-            ActorProxy.Configure(proxyFactory);
-        }
+        proxyFactory = provider.GetService<IActorProxyFactory>();
     }
 
     /// <summary>
@@ -100,7 +101,9 @@ public sealed class ActorTestRuntime : IAsyncDisposable
     public TActor CreateActor<TActor>(ActorId actorId, string actorType)
         where TActor : IActor
     {
-        var actor = ActorProxy.Create<TActor>(actorId, actorType);
+        var actor = (proxyFactory ?? throw new InvalidOperationException(
+            "No IActorProxyFactory is registered in this ActorTestRuntime. Register generated actor services to create typed proxies."))
+            .Create<TActor>(actorId, actorType);
         proxies[actor!] = new ActorReference(actorType, actorId.Value);
         return actor;
     }
@@ -139,6 +142,13 @@ public sealed class ActorTestRuntime : IAsyncDisposable
     /// Starts one scheduled turn if an executable turn exists.
     /// </summary>
     public Task<bool> StepAsync(CancellationToken cancellationToken = default) => Scheduler.StepAsync(cancellationToken);
+
+    /// <summary>
+    /// Requests deactivation through the real runtime. With a controlled scheduler, advance the scheduler
+    /// before awaiting completion. A request made by the active call chain is deferred until its turn ends.
+    /// </summary>
+    public Task DeactivateAsync(string actorType, ActorId actorId, CancellationToken cancellationToken = default) =>
+        Runtime.DeactivateAsync(actorType, actorId, cancellationToken);
 
     /// <summary>
     /// Seeds a named actor state value directly into the in-memory store.
@@ -207,8 +217,15 @@ public sealed class ActorTestRuntime : IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        ActorProxy.Reset();
-        await provider.DisposeAsync().ConfigureAwait(false);
+        try
+        {
+            if (Runtime is IAsyncDisposable disposable)
+                await disposable.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            await provider.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     internal T? ReadState<T>(string actorType, string actorId, string name)
@@ -240,15 +257,22 @@ public sealed class ActorTestRuntime : IAsyncDisposable
             }
         }
 
-        var value = Serializer.DeserializeFromBytes<T>(bytes.Value);
-        if (value is not null)
+        using var document = System.Text.Json.JsonDocument.Parse(bytes.Value);
+        if (document.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+            && TryGetProperty(document.RootElement, nameof(LegacyActorStateEnvelope<T>.SchemaVersion), out var version)
+            && TryGetProperty(document.RootElement, nameof(LegacyActorStateEnvelope<T>.Value), out _))
         {
-            return value;
+            if (version.ValueKind != System.Text.Json.JsonValueKind.Number || !version.TryGetInt32(out _))
+            {
+                throw new System.Text.Json.JsonException("Legacy actor state schema version must be an integer.");
+            }
+
+            var envelope = Serializer.DeserializeFromBytes<LegacyActorStateEnvelope<T>>(bytes.Value)
+                ?? throw new InvalidOperationException($"State '{name}' could not be deserialized.");
+            return envelope.Value;
         }
 
-        return Serializer.DeserializeFromBytes<LegacyActorStateEnvelope<T>>(bytes.Value) is { } envelope
-            ? envelope.Value
-            : default;
+        return Serializer.DeserializeFromBytes<T>(bytes.Value);
     }
 
     private byte[] CreateEnvelopedSeed<T>(T value)

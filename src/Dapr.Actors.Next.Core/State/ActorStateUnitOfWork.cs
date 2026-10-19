@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Text.Json;
+using System.Collections.Concurrent;
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.State;
@@ -32,16 +33,37 @@ public sealed class ActorStateUnitOfWork(
     IActorStateMigrator? migrator = null,
     bool disableStateMigration = false) : IActorStateAccessor
 {
-    private readonly Dictionary<string, CacheEntry> entries = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, CacheEntry> entries = new(StringComparer.Ordinal);
+    private readonly SemaphoreSlim persistGate = new(1, 1);
+    private readonly object cacheLock = new();
     private readonly IActorStateFaultInjector faultInjector = faultInjector ?? new NoopActorStateFaultInjector();
+
+    private CacheEntry GetEntry(string name)
+    {
+        lock (cacheLock)
+            return entries.GetOrAdd(name, static _ => CacheEntry.UnloadedEntry());
+    }
+
+    private bool ReplaceEntry(string name, CacheEntry replacement, CacheEntry expected)
+    {
+        lock (cacheLock)
+            return entries.TryUpdate(name, replacement, expected);
+    }
+
+    private void SetEntry(string name, CacheEntry entry)
+    {
+        lock (cacheLock) entries[name] = entry;
+    }
 
     /// <inheritdoc />
     public async ValueTask<IActorState<T>?> TryGetAsync<T>(string name, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        if (entries.TryGetValue(name, out var existing))
+        while (true)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            var existing = GetEntry(name);
             if (existing.Removed || existing.Missing)
             {
                 return null;
@@ -52,39 +74,40 @@ public sealed class ActorStateUnitOfWork(
                 return typed;
             }
 
-            var snapshot = existing.PersistedSnapshot ?? existing.CreateSnapshot(serializer);
-            return await ReadStateAsync<T>(name, snapshot, cancellationToken).ConfigureAwait(false);
+            var snapshot = existing.Unloaded ? null : existing.CreateSnapshot(serializer);
+            var dirty = existing.Dirty || (existing.PersistedSnapshot is not null
+                && !snapshot.AsSpan().SequenceEqual(existing.PersistedSnapshot));
+            var bytes = snapshot is not null
+                ? new ReadOnlyMemory<byte>(snapshot)
+                : await store.ReadAsync(actorType, actorId.Value, name, cancellationToken).ConfigureAwait(false);
+            var entry = bytes.HasValue
+                ? await ReadStateAsync<T>(name, bytes.Value, cancellationToken).ConfigureAwait(false)
+                : CacheEntry.MissingEntry();
+            // Conversion must not acknowledge unsaved changes as durable. For clean plain
+            // conversions, compare future in-place mutations against the converted shape.
+            entry = dirty
+                ? entry.AsClean(null).AsDirty()
+                : snapshot is not null && !entry.Dirty ? entry.AsClean(entry.CreateSnapshot(serializer)) : entry;
+            if (snapshot is not null && !snapshot.AsSpan().SequenceEqual(existing.CreateSnapshot(serializer)))
+                continue;
+            if (ReplaceEntry(name, entry, existing))
+                return entry.Missing ? null : (IActorState<T>)entry.State;
         }
-
-        var bytes = await store.ReadAsync(actorType, actorId.Value, name, cancellationToken).ConfigureAwait(false);
-        if (bytes is null)
-        {
-            entries[name] = CacheEntry.MissingEntry();
-            return null;
-        }
-
-        var state = await ReadStateAsync<T>(name, bytes.Value, cancellationToken).ConfigureAwait(false);
-        return state;
     }
 
     /// <inheritdoc />
     public async ValueTask<IActorState<T>> GetOrCreateAsync<T>(string name, Func<T> valueFactory, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(valueFactory);
-        var existing = await TryGetAsync<T>(name, cancellationToken).ConfigureAwait(false);
-        if (existing is not null)
+        while (true)
         {
-            return existing;
+            var existing = await TryGetAsync<T>(name, cancellationToken).ConfigureAwait(false);
+            if (existing is not null) return existing;
+            if (!entries.TryGetValue(name, out var missing) || (!missing.Missing && !missing.Removed)) continue;
+            var state = new CachedActorState<T>(name, valueFactory(), () => MarkDirty(name), ResolveWriteNode<T>(), ShouldStorePlain<T>(), cacheLock);
+            if (ReplaceEntry(name, CacheEntry.FromDirty(state, CreateWriter<T>(), CreateSnapshot(state), ShouldTrackInPlaceMutations<T>()), missing))
+                return state;
         }
-
-        var state = new CachedActorState<T>(
-            name,
-            valueFactory(),
-            () => MarkDirty(name),
-            ResolveWriteNode<T>(),
-            ShouldStorePlain<T>());
-        entries[name] = CacheEntry.FromDirty(state, CreateWriter<T>(), CreateSnapshot(state), ShouldTrackInPlaceMutations<T>());
-        return state;
     }
 
     /// <inheritdoc />
@@ -96,8 +119,8 @@ public sealed class ActorStateUnitOfWork(
             value,
             () => MarkDirty(name),
             ResolveWriteNode<T>(),
-            ShouldStorePlain<T>());
-        entries[name] = CacheEntry.FromDirty(state, CreateWriter<T>(), CreateSnapshot(state), ShouldTrackInPlaceMutations<T>());
+            ShouldStorePlain<T>(), cacheLock);
+        SetEntry(name, CacheEntry.FromDirty(state, CreateWriter<T>(), CreateSnapshot(state), ShouldTrackInPlaceMutations<T>()));
         return ValueTask.CompletedTask;
     }
 
@@ -118,7 +141,7 @@ public sealed class ActorStateUnitOfWork(
     public ValueTask RemoveAsync(string name, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        entries[name] = CacheEntry.RemovedEntry();
+        SetEntry(name, CacheEntry.RemovedEntry());
         return ValueTask.CompletedTask;
     }
 
@@ -134,20 +157,31 @@ public sealed class ActorStateUnitOfWork(
     public async ValueTask EvictCacheAsync(DaprEvictStateOptions options, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
-        if (!options.EvictOnDirtyState)
+        await persistGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            foreach (var (name, entry) in entries)
+            lock (cacheLock)
             {
-                if (entry.Dirty || (entry.TrackInPlaceMutations && await HasInPlaceMutationAsync(entry, cancellationToken).ConfigureAwait(false)))
+                if (!options.EvictOnDirtyState)
                 {
-                    throw new ActorStateCacheDirtyException(
-                        name,
-                        $"Cannot evict actor state cache because state '{name}' has unpersisted changes.");
+                    foreach (var (name, entry) in entries)
+                    {
+                        if (entry.Dirty || (entry.TrackInPlaceMutations && HasInPlaceMutation(entry)))
+                        {
+                            throw new ActorStateCacheDirtyException(
+                                name,
+                                $"Cannot evict actor state cache because state '{name}' has unpersisted changes.");
+                        }
+                    }
                 }
+
+                entries.Clear();
             }
         }
-
-        entries.Clear();
+        finally
+        {
+            persistGate.Release();
+        }
     }
 
     /// <summary>
@@ -158,55 +192,74 @@ public sealed class ActorStateUnitOfWork(
 
     private async ValueTask PersistDirtyEntriesAsync(CancellationToken cancellationToken)
     {
-        List<string>? candidates = null;
-        foreach (var (name, entry) in entries)
+        // Serialize commits, not cache access: a reentrant child may be saving while
+        // its parent replaces a value needed to release the child's store call.
+        await persistGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            if (entry.Dirty || entry.TrackInPlaceMutations)
+            var batch = new List<(string Name, CacheEntry Entry, byte[]? Snapshot)>();
+            lock (cacheLock)
             {
-                (candidates ??= new List<string>(entries.Count)).Add(name);
+                foreach (var (name, entry) in entries.ToArray())
+                {
+                    if (!entry.Dirty && !entry.TrackInPlaceMutations) continue;
+                    var snapshot = entry.Removed ? null : entry.CreateSnapshot(serializer);
+                    if (!entry.Removed && entry.PersistedSnapshot is not null && snapshot.AsSpan().SequenceEqual(entry.PersistedSnapshot))
+                    {
+                        ReplaceEntry(name, entry.AsClean(entry.PersistedSnapshot), entry);
+                        continue;
+                    }
+                    batch.Add((name, entry, snapshot));
+                }
+            }
+
+            // All fault hooks run before submitting the transaction, so a fault at
+            // any key leaves the entire batch dirty and durable state unchanged.
+            foreach (var item in batch)
+            {
+                if (item.Snapshot is not null)
+                    await item.Entry.WriteAsync(store, faultInjector, actorType, actorId.Value, item.Name, item.Snapshot, cancellationToken).ConfigureAwait(false);
+            }
+            if (batch.Count == 0) return;
+            var operations = batch.Select(item => new ActorStateOperation(item.Name,
+                item.Snapshot is null ? (ReadOnlyMemory<byte>?)null : new ReadOnlyMemory<byte>(item.Snapshot))).ToArray();
+            await faultInjector.BeforeCommitAsync(actorType, actorId.Value, operations, cancellationToken).ConfigureAwait(false);
+            await store.ApplyAsync(actorType, actorId.Value, operations, cancellationToken).ConfigureAwait(false);
+            foreach (var item in batch)
+            {
+                if (item.Entry.Removed)
+                {
+                    lock (cacheLock)
+                        ((ICollection<KeyValuePair<string, CacheEntry>>)entries).Remove(new(item.Name, item.Entry));
+                }
+                else
+                {
+                    lock (cacheLock)
+                    {
+                        if (entries.TryGetValue(item.Name, out var current))
+                        {
+                            if (ReferenceEquals(current, item.Entry))
+                                entries[item.Name] = current.AsClean(item.Snapshot);
+                            else if (!current.Removed && !current.Missing && !current.Unloaded)
+                                // The commit changed durable state even if a reentrant turn changed the cache.
+                                entries[item.Name] = current.AsClean(item.Snapshot).AsDirty();
+                        }
+                    }
+                }
             }
         }
-
-        if (candidates is null)
+        finally
         {
-            return;
-        }
-
-        foreach (var name in candidates)
-        {
-            if (!entries.TryGetValue(name, out var entry))
-            {
-                continue;
-            }
-
-            if (!entry.Dirty && !entry.TrackInPlaceMutations)
-            {
-                continue;
-            }
-
-            if (entry.Removed)
-            {
-                await store.DeleteAsync(actorType, actorId.Value, name, cancellationToken).ConfigureAwait(false);
-                entries.Remove(name);
-                continue;
-            }
-
-            var currentSnapshot = entry.CreateSnapshot(serializer);
-            if (entry.PersistedSnapshot is not null && currentSnapshot.AsSpan().SequenceEqual(entry.PersistedSnapshot))
-            {
-                entries[name] = entry.AsClean(entry.PersistedSnapshot);
-                continue;
-            }
-
-            await entry.WriteAsync(store, faultInjector, actorType, actorId.Value, name, currentSnapshot, cancellationToken).ConfigureAwait(false);
-            entries[name] = entry.AsClean(currentSnapshot);
+            persistGate.Release();
         }
     }
 
-    private async ValueTask<CachedActorState<T>> ReadStateAsync<T>(string name, ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken)
+    private async ValueTask<CacheEntry> ReadStateAsync<T>(string name, ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken)
     {
-        if (TryPeekHeader(bytes, out var header, out var discriminator))
+        if (TryPeekHeader(bytes, out var header, out var discriminator, out var normalized))
         {
+            var persistedBytes = bytes;
+            bytes = normalized;
             ValidateSerializer(header);
             if (header.FormKind == ActorStateFormKind.Enveloped)
             {
@@ -239,17 +292,15 @@ public sealed class ActorStateUnitOfWork(
                     value,
                     () => MarkDirty(name),
                     ResolveWriteNode<T>(),
-                    ShouldStorePlain<T>());
-                entries[name] = CacheEntry.FromDirty(state, CreateWriter<T>(), CreateSnapshot(state), ShouldTrackInPlaceMutations<T>());
-                return state;
+                    ShouldStorePlain<T>(), cacheLock);
+                return CacheEntry.FromDirty(state, CreateWriter<T>(), CreateSnapshot(state), ShouldTrackInPlaceMutations<T>());
             }
 
             if (header.FormKind == ActorStateFormKind.Plain)
             {
                 var value = await ReadPlainAsync<T>(bytes, cancellationToken).ConfigureAwait(false);
-                var state = new CachedActorState<T>(name, value, () => MarkDirty(name), null, true);
-                entries[name] = CacheEntry.FromClean(state, CreateWriter<T>(), CreateSnapshot(state), bytes.ToArray(), ShouldTrackInPlaceMutations<T>());
-                return state;
+                var state = new CachedActorState<T>(name, value, () => MarkDirty(name), null, true, cacheLock);
+                return CacheEntry.FromClean(state, CreateWriter<T>(), CreateSnapshot(state), persistedBytes.ToArray(), ShouldTrackInPlaceMutations<T>());
             }
 
             throw new ActorStateEnvelopeException(
@@ -264,9 +315,8 @@ public sealed class ActorStateUnitOfWork(
         }
 
         var legacy = ReadLegacy<T>(name, bytes);
-        var legacyState = new CachedActorState<T>(name, legacy, () => MarkDirty(name), null, true);
-        entries[name] = CacheEntry.FromClean(legacyState, CreateWriter<T>(), CreateSnapshot(legacyState), bytes.ToArray(), ShouldTrackInPlaceMutations<T>());
-        return legacyState;
+        var legacyState = new CachedActorState<T>(name, legacy, () => MarkDirty(name), null, true, cacheLock);
+        return CacheEntry.FromClean(legacyState, CreateWriter<T>(), CreateSnapshot(legacyState), bytes.ToArray(), ShouldTrackInPlaceMutations<T>());
     }
 
     private async ValueTask<T> ReadPlainAsync<T>(ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken)
@@ -283,41 +333,31 @@ public sealed class ActorStateUnitOfWork(
 
     private T ReadLegacy<T>(string name, ReadOnlyMemory<byte> bytes)
     {
-        JsonException? rawJsonException = null;
-        try
+        using var document = JsonDocument.Parse(bytes);
+        if (document.RootElement.ValueKind == JsonValueKind.Object
+            && TryGetProperty(document.RootElement, nameof(LegacyActorStateEnvelope<T>.SchemaVersion), out var version)
+            && TryGetProperty(document.RootElement, nameof(LegacyActorStateEnvelope<T>.Value), out _))
         {
-            var value = serializer.DeserializeFromBytes<T>(bytes);
-            if (value is not null)
+            if (version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out _))
             {
-                return value;
+                throw new JsonException("Legacy actor state schema version must be an integer.");
             }
-        }
-        catch (JsonException ex)
-        {
-            rawJsonException = ex;
-        }
-        catch (InvalidCastException)
-        {
-            throw;
+
+            var envelope = serializer.DeserializeFromBytes<LegacyActorStateEnvelope<T>>(bytes)
+                ?? throw new InvalidOperationException($"State '{name}' could not be deserialized.");
+            return envelope.Value;
         }
 
-        try
-        {
-            var legacyEnvelope = serializer.DeserializeFromBytes<LegacyActorStateEnvelope<T>>(bytes)
-                ?? throw new InvalidOperationException($"State '{name}' could not be deserialized.");
-            return legacyEnvelope.Value;
-        }
-        catch (JsonException) when (rawJsonException is not null)
-        {
-            throw rawJsonException;
-        }
+        return serializer.DeserializeFromBytes<T>(bytes)
+            ?? throw new InvalidOperationException($"State '{name}' could not be deserialized.");
     }
 
     private void MarkDirty(string name)
     {
-        if (entries.TryGetValue(name, out var entry))
+        while (entries.TryGetValue(name, out var entry))
         {
-            entries[name] = entry.AsDirty();
+            if (entry.Missing || entry.Unloaded || entry.Removed) return;
+            if (ReplaceEntry(name, entry.AsDirty(), entry)) return;
         }
     }
 
@@ -326,42 +366,45 @@ public sealed class ActorStateUnitOfWork(
 
     private bool ShouldStorePlain<T>() => disableStateMigration || migrator?.ResolveTargetNode(typeof(T)) is null;
 
-    private static bool ShouldTrackInPlaceMutations<T>() => !typeof(T).IsValueType;
+    private static bool ShouldTrackInPlaceMutations<T>() =>
+        System.Runtime.CompilerServices.RuntimeHelpers.IsReferenceOrContainsReferences<T>();
 
-    private ValueTask<bool> HasInPlaceMutationAsync(CacheEntry entry, CancellationToken cancellationToken)
+    private bool HasInPlaceMutation(CacheEntry entry)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         if (entry.PersistedSnapshot is null)
         {
-            return ValueTask.FromResult(entry.Dirty);
+            return entry.Dirty;
         }
 
         var currentSnapshot = entry.CreateSnapshot(serializer);
-        return ValueTask.FromResult(!currentSnapshot.AsSpan().SequenceEqual(entry.PersistedSnapshot));
+        return !currentSnapshot.AsSpan().SequenceEqual(entry.PersistedSnapshot);
     }
 
     private static Func<IActorWireSerializer, byte[]> CreateSnapshot<T>(CachedActorState<T> state)
     {
         return serializer =>
         {
-            if (state.MigrationNode is not null && !state.StorePlain)
+            lock (state.SyncRoot)
             {
-                var envelope = new ActorStateEnvelope<T>(
-                    ActorStateEnvelopeHeader.Create(ActorStateFormKind.Enveloped, serializer.SerializerId, serializer.SerializerVersion),
-                    new ActorStateDiscriminator(state.MigrationNode.Index, state.MigrationNode.ShapeHash),
-                    state.Value);
-                return serializer.SerializeToBytes(envelope);
-            }
+                if (state.MigrationNode is not null && !state.StorePlain)
+                {
+                    var envelope = new ActorStateEnvelope<T>(
+                        ActorStateEnvelopeHeader.Create(ActorStateFormKind.Enveloped, serializer.SerializerId, serializer.SerializerVersion),
+                        new ActorStateDiscriminator(state.MigrationNode.Index, state.MigrationNode.ShapeHash),
+                        state.Value);
+                    return serializer.SerializeToBytes(envelope);
+                }
 
-            if (state.StorePlain)
-            {
-                var envelope = new ActorStatePlainEnvelope<T>(
-                    ActorStateEnvelopeHeader.Create(ActorStateFormKind.Plain, serializer.SerializerId, serializer.SerializerVersion),
-                    state.Value);
-                return serializer.SerializeToBytes(envelope);
-            }
+                if (state.StorePlain)
+                {
+                    var envelope = new ActorStatePlainEnvelope<T>(
+                        ActorStateEnvelopeHeader.Create(ActorStateFormKind.Plain, serializer.SerializerId, serializer.SerializerVersion),
+                        state.Value);
+                    return serializer.SerializeToBytes(envelope);
+                }
 
-            return serializer.SerializeToBytes(state.Value);
+                return serializer.SerializeToBytes(state.Value);
+            }
         };
     }
 
@@ -370,7 +413,6 @@ public sealed class ActorStateUnitOfWork(
         return async (store, faultInjector, actorType, actorId, name, snapshot, cancellationToken) =>
         {
             await faultInjector.BeforeWriteAsync(typeof(T), actorType, actorId, name, cancellationToken).ConfigureAwait(false);
-            await store.WriteAsync(actorType, actorId, name, snapshot, cancellationToken).ConfigureAwait(false);
         };
     }
 
@@ -403,11 +445,12 @@ public sealed class ActorStateUnitOfWork(
         }
     }
 
-    private static bool TryPeekHeader(ReadOnlyMemory<byte> bytes, out ActorStateEnvelopeHeader header, out ActorStateDiscriminator discriminator)
+    private static bool TryPeekHeader(ReadOnlyMemory<byte> bytes, out ActorStateEnvelopeHeader header, out ActorStateDiscriminator discriminator, out ReadOnlyMemory<byte> normalized)
     {
         header = default;
         discriminator = default;
-
+        normalized = bytes;
+        var recognized = false;
         try
         {
             using var document = JsonDocument.Parse(bytes);
@@ -420,10 +463,13 @@ public sealed class ActorStateUnitOfWork(
                 return false;
             }
 
+            recognized = true;
             var formatVersion = GetProperty(headerElement, nameof(ActorStateEnvelopeHeader.FormatVersion)).GetInt32();
             var formKind = ReadFormKind(GetProperty(headerElement, nameof(ActorStateEnvelopeHeader.FormKind)));
             var serializerId = GetProperty(headerElement, nameof(ActorStateEnvelopeHeader.SerializerId)).GetString() ?? string.Empty;
             var serializerVersion = GetProperty(headerElement, nameof(ActorStateEnvelopeHeader.SerializerVersion)).GetInt32();
+            if (string.IsNullOrWhiteSpace(serializerId))
+                throw new InvalidOperationException("Actor state header requires a serializer ID.");
             header = new ActorStateEnvelopeHeader(magic, formatVersion, formKind, serializerId, serializerVersion);
 
             if (formKind == ActorStateFormKind.Enveloped)
@@ -432,21 +478,56 @@ public sealed class ActorStateUnitOfWork(
                 discriminator = new ActorStateDiscriminator(
                     GetProperty(discriminatorElement, nameof(ActorStateDiscriminator.ChainIndex)).GetInt32(),
                     GetProperty(discriminatorElement, nameof(ActorStateDiscriminator.ShapeHash)).GetString() ?? string.Empty);
+                if (discriminator.ChainIndex < 0 || string.IsNullOrWhiteSpace(discriminator.ShapeHash))
+                    throw new InvalidOperationException("Actor state discriminator is invalid.");
             }
 
+            var value = GetProperty(document.RootElement, nameof(ActorStateEnvelope<object>.Value));
+            if (document.RootElement.TryGetProperty("header", out _)
+                && document.RootElement.TryGetProperty("value", out _)
+                && headerElement.TryGetProperty("magic", out _)
+                && headerElement.TryGetProperty("formatVersion", out _)
+                && headerElement.TryGetProperty("formKind", out _)
+                && headerElement.TryGetProperty("serializerId", out _)
+                && headerElement.TryGetProperty("serializerVersion", out _)
+                && (formKind != ActorStateFormKind.Enveloped
+                    || (document.RootElement.TryGetProperty("discriminator", out var canonicalDiscriminator)
+                        && canonicalDiscriminator.TryGetProperty("chainIndex", out _)
+                        && canonicalDiscriminator.TryGetProperty("shapeHash", out _))))
+                return true;
+
+            // Canonicalize metadata from older PascalCase/snake/kebab envelopes without
+            // changing the user payload or depending on its serializer's naming policy.
+            using var stream = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(stream))
+            {
+                writer.WriteStartObject();
+                writer.WritePropertyName("header");
+                writer.WriteStartObject();
+                foreach (var property in new[] { "Magic", "FormatVersion", "FormKind", "SerializerId", "SerializerVersion" })
+                {
+                    writer.WritePropertyName(JsonNamingPolicy.CamelCase.ConvertName(property));
+                    GetProperty(headerElement, property).WriteTo(writer);
+                }
+                writer.WriteEndObject();
+                if (formKind == ActorStateFormKind.Enveloped)
+                {
+                    writer.WritePropertyName("discriminator");
+                    writer.WriteStartObject();
+                    writer.WriteNumber("chainIndex", discriminator.ChainIndex);
+                    writer.WriteString("shapeHash", discriminator.ShapeHash);
+                    writer.WriteEndObject();
+                }
+                writer.WritePropertyName("value");
+                value.WriteTo(writer);
+                writer.WriteEndObject();
+            }
+            normalized = stream.ToArray();
             return true;
         }
-        catch (JsonException)
+        catch (Exception exception) when (recognized && exception is InvalidOperationException or KeyNotFoundException or FormatException or OverflowException or JsonException)
         {
-            throw;
-        }
-        catch (InvalidOperationException)
-        {
-            return false;
-        }
-        catch (KeyNotFoundException)
-        {
-            return false;
+            throw new ActorStateEnvelopeException($"Malformed actor state envelope: {exception.Message}", stateName: null);
         }
     }
 
@@ -484,14 +565,19 @@ public sealed class ActorStateUnitOfWork(
         }
 
         var camelCase = char.ToLowerInvariant(propertyName[0]) + propertyName[1..];
-        return element.TryGetProperty(camelCase, out property);
+        return element.TryGetProperty(camelCase, out property)
+            || element.TryGetProperty(JsonNamingPolicy.SnakeCaseLower.ConvertName(propertyName), out property)
+            || element.TryGetProperty(JsonNamingPolicy.KebabCaseLower.ConvertName(propertyName), out property);
     }
 
     private static ActorStateFormKind ReadFormKind(JsonElement element)
     {
         if (element.ValueKind == JsonValueKind.Number)
         {
-            return (ActorStateFormKind)element.GetInt32();
+            var value = element.GetInt32();
+            if (value is >= byte.MinValue and <= byte.MaxValue)
+                return (ActorStateFormKind)value;
+            throw new InvalidOperationException("Actor state header has an invalid form kind.");
         }
 
         if (element.ValueKind == JsonValueKind.String && Enum.TryParse<ActorStateFormKind>(element.GetString(), ignoreCase: false, out var formKind))
@@ -536,6 +622,7 @@ public sealed class ActorStateUnitOfWork(
         public bool Removed { get; }
 
         public bool Missing { get; }
+        public bool Unloaded { get; private init; }
 
         public bool TrackInPlaceMutations { get; }
 
@@ -559,6 +646,7 @@ public sealed class ActorStateUnitOfWork(
         public static CacheEntry RemovedEntry() => new(new object(), static (_, _, _, _, _, _, _) => ValueTask.CompletedTask, static _ => Array.Empty<byte>(), null, true, true, false);
 
         public static CacheEntry MissingEntry() => new(new object(), static (_, _, _, _, _, _, _) => ValueTask.CompletedTask, static _ => Array.Empty<byte>(), null, false, false, false, true);
+        public static CacheEntry UnloadedEntry() => new(new object(), static (_, _, _, _, _, _, _) => ValueTask.CompletedTask, static _ => Array.Empty<byte>(), null, false, false, false) { Unloaded = true };
 
         public CacheEntry AsDirty() => new(State, writer, snapshot, PersistedSnapshot, true, Removed, TrackInPlaceMutations, Missing);
 
