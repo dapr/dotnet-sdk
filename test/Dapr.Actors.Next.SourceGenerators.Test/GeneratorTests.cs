@@ -554,6 +554,10 @@ public sealed partial class GeneratorTests
     }
 
     private static string RunGenerator(CSharpCompilation compilation, bool? scanReferences, bool assertGeneratedCompiles = false)
+        => RunGeneratorWithDiagnostics(compilation, scanReferences, assertGeneratedCompiles).Generated;
+
+    private static (string Generated, ImmutableArray<Diagnostic> Diagnostics) RunGeneratorWithDiagnostics(
+        CSharpCompilation compilation, bool? scanReferences, bool assertGeneratedCompiles = false)
     {
         var generator = new ActorsNextSourceGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
@@ -568,7 +572,7 @@ public sealed partial class GeneratorTests
         }
 
         var result = driver.GetRunResult().Results.Single();
-        return string.Join(Environment.NewLine, result.GeneratedSources.Select(source => source.SourceText.ToString()));
+        return (string.Join(Environment.NewLine, result.GeneratedSources.Select(source => source.SourceText.ToString())), diagnostics);
     }
 
     private static CSharpCompilation CreateCompilation(string assemblyName, string source, params MetadataReference[] additionalReferences)

@@ -29,6 +29,10 @@ namespace Dapr.Actors.Next.SourceGenerators;
 /// <summary>
 /// Generates reflection-free actor proxies, dispatchers, factories, registration, registry manifest, and JSON context hints.
 /// </summary>
+/// <remarks>
+/// State discovery retains identities until a migration edge needs member inspection. Shape hashes are
+/// computed only for emitted families, using the shared h1 format also consumed by the analyzer.
+/// </remarks>
 [Generator(LanguageNames.CSharp)]
 public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 {
@@ -38,14 +42,6 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
     private const string UpcasterMetadataName = "Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster`2";
     private const string CancellationTokenMetadataName = "System.Threading.CancellationToken";
     private const string ScanReferencesPropertyName = "build_property.DaprActorsScanReferences";
-    private static readonly DiagnosticDescriptor NonUniqueFoldPathDiagnostic = new(
-        "DAPR1421",
-        "Actor state migration family has more than one fold path",
-        "Actor state migration family '{0}' has more than one fold path; generated migration metadata was skipped for this family",
-        "Dapr.Actors.Next.SourceGenerators",
-        DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
-
     private static readonly DiagnosticDescriptor NonAppendOnlyChainDiagnostic = new(
         "DAPR1422",
         "Actor state migration family is not append-only",
@@ -68,15 +64,15 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             compilation.GetTypeByMetadataName(UpcasterMetadataName),
             compilation.GetTypeByMetadataName(CancellationTokenMetadataName)));
 
-        var interfaceCandidates = context.SyntaxProvider.CreateSyntaxProvider(
-                static (node, _) => node is InterfaceDeclarationSyntax { AttributeLists.Count: > 0 },
-                static (ctx, _) => (INamedTypeSymbol?)ctx.SemanticModel.GetDeclaredSymbol((InterfaceDeclarationSyntax)ctx.Node))
-            .Where(static symbol => symbol is not null);
+        var interfaceCandidates = context.SyntaxProvider.ForAttributeWithMetadataName(
+            GenerateActorClientAttributeMetadataName,
+            static (node, _) => node is InterfaceDeclarationSyntax,
+            static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol);
 
-        var actorCandidates = context.SyntaxProvider.CreateSyntaxProvider(
-                static (node, _) => node is ClassDeclarationSyntax { AttributeLists.Count: > 0 },
-                static (ctx, _) => (INamedTypeSymbol?)ctx.SemanticModel.GetDeclaredSymbol((ClassDeclarationSyntax)ctx.Node))
-            .Where(static symbol => symbol is not null);
+        var actorCandidates = context.SyntaxProvider.ForAttributeWithMetadataName(
+            DaprActorAttributeMetadataName,
+            static (node, _) => node is ClassDeclarationSyntax,
+            static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol);
 
         var upcasterCandidates = context.SyntaxProvider.CreateSyntaxProvider(
                 static (node, _) => node is ClassDeclarationSyntax { BaseList: not null },
@@ -120,26 +116,34 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
                 var interfaces = new List<INamedTypeSymbol>();
                 var actors = new List<INamedTypeSymbol>();
                 var upcasters = new List<INamedTypeSymbol>();
-                var states = new List<INamedTypeSymbol>();
                 foreach (var assembly in compilation.SourceModule.ReferencedAssemblySymbols)
                 {
                     foreach (var type in EnumerateTypes(assembly.GlobalNamespace))
                     {
-                        if (type.TypeKind == TypeKind.Interface)
+                        if (type.TypeKind == TypeKind.Interface
+                            && HasAttribute(type, known.GenerateActorClientAttribute, GenerateActorClientAttributeMetadataName)
+                            && IsActorInterface(type, known))
                         {
                             interfaces.Add(type);
                         }
-                        else if (type.TypeKind == TypeKind.Class)
+                        else if (type.TypeKind == TypeKind.Class && !type.IsAbstract)
                         {
-                            actors.Add(type);
-                            upcasters.Add(type);
+                            if (HasAttribute(type, known.DaprActorAttribute, DaprActorAttributeMetadataName))
+                            {
+                                actors.Add(type);
+                            }
+
+                            if (ImplementsUpcaster(type, known))
+                            {
+                                upcasters.Add(type);
+                            }
                         }
                     }
                 }
 
                 try
                 {
-                    return BuildManifest(interfaces.ToImmutableArray(), actors.ToImmutableArray(), upcasters.ToImmutableArray(), states.ToImmutableArray(), known);
+                    return BuildManifest(interfaces.ToImmutableArray(), actors.ToImmutableArray(), upcasters.ToImmutableArray(), ImmutableArray<INamedTypeSymbol>.Empty, known);
                 }
                 catch (Exception ex)
                 {
@@ -202,6 +206,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         KnownSymbols known)
     {
         var interfaces = interfaceCandidates
+            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
             .Where(symbol => IsActorInterface(symbol, known) && HasAttribute(symbol, known.GenerateActorClientAttribute, GenerateActorClientAttributeMetadataName))
             .Select(symbol => BuildInterface(symbol, known))
             .Where(item => item is not null)
@@ -212,6 +217,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
         var interfaceBySymbol = interfaces.ToDictionary(item => item.MetadataName, StringComparer.Ordinal);
         var actors = actorCandidates
+            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
             .Where(symbol => !symbol.IsAbstract && HasAttribute(symbol, known.DaprActorAttribute, DaprActorAttributeMetadataName))
             .Select(symbol => BuildActor(symbol, known, interfaceBySymbol))
             .Where(item => item is not null)
@@ -221,6 +227,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             .ToImmutableArray();
 
         var upcasters = upcasterCandidates
+            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
             .Where(symbol => !symbol.IsAbstract)
             .SelectMany(symbol => BuildUpcasters(symbol, known))
             .Distinct(UpcasterModelComparer.Instance)
@@ -229,6 +236,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
         var states = stateCandidates
             .Concat(upcasters.SelectMany(static upcaster => new[] { upcaster.From, upcaster.To }))
+            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
             .Where(symbol => symbol.TypeParameters.Length == 0 && !symbol.IsAbstract && !IsActorInterface(symbol, known) && !ImplementsUpcaster(symbol, known))
             .Select(BuildStateType)
             .Where(static state => state is not null)
@@ -282,8 +290,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
                 TypeName(parameter.Type),
                 index,
                 IsCancellationToken(parameter.Type, known),
-                parameter.HasExplicitDefaultValue,
-                GetDefaultValue(parameter)))
+                parameter.HasExplicitDefaultValue))
             .ToImmutableArray();
 
         var payloadParameters = parameters.Where(parameter => !parameter.IsCancellationToken).ToImmutableArray();
@@ -395,20 +402,12 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         var canonicalName = symbol.ContainingNamespace.IsGlobalNamespace
             ? simpleCanonicalName
             : symbol.ContainingNamespace.ToDisplayString() + "." + simpleCanonicalName;
-        var members = GetSerializableMembers(symbol)
-            .Select(BuildStateMember)
-            .OrderBy(static member => member.Name, StringComparer.Ordinal)
-            .ToImmutableArray();
-
         return new StateTypeModel(
             TypeName(symbol),
             symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
-            symbol.Name,
             canonicalName,
             version,
-            symbol,
-            ActorStateMigrationShared.HasPublicParameterlessConstructor(symbol),
-            members);
+            symbol);
     }
 
     private static (ImmutableArray<StateFamilyModel> Families, ImmutableArray<Diagnostic> Diagnostics) BuildFamilies(
@@ -417,6 +416,18 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
     {
         var diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
         var parent = states.ToDictionary(static state => state.TypeName, static state => state.TypeName, StringComparer.Ordinal);
+        var membersByType = new Dictionary<string, ImmutableArray<StateMemberModel>>(StringComparer.Ordinal);
+
+        ImmutableArray<StateMemberModel> GetMembers(StateTypeModel state)
+        {
+            if (!membersByType.TryGetValue(state.TypeName, out var members))
+            {
+                members = GetSerializableMembers(state.Symbol).Select(BuildStateMember).ToImmutableArray();
+                membersByType.Add(state.TypeName, members);
+            }
+
+            return members;
+        }
 
         string Find(string value)
         {
@@ -457,7 +468,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
         foreach (var upcaster in upcasters)
         {
-            Union(TypeName(upcaster.From), TypeName(upcaster.To));
+            Union(upcaster.FromType, upcaster.ToType);
         }
 
         var families = ImmutableArray.CreateBuilder<StateFamilyModel>();
@@ -478,12 +489,12 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
                 .ToImmutableArray();
             var indexByType = nodes.ToDictionary(static node => node.State.TypeName, static node => node.Index, StringComparer.Ordinal);
             var explicitEdges = upcasters
-                .Where(upcaster => indexByType.ContainsKey(TypeName(upcaster.From)) && indexByType.ContainsKey(TypeName(upcaster.To)))
+                .Where(upcaster => indexByType.ContainsKey(upcaster.FromType) && indexByType.ContainsKey(upcaster.ToType))
                 .Select(upcaster => new StateEdgeModel(
-                    indexByType[TypeName(upcaster.From)],
-                    indexByType[TypeName(upcaster.To)],
-                    TypeName(upcaster.From),
-                    TypeName(upcaster.To),
+                    indexByType[upcaster.FromType],
+                    indexByType[upcaster.ToType],
+                    upcaster.FromType,
+                    upcaster.ToType,
                     upcaster.ImplementationType,
                     IsGenerated: false,
                     ImmutableArray<StateMemberModel>.Empty))
@@ -499,7 +510,8 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
                 var from = nodes[i].State;
                 var to = nodes[i + 1].State;
-                if (TryBuildAdditiveHop(from, to, out var copiedMembers))
+                if (ActorStateMigrationShared.HasPublicParameterlessConstructor(to.Symbol)
+                    && TryBuildAdditiveHop(GetMembers(from), GetMembers(to), out var copiedMembers))
                 {
                     edges.Add(new StateEdgeModel(i, i + 1, from.TypeName, to.TypeName, null, IsGenerated: true, copiedMembers));
                 }
@@ -518,17 +530,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
                 continue;
             }
 
-            if (HasNonUniquePath(nodes, orderedEdges))
-            {
-                diagnostics.Add(Diagnostic.Create(NonUniqueFoldPathDiagnostic, Location.None, canonicalName));
-                continue;
-            }
-
-            if (!HasContiguousPath(nodes, orderedEdges))
-            {
-                continue;
-            }
-
+            // IsAppendOnly guarantees a single contiguous path through every node.
             families.Add(new StateFamilyModel(canonicalName, nodes, orderedEdges));
         }
 
@@ -537,17 +539,15 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             diagnostics.ToImmutable());
     }
 
-    private static bool TryBuildAdditiveHop(StateTypeModel from, StateTypeModel to, out ImmutableArray<StateMemberModel> copiedMembers)
+    private static bool TryBuildAdditiveHop(
+        ImmutableArray<StateMemberModel> from,
+        ImmutableArray<StateMemberModel> to,
+        out ImmutableArray<StateMemberModel> copiedMembers)
     {
         copiedMembers = ImmutableArray<StateMemberModel>.Empty;
-        if (!to.HasPublicParameterlessConstructor)
-        {
-            return false;
-        }
-
-        var fromMembers = from.Members.ToDictionary(static member => member.Name, StringComparer.Ordinal);
+        var fromMembers = from.ToDictionary(static member => member.Name, StringComparer.Ordinal);
         var copied = ImmutableArray.CreateBuilder<StateMemberModel>();
-        foreach (var toMember in to.Members)
+        foreach (var toMember in to)
         {
             if (!fromMembers.TryGetValue(toMember.Name, out var fromMember))
             {
@@ -567,15 +567,15 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             copied.Add(toMember);
         }
 
-        foreach (var fromMember in from.Members)
+        foreach (var fromMember in from)
         {
-            if (!to.Members.Any(member => StringComparer.Ordinal.Equals(member.Name, fromMember.Name)))
+            if (!to.Any(member => StringComparer.Ordinal.Equals(member.Name, fromMember.Name)))
             {
                 return false;
             }
         }
 
-        copiedMembers = copied.OrderBy(static member => member.Name, StringComparer.Ordinal).ToImmutableArray();
+        copiedMembers = copied.ToImmutable();
         return true;
     }
 
@@ -585,62 +585,6 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         && edges.Select(static edge => edge.ToIndex).Distinct().Count() == edges.Length
         && edges.Length == nodes.Length - 1;
 
-    private static bool HasContiguousPath(ImmutableArray<StateNodeModel> nodes, ImmutableArray<StateEdgeModel> edges)
-    {
-        for (var i = 0; i < nodes.Length - 1; i++)
-        {
-            if (!edges.Any(edge => edge.FromIndex == i && edge.ToIndex == i + 1))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool HasNonUniquePath(ImmutableArray<StateNodeModel> nodes, ImmutableArray<StateEdgeModel> edges)
-    {
-        foreach (var source in nodes)
-        {
-            foreach (var target in nodes)
-            {
-                if (source.Index >= target.Index)
-                {
-                    continue;
-                }
-
-                var count = CountPaths(source.Index, target.Index, edges, new HashSet<int>());
-                if (count > 1)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static int CountPaths(int current, int target, ImmutableArray<StateEdgeModel> edges, HashSet<int> seen)
-    {
-        if (!seen.Add(current))
-        {
-            return 0;
-        }
-
-        var count = 0;
-        foreach (var edge in edges.Where(edge => edge.FromIndex == current))
-        {
-            count += edge.ToIndex == target ? 1 : CountPaths(edge.ToIndex, target, edges, seen);
-            if (count > 1)
-            {
-                break;
-            }
-        }
-
-        seen.Remove(current);
-        return count;
-    }
-
     private static StateMemberModel BuildStateMember(ISymbol symbol)
     {
         if (symbol is IPropertySymbol property)
@@ -648,7 +592,6 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             return new StateMemberModel(
                 property.Name,
                 TypeName(property.Type),
-                property.Type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
                 property.SetMethod is { DeclaredAccessibility: Accessibility.Public },
                 property.IsRequired);
         }
@@ -657,7 +600,6 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         return new StateMemberModel(
             field.Name,
             TypeName(field.Type),
-            field.Type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
             !field.IsReadOnly,
             field.IsRequired);
     }
@@ -1417,23 +1359,6 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         return manifest with { Interfaces = interfaces, Actors = actors };
     }
 
-    private static object? GetDefaultValue(IParameterSymbol parameter)
-    {
-        if (!parameter.HasExplicitDefaultValue)
-        {
-            return null;
-        }
-
-        try
-        {
-            return parameter.ExplicitDefaultValue;
-        }
-        catch (InvalidOperationException)
-        {
-            return null;
-        }
-    }
-
     private static string Literal(string value) => "@\"" + value.Replace("\"", "\"\"") + "\"";
 
     private static string Bool(bool value) => value ? "true" : "false";
@@ -1483,13 +1408,16 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             ImmutableArray<Diagnostic>.Empty,
             error);
 
-        public Manifest Merge(Manifest other) => new(
+        public Manifest Merge(Manifest other) => other.IsEmpty ? this : IsEmpty ? other : new(
             Interfaces.Concat(other.Interfaces).Distinct(ActorInterfaceModelComparer.Instance).OrderBy(item => item.FullName, StringComparer.Ordinal).ToImmutableArray(),
             Actors.Concat(other.Actors).Distinct(ActorModelComparer.Instance).OrderBy(item => item.ActorType, StringComparer.Ordinal).ToImmutableArray(),
             Upcasters.Concat(other.Upcasters).Distinct(UpcasterModelComparer.Instance).OrderBy(item => item.ImplementationType, StringComparer.Ordinal).ToImmutableArray(),
             Families.Concat(other.Families).Distinct(StateFamilyModelComparer.Instance).OrderBy(item => item.CanonicalName, StringComparer.Ordinal).ToImmutableArray(),
             Diagnostics.Concat(other.Diagnostics).ToImmutableArray(),
             Error ?? other.Error);
+
+        private bool IsEmpty => Interfaces.IsEmpty && Actors.IsEmpty && Upcasters.IsEmpty && Families.IsEmpty
+            && Diagnostics.IsEmpty && Error is null;
     }
 
     [ExcludeFromCodeCoverage]
@@ -1523,7 +1451,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         /// routes an invocation to a single dispatcher per actor type, so the dispatcher's method switch and the
         /// registry method metadata must cover all interfaces the actor implements.
         /// </summary>
-        public ImmutableArray<ActorMethodModel> DispatchMethods => Interfaces
+        public ImmutableArray<ActorMethodModel> DispatchMethods { get; } = Interfaces
             .SelectMany(actorInterface => actorInterface.Methods)
             .GroupBy(method => method.WireName, StringComparer.Ordinal)
             .Select(group => group.First())
@@ -1549,8 +1477,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         string TypeName,
         int Position,
         bool IsCancellationToken,
-        bool HasDefaultValue,
-        object? DefaultValue);
+        bool HasDefaultValue);
 
     [ExcludeFromCodeCoverage]
     private sealed record ConstructorParameterModel(string Name, string TypeName, bool IsActorId);
@@ -1558,24 +1485,21 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
     [ExcludeFromCodeCoverage]
     private sealed record UpcasterModel(string ImplementationType, INamedTypeSymbol From, INamedTypeSymbol To)
     {
-        public string FromType => TypeName(From);
+        public string FromType { get; } = TypeName(From);
 
-        public string ToType => TypeName(To);
+        public string ToType { get; } = TypeName(To);
     }
 
     [ExcludeFromCodeCoverage]
     private sealed record StateTypeModel(
         string TypeName,
         string MetadataName,
-        string SimpleName,
         string CanonicalName,
         string Version,
-        INamedTypeSymbol Symbol,
-        bool HasPublicParameterlessConstructor,
-        ImmutableArray<StateMemberModel> Members);
+        INamedTypeSymbol Symbol);
 
     [ExcludeFromCodeCoverage]
-    private sealed record StateMemberModel(string Name, string TypeName, string MetadataName, bool CanWrite, bool IsRequired);
+    private sealed record StateMemberModel(string Name, string TypeName, bool CanWrite, bool IsRequired);
 
     [ExcludeFromCodeCoverage]
     private sealed record StateNodeModel(int Index, StateTypeModel State)

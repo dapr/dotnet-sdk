@@ -197,10 +197,16 @@ internal static class ActorStateMigrationShared
 
         if (type is INamedTypeSymbol named)
         {
-            foreach (var member in GetSerializableMembers(named))
+            foreach (var member in GetSerializableMemberSymbols(named))
             {
                 builder.Append("member:").Append(member.Name).Append(':');
-                AppendMemberType(builder, member.SymbolType, seen);
+                var memberType = member switch
+                {
+                    IPropertySymbol property => property.Type,
+                    IFieldSymbol field => field.Type,
+                    _ => throw new InvalidOperationException("Unsupported member."),
+                };
+                AppendMemberType(builder, memberType, seen);
                 builder.Append(';');
             }
         }
