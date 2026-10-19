@@ -13,6 +13,8 @@
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
+using System.Reflection;
 
 namespace Dapr.Workflow.Versioning.Generators.Test;
 
@@ -43,36 +45,79 @@ internal static class GeneratorTestHarness
     /// </summary>
     public static Task<(string GeneratedSource, Diagnostic[] Diagnostics)> RunAsync(string userSource)
     {
-        // Build a complete reference set from the assemblies already loaded into the test host
-        // (System.Runtime, System.Text.Json, Microsoft.Extensions.*, etc.) plus the abstractions
-        // assemblies under test. This avoids the fragility of hand-picking individual framework refs.
-        var references = AppDomain.CurrentDomain.GetAssemblies()
-            .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
-            .Select(MetadataReference? (a) => MetadataReference.CreateFromFile(a.Location))
-            .Where(r => r is not null)
-            .Cast<MetadataReference>()
-            .ToList();
-        references.Add(AbstractionsReference());
-        references.Add(VersioningAbstractionsReference());
+        var result = Generate(userSource);
+        return Task.FromResult((result.GeneratedSource, result.Diagnostics));
+    }
 
-        var compilation = CSharpCompilation.Create(
-            assemblyName: "TestAssembly",
-            syntaxTrees: new[] { CSharpSyntaxTree.ParseText(userSource) },
-            references: references,
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+    internal static readonly CSharpParseOptions ParseOptions = new(LanguageVersion.Preview);
 
-        var generator = new WorkflowSourceGenerator();
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
-        driver = driver.RunGenerators(compilation);
-        var runResult = driver.GetRunResult();
+    internal static CSharpCompilation Compile(string source, IEnumerable<MetadataReference>? additionalReferences = null)
+    {
+        var references = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
+            .Select(p => MetadataReference.CreateFromFile(p)).Cast<MetadataReference>()
+            .Concat(new[]
+            {
+                AbstractionsReference(), VersioningAbstractionsReference(),
+                MetadataReference.CreateFromFile(typeof(WorkflowVersioningRegistry).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(DaprWorkflowClient).Assembly.Location)
+            })
+            .Concat(additionalReferences ?? [])
+            .GroupBy(r => r.Display).Select(g => g.First());
+        var compilation = CSharpCompilation.Create("GeneratedTests" + Guid.NewGuid().ToString("N"),
+            [CSharpSyntaxTree.ParseText(source, ParseOptions)], references,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+        AssertNoErrorDiagnostics(compilation.GetDiagnostics().ToArray());
+        return compilation;
+    }
 
-        var generated = string.Empty;
-        foreach (var tree in runResult.GeneratedTrees.Where(tree => tree.FilePath.EndsWith(RegistryGeneratedFileName, StringComparison.Ordinal)))
+    internal static (Compilation Compilation, string GeneratedSource, Diagnostic[] Diagnostics) Generate(
+        string source, IEnumerable<MetadataReference>? additionalReferences = null, bool scanReferences = false)
+    {
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new WorkflowSourceGenerator().AsSourceGenerator()], parseOptions: ParseOptions,
+            optionsProvider: new TestOptionsProvider(scanReferences));
+        driver = driver.RunGeneratorsAndUpdateCompilation(Compile(source, additionalReferences), out var output, out var diagnostics);
+        AssertNoErrorDiagnostics(diagnostics.ToArray());
+        AssertNoErrorDiagnostics(output.GetDiagnostics().ToArray());
+        var generated = driver.GetRunResult().GeneratedTrees
+            .SingleOrDefault(t => t.FilePath.EndsWith(RegistryGeneratedFileName, StringComparison.Ordinal))?.ToString() ?? "";
+        return (output, generated, diagnostics.ToArray());
+    }
+
+    internal static Assembly Load(Compilation compilation)
+    {
+        // Tests invoke registration explicitly so dynamically loaded assemblies do not
+        // contaminate process-wide module-initializer registries in other test cases.
+        foreach (var tree in compilation.SyntaxTrees.ToArray())
         {
-            generated = tree.ToString();
+            if (tree.ToString().Contains("[ModuleInitializer]", StringComparison.Ordinal))
+                compilation = compilation.ReplaceSyntaxTree(tree,
+                    CSharpSyntaxTree.ParseText(tree.ToString().Replace("[ModuleInitializer]", ""), ParseOptions));
         }
+        using var stream = new MemoryStream();
+        var result = compilation.Emit(stream);
+        Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics));
+        return Assembly.Load(stream.ToArray());
+    }
 
-        return Task.FromResult((generated, runResult.Diagnostics.ToArray()));
+    internal static void Register(Assembly assembly, WorkflowRuntimeOptions options, IServiceProvider services) =>
+        assembly.GetType("Dapr.Workflow.Versioning.GeneratedWorkflowVersionRegistry")!
+            .GetMethod("RegisterGeneratedWorkflows")!.Invoke(null, [options, services]);
+
+    private sealed class TestOptionsProvider(bool scan) : AnalyzerConfigOptionsProvider
+    {
+        public override AnalyzerConfigOptions GlobalOptions { get; } = new TestOptions(scan);
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => new TestOptions(false);
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => new TestOptions(false);
+    }
+
+    private sealed class TestOptions(bool scan) : AnalyzerConfigOptions
+    {
+        public override bool TryGetValue(string key, out string value)
+        {
+            value = scan ? "true" : "false";
+            return key == "build_property.DaprWorkflowVersioningScanReferences";
+        }
     }
 
     /// <summary>Asserts that no error-severity diagnostics were reported by the generator.</summary>

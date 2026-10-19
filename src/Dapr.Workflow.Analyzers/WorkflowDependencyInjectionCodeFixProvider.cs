@@ -18,12 +18,14 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.FindSymbols;
 
 namespace Dapr.Workflow.Analyzers;
 
 /// <summary>
 /// Provides a code fix for DAPR1305 by removing the offending constructor parameter
-/// from either a regular constructor or a primary constructor.
+/// from either a regular constructor or a primary constructor, only when the parameter
+/// and constructor have no references and removal cannot change an overload set.
 /// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(WorkflowDependencyInjectionCodeFixProvider))]
 [Shared]
@@ -37,8 +39,12 @@ public sealed class WorkflowDependencyInjectionCodeFixProvider : CodeFixProvider
     /// <summary>
     /// Registers the code fix for the diagnostic.
     /// </summary>
-    public override Task RegisterCodeFixesAsync(CodeFixContext context)
+    public override async Task RegisterCodeFixesAsync(CodeFixContext context)
     {
+        if (!await CanRemoveParameterAsync(context.Document, context.Diagnostics.First(), context.CancellationToken)
+                .ConfigureAwait(false))
+            return;
+
         const string title = "Remove injected constructor parameter";
         context.RegisterCodeFix(
             CodeAction.Create(
@@ -46,7 +52,29 @@ public sealed class WorkflowDependencyInjectionCodeFixProvider : CodeFixProvider
                 createChangedDocument: c => RemoveParameterAsync(context.Document, context.Diagnostics.First(), c),
                 equivalenceKey: title),
             context.Diagnostics);
-        return Task.CompletedTask;
+    }
+
+    private static async Task<bool> CanRemoveParameterAsync(
+        Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
+    {
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        var model = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        var parameter = root?.FindToken(diagnostic.Location.SourceSpan.Start).Parent?
+            .AncestorsAndSelf().OfType<ParameterSyntax>().FirstOrDefault();
+        if (parameter is null || model?.GetDeclaredSymbol(parameter, cancellationToken) is not IParameterSymbol symbol ||
+            symbol.ContainingSymbol is not IMethodSymbol constructor)
+            return false;
+
+        // Do not rewrite application logic, call sites, or constructor overload sets.
+        if (constructor.ContainingType.InstanceConstructors.Count(c => !c.IsImplicitlyDeclared) > 1)
+            return false;
+        var references = await SymbolFinder.FindReferencesAsync(symbol, document.Project.Solution, cancellationToken)
+            .ConfigureAwait(false);
+        if (references.Any(r => r.Locations.Any()))
+            return false;
+        var callers = await SymbolFinder.FindReferencesAsync(constructor, document.Project.Solution, cancellationToken)
+            .ConfigureAwait(false);
+        return !callers.Any(r => r.Locations.Any());
     }
 
     private static async Task<Document> RemoveParameterAsync(
@@ -54,6 +82,9 @@ public sealed class WorkflowDependencyInjectionCodeFixProvider : CodeFixProvider
         Diagnostic diagnostic,
         CancellationToken cancellationToken)
     {
+        if (!await CanRemoveParameterAsync(document, diagnostic, cancellationToken).ConfigureAwait(false))
+            return document;
+
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
         if (root is null)
         {

@@ -19,11 +19,42 @@ namespace Dapr.Workflow.Versioning;
 /// <summary>
 /// Static registration point for source-generated workflow registries.
 /// </summary>
+/// <remarks>
+/// Current generators contribute metadata through <see cref="RegisterGenerated"/>. At startup,
+/// contributions from all assemblies are combined before selecting each family's latest version.
+/// Explicit application registrations take precedence. Fully qualified concrete names remain valid
+/// for replay; simple-name aliases are also retained, but cannot distinguish colliding type names.
+/// Legacy registration delegates remain supported and their routes are combined. Rebuild legacy
+/// generated assemblies to enable global version selection for their workflow families.
+/// </remarks>
 public static class WorkflowVersioningRegistry
 {
     private static readonly object SyncLock = new();
     private static readonly List<Action<WorkflowRuntimeOptions, IServiceProvider>> Registrations = new();
     private static readonly HashSet<WorkflowRuntimeOptions> AppliedOptions = new(ReferenceEqualityComparer.Instance);
+    private static readonly ConditionalWeakTable<WorkflowRuntimeOptions, GeneratedWorkflowCatalog> Catalogs = new();
+
+    /// <summary>
+    /// Adds generated workflow contributions to the application's combined version catalog.
+    /// Intended for generated code; call before the workflow factory is created.
+    /// </summary>
+    /// <param name="options">The application's workflow runtime options.</param>
+    /// <param name="services">The application's service provider.</param>
+    /// <param name="registrations">The concrete workflows discovered in an assembly.</param>
+    public static void RegisterGenerated(WorkflowRuntimeOptions options, IServiceProvider services,
+        IReadOnlyList<GeneratedWorkflowRegistration> registrations)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(registrations);
+        var catalog = Catalogs.GetOrCreateValue(options);
+        lock (catalog)
+        {
+            catalog.Add(registrations);
+            if (!catalog.IsApplying)
+                catalog.Apply(options, services);
+        }
+    }
 
     /// <summary>
     /// Registers a source-generated workflow registry.
@@ -62,9 +93,63 @@ public static class WorkflowVersioningRegistry
             snapshot = new List<Action<WorkflowRuntimeOptions, IServiceProvider>>(Registrations);
         }
 
-        foreach (var s in snapshot)
+        var catalog = Catalogs.GetOrCreateValue(options);
+        lock (catalog)
         {
-            s(options, services);
+            catalog.IsApplying = true;
+            try
+            {
+                var registrationServices = new RegistrationServices(services, catalog);
+                var applied = 0;
+                while (true)
+                {
+                    for (; applied < snapshot.Count; applied++)
+                        snapshot[applied](options, registrationServices);
+                    lock (SyncLock)
+                    {
+                        if (Registrations.Count == applied)
+                            break;
+                        snapshot = new List<Action<WorkflowRuntimeOptions, IServiceProvider>>(Registrations);
+                    }
+                }
+                catalog.Apply(options, services);
+            }
+            catch
+            {
+                lock (SyncLock)
+                    AppliedOptions.Remove(options);
+                throw;
+            }
+            finally
+            {
+                catalog.IsApplying = false;
+            }
+        }
+    }
+
+    // Older generators publish replacement snapshots. Capture their contributions without
+    // changing the public UpdateRoutes replacement contract or losing newer assemblies.
+    private sealed class RegistrationServices(IServiceProvider services, GeneratedWorkflowCatalog catalog)
+        : IServiceProvider, IWorkflowRouterRegistry
+    {
+        public object? GetService(Type serviceType) =>
+            serviceType == typeof(IWorkflowRouterRegistry) ? this : services.GetService(serviceType);
+
+        public void UpdateRoutes(IReadOnlyDictionary<string, IReadOnlyList<string>> routes)
+        {
+            foreach (var (name, versions) in routes)
+                catalog.LegacyRoutes[name] = catalog.LegacyRoutes.TryGetValue(name, out var existing)
+                    ? existing.Concat(versions).Distinct(StringComparer.Ordinal).ToArray()
+                    : versions.ToArray();
+        }
+
+        public bool Contains(string workflowName) =>
+            services.GetService<IWorkflowRouterRegistry>()?.Contains(workflowName) == true;
+
+        public bool TryResolveLatest(out string workflowName)
+        {
+            workflowName = string.Empty;
+            return services.GetService<IWorkflowRouterRegistry>()?.TryResolveLatest(out workflowName) == true;
         }
     }
 

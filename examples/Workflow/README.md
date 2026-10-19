@@ -31,6 +31,34 @@ retired stream is canceled, but already-running user activities cannot be forcib
 stopped. Completion waits return state and requested payloads from one runtime
 snapshot rather than fetching the instance again.
 
+### Generated registration and version routing
+
+`AddDaprWorkflowVersioning()` combines generated workflow contributions from all
+participating assemblies before choosing each family's latest version. The
+configured selector, default strategy, and family strategy/named-options overrides
+apply to the combined family. Explicit `RegisterWorkflow` registrations take
+precedence over generated aliases. Register contributions before the workflow
+factory is created; loading additional workflow assemblies after worker startup
+is not a hot-reload mechanism.
+
+Resolved latest names are fully qualified (for example, `global::MyApp.OrderV2`),
+so types with the same simple name in different namespaces remain distinguishable.
+Canonical aliases, existing simple-name aliases, and explicit aliases remain valid.
+Keep the concrete names used by existing histories registered for replay. Colliding
+simple-name aliases cannot identify both types; use fully qualified names instead.
+Legacy generated registration delegates are still supported and their routes are
+combined, but rebuild those assemblies to participate in global version selection.
+
+Discovery skips abstract/open-generic types, including types nested in generic
+containers, and types inaccessible from the generated file (including file-local
+types). This applies to workflows and activities, including reference scanning.
+The dependency-injection analyzer offers parameter removal only when it can avoid
+changing parameter usages, constructor calls, and overload sets. Move required
+service-dependent work into activities rather than deleting initialization logic.
+Type-safety diagnostics check serialized contracts: an implicit conversion operator
+does not run merely because a workflow input is passed as `object`. Convert the
+value explicitly before sending it, or use matching input/output contracts.
+
 ### Optional binary-store payloads
 
 For a runnable comparison of inline payloads, automatic offloading, and explicit
