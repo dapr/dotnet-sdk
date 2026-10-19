@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Options;
@@ -31,6 +32,40 @@ namespace Dapr.Actors.Next.SourceGenerators.Test;
 
 public sealed partial class GeneratorTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Unused_state_shapes_do_not_expand_large_member_graphs(bool invalidFamily)
+    {
+        const string stateSource = """
+                                   public sealed class Wallet { public int Balance { get; set; } }
+                                   public sealed class WalletV2 { public int Balance { get; set; } public bool Frozen { get; set; } }
+                                   """;
+        var source = new StringBuilder(stateSource);
+        source.AppendLine("public sealed class Unrelated { public NodeP Root { get; set; } }");
+        if (invalidFamily)
+        {
+            source.AppendLine("public sealed class UnrelatedV2 { public required string Other { get; set; } }");
+        }
+
+        source.AppendLine("public struct NodeA { public int Value; }");
+        for (var name = 'B'; name <= 'P'; name++)
+        {
+            source.AppendLine($"public struct Node{name} {{ public Node{(char)(name - 1)} Left; public Node{(char)(name - 1)} Right; }}");
+        }
+
+        var expected = RunGenerator(CreateCompilation("UnusedShapes", stateSource), false, assertGeneratedCompiles: true);
+        var compilation = CreateCompilation("UnusedShapes", source.ToString());
+        // Warm Roslyn's symbol caches before measuring generator allocations.
+        RunGenerator(compilation, false, assertGeneratedCompiles: true);
+        var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        var generated = RunGenerator(compilation, false);
+        var allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+
+        Assert.Equal(expected, generated);
+        Assert.True(allocatedBytes < 16 * 1024 * 1024, $"Generator allocated {allocatedBytes:N0} bytes for unused state shapes.");
+    }
+
     [Theory]
     [InlineData("Task<System.Collections.Generic.List<int>>")]
     [InlineData("ValueTask<System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>>>")]

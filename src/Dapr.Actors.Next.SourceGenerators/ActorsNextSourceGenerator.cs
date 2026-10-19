@@ -406,7 +406,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             symbol.Name,
             canonicalName,
             version,
-            ActorStateMigrationShared.ComputeShapeHash(symbol),
+            symbol,
             ActorStateMigrationShared.HasPublicParameterlessConstructor(symbol),
             members);
     }
@@ -1187,7 +1187,9 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             sb.AppendLine("                        {");
             foreach (var node in family.Nodes)
             {
-                sb.AppendLine($"                            new global::Dapr.Actors.Next.Abstractions.State.Versioning.ActorStateMigrationNode({node.Index}, typeof({node.State.TypeName}), {Literal(node.State.ShapeHash)}),");
+                // Hash only emitted families; unrelated candidates can expose enormous member graphs.
+                var shapeHash = ActorStateMigrationShared.ComputeShapeHash(node.State.Symbol);
+                sb.AppendLine($"                            new global::Dapr.Actors.Next.Abstractions.State.Versioning.ActorStateMigrationNode({node.Index}, typeof({node.State.TypeName}), {Literal(shapeHash)}),");
             }
 
             sb.AppendLine("                        },");
@@ -1568,7 +1570,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         string SimpleName,
         string CanonicalName,
         string Version,
-        string ShapeHash,
+        INamedTypeSymbol Symbol,
         bool HasPublicParameterlessConstructor,
         ImmutableArray<StateMemberModel> Members);
 
