@@ -167,9 +167,19 @@ public sealed class WorkflowReliabilityTests
     }, TestContext.Current.CancellationToken);
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public Task RetryTimeout_IsCheckedAfterTimer_AndDelayIsBounded(bool child) => Task.Run(() =>
+    [InlineData(false, 1.6, false)]
+    [InlineData(true, 1.6, false)]
+    [InlineData(false, 1.6, true)]
+    [InlineData(true, 1.6, true)]
+    [InlineData(false, 2, false)]
+    [InlineData(true, 2, false)]
+    [InlineData(false, 2, true)]
+    [InlineData(true, 2, true)]
+    [InlineData(false, 3, false)]
+    [InlineData(true, 3, false)]
+    [InlineData(false, 3, true)]
+    [InlineData(true, 3, true)]
+    public Task RetryTimeout_IsCheckedAfterTimer_AndDelayIsBounded(bool child, double firedAt, bool isReplaying) => Task.Run(() =>
     {
         var context = Context();
         var policy = new WorkflowRetryPolicy(3, TimeSpan.FromSeconds(1), retryTimeout: TimeSpan.FromSeconds(2));
@@ -187,14 +197,15 @@ public sealed class WorkflowReliabilityTests
             created,
             new HistoryEvent { WorkflowStarted = new(), Timestamp = Timestamp.FromDateTime(Start.AddSeconds(1.5)) },
             failure
-        ], false);
+        ], isReplaying);
         Assert.Equal(Start.AddSeconds(2), Assert.Single(context.PendingActions).CreateTimer.FireAt.ToDateTime());
+        Assert.False(result.IsCompleted);
         context.ProcessEvents(
         [
             new HistoryEvent { EventId = 1, TimerCreated = new() { FireAt = Timestamp.FromDateTime(Start.AddSeconds(2)) } },
-            new HistoryEvent { WorkflowStarted = new(), Timestamp = Timestamp.FromDateTime(Start.AddSeconds(3)) },
+            new HistoryEvent { WorkflowStarted = new(), Timestamp = Timestamp.FromDateTime(Start.AddSeconds(firedAt)) },
             new HistoryEvent { TimerFired = new() { TimerId = 1 } }
-        ], false);
+        ], isReplaying);
         Assert.Empty(context.PendingActions);
         Assert.True(result.IsFaulted);
         Assert.IsType<WorkflowTaskFailedException>(result.Exception!.InnerException);

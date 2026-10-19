@@ -59,14 +59,16 @@ public sealed class WorkflowReliabilityTests
         });
     }
 
-    [MinimumDaprRuntimeFact("1.17")]
-    public async Task RetryDeadline_DoesNotScheduleAnAttemptAfterItsDelay()
+    [MinimumDaprRuntimeTheory("1.17")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RetryDeadline_DoesNotScheduleAnAttemptAfterItsDelay(bool child)
     {
         var attempts = new AttemptCounter();
         await RunAsync(async (client, token) =>
         {
             var id = await client.ScheduleNewWorkflowAsync(nameof(DeadlineWorkflow), Guid.NewGuid().ToString(),
-                null, startTime: null, cancellation: token);
+                child, startTime: null, cancellation: token);
             var result = await client.WaitForWorkflowCompletionAsync(id, cancellation: token);
             Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
             Assert.Equal("expired", result.ReadOutputAs<string>());
@@ -93,6 +95,7 @@ public sealed class WorkflowReliabilityTests
                     options.RegisterWorkflow<EchoWorkflow>();
                     options.RegisterWorkflow<RacingEventsWorkflow>();
                     options.RegisterWorkflow<DeadlineWorkflow>();
+                    options.RegisterWorkflow<FailingChildWorkflow>();
                     options.RegisterActivity<EchoActivity>();
                     options.RegisterActivity<FailingActivity>();
                 }, configureClient: (provider, client) =>
@@ -159,18 +162,28 @@ public sealed class WorkflowReliabilityTests
             return 0;
         }
     }
-    private sealed class DeadlineWorkflow : Workflow<object?, string>
+    private sealed class DeadlineWorkflow : Workflow<bool, string>
     {
-        public override async Task<string> RunAsync(WorkflowContext context, object? input)
+        public override async Task<string> RunAsync(WorkflowContext context, bool input)
         {
             try
             {
-                await context.CallActivityAsync<string>(nameof(FailingActivity), options: new WorkflowTaskOptions(
-                    RetryPolicy: new WorkflowRetryPolicy(3, TimeSpan.FromSeconds(2), retryTimeout: TimeSpan.FromSeconds(2))));
+                var policy = new WorkflowRetryPolicy(3, TimeSpan.FromSeconds(2), retryTimeout: TimeSpan.FromSeconds(2));
+                if (input)
+                    await context.CallChildWorkflowAsync<string>(nameof(FailingChildWorkflow),
+                        options: new ChildWorkflowTaskOptions { RetryPolicy = policy });
+                else
+                    await context.CallActivityAsync<string>(nameof(FailingActivity),
+                        options: new WorkflowTaskOptions(RetryPolicy: policy));
                 return "unexpected";
             }
             catch (WorkflowTaskFailedException) { return "expired"; }
         }
+    }
+    private sealed class FailingChildWorkflow : Workflow<object?, string>
+    {
+        public override Task<string> RunAsync(WorkflowContext context, object? input) =>
+            context.CallActivityAsync<string>(nameof(FailingActivity));
     }
     private sealed class FailingActivity(AttemptCounter attempts) : WorkflowActivity<string, string>
     {

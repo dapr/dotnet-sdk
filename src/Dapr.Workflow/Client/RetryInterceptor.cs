@@ -56,6 +56,8 @@ public sealed class RetryInterceptor<T>(
             if (nextDelay == TimeSpan.Zero)
                 break;
 
+            var reachesDeadline = nextDelay >= RemainingTime(firstAttempt);
+
             if (retryTimerFactory != null)
             {
                 await retryTimerFactory(nextDelay);
@@ -69,6 +71,11 @@ public sealed class RetryInterceptor<T>(
                 throw new InvalidOperationException(
                     "RetryInterceptor requires a WorkflowContext to schedule durable retry timers.");
             }
+
+            // Older runtimes truncate timer deadlines to whole seconds and may fire early.
+            // A wait capped at the retry deadline is terminal regardless of the observed clock.
+            if (reachesDeadline)
+                break;
         }
 
         if (lastException != null)
