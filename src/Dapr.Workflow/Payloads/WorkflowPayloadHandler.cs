@@ -75,6 +75,17 @@ internal sealed class WorkflowPayloadHandler(
             return (T?)ReadReference(wire, typeof(T), serializer);
         }
 
+        if (codec is BinaryStorePayloadConverter binary && serializer.GetType() == typeof(JsonDaprSerializer))
+        {
+            var token = cancellationToken.CanBeCanceled ? cancellationToken : stoppingToken;
+            token.ThrowIfCancellationRequested();
+            if (PayloadReferenceParser.Parse(wire) is { } reference)
+            {
+                var bytes = await binary.ResolveBytesAsync(reference, token).ConfigureAwait(false);
+                return WorkflowPayloadJsonSerializer.Deserialize<T>((JsonDaprSerializer)serializer, bytes.Span);
+            }
+        }
+
         var serialized = await codec.DecodeAsync(wire, site,
             cancellationToken.CanBeCanceled ? cancellationToken : stoppingToken).ConfigureAwait(false);
         return string.IsNullOrEmpty(serialized) ? default : serializer.Deserialize<T>(serialized);
@@ -86,6 +97,17 @@ internal sealed class WorkflowPayloadHandler(
         if (PayloadReference.IsReferenceType(type))
         {
             return ReadReference(wire, type, serializer);
+        }
+
+        if (codec is BinaryStorePayloadConverter binary && serializer.GetType() == typeof(JsonDaprSerializer))
+        {
+            var token = cancellationToken.CanBeCanceled ? cancellationToken : stoppingToken;
+            token.ThrowIfCancellationRequested();
+            if (PayloadReferenceParser.Parse(wire) is { } reference)
+            {
+                var bytes = await binary.ResolveBytesAsync(reference, token).ConfigureAwait(false);
+                return WorkflowPayloadJsonSerializer.Deserialize((JsonDaprSerializer)serializer, bytes.Span, type);
+            }
         }
 
         var serialized = await codec.DecodeAsync(wire, site,
