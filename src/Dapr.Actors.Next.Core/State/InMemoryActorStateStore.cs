@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,27 +21,47 @@ namespace Dapr.Actors.Next.Core.State;
 public sealed class InMemoryActorStateStore : IActorStateStore
 {
     private readonly ConcurrentDictionary<StateKey, byte[]> values = new();
+    private readonly object syncRoot = new();
+
+    /// <inheritdoc />
+    public ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default)
+    {
+        var changes = operations.Select(operation => (Key: new StateKey(actorType, actorId, operation.Name), Value: operation.Value?.ToArray())).ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (syncRoot)
+        {
+            foreach (var change in changes)
+            {
+                if (change.Value is null)
+                    values.TryRemove(change.Key, out _);
+                else
+                    values[change.Key] = change.Value;
+            }
+        }
+        return ValueTask.CompletedTask;
+    }
 
     /// <inheritdoc />
     public ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default)
     {
-        return values.TryGetValue(new StateKey(actorType, actorId, name), out var value)
-            ? new ValueTask<ReadOnlyMemory<byte>?>(value)
-            : new ValueTask<ReadOnlyMemory<byte>?>((ReadOnlyMemory<byte>?)null);
+        lock (syncRoot)
+        {
+            return values.TryGetValue(new StateKey(actorType, actorId, name), out var value)
+                ? new ValueTask<ReadOnlyMemory<byte>?>(value.ToArray())
+                : new ValueTask<ReadOnlyMemory<byte>?>((ReadOnlyMemory<byte>?)null);
+        }
     }
 
     /// <inheritdoc />
     public ValueTask WriteAsync(string actorType, string actorId, string name, ReadOnlyMemory<byte> value, CancellationToken cancellationToken = default)
     {
-        values[new StateKey(actorType, actorId, name)] = value.ToArray();
-        return ValueTask.CompletedTask;
+        return ApplyAsync(actorType, actorId, [new(name, value)], cancellationToken);
     }
 
     /// <inheritdoc />
     public ValueTask DeleteAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default)
     {
-        values.TryRemove(new StateKey(actorType, actorId, name), out _);
-        return ValueTask.CompletedTask;
+        return ApplyAsync(actorType, actorId, [new(name, null)], cancellationToken);
     }
 
     private readonly record struct StateKey(string ActorType, string ActorId, string Name);

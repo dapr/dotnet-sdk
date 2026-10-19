@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -412,6 +412,12 @@ public sealed class StreamConcurrencyTests
 
     private sealed class GatedStateStore : IActorStateStore
     {
+        public async ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default)
+        {
+            Writing.TrySetResult();
+            await Release.Task.WaitAsync(cancellationToken);
+            Committed = true;
+        }
         public TaskCompletionSource Writing { get; } = Signal();
         public TaskCompletionSource Release { get; } = Signal();
         public bool Committed { get; private set; }

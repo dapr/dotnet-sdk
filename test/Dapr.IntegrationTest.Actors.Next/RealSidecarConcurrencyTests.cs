@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ using Dapr.Actors.Next.Core.Client;
 using Dapr.Actors.Next.Core.DependencyInjection;
 using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.Core.State;
+using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.Timers;
 using Dapr.Actors.Next.Core.Transport;
 using Dapr.Actors.Next.Testing;
@@ -40,6 +41,60 @@ namespace Dapr.IntegrationTest.Actors.Next;
 
 public sealed partial class RealSidecarActorTests
 {
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Host_shutdown_disposes_sidecar_activations()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await InvokeConcurrencyAsync("shutdown-a", "Increment", timeout.Token);
+        await InvokeConcurrencyAsync("shutdown-b", "Increment", timeout.Token);
+        var actors = app!.Services.GetRequiredService<ConcurrencyProbe>().Actors.ToArray();
+        await app.StopAsync(timeout.Token);
+        Assert.Equal(2, actors.Length);
+        Assert.All(actors, actor => Assert.Equal(1, actor.DisposeCount));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Sidecar_reentrant_child_flush_preserves_parent_replacement()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var probe = app!.Services.GetRequiredService<ConcurrencyProbe>();
+        using var pause = app.Services.GetRequiredService<ActorFaults>().PauseNextStateWrite<int>("count");
+        probe.ChildFlushPause = pause;
+        await InvokeConcurrencyAsync("flush-race", "ParentReplacement", timeout.Token);
+        await app.Services.GetRequiredService<IActorRuntime>()
+            .DeactivateAsync("ConcurrencyActor", ActorId.Create("flush-race"), timeout.Token);
+        Assert.Equal(2, (await InvokeConcurrencyAsync("flush-race", "Read", timeout.Token)).Value);
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Sidecar_state_batch_failure_and_retry_preserve_all_keys()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var store = app!.Services.GetRequiredService<IActorStateStore>();
+        var serializer = app.Services.GetRequiredService<IActorWireSerializer>();
+        var faults = new ActorFaults();
+        ActorStateUnitOfWork Cache() => new("Batch", ActorId.Create("atomic"), store, serializer, faults);
+        var cache = Cache();
+        await cache.SetAsync("first", 1);
+        await cache.SetAsync("second", 2L);
+        await cache.SetAsync("delete", 3);
+        await cache.FlushAsync(timeout.Token);
+        await cache.SetAsync("first", 10);
+        await cache.SetAsync("second", 20L);
+        await cache.RemoveAsync("delete");
+        faults.FailNextStateWrite<long>();
+        await Assert.ThrowsAsync<ActorInjectedTransientException>(() => cache.FlushAsync(timeout.Token).AsTask());
+        var durable = Cache();
+        Assert.Equal(1, (await durable.TryGetAsync<int>("first"))!.Value);
+        Assert.Equal(2L, (await durable.TryGetAsync<long>("second"))!.Value);
+        Assert.Equal(3, (await durable.TryGetAsync<int>("delete"))!.Value);
+        await cache.FlushAsync(timeout.Token);
+        durable = Cache();
+        Assert.Equal(10, (await durable.TryGetAsync<int>("first"))!.Value);
+        Assert.Equal(20L, (await durable.TryGetAsync<long>("second"))!.Value);
+        Assert.Null(await durable.TryGetAsync<int>("delete"));
+    }
+
     private static partial void ConfigureConcurrencyActors(WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<ConcurrencyProbe>();
@@ -279,6 +334,7 @@ public sealed partial class RealSidecarActorTests
         public int StreamOpens;
         public int Callbacks;
         public bool CallbackOverlapped;
+        internal ActorFaultPause? ChildFlushPause;
     }
 
     private sealed class ConcurrencyActor(
@@ -293,6 +349,20 @@ public sealed partial class RealSidecarActorTests
             var state = await context.State.GetOrCreateAsync("count", () => 0, ct);
             switch (request.MethodName)
             {
+                case "ParentReplacement":
+                    var child = invocation.InvokeAsync("ConcurrencyActor", context.ActorId.Value, "SetOnce",
+                        ReadOnlyMemory<byte>.Empty, ActorHeaders.Empty, ct);
+                    try
+                    {
+                        await probe.ChildFlushPause!.Reached.WaitAsync(ct);
+                        await context.State.SetAsync("count", 2, ct);
+                    }
+                    finally
+                    {
+                        probe.ChildFlushPause!.Release();
+                    }
+                    await child;
+                    return new(2);
                 case "Read":
                 case "Leaf":
                     return new(state.Value);

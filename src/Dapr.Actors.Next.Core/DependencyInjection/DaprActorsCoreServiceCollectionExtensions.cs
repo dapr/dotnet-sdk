@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -258,11 +258,22 @@ public static class DaprActorsCoreServiceCollectionExtensions
 /// before the first AddDaprActorsCore call, silently preventing actor types from ever being announced
 /// to placement.
 /// </summary>
-internal sealed class SubscribeActorEventsStreamHostedService(SubscribeActorEventsStreamManager manager) : IHostedService
+internal sealed class SubscribeActorEventsStreamHostedService(SubscribeActorEventsStreamManager manager, IActorRuntime runtime) : IHostedService
 {
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken) => manager.StartAsync(cancellationToken);
 
     /// <inheritdoc />
-    public Task StopAsync(CancellationToken cancellationToken) => manager.StopAsync(cancellationToken);
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await manager.StopAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (runtime is IAsyncDisposable disposable)
+                await disposable.DisposeAsync().AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
 }

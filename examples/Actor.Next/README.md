@@ -23,3 +23,10 @@ as well. Load the actor assemblies before calling `AddDaprActors` so their modul
 Nested generic return types and `ActorId` payloads use the same generated invocation path as other DTOs;
 actors and interfaces may share simple CLR names in different namespaces, while Dapr actor type names
 must remain unique.
+
+Actor saves commit all changed state names and deletions atomically. Use a state
+component with transaction support (such as the Redis component used by the
+integration tests). `ActorTestRuntime.Faults.FailNextStateTransaction()` fails the
+entire pending batch, including delete-only resets, without changing durable
+state. Dispose the test runtime with `await using`; it drains admitted work and
+disposes each activation and its scoped services.

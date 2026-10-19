@@ -162,6 +162,13 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
         }
     }
 
+    internal bool HasActiveCallChain(IReadOnlyDictionary<string, string> headers)
+    {
+        lock (syncRoot)
+            return executing && !closing && ActorHeaders.TryGetReentrancy(headers, out _, out var chain)
+                && string.Equals(callChain, chain, StringComparison.Ordinal);
+    }
+
     internal void ReleaseReentrantTurn()
     {
         lock (syncRoot)
@@ -348,6 +355,7 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
         {
             EndExecution();
         }
+        runtime.TryRetireMailbox(this);
     }
 
     private void StartExecution(ActorRuntimeRequest request)

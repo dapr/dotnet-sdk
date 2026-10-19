@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -258,6 +258,11 @@ public sealed class StateCacheRegressionTests
     {
         private readonly InMemoryActorStateStore inner = new();
         public int Writes { get; private set; }
+        public ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default)
+        {
+            Writes += operations.Count(operation => operation.Value.HasValue);
+            return inner.ApplyAsync(actorType, actorId, operations, cancellationToken);
+        }
         public ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default) =>
             inner.ReadAsync(actorType, actorId, name, cancellationToken);
         public ValueTask WriteAsync(string actorType, string actorId, string name, ReadOnlyMemory<byte> value, CancellationToken cancellationToken = default)

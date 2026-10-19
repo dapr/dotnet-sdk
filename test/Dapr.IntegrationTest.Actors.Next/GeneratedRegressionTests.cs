@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Registry;
+using Dapr.Actors.Next.Abstractions.Filters;
+using Dapr.Actors.Next.Interpreted;
+using Google.Protobuf;
+using P = Dapr.Client.Autogen.Grpc.v1;
 using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Client;
@@ -38,12 +42,75 @@ namespace Dapr.IntegrationTest.Actors.Next;
 
 public sealed partial class RealSidecarActorTests
 {
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Generated_machine_discards_failed_events_and_reenters_external_self_transition()
+    {
+        using var timeout = new CancellationTokenSource(Timeout);
+        var actor = app!.Services.GetRequiredService<IActorProxyFactory>()
+            .Create<IGeneratedDeadlineActor>(new ActorId("generated-self"), "GeneratedDeadline");
+        await WaitUntilAsync(async () => (await actor.ReadAsync(timeout.Token)).State == GeneratedDeadlineState.Done,
+            timeout.Token, () => "Initial timeout did not fire.");
+        await Assert.ThrowsAnyAsync<Exception>(() => actor.FailAsync(timeout.Token));
+        await actor.CommandAsync(timeout.Token);
+        Assert.Equal(GeneratedDeadlineState.Done, (await actor.ReadAsync(timeout.Token)).State);
+        Assert.Equal(1, (await actor.ReadAsync(timeout.Token)).Entries);
+        await actor.RestartAsync(timeout.Token);
+        await actor.RestartAsync(timeout.Token);
+        Assert.Equal(3, (await actor.ReadAsync(timeout.Token)).Entries);
+        await WaitUntilAsync(async () => (await actor.ReadAsync(timeout.Token)).State == GeneratedDeadlineState.Done,
+            timeout.Token, () => "Restarted timeout did not fire.");
+    }
+
     private static partial void ConfigureGeneratedRegressionActors(WebApplicationBuilder builder)
     {
         RuntimeHelpers.RunModuleConstructor(typeof(CalculatorActor).Module.ModuleHandle);
         RuntimeHelpers.RunModuleConstructor(typeof(First.AccountActor).Module.ModuleHandle);
         builder.Services.AddSingleton<CalculatorDependency>();
         builder.Services.AddSingleton<GeneratedActivationProbe>();
+        builder.Services.AddSingleton<IInterpretedMachineStore, InMemoryInterpretedMachineStore>();
+        builder.Services.AddSingleton<ICapabilityRegistry>(new EmptyCapabilityRegistry());
+        builder.Services.AddDaprInterpretedActors("RegressionMachine");
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Interpreted_machine_retries_failed_verification_and_sidecar_state_read()
+    {
+        using var timeout = new CancellationTokenSource(Timeout);
+        var services = app!.Services;
+        var definitions = services.GetRequiredService<IInterpretedMachineStore>();
+        var id = new ActorId("interpreted-retry");
+        InterpretedMachineDefinition Definition(string initial) => new()
+        {
+            InitialState = initial,
+            States = [new InterpretedStateDefinition { Name = "Ready", Terminal = true }],
+            Transitions = [new InterpretedTransitionDefinition
+            {
+                Source = "Ready", Event = "tick",
+                Branches = [new InterpretedBranchDefinition { Otherwise = true }],
+            }],
+        };
+        Task<P.InvokeActorResponse> Raise() => client!.InvokeActorAsync(new P.InvokeActorRequest
+        {
+            ActorType = "RegressionMachine",
+            ActorId = id.Value,
+            Method = "Raise",
+            Data = ByteString.CopyFromUtf8("""{"Name":"tick","Payload":0}"""),
+        }, cancellationToken: timeout.Token).ResponseAsync;
+        await definitions.SetAsync("RegressionMachine", id, Definition("Missing"), timeout.Token);
+        await Assert.ThrowsAnyAsync<Exception>(Raise);
+        await Assert.ThrowsAnyAsync<Exception>(Raise);
+        await definitions.SetAsync("RegressionMachine", id, Definition("Ready"), timeout.Token);
+        services.GetRequiredService<RecordingActorStateStore>().FailNextInterpretedRead = true;
+        await Assert.ThrowsAnyAsync<Exception>(Raise);
+        var result = await Raise();
+        using var json = System.Text.Json.JsonDocument.Parse(result.Data.Memory);
+        Assert.Equal("Ready", json.RootElement.GetProperty("State").GetString());
+    }
+
+    private sealed class EmptyCapabilityRegistry : ICapabilityRegistry
+    {
+        public bool TryGetEffect(string name, out IActorEffect effect) { effect = null!; return false; }
+        public bool TryGetGuard(string name, out IActorGuard guard) { guard = null!; return false; }
     }
 
     [MinimumDaprRuntimeFact("1.18")]
@@ -76,7 +143,10 @@ public sealed partial class RealSidecarActorTests
         var node = migrator.ResolveTargetNode(typeof(AccountV1))!;
         var bytes = await migrator.WriteEnvelopedAsync(new AccountV1
         {
-            Balance = 42, Owner = "owner", Count = 3, Revision = 9,
+            Balance = 42,
+            Owner = "owner",
+            Count = 3,
+            Revision = 9,
         }, node, serializer, timeout.Token);
         var store = services.GetRequiredService<IActorStateStore>();
         var id = new ActorId("generated-migration");

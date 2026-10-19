@@ -43,6 +43,13 @@ The request file uses `http://localhost:5000`, a shared `auction-demo` auction i
 
 The deterministic soft-close race is intentionally covered by the tests, where virtual time and scheduler ordering can be controlled.
 
+An external `GoTo` targeting the current state exits and re-enters that state,
+including cancelling and restarting its `.After` timeout. Internal actions (like
+the bid handler's explicit reschedule) do not replay entry/exit actions. A failed
+command discards its remaining raised events so they cannot run during a later
+bid. These rules do not change restoration: restored states still do not restart
+activation-local timers.
+
 ## Run Tests
 
 Run the example tests:

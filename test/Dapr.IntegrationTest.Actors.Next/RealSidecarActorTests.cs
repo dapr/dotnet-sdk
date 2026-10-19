@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -1088,11 +1088,19 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
 /// </summary>
 public sealed class RecordingActorStateStore(IActorStateStore inner) : IActorStateStore
 {
+    internal bool FailNextInterpretedRead;
+    public ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default) =>
+        inner.ApplyAsync(actorType, actorId, operations, cancellationToken);
     private readonly ConcurrentDictionary<(string ActorType, string ActorId, string Name), int> readCounts = new();
 
     /// <inheritdoc />
     public async ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default)
     {
+        if (name == "__interpreted" && FailNextInterpretedRead)
+        {
+            FailNextInterpretedRead = false;
+            throw new IOException("Injected interpreted state read failure.");
+        }
         readCounts.AddOrUpdate((actorType, actorId, name), 1, static (_, count) => count + 1);
         return await inner.ReadAsync(actorType, actorId, name, cancellationToken);
     }

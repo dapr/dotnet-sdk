@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,9 @@ public interface IInitialStateActor : IActor
     Task ScheduleCustom(CancellationToken cancellationToken = default);
     Task CancelCustom(CancellationToken cancellationToken = default);
     Task Finish(CancellationToken cancellationToken = default);
+    Task Restart(CancellationToken cancellationToken = default);
+    Task RestartParent(CancellationToken cancellationToken = default);
+    Task FailCommand(CancellationToken cancellationToken = default);
 }
 
 public enum InitialState { Parent, Open, Done }
@@ -46,6 +49,9 @@ public sealed record ScheduleInitialCustom;
 public sealed record CancelInitialCustom;
 
 public sealed record FinishInitial;
+public sealed record RestartInitial;
+public sealed record RestartInitialParent;
+public sealed record FailInitialCommand;
 
 public sealed class InitialEntryProbe
 {
@@ -55,6 +61,8 @@ public sealed class InitialEntryProbe
     public bool RaiseFromActor { get; set; }
     public bool FinishFromEntry { get; set; }
     public bool CancelEntry { get; set; }
+    public int Exits { get; set; }
+    public int ParentExits { get; set; }
 }
 
 [DaprActor("InitialState")]
@@ -69,9 +77,18 @@ public sealed class InitialStateActor(
     {
         sm.InitialState(InitialState.Open);
         sm.In(InitialState.Parent)
-            .OnEntry(ctx => ctx.Update(data => data with { Log = [.. data.Log, "parent"] }));
+            .OnEntry(ctx => ctx.Update(data => data with { Log = [.. data.Log, "parent"] }))
+            .OnExit(_ => probe.ParentExits++);
+        sm.In(InitialState.Parent).On<RestartInitialParent>().GoTo(InitialState.Open);
+        sm.In(InitialState.Open).On<RestartInitial>().GoTo(InitialState.Open);
+        sm.In(InitialState.Open).On<FailInitialCommand>().Do(ctx =>
+        {
+            ctx.Raise(new InitialFollowUp());
+            throw new InvalidOperationException("command failed");
+        });
         sm.In(InitialState.Open)
             .SubstateOf(InitialState.Parent)
+            .OnExit(_ => probe.Exits++)
             .OnEntry(async ctx =>
             {
                 probe.Attempts++;
@@ -153,4 +170,10 @@ public sealed class InitialStateActor(
 
     public Task Finish(CancellationToken cancellationToken = default) =>
         Raise<object?>(new FinishInitial(), cancellationToken);
+    public Task Restart(CancellationToken cancellationToken = default) =>
+        Raise<object?>(new RestartInitial(), cancellationToken);
+    public Task RestartParent(CancellationToken cancellationToken = default) =>
+        Raise<object?>(new RestartInitialParent(), cancellationToken);
+    public Task FailCommand(CancellationToken cancellationToken = default) =>
+        Raise<object?>(new FailInitialCommand(), cancellationToken);
 }

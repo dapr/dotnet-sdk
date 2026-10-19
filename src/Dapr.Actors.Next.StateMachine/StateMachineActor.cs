@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -120,6 +120,11 @@ public abstract class StateMachineActor<TState, TData> : Actor
             }
 
             await PersistAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            raisedEvents.Clear();
+            throw;
         }
         finally
         {
@@ -258,7 +263,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
             return new EventProcessResult(true, DeferredEventAck.Accepted);
         }
 
-        var handler = FindHandler(currentState, evt.GetType());
+        var handler = FindHandler(currentState, evt.GetType(), out var handlerState);
         if (handler is null)
         {
             return await HandleUnhandledAsync(evt, cancellationToken).ConfigureAwait(false);
@@ -274,7 +279,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
         var context = CreateRuntimeContext(sourceState, evt);
         if (!branch.IsInternal && branch.Target.HasValue)
         {
-            await ExitToAsync(branch.Target.Value, evt, cancellationToken).ConfigureAwait(false);
+            await ExitToAsync(handlerState, branch.Target.Value, evt, cancellationToken).ConfigureAwait(false);
         }
 
         foreach (var effect in branch.Effects)
@@ -290,7 +295,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
         if (!branch.IsInternal && branch.Target.HasValue)
         {
             currentState = branch.Target.Value;
-            await EnterFromAsync(sourceState, currentState, evt, cancellationToken).ConfigureAwait(false);
+            await EnterFromAsync(handlerState, currentState, evt, cancellationToken).ConfigureAwait(false);
         }
 
         await ReplayDeferredEventsAsync(cancellationToken).ConfigureAwait(false);
@@ -344,13 +349,15 @@ public abstract class StateMachineActor<TState, TData> : Actor
         return null;
     }
 
-    private RuntimeHandler<TState, TData>? FindHandler(TState state, Type eventType)
+    private RuntimeHandler<TState, TData>? FindHandler(TState state, Type eventType, out TState handlerState)
     {
+        handlerState = state;
         var current = state;
         while (table!.RuntimeStates.TryGetValue(current, out var configuration))
         {
             if (configuration.Handlers.TryGetValue(eventType, out var handler))
             {
+                handlerState = current;
                 return handler;
             }
 
@@ -391,9 +398,9 @@ public abstract class StateMachineActor<TState, TData> : Actor
         return EventDisposition.None;
     }
 
-    private async ValueTask ExitToAsync(TState target, object evt, CancellationToken cancellationToken)
+    private async ValueTask ExitToAsync(TState source, TState target, object evt, CancellationToken cancellationToken)
     {
-        var lca = FindLeastCommonAncestor(currentState, target);
+        var lca = FindLeastCommonAncestor(source, target);
         foreach (var state in AncestorsFromChild(currentState).TakeWhile(state => !lca.HasValue || !EqualityComparer<TState>.Default.Equals(state, lca.Value)))
         {
             if (table!.RuntimeStates.TryGetValue(state, out var configuration))
@@ -442,11 +449,18 @@ public abstract class StateMachineActor<TState, TData> : Actor
 
     private TState? FindLeastCommonAncestor(TState source, TState target)
     {
+        // External transitions must exit and re-enter an endpoint that is also the
+        // common ancestor (including self transitions); Internal() never gets here.
         var sourceAncestors = AncestorsFromChild(source).ToHashSet();
         foreach (var ancestor in AncestorsFromChild(target))
         {
             if (sourceAncestors.Contains(ancestor))
             {
+                if (EqualityComparer<TState>.Default.Equals(ancestor, source)
+                    || EqualityComparer<TState>.Default.Equals(ancestor, target))
+                {
+                    return table!.RuntimeStates[ancestor].Parent;
+                }
                 return ancestor;
             }
         }

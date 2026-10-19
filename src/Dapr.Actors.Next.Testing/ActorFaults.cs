@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,25 @@ public sealed class ActorFaults : IActorStateFaultInjector
     private readonly Queue<StreamFault> streamFaults = [];
     private readonly Queue<StateWritePause> stateWritePauses = [];
     private readonly object syncRoot = new();
+    private readonly Queue<bool> transactionFaults = [];
+
+    /// <summary>Fails the next atomic state transaction, including delete-only saves, before any mutation commits.</summary>
+    public void FailNextStateTransaction(bool transient = true)
+    {
+        lock (syncRoot) transactionFaults.Enqueue(transient);
+    }
+
+    /// <inheritdoc />
+    public ValueTask BeforeCommitAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations,
+        CancellationToken cancellationToken = default)
+    {
+        lock (syncRoot)
+        {
+            if (transactionFaults.TryDequeue(out var transient))
+                throw CreateException("Injected state transaction failure.", transient);
+        }
+        return ValueTask.CompletedTask;
+    }
 
     /// <summary>
     /// Fails the next state write for the given state type.

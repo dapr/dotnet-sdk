@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,41 @@ public sealed class InitialStateTests
 {
     private static readonly ActorId Id = ActorId.Create("initial");
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    [Fact]
+    public async Task Failed_command_does_not_leak_raised_events_into_next_command()
+    {
+        await using var runtime = CreateRuntime();
+        await Invoke<InitialSnapshot>(runtime, nameof(IInitialStateActor.Read));
+        await Assert.ThrowsAnyAsync<Exception>(() => Invoke<object?>(runtime, nameof(IInitialStateActor.FailCommand)));
+        await Invoke<string>(runtime, nameof(IInitialStateActor.Command));
+        Assert.Equal(["parent", "child", "queued", "command"],
+            (await Invoke<InitialSnapshot>(runtime, nameof(IInitialStateActor.Read))).Data.Log);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task External_self_transition_reenters_and_restarts_timeout(bool inherited)
+    {
+        var probe = new InitialEntryProbe();
+        await using var runtime = CreateRuntime(probe);
+        await Invoke<InitialSnapshot>(runtime, nameof(IInitialStateActor.Read));
+        runtime.Time.Advance(TimeSpan.FromSeconds(9));
+        await Invoke<object?>(runtime, inherited ? nameof(IInitialStateActor.RestartParent) : nameof(IInitialStateActor.Restart));
+        Assert.Equal(2, probe.Attempts);
+        Assert.Equal(1, probe.Exits);
+        Assert.Equal(inherited ? 1 : 0, probe.ParentExits);
+        var log = (await Invoke<InitialSnapshot>(runtime, nameof(IInitialStateActor.Read))).Data.Log;
+        Assert.Equal(inherited ? new[] { "parent", "child", "queued", "parent", "child", "queued" }
+            : ["parent", "child", "queued", "child", "queued"], log);
+        runtime.Time.Advance(TimeSpan.FromSeconds(1));
+        await runtime.RunToIdle();
+        Assert.Equal(InitialState.Open, (await Invoke<InitialSnapshot>(runtime, nameof(IInitialStateActor.Read))).State);
+        runtime.Time.Advance(TimeSpan.FromSeconds(9));
+        await runtime.RunToIdle();
+        Assert.Equal(InitialState.Done, (await Invoke<InitialSnapshot>(runtime, nameof(IInitialStateActor.Read))).State);
+    }
 
     [Fact]
     public async Task Initial_hierarchy_and_queued_events_run_once_and_persist_even_for_query()
@@ -198,7 +233,8 @@ public sealed class InitialStateTests
         var stale = runtime.InvokeAsync("InitialState", Id, StateMachineConstants.TimerOperationName,
             JsonSerializer.Serialize(new
             {
-                Name = StateMachineConstants.StateTimeoutTimerName, State = nameof(InitialState.Open)
+                Name = StateMachineConstants.StateTimeoutTimerName,
+                State = nameof(InitialState.Open)
             }));
         await runtime.RunToIdle();
         await stale;

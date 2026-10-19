@@ -19,6 +19,16 @@ Failed or cancelled activation is disposed and retried on the next invocation.
 This differs from ordinary turn failure: dirty state from a failed turn remains
 in the activation for a subsequent successful save.
 
+Disposing `ActorTestRuntime` drains admitted turns (including controlled-scheduler
+queues) before disposing actor instances, activation scopes, and the service
+provider. Release test pauses before awaiting disposal. New unrelated calls are
+rejected once shutdown starts; admitted call chains can finish nested calls.
+Production hosts stop the callback stream before draining the runtime. Hosts
+using only a service provider should dispose `ActorRuntime` before the provider
+when work is still pending and may need to activate another actor.
+Idle mailboxes are reclaimed after deactivation, but queued or admitted work
+retains its mailbox until it finishes.
+
 ## Exercise remote reentrancy
 
 ```csharp
@@ -59,7 +69,7 @@ parallel branches or fire-and-forget application work.
 ## Pause persistence and race deactivation
 
 State-write pauses are one-shot, match the state value type and optional name,
-and stop immediately before writing to the store:
+and stop during preparation of an atomic state transaction:
 
 ```csharp
 using var pause = runtime.Faults.PauseNextStateWrite<int>("count");
@@ -88,6 +98,24 @@ finish. With a controlled scheduler, advance the scheduler before awaiting an
 external deactivation. Disposing a pause releases it, and a paused write honors
 its own cancellation token. Cancelling `RunToIdle` only cancels the scheduler
 wait; release the pause to let an already-running turn finish.
+
+Every save submits its changed keys and deletions as one atomic
+`IActorStateStore.ApplyAsync` batch. The sidecar adapter uses Dapr's state
+transaction API, requiring a transactional state component. Custom stores must
+implement atomic batches; independent per-key writes are not a valid fallback.
+Typed write faults and pauses run before submitting the batch. A fault on any
+typed key therefore leaves every durable key unchanged and all pending changes
+available for retry. For failures that also cover delete-only transactions:
+
+```csharp
+runtime.Faults.FailNextStateTransaction();
+```
+
+Commits are serialized independently of cache access: replacing state while a
+reentrant child is saving does not block behind that save or acknowledge the
+replacement as persisted. The next save commits the replacement. This does not
+make application-owned mutable object graphs thread safe; synchronize concurrent
+in-place mutations or use `SetAsync` with replacement values.
 
 ## Advance timers and reminders
 

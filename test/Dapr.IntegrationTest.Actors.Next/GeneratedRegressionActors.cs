@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,13 @@ namespace Dapr.IntegrationTest.Actors.Next;
 public interface IGeneratedDeadlineActor : IActor
 {
     Task<GeneratedDeadlineSnapshot> ReadAsync(CancellationToken cancellationToken = default);
+    Task RestartAsync(CancellationToken cancellationToken = default);
+    Task FailAsync(CancellationToken cancellationToken = default);
+    Task CommandAsync(CancellationToken cancellationToken = default);
 }
+public sealed record RestartDeadline;
+public sealed record FailDeadline;
+public sealed record DeadlineCommand;
 
 public enum GeneratedDeadlineState { Waiting, Done }
 
@@ -48,10 +54,23 @@ public sealed class GeneratedDeadlineActor(ActorActivationContext context, IActo
             .After(TimeSpan.FromMilliseconds(500))
             .On<StateTimeout<GeneratedDeadlineState>>().GoTo(GeneratedDeadlineState.Done);
         stateMachine.In(GeneratedDeadlineState.Done).Ignore<StateTimeout<GeneratedDeadlineState>>();
+        foreach (var state in new[] { GeneratedDeadlineState.Waiting, GeneratedDeadlineState.Done })
+        {
+            stateMachine.In(state).On<RestartDeadline>().GoTo(GeneratedDeadlineState.Waiting);
+            stateMachine.In(state).On<DeadlineCommand>().Do(_ => { });
+            stateMachine.In(state).On<FailDeadline>().Do(context =>
+            {
+                context.Raise(new RestartDeadline());
+                throw new InvalidOperationException("command intentionally failed");
+            });
+        }
     }
 
     public Task<GeneratedDeadlineSnapshot> ReadAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(new GeneratedDeadlineSnapshot(CurrentState, Data.Entries));
+    public Task RestartAsync(CancellationToken cancellationToken = default) => Raise<object?>(new RestartDeadline(), cancellationToken);
+    public Task FailAsync(CancellationToken cancellationToken = default) => Raise<object?>(new FailDeadline(), cancellationToken);
+    public Task CommandAsync(CancellationToken cancellationToken = default) => Raise<object?>(new DeadlineCommand(), cancellationToken);
 }
 
 [GenerateActorClient]

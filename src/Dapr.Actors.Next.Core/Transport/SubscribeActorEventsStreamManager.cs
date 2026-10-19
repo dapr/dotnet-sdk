@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,11 +41,35 @@ public sealed class SubscribeActorEventsStreamManager(
     IActorRuntime runtime,
     TimeProvider timeProvider,
     IOptions<DaprActorsOptions> options,
-    ILogger<SubscribeActorEventsStreamManager> logger) : BackgroundService
+    ILogger<SubscribeActorEventsStreamManager> logger) : BackgroundService, IAsyncDisposable
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
     private readonly ConcurrentDictionary<string, StreamLease> streams = new(StringComparer.Ordinal);
     private readonly CancellationTokenSource shutdown = new();
+    private readonly object disposalLock = new();
+    private Task? disposal;
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        lock (disposalLock)
+            return new ValueTask(disposal ??= DisposeCoreAsync());
+    }
+
+    /// <inheritdoc />
+    public override void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+    private async Task DisposeCoreAsync()
+    {
+        await Task.Yield();
+        await shutdown.CancelAsync().ConfigureAwait(false);
+        await StopAsync(CancellationToken.None).ConfigureAwait(false);
+        var leases = streams.ToArray();
+        streams.Clear();
+        await Task.WhenAll(leases.Select(pair => pair.Value.DisposeAsync(CancellationToken.None).AsTask())).ConfigureAwait(false);
+        base.Dispose();
+        shutdown.Dispose();
+    }
 
     /// <summary>
     /// Opens the stream for a newly hosted actor type.

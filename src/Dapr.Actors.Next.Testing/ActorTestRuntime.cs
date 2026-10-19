@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -217,7 +217,15 @@ public sealed class ActorTestRuntime : IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
-        await provider.DisposeAsync().ConfigureAwait(false);
+        try
+        {
+            if (Runtime is IAsyncDisposable disposable)
+                await disposable.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            await provider.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     internal T? ReadState<T>(string actorType, string actorId, string name)

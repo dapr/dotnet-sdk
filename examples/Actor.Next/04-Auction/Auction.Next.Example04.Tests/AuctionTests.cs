@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,11 +14,34 @@
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Options;
 using Dapr.Actors.Next.Testing;
+using Dapr.Actors.Next.StateMachine;
 
 namespace Dapr.Actors.Next.Examples.Auction.Tests;
 
 public sealed class AuctionTests
 {
+    [Fact]
+    public async Task Failed_close_transaction_keeps_all_durable_state_consistent_until_retry()
+    {
+        await using var runtime = CreateRuntime();
+        var auction = runtime.CreateActor<IAuctionActor>(ActorId.Create("atomic-close"), "Auction");
+        await PlaceBid(runtime, auction, new Bid(100, "alice"));
+        runtime.Faults.FailNextStateTransaction();
+        var close = auction.Close();
+        await runtime.RunToIdle();
+        await Assert.ThrowsAsync<ActorInjectedTransientException>(() => close);
+        Assert.Equal(AuctionState.Open, runtime.StateOf(auction).CurrentState<AuctionState>());
+        Assert.False(runtime.StateOf(auction).Data<AuctionData>()!.FulfillmentStarted);
+        var durable = runtime.StateOf(auction)
+            .Get<StateMachineEnvelope<AuctionState, AuctionData>>(StateMachineConstants.EnvelopeStateName)!;
+        Assert.Equal(AuctionState.Open, durable.CurrentState);
+        Assert.False(durable.Data.FulfillmentStarted);
+
+        Assert.Equal(AuctionState.Sold, await ReadState(runtime, auction));
+        Assert.Equal(AuctionState.Sold, runtime.StateOf(auction).CurrentState<AuctionState>());
+        Assert.True(runtime.StateOf(auction).Data<AuctionData>()!.FulfillmentStarted);
+    }
+
     [Fact]
     public async Task Last_second_bid_wins_race_with_close_timer()
     {

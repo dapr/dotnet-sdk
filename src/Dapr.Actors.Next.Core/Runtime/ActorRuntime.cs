@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,12 +44,88 @@ public sealed class ActorRuntime(
     IEnumerable<IActorTurnFilter> filters,
     IOptions<DaprActorsOptions> options,
     ILogger<ActorRuntime> logger,
-    IActorStateMigrator? stateMigrator = null) : IActorRuntime
+    IActorStateMigrator? stateMigrator = null) : IActorRuntime, IAsyncDisposable, IDisposable
 {
     private static readonly ActivitySource ActivitySource = new("Dapr.Actors.Next.Core");
     private readonly ConcurrentDictionary<ActorKey, ActorActivation> activations = [];
     private readonly ConcurrentDictionary<ActorKey, RuntimeActorMailbox> mailboxes = [];
     private readonly IReadOnlyList<IActorTurnFilter> _filters = filters.ToArray();
+    private readonly object lifecycleLock = new();
+    private readonly Dictionary<RuntimeActorMailbox, int> admissions = [];
+    private bool stopping;
+    private Task? disposal;
+    private TaskCompletionSource lifecycleChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private void SignalLifecycleChange()
+    {
+        lock (lifecycleLock)
+        {
+            if (!stopping) return;
+            lifecycleChanged.TrySetResult();
+            lifecycleChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+    }
+
+    /// <summary>Drains admitted turns and disposes every activation and its service scope.</summary>
+    public ValueTask DisposeAsync()
+    {
+        lock (lifecycleLock)
+        {
+            stopping = true;
+            return new ValueTask(disposal ??= ShutdownAsync());
+        }
+    }
+
+    /// <inheritdoc />
+    public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+    private async Task ShutdownAsync()
+    {
+        // Yield before invoking user lifecycle code while holding the admission lock.
+        await Task.Yield();
+        while (true)
+        {
+            RuntimeActorMailbox[] pending;
+            Task changed;
+            lock (lifecycleLock)
+            {
+                // Caller cancellation can complete DispatchAsync before its queued turn exits.
+                // Keep those mailboxes alive until actual execution and queued work finish.
+                pending = mailboxes.Values
+                    .Where(mailbox => admissions.ContainsKey(mailbox) || mailbox.IsExecuting || mailbox.PendingCount > 0)
+                    .ToArray();
+                if (pending.Length == 0) break;
+                changed = lifecycleChanged.Task;
+            }
+            // Also drain controlled/testing schedulers that have no background pump.
+            foreach (var mailbox in pending)
+            {
+                if (!mailbox.IsExecuting && mailbox.PendingCount > 0)
+                    _ = mailbox.ExecuteNextAsync();
+            }
+            await changed.ConfigureAwait(false);
+        }
+        List<Exception> failures = [];
+        foreach (var key in activations.Keys)
+        {
+            try { await DeactivateCoreAsync(key.ActorType, ActorId.Create(key.ActorId), CancellationToken.None).ConfigureAwait(false); }
+            catch (Exception ex) { failures.Add(ex); }
+        }
+        mailboxes.Clear();
+        if (failures.Count > 0) throw new AggregateException(failures);
+    }
+
+    internal void TryRetireMailbox(RuntimeActorMailbox mailbox)
+    {
+        lock (lifecycleLock)
+        {
+            SignalLifecycleChange();
+            var key = new ActorKey(mailbox.ActorType, mailbox.ActorId.Value);
+            if (!admissions.ContainsKey(mailbox) && !mailbox.IsExecuting && mailbox.PendingCount == 0
+                && !activations.ContainsKey(key))
+                ((ICollection<KeyValuePair<ActorKey, RuntimeActorMailbox>>)mailboxes).Remove(new(key, mailbox));
+        }
+    }
 
     /// <inheritdoc />
     public Task<byte[]?> InvokeAsync(string actorType, string actorId, string methodName, ReadOnlyMemory<byte> payload, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
@@ -69,7 +145,31 @@ public sealed class ActorRuntime(
                 : request.Headers),
         };
         var key = new ActorKey(request.ActorType, request.ActorId.Value);
-        var mailbox = mailboxes.GetOrAdd(key, static (actorKey, runtime) => new RuntimeActorMailbox(actorKey.ActorType, ActorId.Create(actorKey.ActorId), runtime), this);
+        RuntimeActorMailbox mailbox;
+        lock (lifecycleLock)
+        {
+            ObjectDisposedException.ThrowIf(stopping && ActorTurnExecution.Current is null
+                && !mailboxes.Values.Any(active => active.HasActiveCallChain(request.Headers)), this);
+            mailbox = mailboxes.GetOrAdd(key, static (actorKey, runtime) => new RuntimeActorMailbox(actorKey.ActorType, ActorId.Create(actorKey.ActorId), runtime), this);
+            admissions[mailbox] = admissions.GetValueOrDefault(mailbox) + 1;
+            SignalLifecycleChange();
+        }
+        try
+        {
+            return await DispatchAdmittedAsync(request, cancellationToken, mailbox).ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (lifecycleLock)
+            {
+                if (--admissions[mailbox] == 0) admissions.Remove(mailbox);
+                TryRetireMailbox(mailbox);
+            }
+        }
+    }
+
+    private async Task<byte[]?> DispatchAdmittedAsync(ActorRuntimeRequest request, CancellationToken cancellationToken, RuntimeActorMailbox mailbox)
+    {
         if (request.Kind == ActorTurnKind.Invoke)
         {
             var registration = registry.GetByActorType(request.ActorType);
@@ -111,6 +211,7 @@ public sealed class ActorRuntime(
 
         var work = new ActorTurnWork(request, cancellationToken);
         await mailbox.EnqueueWorkAsync(work, cancellationToken).ConfigureAwait(false);
+        SignalLifecycleChange();
         // Once accepted, scheduling belongs to the mailbox, not to an individual caller.
         await scheduler.ScheduleAsync(mailbox, CancellationToken.None).ConfigureAwait(false);
         return await work.Task.ConfigureAwait(false);

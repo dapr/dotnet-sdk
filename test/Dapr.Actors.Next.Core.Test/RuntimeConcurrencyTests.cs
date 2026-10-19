@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,147 @@ namespace Dapr.Actors.Next.Core.Test;
 public sealed class RuntimeConcurrencyTests
 {
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(5);
+
+    [Fact]
+    public async Task Shutdown_waits_for_cancelled_callers_turn_before_disposing_activation()
+    {
+        var probe = new Probe();
+        var runtime = CreateRuntime(probe);
+        using var cancellation = new CancellationTokenSource();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        probe.Handle = async (_, _, _) =>
+        {
+            entered.TrySetResult();
+            await release.Task;
+        };
+        var call = runtime.InvokeAsync("Concurrency", ActorId.Create("a"), "Wait",
+            cancellationToken: cancellation.Token);
+        await runtime.StepAsync();
+        await entered.Task.WaitAsync(Deadline);
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => call);
+        var disposal = runtime.DisposeAsync().AsTask();
+        try
+        {
+            await Assert.ThrowsAsync<TimeoutException>(() =>
+                disposal.WaitAsync(TimeSpan.FromMilliseconds(100)));
+            Assert.Equal(0, Assert.Single(probe.Actors).DisposeCount);
+        }
+        finally
+        {
+            release.TrySetResult();
+            await disposal.WaitAsync(Deadline);
+        }
+        Assert.Equal(1, Assert.Single(probe.Actors).DisposeCount);
+    }
+
+    [Fact]
+    public async Task Shutdown_waits_for_active_turn_and_allows_its_remote_cross_actor_call()
+    {
+        var probe = new Probe();
+        var runtime = CreateRuntime(probe, remote: true);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        probe.Handle = async (actor, method, ct) =>
+        {
+            if (method == "Parent")
+            {
+                entered.TrySetResult();
+                await release.Task;
+                await actor.Call("b", "Child", ct);
+            }
+            await actor.Context.State.SetAsync("count", 42, ct);
+        };
+        var call = runtime.InvokeAsync("Concurrency", ActorId.Create("a"), "Parent");
+        await runtime.StepAsync();
+        await entered.Task.WaitAsync(Deadline);
+        var disposal = runtime.DisposeAsync().AsTask();
+        Assert.False(disposal.IsCompleted);
+        release.TrySetResult();
+        await Task.WhenAll(call, disposal).WaitAsync(Deadline);
+        Assert.Equal(2, probe.Actors.Count);
+        Assert.All(probe.Actors, actor => Assert.Equal(1, actor.DisposeCount));
+    }
+
+    [Fact]
+    public async Task Shutdown_disposes_all_activations_even_if_deactivation_hooks_fail()
+    {
+        var probe = new Probe { DeactivateError = new InvalidOperationException("deactivation failed") };
+        var runtime = CreateRuntime(probe);
+        var calls = new[] { runtime.InvokeAsync("Concurrency", ActorId.Create("a"), "Read"),
+            runtime.InvokeAsync("Concurrency", ActorId.Create("b"), "Read") };
+        await runtime.RunToIdle().WaitAsync(Deadline);
+        await Task.WhenAll(calls);
+        await Assert.ThrowsAsync<AggregateException>(() => runtime.DisposeAsync().AsTask());
+        Assert.All(probe.Actors, actor => Assert.Equal(1, actor.DisposeCount));
+    }
+
+    [Fact]
+    public async Task Deactivated_mailboxes_are_reclaimed_without_losing_queued_reactivation()
+    {
+        var probe = new Probe();
+        await using var runtime = CreateRuntime(probe);
+        for (var index = 0; index < 50; index++)
+        {
+            var id = ActorId.Create(index.ToString());
+            var first = runtime.InvokeAsync("Concurrency", id, "First");
+            var deactivate = runtime.DeactivateAsync("Concurrency", id);
+            var next = runtime.InvokeAsync("Concurrency", id, "Next");
+            await runtime.RunToIdle().WaitAsync(Deadline);
+            await Task.WhenAll(first, deactivate, next);
+            var final = runtime.DeactivateAsync("Concurrency", id);
+            await runtime.RunToIdle().WaitAsync(Deadline);
+            await final;
+        }
+        var realRuntime = Assert.IsType<ActorRuntime>(probe.Actors.First().Runtime);
+        var mailboxes = (System.Collections.IDictionary)typeof(ActorRuntime)
+            .GetField("mailboxes", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .GetValue(realRuntime)!;
+        Assert.Empty(mailboxes);
+        Assert.Equal(100, probe.Actors.Count);
+        Assert.All(probe.Actors, actor => Assert.Equal(1, actor.DisposeCount));
+    }
+
+    [Fact]
+    public async Task Parent_replacement_survives_reentrant_child_flush()
+    {
+        var probe = new Probe();
+        await using var runtime = CreateRuntime(probe, remote: true);
+        using var pause = runtime.Faults.PauseNextStateWrite<int>("count");
+        probe.Handle = async (actor, method, ct) =>
+        {
+            if (method == "Parent")
+            {
+                var child = actor.Call("a", "Child", ct);
+                await pause.Reached.WaitAsync(Deadline);
+                await actor.Context.State.SetAsync("count", 2, ct);
+                pause.Release();
+                await child;
+            }
+            else
+                await actor.Context.State.SetAsync("count", 1, ct);
+        };
+        var call = runtime.InvokeAsync("Concurrency", ActorId.Create("a"), "Parent");
+        await runtime.RunToIdle().WaitAsync(Deadline);
+        await call;
+        Assert.Equal(2, runtime.StateOf("Concurrency", ActorId.Create("a")).Get<int>("count"));
+    }
+
+    [Fact]
+    public async Task Disposal_drains_controlled_work_disposes_actors_and_rejects_new_turns()
+    {
+        var probe = new Probe();
+        var runtime = CreateRuntime(probe);
+        probe.Handle = (actor, _, ct) => actor.Context.State.SetAsync("count", 42, ct).AsTask();
+        var call = runtime.InvokeAsync("Concurrency", ActorId.Create("a"), "Write");
+        await runtime.DisposeAsync().AsTask().WaitAsync(Deadline);
+        await call;
+        Assert.Equal(1, Assert.Single(probe.Actors).DisposeCount);
+        await runtime.DisposeAsync();
+        await Assert.ThrowsAsync<ObjectDisposedException>(() =>
+            runtime.InvokeAsync("Concurrency", ActorId.Create("a"), "Write"));
+    }
 
     [Theory]
     [InlineData("Dapr-Reentrancy-Id")]
