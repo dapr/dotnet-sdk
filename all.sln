@@ -466,7 +466,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BinaryStore", "BinaryStore"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BinaryStoreExample", "examples\BinaryStore\BinaryStoreExample\BinaryStoreExample.csproj", "{C70F0E32-FC6F-4472-A2B7-1FB364457016}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.ServiceInvocation", "test\Dapr.IntegrationTest.ServiceInvocation\Dapr.IntegrationTest.ServiceInvocation.csproj", "{E6BA0ABA-4F5A-45BD-B1B2-1D9ADE638D91}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Dapr.IntegrationTest.DaprClient.ServiceInvocation", "test\Dapr.IntegrationTest.DaprClient.ServiceInvocation\Dapr.IntegrationTest.DaprClient.ServiceInvocation.csproj", "{E6BA0ABA-4F5A-45BD-B1B2-1D9ADE638D91}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

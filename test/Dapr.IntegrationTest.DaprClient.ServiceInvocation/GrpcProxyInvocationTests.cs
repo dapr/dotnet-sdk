@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System.Collections.Concurrent;
-using Dapr.Client;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Common.Testing;
@@ -20,8 +19,9 @@ using Dapr.Testcontainers.Harnesses;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using DaprSdkClient = Dapr.Client.DaprClient;
 
-namespace Dapr.IntegrationTest.ServiceInvocation;
+namespace Dapr.IntegrationTest.DaprClient.ServiceInvocation;
 
 public sealed class GrpcProxyInvocationTests
 {
@@ -83,7 +83,7 @@ public sealed class GrpcProxyInvocationTests
 
     private static Messager.MessagerClient CreateClient(ServiceInvocationContext context)
     {
-        var invoker = DaprClient.CreateInvocationInvoker(
+        var invoker = DaprSdkClient.CreateInvocationInvoker(
             appId: context.AppId,
             daprEndpoint: $"http://127.0.0.1:{context.Harness.DaprGrpcPort}");
         return new Messager.MessagerClient(invoker);

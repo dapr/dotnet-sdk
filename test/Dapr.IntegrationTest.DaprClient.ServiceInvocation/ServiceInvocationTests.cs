@@ -12,15 +12,15 @@
 // ------------------------------------------------------------------------
 
 using System.Net.Http.Json;
-using Dapr.Client;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Common.Testing;
 using Dapr.Testcontainers.Harnesses;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using DaprSdkClient = Dapr.Client.DaprClient;
 
-namespace Dapr.IntegrationTest.ServiceInvocation;
+namespace Dapr.IntegrationTest.DaprClient.ServiceInvocation;
 
 public sealed class ServiceInvocationTests
 {
@@ -30,7 +30,7 @@ public sealed class ServiceInvocationTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
         await using var context = await CreateHttpAppAsync(requireApiToken: false, cts.Token);
 
-        using var client = DaprClient.CreateInvokeHttpClient(
+        using var client = DaprSdkClient.CreateInvokeHttpClient(
             appId: context.AppId,
             daprEndpoint: $"http://127.0.0.1:{context.Harness.DaprHttpPort}");
         var response = await client.PostAsJsonAsync(
@@ -51,7 +51,7 @@ public sealed class ServiceInvocationTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
         await using var context = await CreateHttpAppAsync(requireApiToken: true, cts.Token);
 
-        using var client = DaprClient.CreateInvokeHttpClient(
+        using var client = DaprSdkClient.CreateInvokeHttpClient(
             appId: context.AppId,
             daprEndpoint: $"http://127.0.0.1:{context.Harness.DaprHttpPort}");
         var response = await client.PostAsJsonAsync(

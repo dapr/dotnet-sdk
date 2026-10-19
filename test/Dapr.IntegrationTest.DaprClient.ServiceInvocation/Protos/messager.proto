@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-option csharp_namespace = "Dapr.IntegrationTest.ServiceInvocation";
+option csharp_namespace = "Dapr.IntegrationTest.DaprClient.ServiceInvocation";
 
 import "google/protobuf/empty.proto";
 
-package dapr.integrationtest.serviceinvocation;
+package dapr.integrationtest.daprclient.serviceinvocation;
 
 service Messager {
   rpc SendMessage(SendMessageRequest) returns (google.protobuf.Empty);
