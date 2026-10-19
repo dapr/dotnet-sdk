@@ -1,11 +1,9 @@
 <Project>
   <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_managed_netcore.props" />
+  <Import Project="$(MSBuildThisFileDirectory)..\properties\dapr_target_frameworks.props" />
   <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" Condition="$(MSBuildProjectName.StartsWith('Dapr.Actors.Next'))" />
 
-  <PropertyGroup>  
-    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
-    <TargetFrameworks Condition="'$(DaprEnableNet11)' == 'true'">$(TargetFrameworks);net11.0</TargetFrameworks>
-      
+  <PropertyGroup>
     <!-- Set Output Path for tests-->
     <OutputPath>$(RepoRoot)bin\$(Configuration)\test\$(MSBuildProjectName)\</OutputPath>
     <IsPackable>false</IsPackable>

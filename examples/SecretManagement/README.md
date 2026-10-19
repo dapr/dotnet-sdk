@@ -17,7 +17,7 @@ This sample demonstrates how to use the Dapr Secrets Management SDK to retrieve 
 ## Running the Sample
 
 ```bash
-dapr run --app-id secret-sample --app-port 6543 -- dotnet run
+dapr run --app-id secret-sample --app-port 6543 -- dotnet run --framework net10.0
 ```
 
 ## Endpoints

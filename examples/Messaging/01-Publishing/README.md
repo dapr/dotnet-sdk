@@ -16,7 +16,7 @@ Start Dapr and run the application:
 
 ```powershell
 cd examples\Messaging\01-Publishing
-dapr run --app-id publishing-example-01 --dapr-grpc-port 50001 --dapr-http-port 3500 --app-port 5000 -- dotnet run
+dapr run --app-id publishing-example-01 --dapr-grpc-port 50001 --dapr-http-port 3500 --app-port 5000 -- dotnet run --framework net10.0
 ```
 
 Then open `Publishing.Example01.http` in Rider or Visual Studio and run the sample requests.

@@ -48,7 +48,7 @@ await ((IDaprSubscription)subscription).Completion.WaitAsync(cancellationToken);
 ```bash
 dapr run --app-id dynamic-streaming-example \
          --dapr-grpc-port 50001 \
-         -- dotnet run --project examples/Messaging/07-DynamicStreaming/DynamicStreaming.Example07.csproj
+         -- dotnet run --framework net10.0 --project examples/Messaging/07-DynamicStreaming/DynamicStreaming.Example07.csproj
 ```
 
 Send test requests using `DynamicStreaming.Example07.http`:

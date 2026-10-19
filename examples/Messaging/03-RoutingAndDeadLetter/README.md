@@ -87,7 +87,7 @@ Incoming Event on "express-shipments"
 ## Running the Example
 
 ```bash
-dapr run --app-id routing-example --dapr-grpc-port 50001 -- dotnet run --project examples/Messaging/03-RoutingAndDeadLetter/Routing.Example03.csproj
+dapr run --app-id routing-example --dapr-grpc-port 50001 -- dotnet run --framework net10.0 --project examples/Messaging/03-RoutingAndDeadLetter/Routing.Example03.csproj
 ```
 
 Send test requests using `Routing.Example03.http`:

@@ -556,31 +556,54 @@ jobs:
       - name: "All unit tests passed"
         run: echo "All unit tests passed"
   example-tests:
-    name: Example Tests - ${{ matrix.project }}
+    name: Example Tests ${{ matrix.framework }} - ${{ matrix.project }}
     needs: discover-example-test-projects
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        framework: [net8.0, net9.0, net10.0, net11.0]
         project: ${{ fromJson(needs.discover-example-test-projects.outputs.matrix) }}
+        include:
+          - framework: net8.0
+            install-version: 8.0.x
+            quality: ga
+          - framework: net9.0
+            install-version: 9.0.x
+            quality: ga
+          - framework: net10.0
+            install-version: 10.0.x
+            quality: ga
+          - framework: net11.0
+            install-version: 11.0.x
+            quality: preview
     steps:
       - uses: actions/checkout@v6
       - name: Parse release version
         run: python ./.github/scripts/get_release_version.py
-      - name: Setup .NET 10.0
+      - name: Remove global.json (use .NET 11 preview SDK)
+        if: matrix.framework == 'net11.0'
+        run: rm -f global.json
+      - name: Setup .NET ${{ matrix.framework }}
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 10.0.x
-          dotnet-quality: 'ga'
+          dotnet-version: ${{ matrix.install-version }}
+          dotnet-quality: ${{ matrix.quality }}
       - name: Test
         id: tests
         continue-on-error: true
+        env:
+          DaprEnableNet11: ${{ matrix.framework == 'net11.0' && 'true' || 'false' }}
         run: |
+          logger_args=()
+          if [ "${{ matrix.framework }}" != "net11.0" ]; then
+            logger_args+=(--logger "GitHubActions;report-warnings=false")
+          fi
           dotnet test "${{ matrix.project }}" \
           --configuration release \
-          --framework net10.0 \
+          --framework ${{ matrix.framework }} \
           --logger "trx;LogFilePrefix=examples" \
-          --logger "GitHubActions;report-warnings=false" \
+          "${logger_args[@]}" \
           --logger "console;verbosity=detailed" \
           --results-directory "${{ github.workspace }}/TestResults" \
           /p:RuntimeIdentifier=linux-x64 \

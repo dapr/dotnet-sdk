@@ -24,7 +24,7 @@ Start the app from this sample directory:
 
 ```powershell
 cd examples\Actor.Next\04-Auction
-dotnet run
+dotnet run --framework net10.0
 ```
 
 Then open `Auction.Next.Example04.http` in Rider or Visual Studio and run the requests in order:

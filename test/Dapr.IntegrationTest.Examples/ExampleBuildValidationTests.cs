@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.Versioning;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
@@ -18,16 +20,6 @@ public class ExampleBuildValidationTests
     /// Timeout for each individual project build.
     /// </summary>
     private static readonly TimeSpan BuildTimeout = TimeSpan.FromMinutes(5);
-
-    /// <summary>
-    /// Paths (relative to the examples directory) to exclude from build validation.
-    /// These projects depend on external NuGet packages (e.g. Aspire SDK) that may not
-    /// be available in all CI environments and don't validate source-level compatibility.
-    /// </summary>
-    private static readonly string[] ExcludedPathPrefixes =
-    [
-        $"Hosting{Path.DirectorySeparatorChar}"
-    ];
 
     /// <summary>
     /// Project file names to exclude from example build validation.
@@ -51,9 +43,6 @@ public class ExampleBuildValidationTests
         foreach (var csproj in Directory.GetFiles(examplesDir, "*.csproj", SearchOption.AllDirectories))
         {
             var relativePath = Path.GetRelativePath(examplesDir, csproj);
-
-            if (ExcludedPathPrefixes.Any(prefix => relativePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
-                continue;
 
             if (ExcludedProjectSuffixes.Any(suffix => relativePath.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)))
                 continue;
@@ -84,7 +73,15 @@ public class ExampleBuildValidationTests
 
     private static async Task<(int ExitCode, string Output)> RunDotnetBuildAsync(string projectPath)
     {
-        return await RunDotnetCommandAsync($"build \"{projectPath}\" --framework net10.0 --no-incremental -consoleLoggerParameters:NoSummary");
+        var assembly = typeof(ExampleBuildValidationTests).Assembly;
+        var frameworkName = assembly.GetCustomAttribute<TargetFrameworkAttribute>()?.FrameworkName
+            ?? throw new InvalidOperationException("The test assembly has no target framework.");
+        var framework = $"net{new FrameworkName(frameworkName).Version.ToString(2)}";
+        var configuration = assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()?.Configuration
+            ?? throw new InvalidOperationException("The test assembly has no build configuration.");
+
+        return await RunDotnetCommandAsync(
+            $"build \"{projectPath}\" --framework {framework} --configuration {configuration} -consoleLoggerParameters:NoSummary");
     }
 
     private static async Task<(int ExitCode, string Output)> RunDotnetCommandAsync(string arguments)
@@ -100,25 +97,12 @@ public class ExampleBuildValidationTests
         using var process = new Process();
         process.StartInfo = psi;
 
-        var outputBuilder = new System.Text.StringBuilder();
-
-        process.OutputDataReceived += (_, e) =>
-        {
-            if (e.Data is not null)
-                outputBuilder.AppendLine(e.Data);
-        };
-
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data is not null)
-                outputBuilder.AppendLine(e.Data);
-        };
-
         process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
+        var standardOutput = process.StandardOutput.ReadToEndAsync();
+        var standardError = process.StandardError.ReadToEndAsync();
 
         using var cts = new CancellationTokenSource(BuildTimeout);
+        var timedOut = false;
 
         try
         {
@@ -127,10 +111,16 @@ public class ExampleBuildValidationTests
         catch (OperationCanceledException)
         {
             process.Kill(entireProcessTree: true);
-            outputBuilder.AppendLine($"[TIMEOUT] Build exceeded {BuildTimeout.TotalMinutes} minute(s) limit.");
+            await process.WaitForExitAsync();
+            timedOut = true;
         }
 
-        return (process.ExitCode, outputBuilder.ToString());
+        var output = await standardOutput + await standardError;
+        if (timedOut)
+            throw new TimeoutException(
+                $"Build exceeded {BuildTimeout.TotalMinutes} minute(s) limit.{Environment.NewLine}{output}");
+
+        return (process.ExitCode, output);
     }
 
     private static string FindRepoRoot()
