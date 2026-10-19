@@ -6,6 +6,8 @@ Tutorial: [Part 4 - State machines and deterministic race testing](../../../docs
 
 The actor owns the continuously reactive auction state. The entry action for `Sold` stands in for starting a fulfillment workflow; the workflow would own the finite, multi-step fulfillment process after the actor has made the sale decision.
 
+On first activation, `Open` starts its built-in `.After(30 seconds)` timeout, even before a bid arrives. Each accepted bid reschedules that timeout through `ctx.Timers`; rejected bids do not extend it. The generated dispatcher delivers the reserved state-machine callback, which transitions to `Sold` and starts fulfillment. The HTTP close and expire operations remain available for explicitly ending an auction. Restoring persisted state does not replay entry actions or restart activation-local timers.
+
 Dapr 1.18 requires the sidecar to have a gRPC app channel before it accepts `SubscribeActorEventsAlpha1`. The sample configures two Kestrel endpoints in `appsettings.json`: port `5000` is the HTTP API that drives the auction actor through the generated actor proxy, and port `5056` is the HTTP/2 app channel used by daprd.
 
 ## Start the Dapr runtime
@@ -41,6 +43,13 @@ The request file uses `http://localhost:5000`, a shared `auction-demo` auction i
 
 The deterministic soft-close race is intentionally covered by the tests, where virtual time and scheduler ordering can be controlled.
 
+An external `GoTo` targeting the current state exits and re-enters that state,
+including cancelling and restarting its `.After` timeout. Internal actions (like
+the bid handler's explicit reschedule) do not replay entry/exit actions. A failed
+command discards its remaining raised events so they cannot run during a later
+bid. These rules do not change restoration: restored states still do not restart
+activation-local timers.
+
 ## Run Tests
 
 Run the example tests:
@@ -49,4 +58,4 @@ Run the example tests:
 dotnet test Auction.Next.Example04.Tests\Auction.Next.Example04.Tests.csproj --no-restore
 ```
 
-The tests run the generated actor against `ActorTestRuntime`, advance virtual time, and verify the state-machine structural checks.
+The sidecar-free tests run the generated actor against `ActorTestRuntime`, advance virtual time through the initial and extended deadlines, and verify fulfillment, explicit expiry, and the state-machine structural checks.

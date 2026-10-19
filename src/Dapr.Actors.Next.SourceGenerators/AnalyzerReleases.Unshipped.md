@@ -5,5 +5,6 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|--------------------
+DAPRGEN001 | Dapr.Actors.Next.SourceGenerators | Error | Incompatible actor method declarations share a wire operation name
 DAPR1421 | Dapr.Actors.Next.SourceGenerators | Warning | Actor state migration family has more than one fold path
 DAPR1422 | Dapr.Actors.Next.SourceGenerators | Warning | Actor state migration family is not append-only

@@ -28,7 +28,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Actors.Next.SourceGenerators.Test;
 
-public sealed class GeneratorTests
+public sealed partial class GeneratorTests
 {
     [MinimumDaprRuntimeFact("1.18")]
     public void Generated_output_contains_proxy_dispatcher_registry_and_generic_serializer_calls()
@@ -351,7 +351,7 @@ public sealed class GeneratorTests
         Assert.Contains("ActorStateMigrationNode(2, typeof(global::MigrationSample.MyStateV3)", generated);
         Assert.Contains("ActorStateMigrationEdge(0, 1, null)", generated);
         Assert.Contains("ActorStateMigrationEdge(1, 2, null)", generated);
-        Assert.Contains("TryAddSingleton<global::Dapr.Actors.Next.Abstractions.State.Versioning.IActorStateMigrator>", generated);
+        Assert.Contains("AddDaprActorStateMigration(services, BuildStateMigrationFamilies)", generated);
         Assert.DoesNotContain("if (!options.DisableStateMigration)", generated);
         Assert.Contains("UpcastStateGenerated_MigrationSample_MyState_0_1", generated);
         Assert.Contains("new global::MigrationSample.MyStateV2", generated);
@@ -415,7 +415,7 @@ public sealed class GeneratorTests
         Assert.False(registry.TryGet("Calculator", out _));
         Assert.True(registry.TryGet("RenamedCalculator", out var descriptor));
         Assert.Equal(typeof(CalculatorActor), descriptor.ImplementationType);
-        Assert.Single(registry.Actors);
+        Assert.Single(registry.Actors, actor => actor.ImplementationType == typeof(CalculatorActor));
 
         var weakResult = await runtime.InvokeAsync("RenamedCalculator", "calc-2", "SumAsync", System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new { left = 2, right = 3 }), new Dictionary<string, string>());
         Assert.NotNull(weakResult);
@@ -554,6 +554,10 @@ public sealed class GeneratorTests
     }
 
     private static string RunGenerator(CSharpCompilation compilation, bool? scanReferences, bool assertGeneratedCompiles = false)
+        => RunGeneratorWithDiagnostics(compilation, scanReferences, assertGeneratedCompiles).Generated;
+
+    private static (string Generated, ImmutableArray<Diagnostic> Diagnostics) RunGeneratorWithDiagnostics(
+        CSharpCompilation compilation, bool? scanReferences, bool assertGeneratedCompiles = false)
     {
         var generator = new ActorsNextSourceGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
@@ -568,7 +572,7 @@ public sealed class GeneratorTests
         }
 
         var result = driver.GetRunResult().Results.Single();
-        return string.Join(Environment.NewLine, result.GeneratedSources.Select(source => source.SourceText.ToString()));
+        return (string.Join(Environment.NewLine, result.GeneratedSources.Select(source => source.SourceText.ToString())), diagnostics);
     }
 
     private static CSharpCompilation CreateCompilation(string assemblyName, string source, params MetadataReference[] additionalReferences)

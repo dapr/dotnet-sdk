@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,13 @@ namespace Dapr.Actors.Next.Core.State;
 /// </summary>
 public interface IActorStateFaultInjector
 {
+    /// <summary>
+    /// Runs before the atomic batch is submitted, including delete-only batches.
+    /// A failure here commits no mutations.
+    /// </summary>
+    ValueTask BeforeCommitAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations,
+        CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+
     /// <summary>
     /// Runs before a typed state value is written to the backing store.
     /// </summary>

@@ -17,6 +17,25 @@ namespace Dapr.Actors.Next.Analyzers.Test;
 
 public sealed class ActorsNextAnalyzerTests
 {
+    [Fact]
+    public Task Inherited_state_properties_participate_in_baseline_validation()
+    {
+        const string source = """
+            namespace Sample;
+            public class AccountBase
+            {
+                public string Balance { get; set; } = "";
+            }
+            public sealed class AccountState : AccountBase
+            {
+                public int Count { get; set; }
+            }
+            """;
+        return AnalyzerTest.VerifyAnalyzerWithBaselineAsync(source,
+            "state|Sample.AccountState|v=1|P:Balance=int;P:Count=int",
+            AnalyzerTest.Diagnostic("DAPR1410").WithSpan(6, 21, 6, 33));
+    }
+
     [MinimumDaprRuntimeFact("1.18")]
     public Task Actor_turn_escape_blocking_time_and_random_sources_are_reported()
     {

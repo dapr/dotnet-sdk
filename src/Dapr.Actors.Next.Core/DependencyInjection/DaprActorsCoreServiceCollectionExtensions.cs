@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -133,9 +133,29 @@ public static class DaprActorsCoreServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(families);
 
-        services.TryAddSingleton<Dapr.Actors.Next.Abstractions.State.Versioning.IActorStateMigrator>(_ => new ActorStateMigrationRegistry(families));
+        return services.AddDaprActorStateMigration(_ => families);
+    }
+
+    /// <summary>
+    /// Adds actor state migration families resolved from the final service provider.
+    /// Contributions from all calls are combined into one migrator.
+    /// </summary>
+    public static IServiceCollection AddDaprActorStateMigration(
+        this IServiceCollection services,
+        Func<IServiceProvider, IEnumerable<ActorStateMigrationFamilyRegistration>> families)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(families);
+
+        services.AddSingleton(new ActorStateMigrationContribution(families));
+        services.TryAddSingleton<Dapr.Actors.Next.Abstractions.State.Versioning.IActorStateMigrator>(sp =>
+            new ActorStateMigrationRegistry(sp.GetServices<ActorStateMigrationContribution>()
+                .SelectMany(contribution => contribution.CreateFamilies(sp))));
         return services;
     }
+
+    private sealed record ActorStateMigrationContribution(
+        Func<IServiceProvider, IEnumerable<ActorStateMigrationFamilyRegistration>> CreateFamilies);
 
     private static void EnsureDaprActorGrpcClientRegistered(IServiceCollection services)
     {
@@ -238,11 +258,22 @@ public static class DaprActorsCoreServiceCollectionExtensions
 /// before the first AddDaprActorsCore call, silently preventing actor types from ever being announced
 /// to placement.
 /// </summary>
-internal sealed class SubscribeActorEventsStreamHostedService(SubscribeActorEventsStreamManager manager) : IHostedService
+internal sealed class SubscribeActorEventsStreamHostedService(SubscribeActorEventsStreamManager manager, IActorRuntime runtime) : IHostedService
 {
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken) => manager.StartAsync(cancellationToken);
 
     /// <inheritdoc />
-    public Task StopAsync(CancellationToken cancellationToken) => manager.StopAsync(cancellationToken);
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await manager.StopAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (runtime is IAsyncDisposable disposable)
+                await disposable.DisposeAsync().AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
 }

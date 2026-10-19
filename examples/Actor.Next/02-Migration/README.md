@@ -11,13 +11,17 @@ This example is the reference usage for the migration model:
   `CartStateV3` with ordinary `GetOrCreateAsync` and `TryGetAsync`; it never branches on a stored
   version.
 - `MyState -> MyStateV2 -> MyStateV3` is additive-only. No upcasters are written; the generator emits
-  the hops.
+  the hops, including the `Name` property inherited from `NamedState`. The inherited value is preserved
+  through migration and reactivation, and inherited members participate in shape-drift detection.
 - `RenamedState -> RenamedStateV2` is non-additive and has one authored hop.
 - `GraduatedCartState` demonstrates the offramp: `GraduateAsync` writes the value in plain form so that
   entry can leave the migration envelope.
 
 Imports use the same API as normal writes. Posting a V1 or V2 payload calls `SetAsync` with that legacy
 node type; the next read folds it to the current type and the store heals on the actor turn flush.
+Reading a different state version within the same turn uses the current cached value, including pending
+changes, rather than reverting to the last persisted snapshot. Older `{ schemaVersion, value }`
+envelopes remain readable alongside raw JSON and current SDK envelopes.
 
 The sample configures two Kestrel endpoints in `appsettings.json`: port `5000` is the HTTP API that
 drives the migration actor through the generated actor proxy, and port `5056` is the HTTP/2 app channel

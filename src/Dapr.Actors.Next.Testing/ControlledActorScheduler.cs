@@ -105,7 +105,7 @@ public abstract class ControlledActorScheduler(int seed, string name) : IActorSc
                 signal = changed.Task;
             }
 
-            await Task.WhenAny(waiting, signal).ConfigureAwait(false);
+            await Task.WhenAny(waiting, signal).WaitAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 

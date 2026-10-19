@@ -2,6 +2,8 @@
 
 A cart actor you already know, with registration boilerplate, endpoint mapping, and reflection removed.
 
+The abandon-cart callback uses an activation-local timer, not a reminder; it stops when the actor deactivates.
+
 Tutorial: [Part 1 - Modern actor baseline](../../../docs/dotnet-actorsnext/tutorial/part-1.md).
 
 This example uses `AddDaprActors()` only. There is no `MapActorsHandlers` and no per-actor registration. The actor callback stream is app-initiated: the app dials daprd, advertises its actor types, and exchanges callback frames over that outbound gRPC stream.
@@ -13,7 +15,7 @@ Dapr 1.18 requires the sidecar to have a gRPC app channel before it accepts `Sub
 Start the Dapr runtime locally by specifying the gRPC port it should listen to and provide the gRPC being listened to by the app (these ports are defined by configuration in `appsettings.json` within this project):
 
 ```powershell
-dapr run --app-id actors-example-01 --dapr-grpc-port 50001 --app-protocol grpc --app-port 5055
+dapr run --app-id actors-example-01 --dapr-grpc-port 50001 --app-protocol grpc --app-port 5056
 ```
 
 ## Run Locally

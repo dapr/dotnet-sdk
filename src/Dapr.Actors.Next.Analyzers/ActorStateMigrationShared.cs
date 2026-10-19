@@ -68,15 +68,7 @@ internal static class ActorStateMigrationShared
     }
 
     internal static ImmutableArray<StateMember> GetSerializableMembers(INamedTypeSymbol type) =>
-        type.GetMembers()
-            .Where(static member => member is IPropertySymbol or IFieldSymbol)
-            .Where(static member => member switch
-            {
-                IPropertySymbol property => !property.IsStatic && property.DeclaredAccessibility == Accessibility.Public && property.GetMethod is not null && property.Parameters.Length == 0,
-                IFieldSymbol field => !field.IsStatic && field.DeclaredAccessibility == Accessibility.Public,
-                _ => false,
-            })
-            .OrderBy(static member => member.Name, StringComparer.Ordinal)
+        GetSerializableMemberSymbols(type)
             .Select(static member => member switch
             {
                 IPropertySymbol property => new StateMember(
@@ -96,6 +88,30 @@ internal static class ActorStateMigrationShared
                 _ => throw new InvalidOperationException("Unsupported member."),
             })
             .ToImmutableArray();
+
+    internal static IEnumerable<ISymbol> GetSerializableMemberSymbols(INamedTypeSymbol type)
+    {
+        var members = new Dictionary<string, ISymbol>(StringComparer.Ordinal);
+        for (var current = type; current is not null; current = current.BaseType)
+        {
+            foreach (var member in current.GetMembers())
+            {
+                var serializable = member switch
+                {
+                    IPropertySymbol property => !property.IsStatic && property.DeclaredAccessibility == Accessibility.Public
+                        && property.GetMethod is { DeclaredAccessibility: Accessibility.Public } && property.Parameters.Length == 0,
+                    IFieldSymbol field => !field.IsStatic && field.DeclaredAccessibility == Accessibility.Public,
+                    _ => false,
+                };
+                if (serializable && !members.ContainsKey(member.Name))
+                {
+                    members.Add(member.Name, member);
+                }
+            }
+        }
+
+        return members.Values.OrderBy(static member => member.Name, StringComparer.Ordinal);
+    }
 
     internal static bool IsAdditiveStep(
         ImmutableArray<StateMember> fromMembers,
@@ -181,10 +197,16 @@ internal static class ActorStateMigrationShared
 
         if (type is INamedTypeSymbol named)
         {
-            foreach (var member in GetSerializableMembers(named))
+            foreach (var member in GetSerializableMemberSymbols(named))
             {
                 builder.Append("member:").Append(member.Name).Append(':');
-                AppendMemberType(builder, member.SymbolType, seen);
+                var memberType = member switch
+                {
+                    IPropertySymbol property => property.Type,
+                    IFieldSymbol field => field.Type,
+                    _ => throw new InvalidOperationException("Unsupported member."),
+                };
+                AppendMemberType(builder, memberType, seen);
                 builder.Append(';');
             }
         }
