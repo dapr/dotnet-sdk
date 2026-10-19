@@ -26,7 +26,9 @@ scheduling, so initial serialization/upload time can be reported separately from
 execution. The automatic case still uses ordinary document-typed workflow/activity
 inputs and automatic offloading at the activity boundary. It can attempt a duplicate
 content-addressed upload at that boundary; the benchmark counts that work rather
-than pretending deduplication avoids all upload traffic.
+than pretending deduplication avoids all upload traffic. Writes always contact
+storage, including with `PayloadByteCache=true`; a local read cache is not evidence
+that the shared object still exists.
 
 ## Run
 
@@ -49,6 +51,7 @@ In another terminal, from this directory:
 ```powershell
 dotnet run -c Release -- --Iterations=5 --WarmupRounds=1 --HistoryCache=true --Output=results-cached.json
 dotnet run -c Release -- --Iterations=5 --WarmupRounds=1 --HistoryCache=false --Output=results-full-history.json
+dotnet run -c Release -- --Iterations=5 --WarmupRounds=1 --HistoryCache=true --PayloadByteCache=true --Output=results-payload-cache.json
 ```
 
 `HistoryCache=true` preserves the SDK default: the sidecar can send history deltas
@@ -58,6 +61,17 @@ optimization equally for all three cases to measure full-history replay traffic.
 Even with caching enabled, document-typed workflows still materialize their input
 on each execution. The report records whether each incoming turn actually used
 cached history, rather than assuming the runtime honored the capability.
+
+`PayloadByteCache` defaults to `false` and is independent of history caching.
+Enabling it opts into the SDK's bounded cache of verified payload bytes across
+executions. It does not reuse deserialized document objects or suppress writes.
+The cache is local to each worker's payload service provider: a cold worker loads
+and verifies references from shared storage without relying on replica affinity.
+This single-worker benchmark does not measure hit rates under multi-replica routing.
+Replicated deployments need a shared durable backing store, not independent
+sidecar-local in-memory stores. There is no distributed invalidation: warm cache
+entries can hide external deletion/corruption until expiry or eviction. Leave the
+cache disabled when every read must observe current storage state.
 
 The default gRPC endpoint is `http://localhost:50001`; set `DAPR_GRPC_ENDPOINT` for
 another port. `--StoreName=...` selects another binary-store component. All workflow
@@ -106,13 +120,22 @@ outside the measurement window, so metadata hydration cannot add a hidden downlo
 to the reference case. Instrumentation is benchmark-local, uses public serializer,
 client, and gRPC interfaces, and does not expand the SDK's public API.
 
+Schema version 2 instruments document reads through a JSON converter configured on
+the standard `JsonDaprSerializer`. Unlike the earlier `IDaprSerializer` wrapper,
+this exercises the SDK's UTF-8 fast path while still counting every document
+deserialization. Custom serializer wrappers intentionally retain the string-based
+compatibility path. Compare SDK versions with the **same instrumentation** rather
+than attributing all differences from schema-1 reports to SDK changes.
+
 ## Interpretation and cleanup
 
 Expect lower document materialization and replay input size with explicit
 references, **not a guaranteed latency improvement on every machine**. Automatic
 offloading reduces history size but adds storage reads for materialized inputs.
 Cached history can eliminate repeated inline transfers without eliminating those
-deserializations. The in-memory binary store minimizes backend latency; repeat with
+deserializations. The optional payload byte cache eliminates repeated binary reads
+while entries remain valid, but still deserializes a fresh document on each execution.
+The in-memory binary store minimizes backend latency; repeat with
 a representative durable component before drawing production conclusions.
 
 Input generation is seeded and uses varied, JSON-safe ASCII rather than a single

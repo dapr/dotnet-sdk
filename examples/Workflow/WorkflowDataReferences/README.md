@@ -158,6 +158,62 @@ Every run creates fresh workflows. Before rerunning, let any workflows from a
 previous interrupted run finish with their original configuration. Do **not**
 disable readers for existing offloaded histories.
 
+### Allocation behavior and optional payload byte caching
+
+Automatic hydration buffers the downloaded UTF-8 bytes once and verifies their
+hash before deserialization. The standard `JsonDaprSerializer`, including its
+configured options and JSON converters, can deserialize those bytes directly.
+Custom serializers, decorators, and subclasses continue to receive the original
+string representation through `IDaprSerializer`; their behavior is not bypassed.
+Outbound snapshots still capture values at the call boundary, including mutable
+objects. Temporary upload buffers are pooled and cleared before reuse.
+
+By default, each hydration reads storage again. History caching and
+`ResolutionCacheSize` do not cache automatic inputs across orchestration executions.
+Applications that treat referenced objects as immutable for their entire lifetime
+can explicitly enable a process-local optimization **before registering/using
+workflow payload services**:
+
+```csharp
+AppContext.SetSwitch("Dapr.Workflow.EnablePayloadByteCache", true);
+```
+
+This switch defaults to `false` and requires no new public SDK types or members.
+The implementation retains only successfully integrity-verified serialized bytes,
+not application objects. Every hydration still deserializes a fresh value, so
+mutations do not leak between replays or activity calls. Streaming through
+`OpenAsync` still reads storage directly.
+
+The current cache is limited to 64 MiB of payload array capacity and 256 entries
+per payload converter/service provider, with least-recently-used eviction and
+one-minute absolute validity. These are implementation limits, not tuning APIs.
+Concurrent cache misses may download independently; the budget bounds retained
+payload arrays, not in-flight downloads.
+Pooling and caching reduce cumulative allocations but can increase retained memory.
+Reference metadata is part of cache identity; size limits and cancellation still
+apply to cache hits. Reads with integrity verification disabled are not cached.
+Writes always contact storage, even when identical bytes are cached locally.
+`SkipWriteIfExists` accepts storage's `AlreadyExists` response; a local cache entry
+is never evidence that an object still exists in shared storage. Manifest recording
+is preserved.
+
+The cache does not require replica affinity. A different worker/service provider
+starts with a cold cache and retrieves and verifies the recorded reference from
+storage. Cache hit rates therefore depend on routing, eviction, and worker lifetime.
+Every replica's sidecar must access the same durable backing store, and referenced
+objects must remain available for the lifetime of retained workflow history.
+Independent sidecar-local in-memory stores, such as the demo component, are not
+suitable authoritative storage for a replicated deployment.
+
+`WorkflowPayloadCleaner` invalidates local entries before and after deletion,
+including reads racing with cleanup. External deletion, overwrite, corruption, or
+cleanup from another process may not be observed until the entry expires or is
+evicted. **Leave the switch disabled if every read must observe current storage
+state.** There is no distributed cache invalidation. The cache is not durable
+storage, and references must remain available
+for replay after eviction or process restart. Do not delete payloads while any
+retained workflow history still needs them.
+
 ### Switch back to inline payloads
 
 To stop automatic offloading while continuing to read old references, keep

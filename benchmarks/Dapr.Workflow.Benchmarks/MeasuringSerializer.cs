@@ -11,35 +11,35 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Dapr.Common.Serialization;
 
 namespace Dapr.Workflow.Benchmarks;
 
-internal sealed class MeasuringSerializer(MeasurementWindow window) : IDaprSerializer
+internal static class MeasuringSerializer
 {
-    private readonly JsonDaprSerializer inner = new();
-    public string Serialize<T>(T value) => inner.Serialize(value);
-
-    [RequiresUnreferencedCode("Benchmark uses runtime JSON types.")]
-    [RequiresDynamicCode("Benchmark uses runtime JSON types.")]
-    public string Serialize(object? value, Type? inputType = null) => inner.Serialize(value, inputType);
-
-    public T? Deserialize<T>(string? data)
+    internal static JsonDaprSerializer Create(MeasurementWindow window)
     {
-        var result = inner.Deserialize<T>(data);
-        if (typeof(T) == typeof(BenchmarkDocument))
-            window.Active?.DocumentRead(data);
-        return result;
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { IncludeFields = true };
+        options.Converters.Add(new DocumentConverter(window));
+        return new JsonDaprSerializer(options);
     }
 
-    [RequiresUnreferencedCode("Benchmark uses runtime JSON types.")]
-    [RequiresDynamicCode("Benchmark uses runtime JSON types.")]
-    public object? Deserialize(string? data, Type returnType)
+    private sealed class DocumentConverter(MeasurementWindow window) : JsonConverter<BenchmarkDocument>
     {
-        var result = inner.Deserialize(data, returnType);
-        if (returnType == typeof(BenchmarkDocument))
-            window.Active?.DocumentRead(data);
-        return result;
+        private readonly JsonSerializerOptions inner = new(JsonSerializerDefaults.Web) { IncludeFields = true };
+
+        public override BenchmarkDocument Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            var start = reader.TokenStartIndex;
+            var document = JsonSerializer.Deserialize<BenchmarkDocument>(ref reader, inner)
+                ?? throw new JsonException("Expected a benchmark document.");
+            window.Active?.DocumentRead(reader.BytesConsumed - start);
+            return document;
+        }
+
+        public override void Write(Utf8JsonWriter writer, BenchmarkDocument value, JsonSerializerOptions options) =>
+            JsonSerializer.Serialize(writer, value, inner);
     }
 }

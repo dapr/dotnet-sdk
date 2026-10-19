@@ -34,12 +34,132 @@ using WorkflowGrpc = Dapr.DurableTask.Protobuf;
 
 namespace Dapr.IntegrationTest.Workflow.BinaryStore;
 
+[Collection("Workflow payload cache")]
 public sealed class WorkflowPayloadMigrationTests
 {
     private const string FamilyName = "PayloadMigration";
     private const string PatchWorkflowName = "PatchedPayloadMigration";
     private const string ReferencePatch = "use-payload-references";
     private static readonly Document Input = new("input", new string('x', 128 * 1024));
+
+    [MinimumDaprRuntimeTheory("1.19")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldRehydrateRecordedReferencesAfterEachWorkerHandoff(bool cacheEnabled)
+    {
+        const string cacheSwitch = "Dapr.Workflow.EnablePayloadByteCache";
+        AppContext.TryGetSwitch(cacheSwitch, out var previous);
+        AppContext.SetSwitch(cacheSwitch, cacheEnabled);
+        try
+        {
+            using var timeout = CreateTimeout();
+            var token = timeout.Token;
+            await using var deployment = await Deployment.CreateAsync(token);
+            await deployment.StartWorkerAsync(PayloadMode.Automatic, token, trackPayloadReads: true);
+            var a = Assert.IsType<WorkflowBinaryStoreIntegrationTests.CountingStore>(
+                deployment.Services.GetRequiredService<DaprBinaryStoreClient>());
+            var instanceId = Guid.NewGuid().ToString("N");
+            await deployment.Client.ScheduleNewWorkflowAsync(nameof(MigrationWorkflow), instanceId, Input,
+                startTime: null, cancellation: token);
+            await deployment.WaitForCheckpointAsync(instanceId, "waiting-1", token);
+            var history = await deployment.GetHistoryAsync(instanceId, token);
+            var wire = Assert.Single(history.Events, e => e.ExecutionStarted is not null).ExecutionStarted.Input;
+            Assert.True(PayloadReference.TryParse(wire, out var reference));
+            Assert.NotNull(reference);
+            Assert.True(a.Reads[reference.Key] >= 1);
+            var aReads = a.Reads[reference.Key];
+
+            // Each replacement has a separate service provider/cache, but the same authoritative store and history.
+            await deployment.StartWorkerAsync(PayloadMode.Automatic, token, trackPayloadReads: true);
+            var b = Assert.IsType<WorkflowBinaryStoreIntegrationTests.CountingStore>(
+                deployment.Services.GetRequiredService<DaprBinaryStoreClient>());
+            Assert.NotSame(a, b);
+            await deployment.Client.RaiseEventAsync(instanceId, "resume-1", Input with { Name = "event-1" }, token);
+            await deployment.WaitForCheckpointAsync(instanceId, "waiting-2", token);
+            Assert.True(b.Reads[reference.Key] >= 1);
+            Assert.Equal(aReads, a.Reads[reference.Key]);
+            var bReads = b.Reads[reference.Key];
+
+            await deployment.StartWorkerAsync(PayloadMode.Automatic, token, trackPayloadReads: true);
+            var c = Assert.IsType<WorkflowBinaryStoreIntegrationTests.CountingStore>(
+                deployment.Services.GetRequiredService<DaprBinaryStoreClient>());
+            Assert.NotSame(b, c);
+            await deployment.Client.RaiseEventAsync(instanceId, "resume-2", Input with { Name = "event-2" }, token);
+            var result = await deployment.Client.WaitForWorkflowCompletionAsync(instanceId, true, token);
+            Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+            Assert.Equal(Input, result.ReadInputAs<Document>());
+            Assert.Equal(Input with { Name = "input:echo:event-1:echo:event-2:echo" }, result.ReadOutputAs<Document>());
+            Assert.True(c.Reads[reference.Key] >= 1);
+            Assert.Equal(bReads, b.Reads[reference.Key]);
+            if (cacheEnabled)
+            {
+                Assert.Equal(1, aReads);
+                Assert.Equal(1, bReads);
+                Assert.Equal(1, c.Reads[reference.Key]);
+            }
+            Assert.Equal(3, deployment.Calls.Count(instanceId, nameof(EchoActivity)));
+        }
+        finally
+        {
+            AppContext.SetSwitch(cacheSwitch, previous);
+        }
+    }
+
+    [MinimumDaprRuntimeTheory("1.19")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ColdReplicaMustObserveMissingOrCorruptStorageDespiteAnotherWorkersWarmCache(bool corrupt)
+    {
+        const string cacheSwitch = "Dapr.Workflow.EnablePayloadByteCache";
+        AppContext.TryGetSwitch(cacheSwitch, out var previous);
+        AppContext.SetSwitch(cacheSwitch, true);
+        try
+        {
+            using var timeout = CreateTimeout();
+            var token = timeout.Token;
+            await using var deployment = await Deployment.CreateAsync(token);
+            await deployment.StartWorkerAsync(PayloadMode.Automatic, token, trackPayloadReads: true);
+            var instanceId = Guid.NewGuid().ToString("N");
+            await deployment.Client.ScheduleNewWorkflowAsync(nameof(MigrationWorkflow), instanceId, Input,
+                startTime: null, cancellation: token);
+            await deployment.WaitForCheckpointAsync(instanceId, "waiting-1", token);
+            var history = await deployment.GetHistoryAsync(instanceId, token);
+            var wire = Assert.Single(history.Events, e => e.ExecutionStarted is not null).ExecutionStarted.Input;
+            Assert.True(PayloadReference.TryParse(wire, out var reference));
+            Assert.NotNull(reference);
+            var store = Assert.IsType<WorkflowBinaryStoreIntegrationTests.CountingStore>(
+                deployment.Services.GetRequiredService<DaprBinaryStoreClient>());
+            Assert.Equal(1, store.Reads[reference.Key]);
+            if (corrupt)
+            {
+                using var bytes = new MemoryStream(Encoding.UTF8.GetBytes("{\"name\":\"corrupted\"}"));
+                await store.SetBinaryFileAsync(reference.StoreName, reference.Key, bytes, overwrite: true,
+                    cancellationToken: token);
+            }
+            else
+            {
+                await store.DeleteBinaryFileAsync(reference.StoreName, reference.Key, token);
+            }
+
+            await deployment.StartWorkerAsync(PayloadMode.Automatic, token, trackPayloadReads: true);
+            await deployment.Client.RaiseEventAsync(instanceId, "resume-1", Input with { Name = "event-1" }, token);
+            var result = await deployment.Client.WaitForWorkflowCompletionAsync(instanceId, false, token);
+            Assert.Equal(WorkflowRuntimeStatus.Failed, result.RuntimeStatus);
+            // Fetch failure details without attempting to hydrate the missing/corrupt input on the client.
+            var failed = await deployment.GetInstanceAsync(instanceId, token);
+            Assert.NotNull(failed.WorkflowState.FailureDetails);
+            Assert.Contains(corrupt ? nameof(PayloadIntegrityException) : nameof(PayloadNotFoundException),
+                failed.WorkflowState.FailureDetails.ErrorType);
+            var coldStore = Assert.IsType<WorkflowBinaryStoreIntegrationTests.CountingStore>(
+                deployment.Services.GetRequiredService<DaprBinaryStoreClient>());
+            Assert.True(coldStore.Reads[reference.Key] >= 1);
+            Assert.Equal(1, deployment.Calls.Count(instanceId, nameof(EchoActivity)));
+        }
+        finally
+        {
+            AppContext.SetSwitch(cacheSwitch, previous);
+        }
+    }
 
     [MinimumDaprRuntimeTheory("1.19")]
     [InlineData(PayloadMode.Inline, PayloadMode.Inline)]
@@ -432,7 +552,7 @@ public sealed class WorkflowPayloadMigrationTests
         }
 
         public async Task StartWorkerAsync(PayloadMode mode, CancellationToken token, bool versioned = false,
-            bool selectV1 = false, bool patched = false, bool incompatibleInput = false)
+            bool selectV1 = false, bool patched = false, bool incompatibleInput = false, bool trackPayloadReads = false)
         {
             // Keep the sidecar alive: restarting an in-memory binary store would destroy the payloads.
             await StopWorkerAsync();
@@ -483,6 +603,16 @@ public sealed class WorkflowPayloadMigrationTests
                         _ => PayloadWritePreference.Preserve
                     };
                 });
+            }
+
+            if (trackPayloadReads)
+            {
+                var factory = Assert.Single(builder.Services,
+                    descriptor => descriptor.ServiceType == typeof(DaprBinaryStoreClient)).ImplementationFactory;
+                Assert.NotNull(factory);
+                builder.Services.AddSingleton<DaprBinaryStoreClient>(sp =>
+                    new WorkflowBinaryStoreIntegrationTests.CountingStore(
+                        Assert.IsAssignableFrom<DaprBinaryStoreClient>(factory(sp))));
             }
 
             _worker = builder.Build();
