@@ -163,7 +163,7 @@ public sealed class ActorTestRuntimeTests
         runtime.Time.Advance(TimeSpan.FromSeconds(3));
         await runtime.RunToIdle();
 
-        Assert.Equal(2, runtime.Transcript.Count(entry => entry.ActorId == id.Value && entry.OperationName == "Reminder"));
+        Assert.Single(runtime.Transcript, entry => entry.ActorId == id.Value && entry.OperationName == "Reminder");
 
         await reminders.CancelAllAsync("Testing", id);
         Assert.Null(await reminders.GetAsync("Testing", id, "Reminder"));

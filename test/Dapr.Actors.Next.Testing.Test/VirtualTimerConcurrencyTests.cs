@@ -341,9 +341,10 @@ public sealed class VirtualTimerConcurrencyTests
             TimeSpan.FromSeconds(2), "\"reminder\"", TimeSpan.FromSeconds(4));
         runtime.Time.Advance(TimeSpan.FromSeconds(10));
         await runtime.RunToIdle().WaitAsync(Timeout);
-        Assert.Equal(4, actor.Payloads.Count);
+        Assert.Equal(3, actor.Payloads.Count);
         Assert.Equal(2, actor.Payloads.Count(value => value == "\"timer\""));
-        Assert.Equal(2, actor.Payloads.Count(value => value == "\"reminder\""));
+        Assert.Single(actor.Payloads, value => value == "\"reminder\"");
+        Assert.Null(await ((IActorReminderScheduler)runtime.Time).GetAsync("A", Id, "Callback"));
     }
 
     [Fact]

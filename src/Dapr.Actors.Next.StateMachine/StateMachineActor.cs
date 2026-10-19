@@ -387,6 +387,11 @@ public abstract class StateMachineActor<TState, TData> : Actor
                 return EventDisposition.Deferred;
             }
 
+            if (configuration.Handlers.ContainsKey(eventType))
+            {
+                return EventDisposition.None;
+            }
+
             if (!configuration.Parent.HasValue)
             {
                 return EventDisposition.None;

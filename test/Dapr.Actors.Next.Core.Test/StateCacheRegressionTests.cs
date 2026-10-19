@@ -14,6 +14,7 @@
 using System.Text;
 using System.Text.Json;
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Abstractions.State.Versioning;
 using Dapr.Actors.Next.Core.Serialization;
@@ -27,6 +28,119 @@ public sealed class StateCacheRegressionTests
 {
     private static readonly ActorId Id = ActorId.Create("one");
     private readonly ActorWireSerializer serializer = new(new JsonDaprSerializer());
+
+    [Fact]
+    public async Task Struct_containing_mutable_references_is_tracked_on_save_and_reload()
+    {
+        var store = new RecordingStore();
+        var cache = CreateCache(store);
+        await cache.SetAsync("value", new MutableStruct([1]));
+        await cache.FlushAsync();
+        foreach (var expected in new[] { 2, 3 })
+        {
+            var state = (await cache.TryGetAsync<MutableStruct>("value"))!;
+            state.Value.Values.Add(expected);
+            await Assert.ThrowsAsync<ActorStateCacheDirtyException>(() => cache.EvictCacheAsync().AsTask());
+            await cache.FlushAsync();
+            var writes = store.Writes;
+            await cache.FlushAsync();
+            Assert.Equal(writes, store.Writes);
+            cache = CreateCache(store);
+            Assert.Equal(Enumerable.Range(1, expected), (await cache.TryGetAsync<MutableStruct>("value"))!.Value.Values);
+        }
+    }
+
+    [Theory]
+    [InlineData("snake")]
+    [InlineData("kebab")]
+    [InlineData("custom")]
+    [InlineData("pascal")]
+    public async Task Envelope_metadata_is_independent_of_payload_naming_policy(string policyName)
+    {
+        JsonNamingPolicy? policy = policyName switch
+        {
+            "snake" => JsonNamingPolicy.SnakeCaseLower,
+            "kebab" => JsonNamingPolicy.KebabCaseLower,
+            "custom" => new PrefixNamingPolicy(),
+            _ => null
+        };
+        var wire = new ActorWireSerializer(new JsonDaprSerializer(new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = policy,
+            WriteIndented = true
+        }));
+        foreach (var migrator in new IActorStateMigrator?[] { null, CreateMigrator() })
+        {
+            var store = new RecordingStore();
+            ActorStateUnitOfWork Cache() => new("Actor", Id, store, wire, migrator: migrator);
+            var cache = Cache();
+            await cache.SetAsync("value", new Balance { Amount = 42 });
+            await cache.FlushAsync();
+            var bytes = (await store.ReadAsync("Actor", Id.Value, "value"))!.Value;
+            using var document = JsonDocument.Parse(bytes);
+            Assert.Equal(209, document.RootElement.GetProperty("header").GetProperty("magic").GetInt32());
+            var restored = Cache();
+            Assert.Equal(42, (await restored.TryGetAsync<Balance>("value"))!.Value.Amount);
+            if (migrator is null)
+            {
+                var writes = store.Writes;
+                await restored.FlushAsync();
+                Assert.Equal(writes, store.Writes);
+            }
+            if (migrator is not null)
+            {
+                Assert.Equal("balance-v1", document.RootElement.GetProperty("discriminator").GetProperty("shapeHash").GetString());
+                var migrated = Cache();
+                Assert.Equal(42, (await migrated.TryGetAsync<MigratedBalance>("value"))!.Value.Total);
+                await migrated.FlushAsync();
+                Assert.Equal(42, (await Cache().TryGetAsync<MigratedBalance>("value"))!.Value.Total);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("formatVersion", "\"invalid\"")]
+    [InlineData("formatVersion", "2147483648")]
+    [InlineData("formatVersion", null)]
+    [InlineData("formKind", "\"invalid\"")]
+    [InlineData("formKind", "258")]
+    [InlineData("formKind", null)]
+    [InlineData("serializerId", "42")]
+    [InlineData("serializerId", "null")]
+    [InlineData("serializerId", null)]
+    [InlineData("serializerVersion", "\"invalid\"")]
+    [InlineData("serializerVersion", null)]
+    public async Task Recognized_header_corruption_never_falls_back_to_raw_state(string property, string? value)
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(
+            """{"header":{"magic":209,"formatVersion":1,"formKind":2,"serializerId":"dapr-json","serializerVersion":1},"value":{"amount":42}}""")!;
+        if (value is null) json["header"]!.AsObject().Remove(property);
+        else json["header"]![property] = System.Text.Json.Nodes.JsonNode.Parse(value);
+        await Assert.ThrowsAsync<ActorStateEnvelopeException>(() => ReadLegacy<Balance>(json.ToJsonString()));
+    }
+
+    [Theory]
+    [InlineData("""{"header":{"magic":209,"formatVersion":1,"formKind":2,"serializerId":"dapr-json","serializerVersion":1}}""")]
+    [InlineData("""{"header":{"magic":209,"formatVersion":1,"formKind":1,"serializerId":"dapr-json","serializerVersion":1},"value":{"amount":42}}""")]
+    [InlineData("""{"header":{"magic":209,"formatVersion":1,"formKind":1,"serializerId":"dapr-json","serializerVersion":1},"discriminator":null,"value":{"amount":42}}""")]
+    [InlineData("""{"header":{"magic":209,"formatVersion":1,"formKind":1,"serializerId":"dapr-json","serializerVersion":1},"discriminator":{"chainIndex":"bad","shapeHash":"balance-v1"},"value":{"amount":42}}""")]
+    [InlineData("""{"header":{"magic":209,"formatVersion":1,"formKind":1,"serializerId":"dapr-json","serializerVersion":1},"discriminator":{"chainIndex":0},"value":{"amount":42}}""")]
+    public async Task Recognized_envelope_requires_payload_and_valid_discriminator(string json) =>
+        await Assert.ThrowsAsync<ActorStateEnvelopeException>(() => ReadLegacy<Balance>(json));
+
+    [Theory]
+    [InlineData("pascal")]
+    [InlineData("snake")]
+    [InlineData("kebab")]
+    public async Task Previously_written_envelope_metadata_remains_readable(string naming)
+    {
+        var json = """{"Header":{"Magic":209,"FormatVersion":1,"FormKind":2,"SerializerId":"dapr-json","SerializerVersion":1},"Value":{"Amount":42}}""";
+        var policy = naming == "snake" ? JsonNamingPolicy.SnakeCaseLower : JsonNamingPolicy.KebabCaseLower;
+        if (naming != "pascal")
+            foreach (var name in new[] { "Header", "Magic", "FormatVersion", "FormKind", "SerializerId", "SerializerVersion", "Value" })
+                json = json.Replace($"\"{name}\"", $"\"{policy.ConvertName(name)}\"");
+        Assert.Equal(42, (await ReadLegacy<Balance>(json))!.Value.Amount);
+    }
 
     [Fact]
     public void Sdk_serializer_roundtrips_nested_actor_ids_and_rejects_invalid_values()
@@ -252,6 +366,11 @@ public sealed class StateCacheRegressionTests
     public sealed class MigratedBalance { public int Total { get; set; } }
     public sealed class ValueOnly { public int Value { get; set; } }
     public readonly record struct StructBalance(int Amount);
+    public readonly record struct MutableStruct(List<int> Values);
+    private sealed class PrefixNamingPolicy : JsonNamingPolicy
+    {
+        public override string ConvertName(string name) => "custom_" + name;
+    }
     public readonly record struct MigratedStructBalance(int Total);
 
     private sealed class RecordingStore : IActorStateStore

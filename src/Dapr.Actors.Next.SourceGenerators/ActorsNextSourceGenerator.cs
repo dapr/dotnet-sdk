@@ -42,6 +42,13 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
     private const string UpcasterMetadataName = "Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster`2";
     private const string CancellationTokenMetadataName = "System.Threading.CancellationToken";
     private const string ScanReferencesPropertyName = "build_property.DaprActorsScanReferences";
+    private static readonly DiagnosticDescriptor AmbiguousOperationDiagnostic = new(
+        "DAPRGEN001",
+        "Ambiguous actor operation",
+        "Actor contract '{0}' has incompatible declarations for wire operation '{1}'. Actor operations cannot be overloaded.",
+        "Dapr.Actors.Next.SourceGenerators",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
     private static readonly DiagnosticDescriptor NonAppendOnlyChainDiagnostic = new(
         "DAPR1422",
         "Actor state migration family is not append-only",
@@ -205,10 +212,11 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         ImmutableArray<INamedTypeSymbol> stateCandidates,
         KnownSymbols known)
     {
+        var methodDiagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
         var interfaces = interfaceCandidates
             .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
             .Where(symbol => IsActorInterface(symbol, known) && HasAttribute(symbol, known.GenerateActorClientAttribute, GenerateActorClientAttributeMetadataName))
-            .Select(symbol => BuildInterface(symbol, known))
+            .Select(symbol => BuildInterface(symbol, known, methodDiagnostics))
             .Where(item => item is not null)
             .Cast<ActorInterfaceModel>()
             .Distinct(ActorInterfaceModelComparer.Instance)
@@ -219,7 +227,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         var actors = actorCandidates
             .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
             .Where(symbol => !symbol.IsAbstract && HasAttribute(symbol, known.DaprActorAttribute, DaprActorAttributeMetadataName))
-            .Select(symbol => BuildActor(symbol, known, interfaceBySymbol))
+            .Select(symbol => BuildActor(symbol, known, interfaceBySymbol, methodDiagnostics))
             .Where(item => item is not null)
             .Cast<ActorModel>()
             .Distinct(ActorModelComparer.Instance)
@@ -246,17 +254,29 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             .ToImmutableArray();
 
         var (families, diagnostics) = BuildFamilies(states, upcasters);
-        return new Manifest(interfaces, actors, upcasters, families, diagnostics);
+        return new Manifest(interfaces, actors, upcasters, families, diagnostics.AddRange(methodDiagnostics));
     }
 
-    private static ActorInterfaceModel? BuildInterface(INamedTypeSymbol symbol, KnownSymbols known)
+    private static ActorInterfaceModel? BuildInterface(INamedTypeSymbol symbol, KnownSymbols known, ImmutableArray<Diagnostic>.Builder diagnostics)
     {
         if (symbol.TypeParameters.Length > 0)
         {
             return null;
         }
 
-        var methods = GetActorMethods(symbol)
+        var declarations = GetActorMethods(symbol).ToArray();
+        var collisions = declarations.GroupBy(method => method.Name, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1).ToArray();
+        if (collisions.Length > 0)
+        {
+            foreach (var collision in collisions)
+                diagnostics.Add(Diagnostic.Create(
+                    AmbiguousOperationDiagnostic,
+                    symbol.Locations.FirstOrDefault(), symbol.ToDisplayString(), collision.Key));
+            return null;
+        }
+
+        var methods = declarations
             .Select(method => BuildMethod(method, known))
             .Where(method => method is not null)
             .Cast<ActorMethodModel>()
@@ -311,7 +331,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             "__" + method.Name + "Args");
     }
 
-    private static ActorModel? BuildActor(INamedTypeSymbol symbol, KnownSymbols known, Dictionary<string, ActorInterfaceModel> interfaces)
+    private static ActorModel? BuildActor(INamedTypeSymbol symbol, KnownSymbols known, Dictionary<string, ActorInterfaceModel> interfaces, ImmutableArray<Diagnostic>.Builder diagnostics)
     {
         var actorInterfaces = symbol.AllInterfaces
             .Where(candidate => IsActorInterface(candidate, known))
@@ -324,6 +344,17 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
         if (actorInterfaces.IsEmpty)
         {
+            return null;
+        }
+
+        var collisions = actorInterfaces.SelectMany(contract => contract.Methods)
+            .GroupBy(method => method.WireName, StringComparer.Ordinal)
+            .Where(group => group.Skip(1).Any(method => !EquivalentActorMethod(group.First(), method))).ToArray();
+        if (collisions.Length > 0)
+        {
+            foreach (var collision in collisions)
+                diagnostics.Add(Diagnostic.Create(AmbiguousOperationDiagnostic,
+                    symbol.Locations.FirstOrDefault(), symbol.ToDisplayString(), collision.Key));
             return null;
         }
 
@@ -1215,19 +1246,35 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
     private static IEnumerable<IMethodSymbol> GetActorMethods(INamedTypeSymbol symbol)
     {
-        foreach (var inherited in symbol.AllInterfaces)
+        var methods = new List<IMethodSymbol>();
+        foreach (var contract in new[] { symbol }.Concat(symbol.AllInterfaces))
         {
-            foreach (var method in inherited.GetMembers().OfType<IMethodSymbol>())
+            foreach (var method in contract.GetMembers().OfType<IMethodSymbol>().Where(method => method.MethodKind == MethodKind.Ordinary))
             {
-                yield return method;
+                if (!methods.Any(existing => EquivalentActorMethod(existing, method)))
+                    methods.Add(method);
             }
         }
 
-        foreach (var method in symbol.GetMembers().OfType<IMethodSymbol>())
-        {
-            yield return method;
-        }
+        return methods;
     }
+
+    private static bool EquivalentActorMethod(IMethodSymbol left, IMethodSymbol right) =>
+        left.Name == right.Name && left.Arity == right.Arity
+        && SymbolEqualityComparer.Default.Equals(left.ReturnType, right.ReturnType)
+        && left.RefKind == right.RefKind && left.IsStatic == right.IsStatic
+        && left.Parameters.Length == right.Parameters.Length
+        && left.Parameters.Zip(right.Parameters, (a, b) =>
+            a.RefKind == b.RefKind && SymbolEqualityComparer.Default.Equals(a.Type, b.Type)
+            && (left.Parameters.Count(parameter => parameter.Type.ToDisplayString() != CancellationTokenMetadataName) < 2
+                || a.Type.ToDisplayString() == CancellationTokenMetadataName || a.Name == b.Name)).All(equal => equal);
+
+    private static bool EquivalentActorMethod(ActorMethodModel left, ActorMethodModel right) =>
+        left.Name == right.Name && left.ReturnType == right.ReturnType
+        && left.Parameters.Length == right.Parameters.Length
+        && left.Parameters.Zip(right.Parameters, (a, b) =>
+            a.TypeName == b.TypeName
+            && (left.PayloadParameters.Length < 2 || a.IsCancellationToken || a.Name == b.Name)).All(equal => equal);
 
     private static bool IsActorInterface(INamedTypeSymbol symbol, KnownSymbols known) =>
         (known.IActor is not null && SymbolEqualityComparer.Default.Equals(symbol, known.IActor))

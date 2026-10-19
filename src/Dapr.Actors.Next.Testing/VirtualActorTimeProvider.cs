@@ -115,7 +115,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
                 IActorRuntime? activeRuntime;
                 lock (syncRoot)
                 {
-                    callbacks.RemoveAll(static item => item.Canceled);
+                    callbacks.RemoveAll(item => item.Canceled || ReminderExpired(item));
                     callback = callbacks.Where(item => item.DueAt <= target)
                         .OrderBy(static item => item.DueAt).ThenBy(static item => item.Sequence).FirstOrDefault();
                     timer = timers.Where(item => item.DueAt.HasValue && item.DueAt.Value <= target)
@@ -131,7 +131,8 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
                     {
                         timer = null;
                         utcNow = callback.DueAt;
-                        if (callback.ExpiresAt.HasValue && callback.DueAt > callback.ExpiresAt.Value)
+                        if (callback.ExpiresAt.HasValue && (callback.DueAt > callback.ExpiresAt.Value
+                            || (callback.Kind == ActorTurnKind.Reminder && callback.DueAt == callback.ExpiresAt.Value)))
                         {
                             callback.Canceled = true;
                             continue;
@@ -149,6 +150,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
                     else
                     {
                         utcNow = target;
+                        callbacks.RemoveAll(ReminderExpired);
                         return;
                     }
 
@@ -320,7 +322,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         {
             cancellationToken.ThrowIfCancellationRequested();
             var callback = callbacks.LastOrDefault(callback =>
-                !callback.Canceled
+                !callback.Canceled && !ReminderExpired(callback)
                 && callback.Kind == ActorTurnKind.Reminder
                 && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
                 && callback.ActorId.Equals(actorId)
@@ -341,7 +343,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
             cancellationToken.ThrowIfCancellationRequested();
             var reminders = callbacks
                 .Where(callback =>
-                    !callback.Canceled
+                    !callback.Canceled && !ReminderExpired(callback)
                     && callback.Kind == ActorTurnKind.Reminder
                     && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
                     && (!actorId.HasValue || callback.ActorId.Equals(actorId.Value)))
@@ -351,6 +353,9 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
             return ValueTask.FromResult<IReadOnlyList<NamedActorReminderInfo>>(reminders);
         }
     }
+
+    private bool ReminderExpired(ScheduledCallback callback) =>
+        callback.Kind == ActorTurnKind.Reminder && callback.ExpiresAt.HasValue && utcNow >= callback.ExpiresAt.Value;
 
     /// <inheritdoc />
     ValueTask IActorReminderScheduler.CancelAsync(
@@ -497,7 +502,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         lock (syncRoot)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var existing = callbacks.Where(callback => !callback.Canceled
+            var existing = callbacks.Where(callback => !callback.Canceled && !ReminderExpired(callback)
                 && callback.Kind == kind
                 && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
                 && callback.ActorId.Equals(actorId)

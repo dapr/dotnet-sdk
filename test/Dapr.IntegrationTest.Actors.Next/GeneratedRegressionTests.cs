@@ -16,9 +16,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.Registry;
 using Dapr.Actors.Next.Abstractions.Filters;
 using Dapr.Actors.Next.Interpreted;
@@ -30,6 +32,7 @@ using Dapr.Actors.Next.Core.Client;
 using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.State;
+using Dapr.Common.Serialization;
 using Dapr.Actors.Next.SourceGenerators.OtherSample;
 using Dapr.Actors.Next.SourceGenerators.Sample;
 using Dapr.Testcontainers.Xunit.Attributes;
@@ -42,6 +45,58 @@ namespace Dapr.IntegrationTest.Actors.Next;
 
 public sealed partial class RealSidecarActorTests
 {
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Sidecar_state_preserves_custom_envelopes_and_struct_reference_mutations()
+    {
+        using var timeout = new CancellationTokenSource(Timeout);
+        var services = app!.Services;
+        var id = new ActorId("state-envelope-regression");
+        var store = services.GetRequiredService<IActorStateStore>();
+        var migrator = services.GetRequiredService<IActorStateMigrator>();
+        var wire = new ActorWireSerializer(new JsonDaprSerializer(new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+            IncludeFields = true
+        }));
+        ActorStateUnitOfWork Cache() => new("FirstAccount", id, store, wire, migrator: migrator);
+        var cache = Cache();
+        await cache.SetAsync("versioned", new AccountV1 { Balance = 42, Count = 42 }, timeout.Token);
+        await cache.SetAsync("struct", new StructReferenceState([1]), timeout.Token);
+        await cache.FlushAsync(timeout.Token);
+        (await cache.TryGetAsync<StructReferenceState>("struct", timeout.Token))!.Value.Values.Add(2);
+        await cache.FlushAsync(timeout.Token);
+        await cache.EvictCacheAsync(timeout.Token);
+        Assert.Equal(new[] { 1, 2 }, (await cache.TryGetAsync<StructReferenceState>("struct", timeout.Token))!.Value.Values);
+        var fresh = Cache();
+        Assert.Equal(42, (await fresh.TryGetAsync<AccountV2>("versioned", timeout.Token))!.Value.Count);
+        await fresh.FlushAsync(timeout.Token);
+        Assert.Equal(42, (await Cache().TryGetAsync<AccountV2>("versioned", timeout.Token))!.Value.Count);
+
+        await store.WriteAsync("FirstAccount", id.Value, "corrupt", Encoding.UTF8.GetBytes(
+            """{"header":{"magic":209,"formatVersion":"invalid","formKind":1,"serializerId":"dapr-json","serializerVersion":1},"value":{"count":42}}"""), timeout.Token);
+        await Assert.ThrowsAsync<ActorStateEnvelopeException>(() => Cache().TryGetAsync<AccountV1>("corrupt", timeout.Token).AsTask());
+    }
+
+    public readonly record struct StructReferenceState(List<int> Values);
+
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Generated_hierarchy_prioritizes_child_handlers_and_replays_durable_deferred_events()
+    {
+        using var timeout = new CancellationTokenSource(Timeout);
+        var services = app!.Services;
+        var id = new ActorId("generated-hierarchy");
+        var actor = services.GetRequiredService<IActorProxyFactory>().Create<IGeneratedHierarchyActor>(id, "GeneratedHierarchy");
+        await actor.QueueAsync(timeout.Token);
+        Assert.Equal(0, await actor.ReadAsync(timeout.Token));
+        await services.GetRequiredService<IActorRuntime>().DeactivateAsync("GeneratedHierarchy", id, timeout.Token);
+        await actor.OpenAsync(timeout.Token);
+        Assert.Equal(1, await actor.ReadAsync(timeout.Token));
+        Assert.Equal(7, await actor.CommandAsync(timeout.Token));
+        await actor.NextAsync(timeout.Token);
+        Assert.Equal(7, await actor.CommandAsync(timeout.Token));
+        Assert.Equal(3, await actor.ReadAsync(timeout.Token));
+    }
+
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Generated_machine_discards_failed_events_and_reenters_external_self_transition()
     {
@@ -125,7 +180,8 @@ public sealed partial class RealSidecarActorTests
         Assert.Equal(new[] { 17 }, (await calculator.MapAsync("items", 17, timeout.Token))["items"]);
 
         var second = proxies.Create<Second.IAccount>(new ActorId("generated-second"), "SecondAccount");
-        Assert.Equal("a|b|c|d|e|f", await second.EchoAsync("a", "b", "c", "d", "e", "f", timeout.Token));
+        Assert.Equal("a|b|c|d|e|f", await ((Second.ILeftAccount)second).EchoAsync("a", "b", "c", "d", "e", "f", timeout.Token));
+        Assert.Equal("a|b|c|d|e|f", await ((Second.IRightAccount)second).EchoAsync("a", "b", "c", "d", "e", "f", timeout.Token));
         var registry = app.Services.GetRequiredService<IActorRegistry>();
         Assert.True(registry.TryGet("Calculator", out _));
         Assert.True(registry.TryGet("FirstAccount", out _));

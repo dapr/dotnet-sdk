@@ -28,6 +28,8 @@ namespace Dapr.Actors.Next.Core.Timers;
 /// replacement prevents new callback admissions; an already admitted actor turn may finish.
 /// Callbacks do not inherit the registering actor's execution context. A disposed scheduler
 /// rejects further operations.
+/// TTL is measured from registration; no callbacks are admitted at or after expiration.
+/// Expiration removes the registration even when no further callback ticks are scheduled.
 /// </remarks>
 public sealed class CoreActorReminderScheduler(
     IActorRuntime runtime,
@@ -185,7 +187,13 @@ public sealed class CoreActorReminderScheduler(
                 throw new ActorReminderAlreadyExistsException(actorType, actorId.Value, name);
             }
 
-            var timer = new ScheduledActorCallback(sync, runtime, timeProvider, request, null, logger);
+            var expiresAt = ttl.HasValue ? timeProvider.GetUtcNow() + ttl.Value : (DateTimeOffset?)null;
+            var timer = new ScheduledActorCallback(sync, runtime, timeProvider, request, expiresAt, logger,
+                expired =>
+                {
+                    if (reminders.TryGetValue(key, out var registration) && ReferenceEquals(registration.Timer, expired))
+                        reminders.Remove(key);
+                });
             reminders[key] = new ReminderRegistration(timer, info);
             try
             {

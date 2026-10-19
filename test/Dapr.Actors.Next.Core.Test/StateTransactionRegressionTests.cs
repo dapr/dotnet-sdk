@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Actors.Next.Abstractions;
+using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.State;
 using Dapr.Actors.Next.Testing;
@@ -24,6 +25,57 @@ public sealed class StateTransactionRegressionTests
     private static readonly TimeSpan Deadline = TimeSpan.FromSeconds(5);
     private static ActorStateUnitOfWork Cache(IActorStateStore store, ActorFaults? faults = null) =>
         new("Actor", ActorId.Create("one"), store, new ActorWireSerializer(new JsonDaprSerializer()), faults);
+
+    [Fact]
+    public async Task Eviction_waits_for_commit_without_blocking_reentrant_cache_access()
+    {
+        var store = new PausedStore();
+        await store.WriteAsync("Actor", "one", "value", "1"u8.ToArray());
+        var cache = Cache(store);
+        await cache.SetAsync("value", 2);
+        var save = cache.SaveStateAsync().AsTask();
+        await store.Reached.Task.WaitAsync(Deadline);
+        var eviction = cache.EvictCacheAsync(new DaprEvictStateOptions { EvictOnDirtyState = true }).AsTask();
+        try
+        {
+            Assert.False(eviction.IsCompleted);
+            Assert.Equal(2, (await cache.TryGetAsync<int>("value"))!.Value);
+            await cache.SetAsync("other", 3);
+        }
+        finally
+        {
+            store.Release.TrySetResult();
+        }
+        await Task.WhenAll(save, eviction).WaitAsync(Deadline);
+        Assert.Equal(2, (await cache.TryGetAsync<int>("value"))!.Value);
+        Assert.Equal(2, (await Cache(store).TryGetAsync<int>("value"))!.Value);
+        Assert.Null(await cache.TryGetAsync<int>("other"));
+    }
+
+    [Fact]
+    public async Task Canceling_eviction_wait_does_not_release_another_commits_gate()
+    {
+        var store = new PausedStore();
+        var cache = Cache(store);
+        await cache.SetAsync("value", 2);
+        var save = cache.SaveStateAsync().AsTask();
+        await store.Reached.Task.WaitAsync(Deadline);
+        using var cancellation = new CancellationTokenSource();
+        var eviction = cache.EvictCacheAsync(new DaprEvictStateOptions { EvictOnDirtyState = true }, cancellation.Token).AsTask();
+        cancellation.Cancel();
+        try
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => eviction);
+            Assert.Equal(2, (await cache.TryGetAsync<int>("value"))!.Value);
+        }
+        finally
+        {
+            store.Release.TrySetResult();
+        }
+        await save.WaitAsync(Deadline);
+        await cache.EvictCacheAsync();
+        Assert.Equal(2, (await cache.TryGetAsync<int>("value"))!.Value);
+    }
 
     [Theory]
     [InlineData(false)]

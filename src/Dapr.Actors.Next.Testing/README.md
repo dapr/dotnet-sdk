@@ -117,6 +117,12 @@ replacement as persisted. The next save commits the replacement. This does not
 make application-owned mutable object graphs thread safe; synchronize concurrent
 in-place mutations or use `SetAsync` with replacement values.
 
+Eviction also waits for an in-flight commit, without holding the cache lock.
+In a paused-commit test, start eviction, assert it is waiting, release the commit,
+then await both operations. Awaiting eviction before releasing the deliberately
+paused store would deadlock the test itself. With forced eviction, unsaved changes
+remaining after the commit are discarded; reloading sees the committed value.
+
 ## Advance timers and reminders
 
 The harness injects the production **in-process** timer/reminder adapters backed
@@ -134,6 +140,14 @@ wait for that actor but other actors can progress. Register the same timer or
 reminder name concurrently, then cancel it and advance time to test replacement
 ownership. Cancellation prevents future callback admission; an already-admitted
 callback may still complete.
+
+In-process reminder TTL is measured from registration using the injected clock.
+No new callback is admitted at or after the expiration deadline; zero TTL admits
+none. Expiration removes the registration even for a one-shot reminder or when
+the first/next tick is beyond the deadline. An old expiration cannot remove a
+replacement with the same name. The direct virtual reminder scheduler follows
+the same boundary rule. For example, due time zero, period one second, and TTL
+two seconds admit callbacks at zero and one second only.
 
 The virtual provider implements `TimeProvider.CreateTimer`, including timer
 change/disposal and execution-context capture. Core adapters suppress capture.

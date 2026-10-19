@@ -26,6 +26,8 @@ internal sealed class ScheduledActorCallback
     private readonly DateTimeOffset? expiresAt;
     private readonly ILogger? logger;
     private readonly ITimer timer;
+    private readonly ITimer? expirationTimer;
+    private readonly Action<ScheduledActorCallback>? onExpired;
     private bool active;
 
     public ScheduledActorCallback(
@@ -34,7 +36,8 @@ internal sealed class ScheduledActorCallback
         TimeProvider timeProvider,
         ActorRuntimeRequest request,
         DateTimeOffset? expiresAt,
-        ILogger? logger)
+        ILogger? logger,
+        Action<ScheduledActorCallback>? onExpired = null)
     {
         this.sync = sync;
         this.runtime = runtime;
@@ -42,17 +45,20 @@ internal sealed class ScheduledActorCallback
         this.request = request;
         this.expiresAt = expiresAt;
         this.logger = logger;
+        this.onExpired = onExpired;
 
         // System timers otherwise retain the registering actor's AsyncLocal call chain.
         if (ExecutionContext.IsFlowSuppressed())
         {
             timer = CreateTimer();
+            expirationTimer = CreateExpirationTimer();
         }
         else
         {
             using (ExecutionContext.SuppressFlow())
             {
                 timer = CreateTimer();
+                expirationTimer = CreateExpirationTimer();
             }
         }
     }
@@ -61,6 +67,12 @@ internal sealed class ScheduledActorCallback
     public void Start(TimeSpan dueTime, TimeSpan period)
     {
         active = true;
+        if (expirationTimer is not null)
+        {
+            var remaining = expiresAt!.Value - timeProvider.GetUtcNow();
+            if (!expirationTimer.Change(remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero, Timeout.InfiniteTimeSpan))
+                throw new InvalidOperationException("The actor expiration timer could not be started.");
+        }
         if (!timer.Change(dueTime, period))
         {
             throw new InvalidOperationException("The actor callback timer could not be started.");
@@ -72,6 +84,51 @@ internal sealed class ScheduledActorCallback
     {
         active = false;
         timer.Dispose();
+        expirationTimer?.Dispose();
+    }
+
+    private ITimer? CreateExpirationTimer()
+    {
+        if (onExpired is null || !expiresAt.HasValue) return null;
+        try
+        {
+            return timeProvider.CreateTimer(static state =>
+            {
+                var callback = (ScheduledActorCallback)state!;
+                if (Monitor.IsEntered(callback.sync))
+                {
+                    ThreadPool.UnsafeQueueUserWorkItem(
+                        static (ScheduledActorCallback queued) => queued.CheckExpiration(), callback, preferLocal: false);
+                }
+                else callback.CheckExpiration();
+            }, this, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        }
+        catch
+        {
+            timer.Dispose();
+            throw;
+        }
+    }
+
+    private void CheckExpiration()
+    {
+        lock (sync)
+        {
+            if (!active) return;
+            var remaining = expiresAt!.Value - timeProvider.GetUtcNow();
+            if (remaining <= TimeSpan.Zero)
+                Expire();
+            else
+                // System timers round durations to milliseconds and can fire just before the deadline.
+                expirationTimer!.Change(remaining < TimeSpan.FromMilliseconds(1) ? TimeSpan.FromMilliseconds(1) : remaining,
+                    Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    private void Expire()
+    {
+        Stop();
+        onExpired?.Invoke(this);
     }
 
     public static IReadOnlyDictionary<string, string> IndependentHeaders(IReadOnlyDictionary<string, string>? headers) =>
@@ -117,9 +174,11 @@ internal sealed class ScheduledActorCallback
                     return;
                 }
 
-                if (expiresAt.HasValue && timeProvider.GetUtcNow() > expiresAt.Value)
+                var now = timeProvider.GetUtcNow();
+                if (expiresAt.HasValue && (now > expiresAt.Value
+                    || (onExpired is not null && now == expiresAt.Value)))
                 {
-                    Stop();
+                    Expire();
                     return;
                 }
             }

@@ -72,12 +72,20 @@ namespace Dapr.Actors.Next.SourceGenerators.OtherSample.First
 
 namespace Dapr.Actors.Next.SourceGenerators.OtherSample.Second
 {
-    [GenerateActorClient]
-    public interface IAccount : IActor
+    public interface ILeftAccount : IActor
     {
         Task<string> EchoAsync(string payload, string request, string typed, string args, string wireSerializer,
             string @event, CancellationToken cancellationToken = default);
     }
+
+    public interface IRightAccount : IActor
+    {
+        Task<string> EchoAsync(string payload, string request, string typed, string args, string wireSerializer,
+            string @event, CancellationToken cancellationToken = default);
+    }
+
+    [GenerateActorClient]
+    public interface IAccount : ILeftAccount, IRightAccount;
 
     [DaprActor("SecondAccount")]
     public sealed class AccountActor(ActorActivationContext context) : Actor, IAccount

@@ -20,6 +20,7 @@ using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.State;
 using Dapr.Actors.Next.Core.Timers;
+using Dapr.Actors.Next.Testing;
 using Dapr.Common.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -31,6 +32,96 @@ public sealed class TimerConcurrencyTests
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(10);
     private static readonly ActorId Id = ActorId.Create("timer-concurrency");
     private static readonly IActorWireSerializer Serializer = new ActorWireSerializer(new JsonDaprSerializer());
+
+    [Theory]
+    [InlineData(0, 1, 2, 2)]
+    [InlineData(0, 0, 2, 1)]
+    [InlineData(4, 1, 2, 0)]
+    [InlineData(2, 1, 2, 0)]
+    [InlineData(0, 1, 0, 0)]
+    public async Task Reminder_ttl_expires_at_deadline_even_without_future_ticks(int due, int period, int ttl, int expected)
+    {
+        var time = new VirtualActorTimeProvider();
+        var calls = new List<DateTimeOffset>();
+        using var scheduler = new CoreActorReminderScheduler(new CallbackRuntime(_ =>
+        {
+            calls.Add(time.GetUtcNow());
+            return Task.FromResult<byte[]?>(null);
+        }), Serializer, time);
+        await scheduler.ScheduleAsync("A", Id, "Tick", TimeSpan.FromSeconds(due), TimeSpan.FromSeconds(period), "{}",
+            TimeSpan.FromSeconds(ttl));
+        time.Advance(TimeSpan.FromSeconds(ttl));
+        Assert.Equal(expected, calls.Count);
+        Assert.All(calls, at => Assert.True(at < DateTimeOffset.UnixEpoch + TimeSpan.FromSeconds(ttl)));
+        Assert.Null(await scheduler.GetAsync("A", Id, "Tick"));
+        Assert.Empty(await scheduler.ListAsync("A"));
+        time.Advance(TimeSpan.FromSeconds(5));
+        Assert.Equal(expected, calls.Count);
+        await scheduler.ScheduleAsync("A", Id, "Tick", TimeSpan.FromSeconds(1), TimeSpan.Zero, "{}", overwrite: false);
+        Assert.NotNull(await scheduler.GetAsync("A", Id, "Tick"));
+    }
+
+    [Fact]
+    public async Task Expiration_of_replaced_reminder_cannot_delete_its_replacement()
+    {
+        var time = new ControlledTimeProvider();
+        using var scheduler = new CoreActorReminderScheduler(new CallbackRuntime(), Serializer, time);
+        await scheduler.ScheduleAsync("A", Id, "Tick", TimeSpan.Zero, TimeSpan.Zero, "\"old\"", TimeSpan.FromSeconds(2));
+        var oldTimers = time.Timers.ToArray();
+        await scheduler.ScheduleAsync("A", Id, "Tick", TimeSpan.Zero, TimeSpan.Zero, "\"new\"", TimeSpan.FromSeconds(20));
+        time.Now += TimeSpan.FromSeconds(3);
+        foreach (var timer in oldTimers) timer.Fire();
+        Assert.All(oldTimers, timer => Assert.True(timer.Disposed));
+        Assert.Equal("\"new\"", (await scheduler.GetAsync("A", Id, "Tick"))!.ArgumentsJson);
+        Assert.Single(await scheduler.ListAsync("A"));
+    }
+
+    [Fact]
+    public async Task Reminder_expiration_does_not_interrupt_an_admitted_turn()
+    {
+        var time = new VirtualActorTimeProvider();
+        var release = Signal();
+        var finished = Signal();
+        var calls = 0;
+        using var scheduler = new CoreActorReminderScheduler(new CallbackRuntime(async _ =>
+        {
+            Interlocked.Increment(ref calls);
+            await release.Task;
+            finished.TrySetResult();
+            return null;
+        }), Serializer, time);
+        await scheduler.ScheduleAsync("A", Id, "Tick", TimeSpan.Zero, TimeSpan.FromSeconds(1), "{}", TimeSpan.FromSeconds(1));
+        try
+        {
+            time.Advance(TimeSpan.FromSeconds(5));
+            Assert.Equal(1, calls);
+            Assert.False(finished.Task.IsCompleted);
+            Assert.Null(await scheduler.GetAsync("A", Id, "Tick"));
+        }
+        finally
+        {
+            release.TrySetResult();
+        }
+        await finished.Task.WaitAsync(TestTimeout);
+    }
+
+    [Fact]
+    public async Task Early_expiration_signal_is_rearmed_until_the_actual_deadline()
+    {
+        var time = new ControlledTimeProvider();
+        using var scheduler = new CoreActorReminderScheduler(new CallbackRuntime(), Serializer, time);
+        await scheduler.ScheduleAsync("A", Id, "Tick", TimeSpan.Zero, TimeSpan.Zero, "{}", TimeSpan.FromSeconds(2));
+        var expiration = Assert.Single(time.Timers, timer => timer.DueTime == TimeSpan.FromSeconds(2));
+        time.Now += TimeSpan.FromMilliseconds(1999.5);
+        expiration.Fire();
+        Assert.False(expiration.Disposed);
+        Assert.Equal(TimeSpan.FromMilliseconds(1), expiration.DueTime);
+        Assert.NotNull(await scheduler.GetAsync("A", Id, "Tick"));
+        time.Now += TimeSpan.FromMilliseconds(1);
+        expiration.Fire();
+        Assert.All(time.Timers, timer => Assert.True(timer.Disposed));
+        Assert.Null(await scheduler.GetAsync("A", Id, "Tick"));
+    }
 
     [Fact]
     public Task System_timer_registered_inside_actor_is_an_independent_serialized_turn() =>

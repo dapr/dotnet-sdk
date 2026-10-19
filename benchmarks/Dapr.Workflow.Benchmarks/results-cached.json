@@ -1,6 +1,6 @@
 {
   "SchemaVersion": 1,
-  "TimestampUtc": "2026-10-16T21:09:46.9291633+00:00",
+  "TimestampUtc": "2026-10-19T02:09:36.0826568+00:00",
   "Framework": ".NET 10.0.13",
   "SdkAssemblyVersion": "1.0.0.0",
   "OS": "Microsoft Windows 10.0.26200",
@@ -14,787 +14,10 @@
     {
       "Mode": "Automatic",
       "Iteration": 1,
-      "PreparationMs": 14.4165,
-      "ExecutionMs": 192.481,
-      "TotalMs": 206.8992,
-      "AllocatedBytes": 179628648,
-      "Measurements": {
-        "WorkflowSentProtobufBytes": 3175,
-        "WorkflowReceivedProtobufBytes": 9088,
-        "BinaryUploadBytes": 2065536,
-        "BinaryDownloadBytes": 22000000,
-        "BinaryWrites": 2,
-        "BinaryReads": 11,
-        "DocumentDeserializations": 11,
-        "MaterializedDocumentUtf8Bytes": 22000000,
-        "ActivityExecutions": 9,
-        "Turns": [
-          {
-            "Number": 1,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 712,
-            "DeliveredInputUtf8Bytes": 276,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 2,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 1022,
-            "DeliveredInputUtf8Bytes": 276,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 3,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 588,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 4,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 5,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 6,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 7,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 8,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 9,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 10,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 939,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          }
-        ]
-      }
-    },
-    {
-      "Mode": "References",
-      "Iteration": 1,
-      "PreparationMs": 13.6371,
-      "ExecutionMs": 126.5684,
-      "TotalMs": 140.207,
-      "AllocatedBytes": 25030232,
-      "Measurements": {
-        "WorkflowSentProtobufBytes": 3195,
-        "WorkflowReceivedProtobufBytes": 9075,
-        "BinaryUploadBytes": 2000000,
-        "BinaryDownloadBytes": 2000000,
-        "BinaryWrites": 1,
-        "BinaryReads": 1,
-        "DocumentDeserializations": 1,
-        "MaterializedDocumentUtf8Bytes": 2000000,
-        "ActivityExecutions": 9,
-        "Turns": [
-          {
-            "Number": 1,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 712,
-            "DeliveredInputUtf8Bytes": 277,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 2,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 1022,
-            "DeliveredInputUtf8Bytes": 277,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 3,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 588,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 4,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 5,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 6,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 7,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 8,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 9,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 10,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 937,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          }
-        ]
-      }
-    },
-    {
-      "Mode": "Inline",
-      "Iteration": 1,
-      "PreparationMs": 0.0009,
-      "ExecutionMs": 566.4804,
-      "TotalMs": 566.4822,
-      "AllocatedBytes": 74632032,
-      "Measurements": {
-        "WorkflowSentProtobufBytes": 4002569,
-        "WorkflowReceivedProtobufBytes": 8007929,
-        "BinaryUploadBytes": 0,
-        "BinaryDownloadBytes": 0,
-        "BinaryWrites": 0,
-        "BinaryReads": 0,
-        "DocumentDeserializations": 11,
-        "MaterializedDocumentUtf8Bytes": 22000000,
-        "ActivityExecutions": 9,
-        "Turns": [
-          {
-            "Number": 1,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 2000433,
-            "DeliveredInputUtf8Bytes": 2000000,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 2,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 2000741,
-            "DeliveredInputUtf8Bytes": 2000000,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 3,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 584,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 4,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 5,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 6,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 7,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 8,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 9,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 10,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 2000665,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          }
-        ]
-      }
-    },
-    {
-      "Mode": "References",
-      "Iteration": 2,
-      "PreparationMs": 11.9907,
-      "ExecutionMs": 199.0853,
-      "TotalMs": 211.0773,
-      "AllocatedBytes": 24973192,
-      "Measurements": {
-        "WorkflowSentProtobufBytes": 3195,
-        "WorkflowReceivedProtobufBytes": 9083,
-        "BinaryUploadBytes": 2000000,
-        "BinaryDownloadBytes": 2000000,
-        "BinaryWrites": 1,
-        "BinaryReads": 1,
-        "DocumentDeserializations": 1,
-        "MaterializedDocumentUtf8Bytes": 2000000,
-        "ActivityExecutions": 9,
-        "Turns": [
-          {
-            "Number": 1,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 712,
-            "DeliveredInputUtf8Bytes": 277,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 2,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 1022,
-            "DeliveredInputUtf8Bytes": 277,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 3,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 589,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 4,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 591,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 5,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 589,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 6,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 7,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 8,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 9,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 10,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 937,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 0,
-            "MaterializedDocumentUtf8Bytes": 0,
-            "BinaryDownloadBytes": 0
-          }
-        ]
-      }
-    },
-    {
-      "Mode": "Inline",
-      "Iteration": 2,
-      "PreparationMs": 0.0007,
-      "ExecutionMs": 359.1287,
-      "TotalMs": 359.13,
-      "AllocatedBytes": 74610952,
-      "Measurements": {
-        "WorkflowSentProtobufBytes": 4002569,
-        "WorkflowReceivedProtobufBytes": 8007934,
-        "BinaryUploadBytes": 0,
-        "BinaryDownloadBytes": 0,
-        "BinaryWrites": 0,
-        "BinaryReads": 0,
-        "DocumentDeserializations": 11,
-        "MaterializedDocumentUtf8Bytes": 22000000,
-        "ActivityExecutions": 9,
-        "Turns": [
-          {
-            "Number": 1,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 2000434,
-            "DeliveredInputUtf8Bytes": 2000000,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 2,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 2000744,
-            "DeliveredInputUtf8Bytes": 2000000,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 3,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 585,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 4,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 5,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 6,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 7,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 8,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 9,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 10,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 2000665,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          }
-        ]
-      }
-    },
-    {
-      "Mode": "Automatic",
-      "Iteration": 2,
-      "PreparationMs": 12.0315,
-      "ExecutionMs": 188.1864,
-      "TotalMs": 200.2184,
-      "AllocatedBytes": 179838992,
-      "Measurements": {
-        "WorkflowSentProtobufBytes": 3175,
-        "WorkflowReceivedProtobufBytes": 9088,
-        "BinaryUploadBytes": 2196608,
-        "BinaryDownloadBytes": 22000000,
-        "BinaryWrites": 2,
-        "BinaryReads": 11,
-        "DocumentDeserializations": 11,
-        "MaterializedDocumentUtf8Bytes": 22000000,
-        "ActivityExecutions": 9,
-        "Turns": [
-          {
-            "Number": 1,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 712,
-            "DeliveredInputUtf8Bytes": 276,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 2,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 1022,
-            "DeliveredInputUtf8Bytes": 276,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 3,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 588,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 4,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 5,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 6,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 7,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 8,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 9,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          },
-          {
-            "Number": 10,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 939,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 2000000
-          }
-        ]
-      }
-    },
-    {
-      "Mode": "Inline",
-      "Iteration": 3,
-      "PreparationMs": 0.0005,
-      "ExecutionMs": 351.2442,
-      "TotalMs": 351.2452,
-      "AllocatedBytes": 83085312,
-      "Measurements": {
-        "WorkflowSentProtobufBytes": 4002569,
-        "WorkflowReceivedProtobufBytes": 8007896,
-        "BinaryUploadBytes": 0,
-        "BinaryDownloadBytes": 0,
-        "BinaryWrites": 0,
-        "BinaryReads": 0,
-        "DocumentDeserializations": 11,
-        "MaterializedDocumentUtf8Bytes": 22000000,
-        "ActivityExecutions": 9,
-        "Turns": [
-          {
-            "Number": 1,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 2000433,
-            "DeliveredInputUtf8Bytes": 2000000,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 2,
-            "CachedHistory": false,
-            "ReceivedProtobufBytes": 2000740,
-            "DeliveredInputUtf8Bytes": 2000000,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 3,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 580,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 4,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 582,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 5,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 582,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 6,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 582,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 7,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 582,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 8,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 582,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 9,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 584,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          },
-          {
-            "Number": 10,
-            "CachedHistory": true,
-            "ReceivedProtobufBytes": 2000665,
-            "DeliveredInputUtf8Bytes": 0,
-            "DocumentDeserializations": 1,
-            "MaterializedDocumentUtf8Bytes": 2000000,
-            "BinaryDownloadBytes": 0
-          }
-        ]
-      }
-    },
-    {
-      "Mode": "Automatic",
-      "Iteration": 3,
-      "PreparationMs": 11.587,
-      "ExecutionMs": 193.4611,
-      "TotalMs": 205.0487,
-      "AllocatedBytes": 177723016,
+      "PreparationMs": 10.7512,
+      "ExecutionMs": 181.473,
+      "TotalMs": 192.2256,
+      "AllocatedBytes": 188149944,
       "Measurements": {
         "WorkflowSentProtobufBytes": 3175,
         "WorkflowReceivedProtobufBytes": 9088,
@@ -901,14 +124,14 @@
     },
     {
       "Mode": "References",
-      "Iteration": 3,
-      "PreparationMs": 11.5307,
-      "ExecutionMs": 153.1346,
-      "TotalMs": 164.6656,
-      "AllocatedBytes": 25036624,
+      "Iteration": 1,
+      "PreparationMs": 32.4704,
+      "ExecutionMs": 114.2377,
+      "TotalMs": 146.7094,
+      "AllocatedBytes": 25102952,
       "Measurements": {
         "WorkflowSentProtobufBytes": 3195,
-        "WorkflowReceivedProtobufBytes": 9108,
+        "WorkflowReceivedProtobufBytes": 9110,
         "BinaryUploadBytes": 2000000,
         "BinaryDownloadBytes": 2000000,
         "BinaryWrites": 1,
@@ -1001,7 +224,784 @@
           {
             "Number": 10,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 940,
+            "ReceivedProtobufBytes": 942,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          }
+        ]
+      }
+    },
+    {
+      "Mode": "Inline",
+      "Iteration": 1,
+      "PreparationMs": 0.0012,
+      "ExecutionMs": 327.3856,
+      "TotalMs": 327.3879,
+      "AllocatedBytes": 74620968,
+      "Measurements": {
+        "WorkflowSentProtobufBytes": 4002569,
+        "WorkflowReceivedProtobufBytes": 8007933,
+        "BinaryUploadBytes": 0,
+        "BinaryDownloadBytes": 0,
+        "BinaryWrites": 0,
+        "BinaryReads": 0,
+        "DocumentDeserializations": 11,
+        "MaterializedDocumentUtf8Bytes": 22000000,
+        "ActivityExecutions": 9,
+        "Turns": [
+          {
+            "Number": 1,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 2000435,
+            "DeliveredInputUtf8Bytes": 2000000,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 2,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 2000745,
+            "DeliveredInputUtf8Bytes": 2000000,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 3,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 585,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 4,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 5,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 6,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 7,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 8,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 9,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 10,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 2000662,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          }
+        ]
+      }
+    },
+    {
+      "Mode": "References",
+      "Iteration": 2,
+      "PreparationMs": 12.6429,
+      "ExecutionMs": 132.1932,
+      "TotalMs": 144.837,
+      "AllocatedBytes": 24953688,
+      "Measurements": {
+        "WorkflowSentProtobufBytes": 3195,
+        "WorkflowReceivedProtobufBytes": 9070,
+        "BinaryUploadBytes": 2000000,
+        "BinaryDownloadBytes": 2000000,
+        "BinaryWrites": 1,
+        "BinaryReads": 1,
+        "DocumentDeserializations": 1,
+        "MaterializedDocumentUtf8Bytes": 2000000,
+        "ActivityExecutions": 9,
+        "Turns": [
+          {
+            "Number": 1,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 710,
+            "DeliveredInputUtf8Bytes": 277,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 2,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 1017,
+            "DeliveredInputUtf8Bytes": 277,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 3,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 584,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 4,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 586,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 5,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 586,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 6,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 586,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 7,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 586,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 8,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 586,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 9,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 588,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 10,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 942,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          }
+        ]
+      }
+    },
+    {
+      "Mode": "Inline",
+      "Iteration": 2,
+      "PreparationMs": 0.0009,
+      "ExecutionMs": 299.1175,
+      "TotalMs": 299.119,
+      "AllocatedBytes": 76747432,
+      "Measurements": {
+        "WorkflowSentProtobufBytes": 4002569,
+        "WorkflowReceivedProtobufBytes": 8007936,
+        "BinaryUploadBytes": 0,
+        "BinaryDownloadBytes": 0,
+        "BinaryWrites": 0,
+        "BinaryReads": 0,
+        "DocumentDeserializations": 11,
+        "MaterializedDocumentUtf8Bytes": 22000000,
+        "ActivityExecutions": 9,
+        "Turns": [
+          {
+            "Number": 1,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 2000435,
+            "DeliveredInputUtf8Bytes": 2000000,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 2,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 2000745,
+            "DeliveredInputUtf8Bytes": 2000000,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 3,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 585,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 4,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 5,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 6,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 7,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 8,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 9,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 10,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 2000665,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          }
+        ]
+      }
+    },
+    {
+      "Mode": "Automatic",
+      "Iteration": 2,
+      "PreparationMs": 12.0473,
+      "ExecutionMs": 208.0697,
+      "TotalMs": 220.1175,
+      "AllocatedBytes": 177679312,
+      "Measurements": {
+        "WorkflowSentProtobufBytes": 3175,
+        "WorkflowReceivedProtobufBytes": 9066,
+        "BinaryUploadBytes": 2163840,
+        "BinaryDownloadBytes": 22000000,
+        "BinaryWrites": 2,
+        "BinaryReads": 11,
+        "DocumentDeserializations": 11,
+        "MaterializedDocumentUtf8Bytes": 22000000,
+        "ActivityExecutions": 9,
+        "Turns": [
+          {
+            "Number": 1,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 712,
+            "DeliveredInputUtf8Bytes": 276,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 2,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 1022,
+            "DeliveredInputUtf8Bytes": 276,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 3,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 588,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 4,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 590,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 5,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 590,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 6,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 588,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 7,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 585,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 8,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 585,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 9,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 585,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 10,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 934,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          }
+        ]
+      }
+    },
+    {
+      "Mode": "Inline",
+      "Iteration": 3,
+      "PreparationMs": 0.0008,
+      "ExecutionMs": 289.5485,
+      "TotalMs": 289.5499,
+      "AllocatedBytes": 74644984,
+      "Measurements": {
+        "WorkflowSentProtobufBytes": 4002569,
+        "WorkflowReceivedProtobufBytes": 8007934,
+        "BinaryUploadBytes": 0,
+        "BinaryDownloadBytes": 0,
+        "BinaryWrites": 0,
+        "BinaryReads": 0,
+        "DocumentDeserializations": 11,
+        "MaterializedDocumentUtf8Bytes": 22000000,
+        "ActivityExecutions": 9,
+        "Turns": [
+          {
+            "Number": 1,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 2000434,
+            "DeliveredInputUtf8Bytes": 2000000,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 2,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 2000744,
+            "DeliveredInputUtf8Bytes": 2000000,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 3,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 585,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 4,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 5,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 6,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 7,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 8,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 9,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 587,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 10,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 2000665,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 0
+          }
+        ]
+      }
+    },
+    {
+      "Mode": "Automatic",
+      "Iteration": 3,
+      "PreparationMs": 11.5754,
+      "ExecutionMs": 169.9103,
+      "TotalMs": 181.4864,
+      "AllocatedBytes": 177562256,
+      "Measurements": {
+        "WorkflowSentProtobufBytes": 3175,
+        "WorkflowReceivedProtobufBytes": 9088,
+        "BinaryUploadBytes": 2131072,
+        "BinaryDownloadBytes": 22000000,
+        "BinaryWrites": 2,
+        "BinaryReads": 11,
+        "DocumentDeserializations": 11,
+        "MaterializedDocumentUtf8Bytes": 22000000,
+        "ActivityExecutions": 9,
+        "Turns": [
+          {
+            "Number": 1,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 712,
+            "DeliveredInputUtf8Bytes": 276,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 2,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 1022,
+            "DeliveredInputUtf8Bytes": 276,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 3,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 588,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 4,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 590,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 5,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 590,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 6,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 590,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 7,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 590,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 8,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 590,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 9,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 590,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          },
+          {
+            "Number": 10,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 939,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 1,
+            "MaterializedDocumentUtf8Bytes": 2000000,
+            "BinaryDownloadBytes": 2000000
+          }
+        ]
+      }
+    },
+    {
+      "Mode": "References",
+      "Iteration": 3,
+      "PreparationMs": 9.5065,
+      "ExecutionMs": 242.1343,
+      "TotalMs": 251.6415,
+      "AllocatedBytes": 25016208,
+      "Measurements": {
+        "WorkflowSentProtobufBytes": 3195,
+        "WorkflowReceivedProtobufBytes": 9068,
+        "BinaryUploadBytes": 2000000,
+        "BinaryDownloadBytes": 2000000,
+        "BinaryWrites": 1,
+        "BinaryReads": 1,
+        "DocumentDeserializations": 1,
+        "MaterializedDocumentUtf8Bytes": 2000000,
+        "ActivityExecutions": 9,
+        "Turns": [
+          {
+            "Number": 1,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 712,
+            "DeliveredInputUtf8Bytes": 277,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 2,
+            "CachedHistory": false,
+            "ReceivedProtobufBytes": 1020,
+            "DeliveredInputUtf8Bytes": 277,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 3,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 584,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 4,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 586,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 5,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 586,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 6,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 586,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 7,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 586,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 8,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 586,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 9,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 586,
+            "DeliveredInputUtf8Bytes": 0,
+            "DocumentDeserializations": 0,
+            "MaterializedDocumentUtf8Bytes": 0,
+            "BinaryDownloadBytes": 0
+          },
+          {
+            "Number": 10,
+            "CachedHistory": true,
+            "ReceivedProtobufBytes": 937,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 0,
             "MaterializedDocumentUtf8Bytes": 0,
@@ -1013,14 +1013,14 @@
     {
       "Mode": "Automatic",
       "Iteration": 4,
-      "PreparationMs": 15.1252,
-      "ExecutionMs": 239.6378,
-      "TotalMs": 254.7638,
-      "AllocatedBytes": 177627472,
+      "PreparationMs": 10.374,
+      "ExecutionMs": 167.1415,
+      "TotalMs": 177.5162,
+      "AllocatedBytes": 177696768,
       "Measurements": {
         "WorkflowSentProtobufBytes": 3175,
-        "WorkflowReceivedProtobufBytes": 9066,
-        "BinaryUploadBytes": 2065536,
+        "WorkflowReceivedProtobufBytes": 9088,
+        "BinaryUploadBytes": 2163840,
         "BinaryDownloadBytes": 22000000,
         "BinaryWrites": 2,
         "BinaryReads": 11,
@@ -1031,7 +1031,7 @@
           {
             "Number": 1,
             "CachedHistory": false,
-            "ReceivedProtobufBytes": 710,
+            "ReceivedProtobufBytes": 712,
             "DeliveredInputUtf8Bytes": 276,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1040,7 +1040,7 @@
           {
             "Number": 2,
             "CachedHistory": false,
-            "ReceivedProtobufBytes": 1017,
+            "ReceivedProtobufBytes": 1022,
             "DeliveredInputUtf8Bytes": 276,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1049,7 +1049,7 @@
           {
             "Number": 3,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 583,
+            "ReceivedProtobufBytes": 588,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1058,7 +1058,7 @@
           {
             "Number": 4,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 585,
+            "ReceivedProtobufBytes": 590,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1067,7 +1067,7 @@
           {
             "Number": 5,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
+            "ReceivedProtobufBytes": 590,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1076,7 +1076,7 @@
           {
             "Number": 6,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 589,
+            "ReceivedProtobufBytes": 590,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1124,10 +1124,10 @@
     {
       "Mode": "References",
       "Iteration": 4,
-      "PreparationMs": 9.2369,
-      "ExecutionMs": 100.5373,
-      "TotalMs": 109.7749,
-      "AllocatedBytes": 24955104,
+      "PreparationMs": 9.5558,
+      "ExecutionMs": 108.2306,
+      "TotalMs": 117.787,
+      "AllocatedBytes": 25013432,
       "Measurements": {
         "WorkflowSentProtobufBytes": 3195,
         "WorkflowReceivedProtobufBytes": 9110,
@@ -1235,13 +1235,13 @@
     {
       "Mode": "Inline",
       "Iteration": 4,
-      "PreparationMs": 0.0005,
-      "ExecutionMs": 311.9692,
-      "TotalMs": 311.9705,
-      "AllocatedBytes": 76764552,
+      "PreparationMs": 0.001,
+      "ExecutionMs": 296.9997,
+      "TotalMs": 297.0013,
+      "AllocatedBytes": 74638360,
       "Measurements": {
         "WorkflowSentProtobufBytes": 4002569,
-        "WorkflowReceivedProtobufBytes": 8007933,
+        "WorkflowReceivedProtobufBytes": 8007906,
         "BinaryUploadBytes": 0,
         "BinaryDownloadBytes": 0,
         "BinaryWrites": 0,
@@ -1280,7 +1280,7 @@
           {
             "Number": 4,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
+            "ReceivedProtobufBytes": 586,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1289,7 +1289,7 @@
           {
             "Number": 5,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
+            "ReceivedProtobufBytes": 583,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1298,7 +1298,7 @@
           {
             "Number": 6,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
+            "ReceivedProtobufBytes": 582,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1307,7 +1307,7 @@
           {
             "Number": 7,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
+            "ReceivedProtobufBytes": 582,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1316,7 +1316,7 @@
           {
             "Number": 8,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
+            "ReceivedProtobufBytes": 582,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1325,7 +1325,7 @@
           {
             "Number": 9,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 587,
+            "ReceivedProtobufBytes": 582,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1334,7 +1334,7 @@
           {
             "Number": 10,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 2000662,
+            "ReceivedProtobufBytes": 2000660,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1346,13 +1346,13 @@
     {
       "Mode": "References",
       "Iteration": 5,
-      "PreparationMs": 10.761,
-      "ExecutionMs": 110.1651,
-      "TotalMs": 120.9266,
-      "AllocatedBytes": 24988960,
+      "PreparationMs": 11.868,
+      "ExecutionMs": 117.4699,
+      "TotalMs": 129.3388,
+      "AllocatedBytes": 25020952,
       "Measurements": {
         "WorkflowSentProtobufBytes": 3195,
-        "WorkflowReceivedProtobufBytes": 9075,
+        "WorkflowReceivedProtobufBytes": 9090,
         "BinaryUploadBytes": 2000000,
         "BinaryDownloadBytes": 2000000,
         "BinaryWrites": 1,
@@ -1400,7 +1400,7 @@
           {
             "Number": 5,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
+            "ReceivedProtobufBytes": 588,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 0,
             "MaterializedDocumentUtf8Bytes": 0,
@@ -1409,7 +1409,7 @@
           {
             "Number": 6,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
+            "ReceivedProtobufBytes": 591,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 0,
             "MaterializedDocumentUtf8Bytes": 0,
@@ -1418,7 +1418,7 @@
           {
             "Number": 7,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 586,
+            "ReceivedProtobufBytes": 591,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 0,
             "MaterializedDocumentUtf8Bytes": 0,
@@ -1427,7 +1427,7 @@
           {
             "Number": 8,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 588,
+            "ReceivedProtobufBytes": 591,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 0,
             "MaterializedDocumentUtf8Bytes": 0,
@@ -1457,10 +1457,10 @@
     {
       "Mode": "Inline",
       "Iteration": 5,
-      "PreparationMs": 0.0014,
-      "ExecutionMs": 261.471,
-      "TotalMs": 261.4736,
-      "AllocatedBytes": 74651944,
+      "PreparationMs": 0.0008,
+      "ExecutionMs": 307.4759,
+      "TotalMs": 307.4784,
+      "AllocatedBytes": 74634856,
       "Measurements": {
         "WorkflowSentProtobufBytes": 4002569,
         "WorkflowReceivedProtobufBytes": 8007936,
@@ -1568,14 +1568,14 @@
     {
       "Mode": "Automatic",
       "Iteration": 5,
-      "PreparationMs": 10.8795,
-      "ExecutionMs": 154.7677,
-      "TotalMs": 165.6478,
-      "AllocatedBytes": 177754120,
+      "PreparationMs": 9.8936,
+      "ExecutionMs": 232.8721,
+      "TotalMs": 242.7663,
+      "AllocatedBytes": 176695512,
       "Measurements": {
         "WorkflowSentProtobufBytes": 3175,
-        "WorkflowReceivedProtobufBytes": 9088,
-        "BinaryUploadBytes": 2163840,
+        "WorkflowReceivedProtobufBytes": 9080,
+        "BinaryUploadBytes": 2131072,
         "BinaryDownloadBytes": 22000000,
         "BinaryWrites": 2,
         "BinaryReads": 11,
@@ -1658,7 +1658,7 @@
           {
             "Number": 9,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 590,
+            "ReceivedProtobufBytes": 587,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,
@@ -1667,7 +1667,7 @@
           {
             "Number": 10,
             "CachedHistory": true,
-            "ReceivedProtobufBytes": 939,
+            "ReceivedProtobufBytes": 934,
             "DeliveredInputUtf8Bytes": 0,
             "DocumentDeserializations": 1,
             "MaterializedDocumentUtf8Bytes": 2000000,

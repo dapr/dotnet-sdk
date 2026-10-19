@@ -24,9 +24,36 @@ Nested generic return types and `ActorId` payloads use the same generated invoca
 actors and interfaces may share simple CLR names in different namespaces, while Dapr actor type names
 must remain unique.
 
+Inherited actor methods with equivalent signatures produce a single proxy method and
+wire operation. C# may require casting a merged interface to one of its base interfaces
+when calling an ambiguously inherited method. Overloads, conflicting return types, or
+incompatible multi-argument payload names sharing a wire name are rejected with
+`DAPRGEN001`, including collisions across separate contracts implemented by one actor.
+Give different operations distinct method names.
+
 Actor saves commit all changed state names and deletions atomically. Use a state
 component with transaction support (such as the Redis component used by the
 integration tests). `ActorTestRuntime.Faults.FailNextStateTransaction()` fails the
 entire pending batch, including delete-only resets, without changing durable
 state. Dispose the test runtime with `await using`; it drains admitted work and
 disposes each activation and its scoped services.
+
+Cache eviction waits for an in-flight save before dropping entries, so the next read
+cannot cache the pre-commit value. `EvictOnDirtyState = true` discards changes still
+pending after that save; it does not cancel a transaction already submitted to the
+store. Normal reads and replacements remain available while a save is waiting.
+In-place changes to reference objects, including references held inside structs,
+are detected at save time. Value types without references retain the scalar fast path.
+
+SDK envelope metadata uses fixed camelCase JSON property names independently of the
+payload's naming policy (including snake_case, kebab-case, and custom policies).
+Previously written PascalCase, snake_case, and kebab-case metadata remains readable.
+The `value` payload still uses the configured serializer options. Once the SDK magic
+tag is recognized, malformed or missing envelope metadata/value raises
+`ActorStateEnvelopeException` instead of falling back to raw state. Raw and legacy
+`schemaVersion` envelopes remain supported.
+
+Hierarchical state machines resolve each event at the nearest state declaring a
+handler, `Ignore`, or `Defer`. A child's handler overrides a parent's ignore/defer;
+a child's ignore/defer overrides an inherited handler. Deferred replay uses the
+same resolution rules after transitions.

@@ -25,6 +25,8 @@ using Dapr.Actors.Next.Core.State;
 using Dapr.Actors.Next.SourceGenerators.OtherSample;
 using Dapr.Actors.Next.SourceGenerators.Sample;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using First = Dapr.Actors.Next.SourceGenerators.OtherSample.First;
 using Second = Dapr.Actors.Next.SourceGenerators.OtherSample.Second;
 
@@ -32,6 +34,100 @@ namespace Dapr.Actors.Next.SourceGenerators.Test;
 
 public sealed partial class GeneratorTests
 {
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void Equivalent_inherited_actor_methods_are_emitted_once(bool redeclare, bool scanReferences)
+    {
+        var source = $$"""
+                     using System.Threading.Tasks;
+                     using Dapr.Actors.Next.Abstractions;
+                     using Dapr.Actors.Next.Abstractions.Attributes;
+                     using Dapr.Actors.Next.Abstractions.State;
+                     public interface ILeft : IActor { Task Ping(); }
+                     public interface IRight : IActor { Task Ping(); }
+                     public interface IDiamond : ILeft, IRight {}
+                     [GenerateActorClient]
+                     public interface IMerged : IDiamond, ILeft { {{(redeclare ? "new Task Ping();" : "")}} }
+                     [DaprActor]
+                     public sealed class Merged : Actor, IMerged {
+                         protected override ActorId Id => new("one");
+                         protected override IActorStateAccessor State => throw new System.NotImplementedException();
+                         public Task Ping() => Task.CompletedTask;
+                     }
+                     """;
+        var compilation = CreateCompilation("Merged", source);
+        if (scanReferences)
+        {
+            using var image = new MemoryStream();
+            var emitted = compilation.Emit(image);
+            Assert.True(emitted.Success, string.Join(Environment.NewLine, emitted.Diagnostics));
+            compilation = CreateCompilation("MergedApp", "public class Marker {}",
+                MetadataReference.CreateFromImage(image.ToArray()));
+        }
+        var generated = RunGenerator(compilation, scanReferences, assertGeneratedCompiles: true);
+        Assert.Equal(1, CountOccurrences(generated, "case @\"Ping\":"));
+        Assert.Equal(1, CountOccurrences(generated, "Task Ping("));
+        Assert.Equal(generated, RunGenerator(compilation, scanReferences, assertGeneratedCompiles: true));
+    }
+
+    [Fact]
+    public void Actor_implementing_separate_contracts_cannot_overload_a_wire_operation()
+    {
+        const string source = """
+                              using System.Threading.Tasks;
+                              using Dapr.Actors.Next.Abstractions;
+                              using Dapr.Actors.Next.Abstractions.Attributes;
+                              using Dapr.Actors.Next.Abstractions.State;
+                              [GenerateActorClient] public interface ILeft : IActor { Task Ping(int value); }
+                              [GenerateActorClient] public interface IRight : IActor { Task Ping(string value); }
+                              [DaprActor] public sealed class CollisionActor : Actor, ILeft, IRight {
+                                  protected override ActorId Id => new("one");
+                                  protected override IActorStateAccessor State => throw new System.NotImplementedException();
+                                  public Task Ping(int value) => Task.CompletedTask;
+                                  public Task Ping(string value) => Task.CompletedTask;
+                              }
+                              """;
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new ActorsNextSourceGenerator().AsSourceGenerator()],
+            optionsProvider: new TestAnalyzerConfigOptionsProvider(false));
+        driver = driver.RunGeneratorsAndUpdateCompilation(CreateCompilation("SeparateContracts", source), out var output, out var diagnostics);
+        var diagnostic = Assert.Single(diagnostics.Where(item => item.Severity == DiagnosticSeverity.Error));
+        Assert.Equal("DAPRGEN001", diagnostic.Id);
+        Assert.Contains("CollisionActor", diagnostic.GetMessage());
+        Assert.Empty(output.GetDiagnostics().Where(item => item.Severity == DiagnosticSeverity.Error));
+        Assert.DoesNotContain("class CollisionActorDispatcher", driver.GetRunResult().Results.Single().GeneratedSources.Single().SourceText.ToString());
+    }
+
+    [Theory]
+    [InlineData("Task Ping(int value);", "Task Ping(string value);")]
+    [InlineData("Task<int> Ping();", "Task<string> Ping();")]
+    [InlineData("Task Ping(); Task Ping(int value);", "")]
+    [InlineData("Task Ping(int first, int second);", "Task Ping(int one, int two);")]
+    public void Incompatible_wire_names_report_actionable_diagnostic_instead_of_broken_proxies(string left, string right)
+    {
+        var source = $$"""
+                     using System.Threading.Tasks;
+                     using Dapr.Actors.Next.Abstractions;
+                     using Dapr.Actors.Next.Abstractions.Attributes;
+                     public interface ILeft : IActor { {{left}} }
+                     public interface IRight : IActor { {{right}} }
+                     [GenerateActorClient] public interface IMerged : ILeft, IRight {}
+                     """;
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new ActorsNextSourceGenerator().AsSourceGenerator()],
+            optionsProvider: new TestAnalyzerConfigOptionsProvider(false));
+        driver = driver.RunGeneratorsAndUpdateCompilation(CreateCompilation("Collision", source), out var output, out var diagnostics);
+        var diagnostic = Assert.Single(diagnostics.Where(item => item.Severity == DiagnosticSeverity.Error));
+        Assert.Equal("DAPRGEN001", diagnostic.Id);
+        Assert.Contains("Ping", diagnostic.GetMessage());
+        Assert.Contains("IMerged", diagnostic.GetMessage());
+        Assert.Empty(output.GetDiagnostics().Where(item => item.Severity == DiagnosticSeverity.Error));
+        Assert.Empty(driver.GetRunResult().Results.Single().GeneratedSources);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -195,7 +291,8 @@ public sealed partial class GeneratorTests
         Assert.Equal(new[] { 7 }, (await calculator.MapAsync("numbers", 7))["numbers"]);
 
         var second = proxies.Create<Second.IAccount>(new ActorId("second"), "SecondAccount");
-        Assert.Equal("a|b|c|d|e|f", await second.EchoAsync("a", "b", "c", "d", "e", "f"));
+        Assert.Equal("a|b|c|d|e|f", await ((Second.ILeftAccount)second).EchoAsync("a", "b", "c", "d", "e", "f"));
+        Assert.Equal("a|b|c|d|e|f", await ((Second.IRightAccount)second).EchoAsync("a", "b", "c", "d", "e", "f"));
         var registry = provider.GetRequiredService<IActorRegistry>();
         Assert.Equal(new[] { "Calculator", "FirstAccount", "SecondAccount" },
             registry.Actors.Select(actor => actor.ActorType));
