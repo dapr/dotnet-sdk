@@ -51,16 +51,19 @@ public sealed class AuctionTests
 
         runtime.Time.Advance(TimeSpan.FromSeconds(29));
         var lateBid = auction.PlaceBid(new Bid(110, "bob"));
-        await runtime.RunToIdle();
-        Assert.Equal(BidResult.Accepted, await lateBid);
-
+        // Queue the original timeout behind the bid before either turn executes.
         runtime.Time.Advance(TimeSpan.FromSeconds(2));
         await runtime.RunToIdle();
+        Assert.Equal(BidResult.Accepted, await lateBid);
 
         Assert.Equal(AuctionState.Open, await ReadState(runtime, auction));
         Assert.Equal("bob", (await ReadData(runtime, auction)).HighBidder);
 
-        runtime.Time.Advance(TimeSpan.FromSeconds(28));
+        runtime.Time.Advance(TimeSpan.FromSeconds(29));
+        await runtime.RunToIdle();
+        Assert.Equal(AuctionState.Open, await ReadState(runtime, auction));
+
+        runtime.Time.Advance(TimeSpan.FromSeconds(1));
         await runtime.RunToIdle();
         Assert.Equal(AuctionState.Sold, await ReadState(runtime, auction));
         Assert.True((await ReadData(runtime, auction)).FulfillmentStarted);

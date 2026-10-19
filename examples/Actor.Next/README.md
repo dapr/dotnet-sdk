@@ -2,7 +2,7 @@
 
 These are the worked examples for the six-part Dapr.Actors.Next tutorial.
 
-- [01-Cart](01-Cart/) - A modern cart actor with generated registration, constructor injection, cached state, and an abandon-cart reminder. Tutorial: [Part 1](../../docs/dotnet-actorsnext/tutorial/part-1.md).
+- [01-Cart](01-Cart/) - A modern cart actor with generated registration, constructor injection, cached state, and an activation-local abandon-cart timer. Tutorial: [Part 1](../../docs/dotnet-actorsnext/tutorial/part-1.md).
 - [02-Migration](02-Migration/) - Cart state schema migration with typed upcasters and unit-tested legacy data. Tutorial: [Part 2](../../docs/dotnet-actorsnext/tutorial/part-2.md).
 - [03-PubSub](03-PubSub/) - Dynamic pub/sub delivery into actors with `[Subscribe]` and retry-gated acknowledgement. Tutorial: [Part 3](../../docs/dotnet-actorsnext/tutorial/part-3.md).
 - [04-Auction](04-Auction/) - A state-machine auction actor with deterministic soft-close race testing. Tutorial: [Part 4](../../docs/dotnet-actorsnext/tutorial/part-4.md).
