@@ -12,6 +12,7 @@
 //  ------------------------------------------------------------------------
 
 using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Harnesses;
 using Microsoft.AspNetCore.Builder;
@@ -27,10 +28,27 @@ public sealed class DaprTestApplication : IAsyncDisposable
     private readonly BaseHarness _harness;
     private readonly WebApplication? _app;
 
-    internal DaprTestApplication(BaseHarness harness, WebApplication? app)
+    internal DaprTestApplication(BaseHarness harness, WebApplication? app, Uri? applicationEndpoint)
     {
         _harness = harness;
         _app = app;
+        ApplicationEndpoint = applicationEndpoint;
+    }
+
+    /// <summary>
+    /// Gets the HTTP endpoint of the in-process application.
+    /// </summary>
+    public Uri? ApplicationEndpoint { get; }
+
+    /// <summary>
+    /// Creates an HTTP client for the in-process application.
+    /// </summary>
+    public HttpClient CreateHttpClient()
+    {
+        if (ApplicationEndpoint is null)
+            throw new InvalidOperationException("No app configured");
+
+        return new HttpClient { BaseAddress = ApplicationEndpoint };
     }
 
     /// <summary>
@@ -40,10 +58,10 @@ public sealed class DaprTestApplication : IAsyncDisposable
     {
         if (_app is null)
             throw new InvalidOperationException("No app configured");
-        
+
         return _app.Services.GetRequiredService<T>();
     }
-    
+
     /// <summary>
     /// Creates a service scope.
     /// </summary>
