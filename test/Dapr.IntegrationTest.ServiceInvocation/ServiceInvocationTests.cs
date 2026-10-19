@@ -32,7 +32,7 @@ public sealed class ServiceInvocationTests
 
         using var client = DaprClient.CreateInvokeHttpClient(
             appId: context.AppId,
-            daprEndpoint: context.Harness.DaprHttpEndpoint);
+            daprEndpoint: $"http://127.0.0.1:{context.Harness.DaprHttpPort}");
         var response = await client.PostAsJsonAsync(
             "/accountDetails",
             new Transaction("1", 50),
@@ -53,7 +53,7 @@ public sealed class ServiceInvocationTests
 
         using var client = DaprClient.CreateInvokeHttpClient(
             appId: context.AppId,
-            daprEndpoint: context.Harness.DaprHttpEndpoint);
+            daprEndpoint: $"http://127.0.0.1:{context.Harness.DaprHttpPort}");
         var response = await client.PostAsJsonAsync(
             "/accountDetails-requires-api-token",
             new Transaction("1", 50),

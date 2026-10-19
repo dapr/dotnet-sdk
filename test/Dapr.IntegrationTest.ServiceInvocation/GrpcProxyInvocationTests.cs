@@ -85,7 +85,7 @@ public sealed class GrpcProxyInvocationTests
     {
         var invoker = DaprClient.CreateInvocationInvoker(
             appId: context.AppId,
-            daprEndpoint: context.Harness.DaprGrpcEndpoint);
+            daprEndpoint: $"http://127.0.0.1:{context.Harness.DaprGrpcPort}");
         return new Messager.MessagerClient(invoker);
     }
 
