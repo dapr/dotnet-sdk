@@ -3,6 +3,9 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.Versioning;
+using System.Text;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
@@ -15,19 +18,9 @@ namespace Dapr.IntegrationTest.Examples;
 public class ExampleBuildValidationTests
 {
     /// <summary>
-    /// Timeout for each individual project build.
+    /// Timeout for each individual project build, including output collection.
     /// </summary>
     private static readonly TimeSpan BuildTimeout = TimeSpan.FromMinutes(5);
-
-    /// <summary>
-    /// Paths (relative to the examples directory) to exclude from build validation.
-    /// These projects depend on external NuGet packages (e.g. Aspire SDK) that may not
-    /// be available in all CI environments and don't validate source-level compatibility.
-    /// </summary>
-    private static readonly string[] ExcludedPathPrefixes =
-    [
-        $"Hosting{Path.DirectorySeparatorChar}"
-    ];
 
     /// <summary>
     /// Project file names to exclude from example build validation.
@@ -51,9 +44,6 @@ public class ExampleBuildValidationTests
         foreach (var csproj in Directory.GetFiles(examplesDir, "*.csproj", SearchOption.AllDirectories))
         {
             var relativePath = Path.GetRelativePath(examplesDir, csproj);
-
-            if (ExcludedPathPrefixes.Any(prefix => relativePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
-                continue;
 
             if (ExcludedProjectSuffixes.Any(suffix => relativePath.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)))
                 continue;
@@ -84,53 +74,67 @@ public class ExampleBuildValidationTests
 
     private static async Task<(int ExitCode, string Output)> RunDotnetBuildAsync(string projectPath)
     {
-        return await RunDotnetCommandAsync($"build \"{projectPath}\" --framework net10.0 --no-incremental -consoleLoggerParameters:NoSummary");
+        var assembly = typeof(ExampleBuildValidationTests).Assembly;
+        var frameworkName = assembly.GetCustomAttribute<TargetFrameworkAttribute>()?.FrameworkName
+            ?? throw new InvalidOperationException("The test assembly has no target framework.");
+        var framework = $"net{new FrameworkName(frameworkName).Version.ToString(2)}";
+        var configuration = assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()?.Configuration
+            ?? throw new InvalidOperationException("The test assembly has no build configuration.");
+
+        return await RunDotnetCommandAsync(
+            $"build \"{projectPath}\" --framework {framework} --configuration {configuration} --disable-build-servers -nodeReuse:false -consoleLoggerParameters:NoSummary");
     }
 
-    private static async Task<(int ExitCode, string Output)> RunDotnetCommandAsync(string arguments)
+    private static Task<(int ExitCode, string Output)> RunDotnetCommandAsync(string arguments)
     {
         var psi = new ProcessStartInfo("dotnet", arguments)
         {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
         };
 
-        using var process = new Process();
-        process.StartInfo = psi;
+        return RunProcessAsync(psi, BuildTimeout);
+    }
 
-        var outputBuilder = new System.Text.StringBuilder();
+    internal static async Task<(int ExitCode, string Output)> RunProcessAsync(ProcessStartInfo startInfo, TimeSpan timeout)
+    {
+        startInfo.RedirectStandardOutput = true;
+        startInfo.RedirectStandardError = true;
 
-        process.OutputDataReceived += (_, e) =>
-        {
-            if (e.Data is not null)
-                outputBuilder.AppendLine(e.Data);
-        };
-
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data is not null)
-                outputBuilder.AppendLine(e.Data);
-        };
+        using var process = new Process { StartInfo = startInfo };
+        using var cts = new CancellationTokenSource(timeout);
+        var standardOutput = new StringBuilder();
+        var standardError = new StringBuilder();
 
         process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-
-        using var cts = new CancellationTokenSource(BuildTimeout);
+        // Build servers can retain the output pipes after the parent process exits.
+        // Apply the same deadline to process exit and both output streams.
+        var outputTask = CaptureOutputAsync(process.StandardOutput, standardOutput, cts.Token);
+        var errorTask = CaptureOutputAsync(process.StandardError, standardError, cts.Token);
 
         try
         {
-            await process.WaitForExitAsync(cts.Token);
+            await Task.WhenAll(process.WaitForExitAsync(cts.Token), outputTask, errorTask);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
-            process.Kill(entireProcessTree: true);
-            outputBuilder.AppendLine($"[TIMEOUT] Build exceeded {BuildTimeout.TotalMinutes} minute(s) limit.");
+            if (!process.HasExited)
+                process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+
+            throw new TimeoutException(
+                $"Command '{startInfo.FileName} {startInfo.Arguments}' exceeded {timeout.TotalSeconds} second(s) limit.{Environment.NewLine}{standardOutput}{standardError}");
         }
 
-        return (process.ExitCode, outputBuilder.ToString());
+        return (process.ExitCode, standardOutput.ToString() + standardError);
+    }
+
+    private static async Task CaptureOutputAsync(StreamReader reader, StringBuilder output, CancellationToken cancellationToken)
+    {
+        var buffer = new char[4096];
+        int count;
+        while ((count = await reader.ReadAsync(buffer.AsMemory(), cancellationToken)) != 0)
+            output.Append(buffer, 0, count);
     }
 
     private static string FindRepoRoot()

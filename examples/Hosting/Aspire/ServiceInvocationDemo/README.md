@@ -35,7 +35,7 @@ The demo includes:
 
 2. Run the application:
    ```bash
-   dotnet run
+   dotnet run --framework net10.0
    ```
 
 3. The console will display the Aspire dashboard URL. Open the provided link in your browser.
@@ -53,7 +53,7 @@ The demo includes:
 
 ## No Additional Setup Required
 
-The demo is designed to work out-of-the-box with minimal setup. Simply run `dotnet run` from the AppHost project, and all necessary services will be orchestrated automatically through Aspire's application model.
+The demo is designed to work out-of-the-box with minimal setup. Simply run `dotnet run --framework net10.0` from the AppHost project, and all necessary services will be orchestrated automatically through Aspire's application model.
 
 ## Architecture Benefits
 

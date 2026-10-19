@@ -35,7 +35,7 @@ The `Store.Next.Example07.AppHost` project starts the app and its Dapr sidecar (
 
 ```powershell
 cd examples\Actor.Next\07-PerTypeOptions\Store.Next.Example07.AppHost
-dotnet run
+dotnet run --framework net10.0
 ```
 
 The Aspire dashboard shows the app and the sidecar; the HTTP API stays on `http://localhost:5007`.
@@ -54,7 +54,7 @@ Start the app from this sample directory so `appsettings.json` is loaded:
 
 ```powershell
 cd examples\Actor.Next\07-PerTypeOptions
-dotnet run
+dotnet run --framework net10.0
 ```
 
 Opening `http://localhost:5007/` in a browser shows a summary page with the effective configuration of each actor type (which fields are overridden and which are inherited) and the available endpoints.

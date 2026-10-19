@@ -24,7 +24,7 @@ Start the app from this sample directory so `appsettings.json` is loaded:
 
 ```powershell
 cd examples\Actor.Next\01-Cart
-dotnet run
+dotnet run --framework net10.0
 ```
 
 Then open `Cart.Next.Example01.http` in Rider or Visual Studio and run the requests in order:

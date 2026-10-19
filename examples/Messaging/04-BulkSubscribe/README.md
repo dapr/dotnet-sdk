@@ -43,7 +43,7 @@ public class TelemetryBulkHandler : ITopicHandler<DeviceTelemetry>
 ## Running the Example
 
 ```bash
-dapr run --app-id bulk-subscribe-example --dapr-grpc-port 50001 -- dotnet run --project examples/Messaging/04-BulkSubscribe/BulkSubscribe.Example04.csproj
+dapr run --app-id bulk-subscribe-example --dapr-grpc-port 50001 -- dotnet run --framework net10.0 --project examples/Messaging/04-BulkSubscribe/BulkSubscribe.Example04.csproj
 ```
 
 Send single or batch publish requests using `BulkSubscribe.Example04.http`:

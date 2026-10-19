@@ -4,6 +4,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
+        <TestTfmsInParallel>false</TestTfmsInParallel>
     </PropertyGroup>
 
     <ItemGroup>

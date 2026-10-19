@@ -41,7 +41,7 @@ Start the app from this sample directory:
 
 ```powershell
 cd examples\Actor.Next\02-Migration
-dotnet run
+dotnet run --framework net10.0
 ```
 
 Then open `Cart.Next.Example02.http` in Rider or Visual Studio and run the requests in order. It seeds

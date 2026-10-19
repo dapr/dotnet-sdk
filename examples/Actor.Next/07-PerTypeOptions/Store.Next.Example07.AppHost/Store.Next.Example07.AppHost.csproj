@@ -11,6 +11,11 @@
     <NoWarn>$(NoWarn);CS8002</NoWarn>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(TargetFramework)' == ''">
+    <!-- The SDK RID task is not registered in the outer cross-targeting build. -->
+    <_AspireUseSdkPickBestRid>false</_AspireUseSdkPickBestRid>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.4.2" />
     <PackageReference Include="CommunityToolkit.Aspire.Hosting.Dapr" Version="13.0.0" />
