@@ -96,9 +96,8 @@ internal sealed class Measurements
         }
     }
 
-    internal void DocumentRead(string? serialized)
+    internal void DocumentRead(long bytes)
     {
-        var bytes = Encoding.UTF8.GetByteCount(serialized ?? "");
         lock (gate)
         {
             DocumentDeserializations++;

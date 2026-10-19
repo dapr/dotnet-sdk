@@ -75,7 +75,8 @@ public static class BinaryStorePayloadServiceCollectionExtensions
         services.TryAddSingleton<IWorkflowPayloadResolver, BinaryStoreWorkflowPayloadResolver>();
         services.AddSingleton<IWorkflowFeatureProvider, BinaryStorePayloadFeatureProvider>();
         services.TryAddSingleton(sp => new WorkflowPayloadCleaner(
-            sp.GetRequiredService<DaprBinaryStoreClient>(), sp.GetRequiredService<IWorkflowPayloadManifest>()));
+            sp.GetRequiredService<DaprBinaryStoreClient>(), sp.GetRequiredService<IWorkflowPayloadManifest>(),
+            sp.GetRequiredService<BinaryStorePayloadConverter>()));
 
         return builder;
     }

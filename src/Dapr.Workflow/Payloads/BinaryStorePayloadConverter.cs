@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Buffers;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -56,6 +57,7 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
     private readonly DaprBinaryStoreClient _store;
     private readonly BinaryStorePayloadOptions _options;
     private readonly IWorkflowPayloadManifest _manifest;
+    private readonly WorkflowPayloadByteCache? _cache;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BinaryStorePayloadConverter"/> class.
@@ -65,10 +67,21 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
     /// <param name="manifest">The manifest that tracks keys written per instance for later cleanup.</param>
     public BinaryStorePayloadConverter(DaprBinaryStoreClient store,
         IOptions<BinaryStorePayloadOptions> options, IWorkflowPayloadManifest manifest)
+        : this(store, options, manifest,
+            AppContext.TryGetSwitch(WorkflowPayloadByteCache.SwitchName, out var enabled) && enabled
+                ? new WorkflowPayloadByteCache()
+                : null)
+    {
+    }
+
+    internal BinaryStorePayloadConverter(DaprBinaryStoreClient store,
+        IOptions<BinaryStorePayloadOptions> options, IWorkflowPayloadManifest manifest,
+        WorkflowPayloadByteCache? cache)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
+        _cache = cache;
         _options.Validate();
     }
 
@@ -128,7 +141,23 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
-        return StoreBytesAsync(Encoding.UTF8.GetBytes(serialized), instanceId, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return StoreSerializedCoreAsync(serialized, Encoding.UTF8.GetByteCount(serialized), instanceId, cancellationToken);
+    }
+
+    private async Task<PayloadReference> StoreSerializedCoreAsync(string serialized, int length, string instanceId,
+        CancellationToken cancellationToken)
+    {
+        var bytes = ArrayPool<byte>.Shared.Rent(length);
+        try
+        {
+            Encoding.UTF8.GetBytes(serialized.AsSpan(), bytes);
+            return await StoreBytesAsync(bytes, length, instanceId, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(bytes, clearArray: true);
+        }
     }
 
     // ---- internals ----
@@ -147,20 +176,23 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
             return serialized;
         }
 
-        var bytes = Encoding.UTF8.GetBytes(serialized);
-        var reference = await StoreBytesAsync(bytes, site.InstanceId, cancellationToken).ConfigureAwait(false);
+        var reference = await StoreSerializedCoreAsync(serialized, byteCount, site.InstanceId, cancellationToken)
+            .ConfigureAwait(false);
         return reference.ToEnvelope();
     }
 
-    private async Task<PayloadReference> StoreBytesAsync(byte[] bytes, string instanceId,
+    internal async Task<PayloadReference> StoreBytesAsync(byte[] bytes, int length, string instanceId,
         CancellationToken cancellationToken)
     {
-        var hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+        cancellationToken.ThrowIfCancellationRequested();
+        var hash = Convert.ToHexString(SHA256.HashData(bytes.AsSpan(0, length))).ToLowerInvariant();
         var key = $"{_options.KeyPrefix}/{instanceId}/{hash}";
+        var reference = new PayloadReference(_options.StoreName, key, length, hash);
 
         try
         {
-            using var content = new MemoryStream(bytes, writable: false);
+            // A replica-local read cache cannot establish whether the shared store still contains this key.
+            using var content = new MemoryStream(bytes, 0, length, writable: false);
             await _store.SetBinaryFileAsync(_options.StoreName, key, content, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -169,14 +201,20 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
             // Same instance, same content hash: identical bytes are already present.
         }
 
-        var reference = new PayloadReference(_options.StoreName, key, bytes.LongLength, hash);
         await _manifest.RecordAsync(instanceId, reference, cancellationToken).ConfigureAwait(false);
         return reference;
     }
 
     internal async Task<string> ResolveStringAsync(PayloadReference reference, CancellationToken cancellationToken)
+        => Encoding.UTF8.GetString((await ResolveBytesAsync(reference, cancellationToken).ConfigureAwait(false)).Span);
+
+    internal void Invalidate(PayloadReference reference) => _cache?.Invalidate(reference);
+
+    internal async Task<ReadOnlyMemory<byte>> ResolveBytesAsync(PayloadReference reference,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(reference);
+        cancellationToken.ThrowIfCancellationRequested();
         if (reference.Size > _options.MaxInMemoryRehydrationSize)
         {
             throw new PayloadRehydrationLimitException(reference, _options.MaxInMemoryRehydrationSize);
@@ -189,32 +227,57 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
                 "but this converter does not support stage reversal.");
         }
 
-        await using var stream = await OpenAsync(reference, cancellationToken).ConfigureAwait(false);
-        using var buffer = new MemoryStream(reference.Size is > 0 and <= int.MaxValue ? (int)reference.Size : 0);
-        var chunk = new byte[81920];
-        int read;
-        while ((read = await stream.ReadAsync(chunk, cancellationToken).ConfigureAwait(false)) != 0)
+        var generation = _cache?.Generation;
+        if (_options.VerifyIntegrityOnRead && _cache?.TryGet(reference, out var cached) == true &&
+            cached.Length <= _options.MaxInMemoryRehydrationSize)
         {
-            if (buffer.Length + read > _options.MaxInMemoryRehydrationSize)
-            {
-                throw new PayloadRehydrationLimitException(reference, _options.MaxInMemoryRehydrationSize);
-            }
-
-            await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+            return cached;
         }
 
-        var bytes = buffer.ToArray();
+        return await ReadBytesAsync(reference, generation, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<ReadOnlyMemory<byte>> ReadBytesAsync(PayloadReference reference, long? generation,
+        CancellationToken cancellationToken)
+    {
+        using var buffer = new MemoryStream(reference.Size is > 0 and <= int.MaxValue ? (int)reference.Size : 0);
+        try
+        {
+            await foreach (var chunk in _store.GetBinaryFileChunksAsync(reference.StoreName, reference.Key, cancellationToken)
+                               .WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (buffer.Length + chunk.Length > _options.MaxInMemoryRehydrationSize)
+                {
+                    throw new PayloadRehydrationLimitException(reference, _options.MaxInMemoryRehydrationSize);
+                }
+
+                buffer.Write(chunk.Span);
+            }
+        }
+        catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
+        {
+            throw new PayloadNotFoundException(reference, ex);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        var bytes = buffer.GetBuffer().AsMemory(0, checked((int)buffer.Length));
 
         if (_options.VerifyIntegrityOnRead)
         {
-            var actual = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+            var actual = Convert.ToHexString(SHA256.HashData(bytes.Span)).ToLowerInvariant();
             if (!string.Equals(actual, reference.ContentHash, StringComparison.Ordinal))
             {
                 throw new PayloadIntegrityException(reference, actual);
             }
+
+            if (_cache is not null && generation is { } observed)
+            {
+                _cache.Add(reference, bytes, buffer.Capacity, observed);
+            }
         }
 
-        return Encoding.UTF8.GetString(bytes);
+        return bytes;
     }
 
 }

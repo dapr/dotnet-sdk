@@ -28,11 +28,14 @@ public sealed class WorkflowPayloadCleaner
 {
     private readonly DaprBinaryStoreClient _store;
     private readonly IWorkflowPayloadManifest _manifest;
+    private readonly BinaryStorePayloadConverter? _codec;
 
-    internal WorkflowPayloadCleaner(DaprBinaryStoreClient store, IWorkflowPayloadManifest manifest)
+    internal WorkflowPayloadCleaner(DaprBinaryStoreClient store, IWorkflowPayloadManifest manifest,
+        BinaryStorePayloadConverter? codec = null)
     {
         _store = store ?? throw new ArgumentNullException(nameof(store));
         _manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
+        _codec = codec;
     }
 
     /// <summary>
@@ -50,6 +53,7 @@ public sealed class WorkflowPayloadCleaner
 
         foreach (var reference in await _manifest.ListAsync(instanceId, cancellationToken).ConfigureAwait(false))
         {
+            _codec?.Invalidate(reference);
             try
             {
                 await _store.DeleteBinaryFileAsync(reference.StoreName, reference.Key, cancellationToken)
@@ -59,6 +63,10 @@ public sealed class WorkflowPayloadCleaner
             catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
             {
                 // Already gone; nothing to do.
+            }
+            finally
+            {
+                _codec?.Invalidate(reference);
             }
         }
 
