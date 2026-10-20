@@ -3,6 +3,7 @@
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <IncludeGoogleApiCommonProtos>true</IncludeGoogleApiCommonProtos>
         <Description>This package contains the reference protos used by develop services using Dapr.</Description>
     </PropertyGroup>
     
@@ -21,6 +22,7 @@
         <Protobuf Include="Protos\dapr\proto\runtime\v1\metadata.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\pubsub.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\secret.proto" ProtoRoot="Protos" GrpcServices="Client" />
+        <Protobuf Include="Protos\dapr\proto\runtime\v1\search.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\state.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\workflow.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\appcallback.proto" ProtoRoot="Protos" GrpcServices="Server" />

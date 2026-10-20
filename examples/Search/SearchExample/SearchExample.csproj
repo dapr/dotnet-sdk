@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+    <ItemGroup>
+        <!-- In your own projects, reference the single Dapr.Search NuGet package instead.
+             Abstractions, Runtime, and Generators are bundled and not published separately. -->
+        <ProjectReference Include="..\..\..\src\Dapr.Search.Runtime\Dapr.Search.Runtime.csproj" />
+        <ProjectReference Include="..\..\..\src\Dapr.Search.Generators\Dapr.Search.Generators.csproj"
+                          ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+    </ItemGroup>
+</Project>

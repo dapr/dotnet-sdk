@@ -15,6 +15,21 @@ public sealed class AggregatorPackageTests
     public static TheoryData<PackageContractCase> PackagesWithBundledAssets => new()
     {
         new PackageContractCase(
+            PackageId: "Dapr.Search",
+            ProjectPath: Path.Combine("src", "Dapr.Search", "Dapr.Search.csproj"),
+            RequiredProjectReferences: ["Dapr.Common.csproj", "Dapr.Protos.csproj"],
+            RequiredPackageReferences:
+            [
+                "Google.Protobuf",
+                "Grpc.Net.Client",
+                "Microsoft.Extensions.DependencyInjection.Abstractions",
+                "Microsoft.Extensions.Http",
+            ],
+            RequiredBundledProjects: ["Dapr.Search.Abstractions.csproj", "Dapr.Search.Runtime.csproj"],
+            RequiredAnalyzerProjects: ["Dapr.Search.Generators.csproj"],
+            IncludeBuildOutput: false),
+
+        new PackageContractCase(
             PackageId: "Dapr.SecretsManagement",
             ProjectPath: Path.Combine("src", "Dapr.SecretsManagement", "Dapr.SecretsManagement.csproj"),
             RequiredProjectReferences:
@@ -213,6 +228,191 @@ public sealed class AggregatorPackageTests
         }
 
         AssertTargetsTfmSpecificPackageFiles(elements);
+    }
+
+    [Fact]
+    public async Task DaprSearchPackage_BundlesGeneratorAndRunsPackageOnlyConsumer()
+    {
+        var repoRoot = FindRepoRoot();
+        var outputDirectory = Path.Combine(Path.GetTempPath(), $"dapr-search-package-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outputDirectory);
+        try
+        {
+            var version = $"0.0.0-search-smoke.{Guid.NewGuid():N}";
+            foreach (var project in new[] { "Dapr.Protos", "Dapr.Common", "Dapr.Search" })
+            {
+                var result = await RunDotNetAsync(repoRoot, "pack",
+                    Path.Combine("src", project, project + ".csproj"),
+                    "--configuration", "Release", "--output", outputDirectory,
+                    $"/p:Version={version}", $"/p:PackageVersion={version}", $"/p:MinVerVersionOverride={version}",
+                    "/nr:false", "/p:UseSharedCompilation=false");
+                Assert.True(result.ExitCode == 0, result.Output);
+            }
+            var packagePath = Assert.Single(Directory.EnumerateFiles(outputDirectory, "Dapr.Search.*.nupkg"));
+            using var package = ZipFile.OpenRead(packagePath);
+            var entries = package.Entries.Select(entry => entry.FullName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var framework in new[] { "net8.0", "net9.0", "net10.0" })
+            {
+                Assert.Contains($"lib/{framework}/Dapr.Search.Abstractions.dll", entries);
+                Assert.Contains($"lib/{framework}/Dapr.Search.Runtime.dll", entries);
+                Assert.Contains($"lib/{framework}/Dapr.Search.Abstractions.xml", entries);
+                Assert.Contains($"lib/{framework}/Dapr.Search.Runtime.xml", entries);
+            }
+            Assert.Single(package.Entries, entry => entry.FullName == "analyzers/dotnet/cs/Dapr.Search.Generators.dll");
+            Assert.DoesNotContain(entries, name => name.StartsWith("lib/", StringComparison.Ordinal) && name.Contains("Generators", StringComparison.Ordinal));
+            Assert.DoesNotContain(entries, name => name.Contains("Microsoft.CodeAnalysis", StringComparison.Ordinal));
+            using var manifestStream = package.GetEntry("Dapr.Search.nuspec")!.Open();
+            var dependencies = XDocument.Load(manifestStream).Descendants()
+                .Where(element => element.Name.LocalName == "dependency")
+                .Select(element => (string?)element.Attribute("id")).ToArray();
+            Assert.Contains("Dapr.Common", dependencies);
+            Assert.Contains("Dapr.Protos", dependencies);
+            Assert.Contains("Grpc.Net.Client", dependencies);
+            Assert.Contains("Microsoft.Extensions.Http", dependencies);
+            Assert.DoesNotContain("Dapr.Search.Abstractions", dependencies);
+            Assert.DoesNotContain("Dapr.Search.Runtime", dependencies);
+            Assert.DoesNotContain("Dapr.Search.Generators", dependencies);
+            Assert.DoesNotContain(dependencies, name => name!.StartsWith("Microsoft.CodeAnalysis", StringComparison.Ordinal));
+
+            await VerifySearchPackageConsumerAsync(outputDirectory, version);
+        }
+        finally
+        {
+            Directory.Delete(outputDirectory, recursive: true);
+        }
+    }
+
+    private static async Task VerifySearchPackageConsumerAsync(string feed, string version)
+    {
+        var consumer = Path.Combine(feed, "consumer");
+        Directory.CreateDirectory(consumer);
+        var ct = TestContext.Current.CancellationToken;
+        await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <OutputType>Exe</OutputType>
+                <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+                <Nullable>enable</Nullable>
+                <ImplicitUsings>disable</ImplicitUsings>
+                <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+                <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+              </PropertyGroup>
+              <ItemGroup>
+                <PackageReference Include="Dapr.Search" Version="{{version}}" />
+              </ItemGroup>
+            </Project>
+            """, ct);
+        await File.WriteAllTextAsync(Path.Combine(consumer, "Program.cs"), """
+            using System;
+            using System.Collections.Generic;
+            using System.Text.Json;
+            using System.Text.Json.Serialization;
+            using System.Threading;
+            using System.Threading.Tasks;
+            using Dapr.Search;
+            using Dapr.Search.Extensions;
+            using Microsoft.Extensions.DependencyInjection;
+
+            [SearchIndex("packaged-store", "products")]
+            public partial interface IProductSearch : IDaprSearchIndex<Product>;
+            public sealed record Product(string Title);
+
+            [JsonSerializable(typeof(Product))]
+            internal partial class ProductJsonContext : JsonSerializerContext;
+
+            internal static class Program
+            {
+                private static async Task Main()
+                {
+                    using var client = new DaprSearchClientBuilder()
+                        .UseJsonSerializationOptions(ProductJsonContext.Default.Options).Build();
+                    var services = new ServiceCollection();
+                    services.AddDaprSearchClient().AddProductSearch();
+                    using var recordingClient = new RecordingClient();
+                    services.AddSingleton<DaprSearchClient>(recordingClient);
+                    using var provider = services.BuildServiceProvider(new ServiceProviderOptions
+                    {
+                        ValidateScopes = true, ValidateOnBuild = true
+                    });
+                    var index = provider.GetRequiredService<IProductSearch>();
+                    using var cancellation = new CancellationTokenSource();
+                    var result = await index.SearchAsync(new SearchQuery { Text = "Dapr", IncludeContent = true },
+                        new Dictionary<string, string> { ["source"] = "package" }, cancellation.Token);
+                    if (result.Hits.Count != 1 || result.Hits[0].Document.Content != new Product("Dapr") ||
+                        recordingClient.Token != cancellation.Token ||
+                        !ReferenceEquals(index, provider.GetRequiredService<IProductSearch>()) ||
+                        index is IDisposable)
+                        throw new InvalidOperationException("Generated index did not preserve its contract.");
+                    Console.WriteLine("PACKAGED_SEARCH_GENERATOR_OK");
+                }
+            }
+
+            internal sealed class RecordingClient : DaprSearchClient
+            {
+                public CancellationToken Token { get; private set; }
+
+                public override Task<SearchResult<T>> SearchAsync<T>(string storeName, string index,
+                    SearchQuery? query = null, IReadOnlyDictionary<string, string>? metadata = null,
+                    CancellationToken cancellationToken = default)
+                {
+                    if (storeName != "packaged-store" || index != "products" || typeof(T) != typeof(Product) ||
+                        query?.Text != "Dapr" || query.IncludeContent != true || metadata?["source"] != "package")
+                        throw new InvalidOperationException("Generated index did not forward the request.");
+                    Token = cancellationToken;
+                    var product = JsonSerializer.Deserialize<T>("{\"Title\":\"Dapr\"}", ProductJsonContext.Default.Options);
+                    return Task.FromResult(new SearchResult<T>(
+                        new[] { new SearchHit<T>(new SearchDocument<T>("1", product), 1, new Dictionary<string, string>()) },
+                        1, TotalHitsRelation.Exact, null));
+                }
+
+                public override Task CreateIndexAsync(string storeName, string index,
+                    IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default) =>
+                    throw new NotSupportedException();
+                public override Task<SearchIndex> GetIndexAsync(string storeName, string index,
+                    IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default) =>
+                    throw new NotSupportedException();
+                public override Task<IReadOnlyList<string>> ListIndexesAsync(string storeName,
+                    IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default) =>
+                    throw new NotSupportedException();
+                public override Task DeleteIndexAsync(string storeName, string index,
+                    IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default) =>
+                    throw new NotSupportedException();
+                public override Task<IndexDocumentsResult> IndexDocumentsAsync<T>(string storeName, string index,
+                    IReadOnlyList<SearchDocument<T>> documents, IndexingOptions? options = null,
+                    IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default) =>
+                    throw new NotSupportedException();
+                public override Task<IReadOnlyList<SearchDocument<T>>> GetDocumentsAsync<T>(string storeName, string index,
+                    IReadOnlyList<string> ids, bool? includeContent = null,
+                    IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default) =>
+                    throw new NotSupportedException();
+                public override Task<IndexAck> DeleteDocumentsAsync(string storeName, string index,
+                    IReadOnlyList<string> ids, IndexingOptions? options = null,
+                    IReadOnlyDictionary<string, string>? metadata = null, CancellationToken cancellationToken = default) =>
+                    throw new NotSupportedException();
+            }
+            """, ct);
+
+        new XDocument(new XElement("configuration",
+            new XElement("packageSources",
+                new XElement("clear"),
+                new XElement("add", new XAttribute("key", "local"), new XAttribute("value", feed)),
+                new XElement("add", new XAttribute("key", "nuget.org"), new XAttribute("value", "https://api.nuget.org/v3/index.json")))))
+            .Save(Path.Combine(consumer, "NuGet.Config"));
+        var restore = await RunDotNetAsync(consumer, "restore", "Consumer.csproj", "--configfile", "NuGet.Config",
+            "--packages", Path.Combine(feed, "packages"));
+        Assert.True(restore.ExitCode == 0, restore.Output);
+        using var assets = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(consumer, "obj", "project.assets.json"), ct));
+        Assert.True(assets.RootElement.GetProperty("libraries").TryGetProperty($"Dapr.Search/{version}", out _));
+        foreach (var framework in new[] { "net8.0", "net9.0", "net10.0" })
+        {
+            var run = await RunDotNetAsync(consumer, "run", "--no-restore", "--framework", framework,
+                "--configuration", "Release", "/p:UseSharedCompilation=false");
+            Assert.True(run.ExitCode == 0, run.Output);
+            Assert.Contains("PACKAGED_SEARCH_GENERATOR_OK", run.Output);
+            var deps = await File.ReadAllTextAsync(Path.Combine(consumer, "bin", "Release", framework, "Consumer.deps.json"), ct);
+            Assert.DoesNotContain("Dapr.Search.Generators", deps);
+            Assert.DoesNotContain("Microsoft.CodeAnalysis", deps);
+        }
     }
 
     [Fact]
