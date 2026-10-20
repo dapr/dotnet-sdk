@@ -240,7 +240,10 @@ public class WorkflowOrchestrationContextTests
         ], isReplaying: true);
 
         Assert.Empty(context.PendingActions);
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waitTask);
+        Assert.False(waitTask.IsCompleted);
+        context.ProcessEvents(
+            [new HistoryEvent { EventRaised = new() { Name = "event", Input = "\"received\"" } }], false);
+        Assert.Equal("received", await waitTask.WaitAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]

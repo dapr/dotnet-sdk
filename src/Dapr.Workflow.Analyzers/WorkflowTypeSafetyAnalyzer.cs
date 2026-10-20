@@ -435,7 +435,29 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
         }
 
         var conversion = compilation.ClassifyConversion(actualType, expectedType);
-        return conversion.Exists && conversion.IsImplicit;
+        // These APIs serialize an object; they do not execute a conversion operator
+        // between the caller's payload and the workflow's declared contract.
+        if (!conversion.Exists || !conversion.IsImplicit || conversion.IsUserDefined)
+            return false;
+
+        if (actualType is INamedTypeSymbol { IsTupleType: true } actualTuple &&
+            expectedType is INamedTypeSymbol { IsTupleType: true } expectedTuple)
+        {
+            return actualTuple.TupleElements.Length == expectedTuple.TupleElements.Length &&
+                actualTuple.TupleElements.Zip(expectedTuple.TupleElements,
+                    (actual, expected) => IsCompatible(actual.Type, expected.Type, compilation)).All(compatible => compatible);
+        }
+
+        if (expectedType is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } expectedNullable)
+        {
+            var underlyingActual = actualType is INamedTypeSymbol
+                { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } actualNullable
+                ? actualNullable.TypeArguments[0] : actualType;
+            return IsCompatible(underlyingActual, expectedNullable.TypeArguments[0], compilation);
+        }
+
+        // System.Text.Json represents char as a string, not as its numeric code point.
+        return !conversion.IsNumeric || actualType.SpecialType != SpecialType.System_Char;
     }
 
     private static Location GetInvocationNameLocation(IInvocationOperation invocation)

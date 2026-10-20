@@ -22,6 +22,16 @@ When creating a `WorkflowRetryPolicy`, you can configure:
 | `maxRetryInterval` | Maximum delay between retries regardless of backoff. | 1 hour |
 | `retryTimeout` | Overall timeout for all retry attempts. | Infinite |
 
+The timeout uses deterministic workflow time and is checked again after each
+retry timer fires, including when a worker outage delays timer processing.
+Retry delays are bounded by the remaining timeout; no new attempt starts at or
+after that deadline. The timeout does not interrupt an already-running attempt.
+A retry wait that reaches the deadline is terminal even if an older runtime
+(such as Dapr 1.17) fires the timer early after truncating fractional seconds.
+Ordinary retry waits before the deadline retain their existing behavior.
+Exponential delays are capped before conversion to a `TimeSpan`, so large
+coefficients do not prematurely exhaust a retry policy with a bounded interval.
+
 ### Example: fixed interval
 
 ```csharp

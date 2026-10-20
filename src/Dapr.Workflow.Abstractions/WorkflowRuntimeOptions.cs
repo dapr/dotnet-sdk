@@ -23,6 +23,10 @@ namespace Dapr.Workflow;
 public sealed class WorkflowRuntimeOptions
 {
     private readonly List<Action<IWorkflowsFactory>> _registrationActions = [];
+    private readonly List<Action<IWorkflowsFactory>> _autoRegistrationActions = [];
+    private readonly Dictionary<string, Action<IWorkflowsFactory>> _generatedWorkflows = new(StringComparer.OrdinalIgnoreCase);
+    private bool _registeringAutoTypes;
+    internal HashSet<string> RegisteredWorkflowNames { get; } = new(StringComparer.OrdinalIgnoreCase);
     private int _maxConcurrentWorkflows = 100;
     private int _maxConcurrentActivities = 100;
     private TimeSpan? _historyCacheTtl;
@@ -141,7 +145,9 @@ public sealed class WorkflowRuntimeOptions
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(implementation);
-        _registrationActions.Add(factory => factory.RegisterWorkflow(name, implementation));
+        if (!_registeringAutoTypes)
+            RegisteredWorkflowNames.Add(name);
+        AddRegistration(factory => factory.RegisterWorkflow(name, implementation));
     }
 
     /// <summary>
@@ -149,7 +155,9 @@ public sealed class WorkflowRuntimeOptions
     /// </summary>
     public void RegisterWorkflow<TWorkflow>(string? name = null) where TWorkflow : class, IWorkflow
     {
-        _registrationActions.Add(factory => factory.RegisterWorkflow<TWorkflow>(name));
+        if (!_registeringAutoTypes)
+            RegisteredWorkflowNames.Add(name ?? typeof(TWorkflow).Name);
+        AddRegistration(factory => factory.RegisterWorkflow<TWorkflow>(name));
     }
 
     /// <summary>
@@ -159,7 +167,7 @@ public sealed class WorkflowRuntimeOptions
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(implementation);
-        _registrationActions.Add(factory => factory.RegisterActivity(name, implementation));
+        AddRegistration(factory => factory.RegisterActivity(name, implementation));
     }
 
     /// <summary>
@@ -167,7 +175,7 @@ public sealed class WorkflowRuntimeOptions
     /// </summary>
     public void RegisterActivity<TActivity>(string? name = null) where TActivity : class, IWorkflowActivity
     {
-        _registrationActions.Add(factory => factory.RegisterActivity<TActivity>(name));
+        AddRegistration(factory => factory.RegisterActivity<TActivity>(name));
     }
 
     /// <summary>
@@ -180,5 +188,33 @@ public sealed class WorkflowRuntimeOptions
         {
             action(factory);
         }
+        foreach (var action in _generatedWorkflows.Values)
+            action(factory);
+        foreach (var action in _autoRegistrationActions)
+            action(factory);
     }
+
+    internal void SetGeneratedWorkflow(string name, Action<WorkflowRuntimeOptions, string> register)
+    {
+        var registrations = new WorkflowRuntimeOptions();
+        register(registrations, name);
+        _generatedWorkflows[name] = registrations.ApplyRegistrations;
+    }
+
+    internal void AddAutoRegistrations(Action<WorkflowRuntimeOptions> register)
+    {
+        var previous = _registeringAutoTypes;
+        _registeringAutoTypes = true;
+        try
+        {
+            register(this);
+        }
+        finally
+        {
+            _registeringAutoTypes = previous;
+        }
+    }
+
+    private void AddRegistration(Action<IWorkflowsFactory> registration) =>
+        (_registeringAutoTypes ? _autoRegistrationActions : _registrationActions).Add(registration);
 }

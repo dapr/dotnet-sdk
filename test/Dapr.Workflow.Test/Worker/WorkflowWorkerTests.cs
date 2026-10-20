@@ -376,13 +376,12 @@ public class WorkflowWorkerTests
     }
 
     [Fact]
-    public async Task HandleWorkflowResponseAsync_ShouldNotReturnTerminatedCompletion_WhenReplayLatestEventIsNotExecutionTerminated()
+    public async Task HandleWorkflowResponseAsync_ShouldReturnTerminatedCompletion_WhenOtherEventsFollowTermination()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
-        // Intentionally no workflow registrations. If the termination short-circuit does NOT trigger,
-        // normal path should fail with WorkflowNotFound-style completion.
+        // Termination does not require activating the workflow, even with later events.
         var worker = new WorkflowWorker(
             CreateGrpcClientMock().Object,
             new StubWorkflowsFactory(),
@@ -418,8 +417,7 @@ public class WorkflowWorkerTests
         Assert.Equal("i", response.InstanceId);
         var action = Assert.Single(response.Actions);
         Assert.NotNull(action.CompleteWorkflow);
-        Assert.NotEqual(OrchestrationStatus.Terminated, action.CompleteWorkflow!.WorkflowStatus);
-        Assert.Equal(OrchestrationStatus.Failed, action.CompleteWorkflow.WorkflowStatus);
+        Assert.Equal(OrchestrationStatus.Terminated, action.CompleteWorkflow!.WorkflowStatus);
     }
 
     [Fact]
@@ -528,64 +526,6 @@ public class WorkflowWorkerTests
         await cts.CancelAsync();
 
         await InvokeExecuteAsync(worker, cts.Token);
-    }
-
-    [Fact]
-    public void CreateCallOptions_ShouldIncludeUserAgentAndApiToken_WhenConfigured()
-    {
-        var services = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["DAPR_API_TOKEN"] = "workflow-token"
-            })
-            .Build();
-
-        var worker = new WorkflowWorker(
-            CreateGrpcClientMock().Object,
-            new StubWorkflowsFactory(),
-            NullLoggerFactory.Instance,
-            serializer,
-            services,
-            configuration);
-
-        using var cts = new CancellationTokenSource();
-        var callOptions = InvokeCreateCallOptions(worker, cts.Token);
-
-        Assert.Equal(cts.Token, callOptions.CancellationToken);
-        Assert.True(HasHeader(callOptions, "User-Agent", out var userAgent));
-        Assert.Contains("dapr-sdk-dotnet", userAgent, StringComparison.OrdinalIgnoreCase);
-        Assert.True(HasHeader(callOptions, "dapr-api-token", out var tokenValue));
-        Assert.Equal("workflow-token", tokenValue);
-    }
-
-    [Fact]
-    public void CreateCallOptions_ShouldNotIncludeApiTokenHeader_WhenTokenIsEmpty()
-    {
-        var services = new ServiceCollection().BuildServiceProvider();
-        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["DAPR_API_TOKEN"] = ""
-            })
-            .Build();
-
-        var worker = new WorkflowWorker(
-            CreateGrpcClientMock().Object,
-            new StubWorkflowsFactory(),
-            NullLoggerFactory.Instance,
-            serializer,
-            services,
-            configuration);
-
-        var callOptions = InvokeCreateCallOptions(worker, CancellationToken.None);
-
-        Assert.False(HasHeader(callOptions, "dapr-api-token", out _));
-        Assert.True(HasHeader(callOptions, "User-Agent", out _));
     }
 
     [Fact]
@@ -1950,7 +1890,7 @@ public class WorkflowWorkerTests
     // -------------------------------------------------------------------------
 
     [Fact]
-    public async Task HandleWorkflowResponseAsync_ShouldFetchHistory_WhenRequiresHistoryStreamingIsTrue()
+    public async Task HandleWorkflowResponseAsync_ShouldUseHistoryResolvedByProtocol_WhenRequiresHistoryStreamingIsTrue()
     {
         var sp = new ServiceCollection().BuildServiceProvider();
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -1986,7 +1926,8 @@ public class WorkflowWorkerTests
         var response = await InvokeHandleWorkflowResponseAsync(worker, new WorkflowRequest
         {
             InstanceId = "stream-i",
-            RequiresHistoryStreaming = true
+            RequiresHistoryStreaming = true,
+            PastEvents = { new HistoryEvent { ExecutionStarted = new() { Name = "wf", Input = "10" } } }
         });
 
         Assert.Equal("stream-i", response.InstanceId);
@@ -1998,7 +1939,7 @@ public class WorkflowWorkerTests
             x => x.GetInstanceHistoryAsync(
                 It.Is<GetInstanceHistoryRequest>(request => request.InstanceId == "stream-i"),
                 It.IsAny<CallOptions>()),
-            Times.Once());
+            Times.Never());
     }
 
     // -------------------------------------------------------------------------
@@ -2643,20 +2584,6 @@ public class WorkflowWorkerTests
 
         var task = (Task)method.Invoke(worker, [token])!;
         await task;
-    }
-
-    private static CallOptions InvokeCreateCallOptions(WorkflowWorker worker, CancellationToken token)
-    {
-        var method = typeof(WorkflowWorker).GetMethod("CreateCallOptions", BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull(method);
-        return (CallOptions)method.Invoke(worker, [token])!;
-    }
-
-    private static bool HasHeader(CallOptions options, string key, out string? value)
-    {
-        var entry = options.Headers?.FirstOrDefault(header => string.Equals(header.Key, key, StringComparison.OrdinalIgnoreCase));
-        value = entry?.Value;
-        return entry is not null;
     }
 
     private static async Task<WorkflowResponse> InvokeHandleWorkflowResponseAsync(WorkflowWorker worker, WorkflowRequest request)

@@ -219,9 +219,8 @@ public class DaprWorkflowClientTests
 
         Assert.True(state.Exists);
         Assert.Equal("i", inner.LastWaitForCompletionInstanceId);
-        Assert.False(inner.LastWaitForCompletionGetInputsAndOutputs);
-        Assert.Equal("i", inner.LastGetMetadataInstanceId);
-        Assert.True(inner.LastGetMetadataGetInputsAndOutputs);
+        Assert.True(inner.LastWaitForCompletionGetInputsAndOutputs);
+        Assert.Null(inner.LastGetMetadataInstanceId);
     }
 
     [Fact]

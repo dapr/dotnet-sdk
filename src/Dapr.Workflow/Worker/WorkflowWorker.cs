@@ -24,7 +24,6 @@ using Dapr.Workflow.Payloads;
 using Dapr.Workflow.Versioning;
 using Dapr.Workflow.Worker.Grpc;
 using Dapr.Workflow.Worker.Internal;
-using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -94,8 +93,7 @@ internal sealed class WorkflowWorker(
             // Create a scope for DI
             await using var scope = _serviceProvider.CreateAsyncScope();
 
-            // We must collect ALL past events, including those from the stream if required
-            // Failure to do this causes the orchestrator to have a "blind spot" in its history at scale
+            // The protocol handler resolves all transport-backed history before invoking user code.
             var allPastEvents = request.PastEvents.ToList();
 
             // Extract the following values from the ExecutionStartedEvent in the history
@@ -118,23 +116,13 @@ internal sealed class WorkflowWorker(
             // identically across an SDK upgrade.
             string? historyExecutionId = null;
 
-            if (request.RequiresHistoryStreaming)
-            {
-                var streamRequest = new GetInstanceHistoryRequest { InstanceId = request.InstanceId };
-
-                var result = await _grpcClient.GetInstanceHistoryAsync(streamRequest, CreateCallOptions())
-                    .ConfigureAwait(false);
-                allPastEvents.AddRange(result.Events);
-            }
-            
-            // If the most recent event is `ExecutionTerminated`, acknowledge termination immediately.
+            // Termination is terminal even when completions follow it in the same batch.
             var timelineEvents = allPastEvents.Concat(request.NewEvents).ToList();
-            var latestEvent = timelineEvents.Count > 0 ? timelineEvents[^1] : null;
             
             // Restore the trace context provided by the sidecar so Activity.Current is non-null
             traceScope = WorkflowTrace.StartOrchestrationTrace(timelineEvents);
             
-            if (latestEvent?.ExecutionTerminated != null)
+            if (timelineEvents.Any(e => e.ExecutionTerminated is not null))
             {
                 return new WorkflowResponse
                 {
@@ -153,17 +141,14 @@ internal sealed class WorkflowWorker(
                 };
             }
 
-            // If the instance is suspended, acknowledge the work item without running the orchestrator.
-            // This keeps the workflow paused while still committing the suspension event.
-            if (latestEvent?.ExecutionSuspended != null)
+            // Suspended turns only commit history. Replay on resume will deliver buffered
+            // completions in order, without requiring workflow activation while paused.
+            if (timelineEvents.LastOrDefault(e => e.ExecutionSuspended is not null ||
+                                                 e.ExecutionResumed is not null)?.ExecutionSuspended is not null)
             {
-                return new WorkflowResponse
-                {
-                    InstanceId = request.InstanceId,
-                    CompletionToken = completionToken
-                };
+                return new WorkflowResponse { InstanceId = request.InstanceId, CompletionToken = completionToken };
             }
-            
+
             // Create a new version tracker for this turn
             var versionTracker = new WorkflowVersionTracker(allPastEvents);
 
@@ -406,6 +391,11 @@ internal sealed class WorkflowWorker(
             if (request.NewEvents.Count > 0)
             {
                 await context.ProcessEventsAsync(request.NewEvents, false).ConfigureAwait(false);
+            }
+
+            if (context.IsSuspended)
+            {
+                return new WorkflowResponse { InstanceId = request.InstanceId, CompletionToken = completionToken };
             }
 
             // Populate CarryoverEvents now that all events in this turn have been processed.
@@ -690,6 +680,4 @@ internal sealed class WorkflowWorker(
 
         await base.StopAsync(cancellationToken);
     }
-    private CallOptions CreateCallOptions(CancellationToken cancellationToken = default) =>
-        DaprClientUtilities.ConfigureGrpcCallOptions(typeof(WorkflowWorker).Assembly, _daprApiToken, cancellationToken);
 }

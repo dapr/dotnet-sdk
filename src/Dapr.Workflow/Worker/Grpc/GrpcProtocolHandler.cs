@@ -38,6 +38,7 @@ internal sealed class GrpcProtocolHandler(
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan KeepaliveInterval = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan HistorySweepInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan StreamDrainTimeout = TimeSpan.FromSeconds(1);
 
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ILogger<GrpcProtocolHandler> _logger = loggerFactory.CreateLogger<GrpcProtocolHandler>() ?? throw new ArgumentNullException(nameof(loggerFactory));
@@ -135,12 +136,6 @@ internal sealed class GrpcProtocolHandler(
                     // Process work items from the stream
                     await ReceiveLoopAsync(_streamingCall.ResponseStream, workflowHandler, activityHandler,
                         TeardownStream, streamGeneration, streamToken);
-
-                    // Stream ended gracefully => treat as an interrupted and reconnect unless shutting down
-                    if (!token.IsCancellationRequested)
-                    {
-                        await DelayOrStopAsync(ReconnectDelay, token);
-                    }
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
@@ -156,16 +151,16 @@ internal sealed class GrpcProtocolHandler(
                 {
                     // Any RpcException while not shutting down -> retry indefinitely (transient or not)
                     _logger.LogGrpcProtocolHandlerGenericError(ex);
-                    await DelayOrStopAsync(ReconnectDelay, token);
                 }
                 catch (Exception ex) when (!token.IsCancellationRequested)
                 {
                     // Any other interruption -> retry indefinitely
                     _logger.LogGrpcProtocolHandlerGenericError(ex);
-                    await DelayOrStopAsync(ReconnectDelay, token);
                 }
                 finally
                 {
+                    // Retire queued work before reconnecting, including after a clean EOF.
+                    TeardownStream();
                     // Stop the keepalive loop when the receive loop ends (reconnect or shutdown).
                     // This runs after catch filters evaluate, avoiding a race where teardown delay
                     // allows external cancellation to change filter outcomes.
@@ -186,6 +181,9 @@ internal sealed class GrpcProtocolHandler(
                     // so the cached histories from this connection are no longer in sync.
                     _historyCache.Reset();
                 }
+
+                if (!token.IsCancellationRequested)
+                    await DelayOrStopAsync(ReconnectDelay, token);
             }
         }
         finally
@@ -251,7 +249,8 @@ internal sealed class GrpcProtocolHandler(
                             teardownStream, streamGeneration, cancellationToken),
                         cancellationToken),
                     WorkItem.RequestOneofCase.ActivityRequest => Task.Run(
-                        () => ProcessActivityAsync(workItem.ActivityRequest, completionToken, activityHandler, cancellationToken),
+                        () => ProcessActivityAsync(workItem.ActivityRequest, completionToken, activityHandler,
+                            cancellationToken, teardownStream),
                         cancellationToken),
                     WorkItem.RequestOneofCase.HealthPing => Task.CompletedTask,
                     _ => Task.Run(
@@ -270,10 +269,15 @@ internal sealed class GrpcProtocolHandler(
 
             _logger.LogGrpcProtocolHandlerReceiveLoopCompleted(activeWorkItems.Count);
 
-            // Wait for all active work items to complete
+            // Permit fast completions on clean EOF, but never let an uncooperative activity
+            // prevent stream retirement or listener shutdown.
             if (activeWorkItems.Count > 0)
             {
-                await Task.WhenAll(activeWorkItems);
+                try
+                {
+                    await Task.WhenAll(activeWorkItems).WaitAsync(StreamDrainTimeout, cancellationToken);
+                }
+                catch (TimeoutException) { }
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -291,6 +295,18 @@ internal sealed class GrpcProtocolHandler(
             _logger.LogGrpcProtocolHandlerReceiveLoopError(ex);
             throw;
         }
+        finally
+        {
+            teardownStream();
+            // Detached handlers may still finish after their stream is retired.
+            _ = ObserveWorkItemsAsync(activeWorkItems);
+        }
+    }
+
+    private static async Task ObserveWorkItemsAsync(IEnumerable<Task> tasks)
+    {
+        try { await Task.WhenAll(tasks).ConfigureAwait(false); }
+        catch (Exception) { } // Each processor logs failures; also observe cancellation of queued dispatches.
     }
     
     /// <summary>
@@ -305,6 +321,7 @@ internal sealed class GrpcProtocolHandler(
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _logger.LogGrpcProtocolHandlerWorkflowProcessorStart(request.InstanceId, activeCount);
 
             // Resolve the committed history before replay. A delta work item (cachedHistory set)
@@ -312,14 +329,24 @@ internal sealed class GrpcProtocolHandler(
             // rebuild the full history from our per-stream cache, or fetch it on a miss. Overwriting
             // request.PastEvents here keeps the workflow handler oblivious to the delta protocol.
             //
-            // History streaming is mutually exclusive with this: it also treats PastEvents as partial
-            // and appends its own GetInstanceHistory fetch downstream, so reconstructing here as well
-            // would hand the workflow a doubled history. UpdateHistoryCache skips the same case.
-            if (!_disableStatefulHistory && !request.RequiresHistoryStreaming && request.CachedHistory is not null)
+            // Streaming history appends the remaining events instead of applying delta
+            // reconstruction. Both paths use this stream's cancellation and recovery boundary.
+            if (request.RequiresHistoryStreaming ||
+                (!_disableStatefulHistory && request.CachedHistory is not null))
             {
                 try
                 {
-                    await ResolveCachedHistoryAsync(request, streamGeneration, cancellationToken);
+                    if (request.RequiresHistoryStreaming)
+                    {
+                        var history = await _grpcClient.GetInstanceHistoryAsync(
+                            new GetInstanceHistoryRequest { InstanceId = request.InstanceId },
+                            CreateCallOptions(cancellationToken));
+                        request.PastEvents.AddRange(history.Events);
+                    }
+                    else
+                    {
+                        await ResolveCachedHistoryAsync(request, streamGeneration, cancellationToken);
+                    }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -348,6 +375,7 @@ internal sealed class GrpcProtocolHandler(
             WorkflowResponse result;
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 result = await handler(request, completionToken);
                 UpdateHistoryCache(request, result, streamGeneration);
             }
@@ -361,11 +389,10 @@ internal sealed class GrpcProtocolHandler(
                 result = CreateWorkflowFailureResult(request, completionToken, ex);
             }
 
-            // Send the result back to Dapr. If delivery fails (e.g. transient gRPC error or
-            // "no such instance exists"), log and abandon — do NOT send a secondary failure
-            // response, as that would corrupt the workflow history.
+            // Delivery failure retires the stream for redelivery, never an application failure.
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var grpcCallOptions = CreateCallOptions(cancellationToken);
 #pragma warning disable CS0612 // Deprecated: kept for compatibility with Dapr runtimes < 1.18 where CompleteWorkflowTask is not available.
                 await _grpcClient.CompleteOrchestratorTaskAsync(result, grpcCallOptions);
@@ -378,6 +405,7 @@ internal sealed class GrpcProtocolHandler(
             catch (Exception resultEx)
             {
                 _logger.LogGrpcProtocolHandlerWorkflowProcessorFailedToSendError(resultEx, request.InstanceId);
+                teardownStream();
             }
         }
         finally
@@ -447,13 +475,15 @@ internal sealed class GrpcProtocolHandler(
     /// Processes an activity request work item.
     /// </summary>
     private async Task ProcessActivityAsync(ActivityRequest request, string completionToken,
-        Func<ActivityRequest, string, Task<ActivityResponse>> handler, CancellationToken cancellationToken)
+        Func<ActivityRequest, string, Task<ActivityResponse>> handler, CancellationToken cancellationToken,
+        Action teardownStream)
     {
         await _activitySemaphore.WaitAsync(cancellationToken);
         var activeCount = Interlocked.Increment(ref _activeWorkItemCount);
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _logger.LogGrpcProtocolHandlerActivityProcessorStart(request.WorkflowInstance.InstanceId, request.Name,
                 request.TaskId, activeCount);
 
@@ -482,11 +512,10 @@ internal sealed class GrpcProtocolHandler(
                 result = CreateActivityFailureResult(request, completionToken, ex);
             }
 
-            // Send the result back to Dapr. If delivery fails (e.g. transient gRPC error or
-            // "no such instance exists"), log and abandon — do NOT send a secondary failure
-            // response, as that would corrupt the workflow history.
+            // Delivery failure retires the stream for redelivery, never an application failure.
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var grpcCallOptions = CreateCallOptions(cancellationToken);
                 await _grpcClient.CompleteActivityTaskAsync(result, grpcCallOptions);
             }
@@ -497,6 +526,7 @@ internal sealed class GrpcProtocolHandler(
             catch (Exception resultEx)
             {
                 _logger.LogGrpcProtocolHandlerActivityProcessorFailedToSendError(resultEx, request.Name);
+                teardownStream();
             }
         }
         finally
@@ -582,8 +612,8 @@ internal sealed class GrpcProtocolHandler(
 
         _streamingCall?.Dispose();
         _disposalCts.Dispose();
-        _orchestrationSemaphore.Dispose();
-        _activitySemaphore.Dispose();
+        // In-flight user activities cannot be forcibly canceled. Their finally blocks still
+        // release these managed semaphores after disposal; let GC reclaim them with the handler.
 
         _logger.LogGrpcProtocolHandlerDisposed();
     }

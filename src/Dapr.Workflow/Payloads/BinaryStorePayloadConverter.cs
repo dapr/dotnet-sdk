@@ -13,6 +13,7 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -118,22 +119,33 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
     internal async Task<Stream> OpenAsync(PayloadReference reference, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(reference);
-        var chunks = _store.GetBinaryFileChunksAsync(reference.StoreName, reference.Key, cancellationToken)
-            .GetAsyncEnumerator(cancellationToken);
+        var readCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        IAsyncEnumerator<ReadOnlyMemory<byte>>? chunks = null;
+        var transferred = false;
         try
         {
+            chunks = _store.GetBinaryFileChunksAsync(reference.StoreName, reference.Key, readCts.Token)
+                .GetAsyncEnumerator(readCts.Token);
             var hasFirstChunk = await chunks.MoveNextAsync().ConfigureAwait(false);
-            return new BinaryStorePayloadStream(chunks, reference, hasFirstChunk);
+            var stream = new BinaryStorePayloadStream(chunks, reference, hasFirstChunk, readCts);
+            transferred = true;
+            return stream;
         }
         catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
         {
-            await chunks.DisposeAsync().ConfigureAwait(false);
             throw new PayloadNotFoundException(reference, ex);
         }
-        catch
+        finally
         {
-            await chunks.DisposeAsync().ConfigureAwait(false);
-            throw;
+            if (!transferred)
+            {
+                try
+                {
+                    if (chunks is not null)
+                        await chunks.DisposeAsync().ConfigureAwait(false);
+                }
+                finally { readCts.Dispose(); }
+            }
         }
     }
 
