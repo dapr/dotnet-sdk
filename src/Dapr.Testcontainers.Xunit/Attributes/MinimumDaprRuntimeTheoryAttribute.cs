@@ -8,6 +8,7 @@ namespace Dapr.Testcontainers.Xunit.Attributes;
 /// </summary>
 /// <remarks>
 /// This will include RCs of that indicated version in addition to stable versions.
+/// The rolling runtime label <c>edge</c> (case-insensitive) satisfies every valid numerical minimum.
 /// The runtime version is read from DAPR_RUNTIME_VERSION, using the same rules as
 /// <see cref="MinimumDaprRuntimeFactAttribute"/>.
 /// </remarks>

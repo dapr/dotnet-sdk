@@ -22,6 +22,10 @@ public sealed class MinimumDaprRuntimeAttributeTests
     [InlineData(" ", "1.16.0", false)]
     [InlineData("latest", "1.16.0", false)]
     [InlineData("LATEST", "1.16.0", false)]
+    [InlineData("edge", "1.16.0", false)]
+    [InlineData("EDGE", "1.16.0", false)]
+    [InlineData("EdGe", "999.0.0", false)]
+    [InlineData(" edge ", "999.0.0", false)]
     [InlineData("invalid", "1.16.0", false)]
     public void AttributesUseTheSameVersionGate(string? currentVersion, string minimumVersion, bool shouldSkip)
     {
@@ -50,6 +54,8 @@ public sealed class MinimumDaprRuntimeAttributeTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("invalid")]
+    [InlineData("edge")]
+    [InlineData("EDGE")]
     [InlineData("1")]
     public void AttributesRejectInvalidMinimumVersions(string? minimumVersion)
     {

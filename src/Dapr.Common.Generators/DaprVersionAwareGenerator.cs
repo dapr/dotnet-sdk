@@ -30,6 +30,8 @@ namespace Dapr.Common.Generators;
 /// SchemaDivergent, and emits an ordered build-time method catalog. The generated
 /// wrapper combines that catalog with runtime capability discovery and safely
 /// negotiates compatible variants when discovery is unavailable.
+/// Runtime release labels, including <c>edge</c>, are not compared: reflection
+/// supplies service and method descriptors, not a numerical runtime version.
 /// </remarks>
 [Generator]
 public sealed class DaprVersionAwareGenerator : IIncrementalGenerator

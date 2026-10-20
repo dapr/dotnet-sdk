@@ -1,5 +1,5 @@
 name: "Dapr Version Tag Selector"
-description: "Extracts the latest stable patch for each of N minor versions (N-2 policy) plus the latest RC if the newest minor is pre-release only"
+description: "Includes edge plus the latest stable patch for each of N minor versions (N-2 policy) and the latest RC if the newest minor is pre-release only"
 author: "Dapr Contributors"
 runs:
   using: "node20"
@@ -26,4 +26,4 @@ inputs:
     default: "rc"
 outputs:
   matrix_json:
-    description: "Output matrix"
+    description: "Output matrix of version/channel objects; always includes edge alongside the selected numerical releases"

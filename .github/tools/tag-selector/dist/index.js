@@ -25436,6 +25436,7 @@ function computeFromTags(input) {
   const stableCount = input.stableCount ?? 2;
   const rcCount = input.rcCount ?? 1;
   const rcIdent = input.rcIdent ?? "rc";
+  const edge = [{ version: "edge", channel: "edge" }];
   const prereleaseTagSet = new Set(
     (input.prereleaseTags ?? []).map((t) => stripPrefix(t.replace(/^refs\/tags\//, ""), tagPrefix))
   );
@@ -25451,7 +25452,7 @@ function computeFromTags(input) {
     }
   }
   if (versions.length === 0) {
-    return { matrix_json: [] };
+    return { matrix_json: edge };
   }
   const stable = versions.filter((v) => !v.isPrereleaseRelease && !import_semver.default.prerelease(v.version)).map((v) => v.version);
   const prerelease = versions.filter((v) => v.isPrereleaseRelease || !!import_semver.default.prerelease(v.version)).map((v) => v.version);
@@ -25489,6 +25490,7 @@ function computeFromTags(input) {
     }
   }
   const matrix = [
+    ...edge,
     ...latestRcs.map((v) => ({ version: v, channel: "rc" })),
     ...stablePatches.map((v) => ({ version: v, channel: "stable" }))
   ];
@@ -25511,7 +25513,7 @@ async function run() {
       repo,
       per_page: 100
     });
-    const releaseTags = releases.filter((release) => !release.draft).filter((release) => !release.tag_name.includes("1.17.")).map((release) => ({
+    const releaseTags = releases.filter((release) => !release.draft).map((release) => ({
       name: release.tag_name,
       prerelease: release.prerelease
     }));
