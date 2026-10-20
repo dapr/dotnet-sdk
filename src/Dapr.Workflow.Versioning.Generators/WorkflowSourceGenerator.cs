@@ -127,7 +127,8 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
                 }
 
                 // Abstract or open-generic types cannot be instantiated; skip them.
-                if (symbol.IsAbstract || symbol.TypeParameters.Length > 0)
+                if (symbol.IsAbstract || HasGenericContainer(symbol) ||
+                    !IsAccessibleFromAssembly(symbol, symbol.ContainingAssembly))
                 {
                     return (Workflow: (DiscoveredWorkflow?)null,
                         Diagnostic: (string?)$"Rejected '{symbolName}': abstract or open-generic workflow types are not registered.");
@@ -211,7 +212,7 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
             {
                 var (symbol, ks) = pair;
                 // Abstract or open-generic types cannot be instantiated; skip them.
-                if (symbol is null || symbol.IsAbstract || symbol.TypeParameters.Length > 0)
+                if (symbol is null || symbol.IsAbstract || HasGenericContainer(symbol))
                     return (DiscoveredActivity?)null;
 
                 if (!IsAccessibleFromAssembly(symbol, symbol.ContainingAssembly))
@@ -394,7 +395,7 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
         return new DiscoveredWorkflow(
             WorkflowTypeName: workflowSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             WorkflowSimpleName: workflowSymbol.Name,
-            IsAbstractOrGeneric: workflowSymbol.IsAbstract || workflowSymbol.TypeParameters.Length > 0,
+            IsAbstractOrGeneric: workflowSymbol.IsAbstract || HasGenericContainer(workflowSymbol),
             DeclaredCanonicalName: string.IsNullOrWhiteSpace(canonical) ? null : canonical,
             DeclaredVersion: string.IsNullOrWhiteSpace(version) ? null : version,
             StrategyTypeName: strategyTypeName,
@@ -418,7 +419,7 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
                 continue;
 
             // Skip abstract types and open generics — they can't be instantiated.
-            if (type.IsAbstract || type.TypeParameters.Length > 0)
+            if (type.IsAbstract || HasGenericContainer(type))
                 continue;
 
             AttributeData? attrData = null;
@@ -448,7 +449,7 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
                 continue;
 
             // Skip abstract types and open generics — they can't be instantiated.
-            if (type.IsAbstract || type.TypeParameters.Length > 0)
+            if (type.IsAbstract || HasGenericContainer(type))
                 continue;
 
             if (!InheritsFromActivity(type, knownSymbols.ActivityBase))
@@ -492,11 +493,22 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
 
     // ── Accessibility helpers ───────────────────────────────────────────────────
 
+    private static bool HasGenericContainer(INamedTypeSymbol type)
+    {
+        for (var containing = type; containing is not null; containing = containing.ContainingType)
+        {
+            if (containing.TypeParameters.Length > 0)
+                return true;
+        }
+
+        return false;
+    }
+
     private static bool IsAccessibleFromAssembly(INamedTypeSymbol type, IAssemblySymbol currentAssembly)
     {
         for (var containing = type; containing is not null; containing = containing.ContainingType)
         {
-            if (!IsAccessibleCore(containing, currentAssembly))
+            if (containing.IsFileLocal || !IsAccessibleCore(containing, currentAssembly))
                 return false;
         }
 
@@ -587,30 +599,6 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
         sb.AppendLine("    internal static partial class GeneratedWorkflowVersionRegistry");
         sb.AppendLine("    {");
 
-        // RegisterAlias helper (versioning path)
-        sb.AppendLine("        private static void RegisterAlias(global::Dapr.Workflow.WorkflowRuntimeOptions options, string canonical, string latestName)");
-        sb.AppendLine("        {");
-        bool firstAlias = true;
-        foreach (var wf in concreteWorkflows)
-        {
-            var cond = $"string.Equals(latestName, {CodeLiteral(wf.WorkflowTypeName)}, StringComparison.Ordinal)";
-            sb.AppendLine(firstAlias
-                ? $"            if ({cond}) options.RegisterWorkflow<{wf.WorkflowTypeName}>(canonical);"
-                : $"            else if ({cond}) options.RegisterWorkflow<{wf.WorkflowTypeName}>(canonical);");
-            firstAlias = false;
-        }
-
-        if (workflows.Count > 0)
-        {
-            sb.AppendLine("            else");
-            sb.AppendLine("            {");
-            sb.AppendLine("                throw new InvalidOperationException($\"No registration method generated for selected type '{latestName}'.\");");
-            sb.AppendLine("            }");
-        }
-
-        sb.AppendLine("        }");
-        sb.AppendLine();
-
         // Entry struct (versioning path)
         sb.AppendLine("        private readonly struct Entry");
         sb.AppendLine("        {");
@@ -680,34 +668,23 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
         sb.AppendLine("            if (options is null) throw new ArgumentNullException(nameof(options));");
         sb.AppendLine("            if (services is null) throw new ArgumentNullException(nameof(services));");
         sb.AppendLine();
-        sb.AppendLine("            var entries = CreateEntries();");
-        sb.AppendLine();
-        sb.AppendLine("            // Register concrete workflow implementations with internal fully-qualified names to avoid collisions.");
+        sb.AppendLine("            global::Dapr.Workflow.Versioning.WorkflowVersioningRegistry.RegisterGenerated(options, services,");
+        sb.AppendLine("                new global::Dapr.Workflow.Versioning.GeneratedWorkflowRegistration[]");
+        sb.AppendLine("                {");
 
         foreach (var wf in concreteWorkflows)
         {
-            sb.AppendLine($"            options.RegisterWorkflow<{wf.WorkflowTypeName}>({CodeLiteral(wf.WorkflowTypeName)});");
+            var strategy = wf.StrategyTypeName is null ? "null" : $"typeof({wf.StrategyTypeName})";
+            var canonical = wf.DeclaredCanonicalName is null ? "null" : CodeLiteral(wf.DeclaredCanonicalName);
+            var version = wf.DeclaredVersion is null ? "null" : CodeLiteral(wf.DeclaredVersion);
+            var optionsName = wf.OptionsName is null ? "null" : CodeLiteral(wf.OptionsName);
+            sb.AppendLine($"                    new(typeof({wf.WorkflowTypeName}), {CodeLiteral(wf.WorkflowTypeName)}, {canonical}, {version}, {strategy}, {optionsName},");
+            sb.AppendLine($"                        static (runtime, name) => runtime.RegisterWorkflow<{wf.WorkflowTypeName}>(name)),");
         }
-
-        sb.AppendLine();
-        sb.AppendLine("            var registry = BuildRegistry(services, entries, out var latestMap);");
-        sb.AppendLine("            UpdateRouterRegistry(services, entries, registry);");
-        sb.AppendLine("            foreach (var kvp in latestMap)");
-        sb.AppendLine("            {");
-        sb.AppendLine("                var canonical = kvp.Key;");
-        sb.AppendLine("                var latestName = kvp.Value;");
-        sb.AppendLine("                RegisterAlias(options, canonical, latestName);");
-        sb.AppendLine("            }");
-        sb.AppendLine();
-        sb.AppendLine("            // Register simple-name aliases for convenience. Collisions are resolved deterministically");
-        sb.AppendLine("            // by generator ordering (first registration wins).");
-        var simpleAliasNames = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var wf in concreteWorkflows)
+        sb.AppendLine("                });");
+        foreach (var activity in activities)
         {
-            if (simpleAliasNames.Add(wf.WorkflowSimpleName))
-            {
-                sb.AppendLine($"            options.RegisterWorkflow<{wf.WorkflowTypeName}>({CodeLiteral(wf.WorkflowSimpleName)});");
-            }
+            sb.AppendLine($"            options.RegisterActivity<{activity.ActivityTypeName}>();");
         }
 
         sb.AppendLine("        }");
@@ -725,27 +702,6 @@ public sealed class WorkflowSourceGenerator : IIncrementalGenerator
         sb.AppendLine("            if (services is null) throw new ArgumentNullException(nameof(services));");
         sb.AppendLine("            var entries = CreateEntries();");
         sb.AppendLine("            return BuildRegistry(services, entries, out _);");
-        sb.AppendLine("        }");
-        sb.AppendLine();
-
-        // UpdateRouterRegistry
-        sb.AppendLine("        private static void UpdateRouterRegistry(global::System.IServiceProvider services, List<Entry> entries, IReadOnlyDictionary<string, IReadOnlyList<string>> registry)");
-        sb.AppendLine("        {");
-        sb.AppendLine("            var routerRegistry = services.GetService(typeof(global::Dapr.Workflow.Versioning.IWorkflowRouterRegistry)) as global::Dapr.Workflow.Versioning.IWorkflowRouterRegistry;");
-        sb.AppendLine("            if (routerRegistry is null) return;");
-        sb.AppendLine();
-        sb.AppendLine("            var nameMap = new Dictionary<string, string>(StringComparer.Ordinal);");
-        sb.AppendLine("            foreach (var e in entries)");
-        sb.AppendLine("                nameMap[e.WorkflowTypeName] = e.WorkflowType.Name;");
-        sb.AppendLine();
-        sb.AppendLine("            var routes = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);");
-        sb.AppendLine("            foreach (var kvp in registry)");
-        sb.AppendLine("            {");
-        sb.AppendLine("                var list = kvp.Value.Select(v => nameMap.TryGetValue(v, out var n) ? n : v).ToList();");
-        sb.AppendLine("                routes[kvp.Key] = list;");
-        sb.AppendLine("            }");
-        sb.AppendLine();
-        sb.AppendLine("            routerRegistry.UpdateRoutes(routes);");
         sb.AppendLine("        }");
         sb.AppendLine();
 

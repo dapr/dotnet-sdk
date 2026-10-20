@@ -76,7 +76,7 @@ public static class WorkflowAutoRegistry
         }
 
         foreach (var registration in snapshot)
-            registration(options);
+            options.AddAutoRegistrations(registration);
     }
 
     private sealed class ReferenceEqualityComparer : IEqualityComparer<WorkflowRuntimeOptions>

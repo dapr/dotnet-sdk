@@ -119,7 +119,7 @@ public sealed class DaprWorkflowClientBuilder(IConfiguration? configuration = nu
         {
             serializer = _serializerFactory is not null && _serviceProvider is not null
                 ? _serializerFactory(_serviceProvider)
-                : (payloadConverter is not null ? _serviceProvider?.GetService<IDaprSerializer>() : null)
+                : _serviceProvider?.GetService<IDaprSerializer>()
                   ?? new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
         }
         

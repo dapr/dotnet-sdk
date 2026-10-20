@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Threading;
@@ -34,6 +35,15 @@ internal sealed class WorkflowPayloadHandler(
     private readonly Queue<Func<Task>> _reads = new();
     private readonly Dictionary<int, bool> _inlineCallInputs = [];
     internal CancellationToken StoppingToken => stoppingToken;
+
+    internal void DropOptionalTimerAt(int actionId)
+    {
+        foreach (var pair in _inlineCallInputs.Where(pair => pair.Key > actionId).OrderBy(pair => pair.Key).ToArray())
+        {
+            _inlineCallInputs.Remove(pair.Key);
+            _inlineCallInputs[pair.Key - 1] = pair.Value;
+        }
+    }
 
     internal void ConfigureCallInput(int actionId, string? sourceAppId, WorkflowTaskOptions? options) =>
         _inlineCallInputs[actionId] = options?.AllowPayloadReferences != true &&

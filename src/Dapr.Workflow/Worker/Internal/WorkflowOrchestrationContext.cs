@@ -88,6 +88,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     private bool _isReplaying;
     private bool _turnInitialized;
     private bool _preserveUnprocessedEvents;
+    private bool _continuedAsNew;
+    private readonly List<(HistoryEvent Event, bool IsReplaying)> _suspendedEvents = [];
+    internal bool IsSuspended { get; private set; }
     private readonly WorkflowPayloadHandler? _payloads;
     private readonly Dictionary<int, PayloadSite> _unresolvableCallInputs = [];
     private readonly WorkflowFeatureCollection? _features;
@@ -296,16 +299,16 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
             _openTasks.Remove(taskId);
         }
 
-        if (cancellationToken.CanBeCanceled)
+        using var registration = cancellationToken.Register(() =>
         {
-            cancellationToken.Register(() =>
+            if (tcs.TrySetCanceled())
             {
-                if (tcs.TrySetCanceled())
-                {
-                    _openTasks.Remove(taskId);
-                }
-            });
-        }
+                // Compatibility replay may have reassigned this timer's action ID.
+                var entry = _openTasks.FirstOrDefault(pair => ReferenceEquals(pair.Value, tcs));
+                if (entry.Value is not null)
+                    _openTasks.Remove(entry.Key);
+            }
+        });
 
         await tcs.Task;
     }
@@ -404,10 +407,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
             _externalEventSources.Add(eventName, eventSourceQueue);
         }
 
-        if (cancellationToken.CanBeCanceled)
-        {
-            cancellationToken.Register(() => eventSource.TrySetCanceled(cancellationToken));
-        }
+        using var registration = cancellationToken.Register(() => eventSource.TrySetCanceled(cancellationToken));
 
         var historyEvent = await eventSource.Task;
 
@@ -467,11 +467,15 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         if (options?.RetryPolicy is { } retryPolicy)
         {
             // First-child rule: capture the first child's instance ID for the entire retry chain.
-            var firstChildInstanceId = options.InstanceId ?? NewGuid().ToString();
+            // Retain the historical GUID consumption so existing child IDs replay unchanged.
+            if (options.InstanceId is null)
+                _ = NewGuid();
+            string? firstChildInstanceId = null;
             var attemptOptions = options with { RetryPolicy = null };
             var interceptor = new RetryInterceptor<TResult>(this, retryPolicy,
-                () => CallChildWorkflowInternalAsync<TResult>(workflowName, input, attemptOptions),
-                delay => CreateChildWorkflowRetryTimer(delay, firstChildInstanceId));
+                () => CallChildWorkflowInternalAsync<TResult>(workflowName, input, attemptOptions,
+                    id => firstChildInstanceId ??= id),
+                delay => CreateChildWorkflowRetryTimer(delay, firstChildInstanceId!));
             var result = await interceptor.Invoke();
             return result!;
         }
@@ -482,13 +486,14 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     private async Task<TResult> CallChildWorkflowInternalAsync<TResult>(
         string workflowName,
         object? input,
-        ChildWorkflowTaskOptions? options)
+        ChildWorkflowTaskOptions? options, Action<string>? onScheduled = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
 
         // CRITICAL: Child instance IDs must be deterministic across replays
         // Generate the child instance ID BEFORE incrementing sequence
         var childInstanceId = options?.InstanceId ?? NewGuid().ToString();
+        onScheduled?.Invoke(childInstanceId);
         var taskId = _sequenceNumber++;
 
         var router = CreateRouter(options?.TargetAppId);
@@ -613,6 +618,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         // the same NewEvents batch will be buffered AFTER this point and would be missed.
         // FinalizeCarryoverEvents() is called after all ProcessEvents calls are complete.
         _preserveUnprocessedEvents = preserveUnprocessedEvents;
+        _continuedAsNew = true;
         _pendingActions.Add(action.Id, action);
     }
 
@@ -631,6 +637,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         {
             if (action.CompleteWorkflow?.WorkflowStatus == OrchestrationStatus.ContinuedAsNew)
             {
+                action.CompleteWorkflow.CarryoverEvents.Clear();
                 action.CompleteWorkflow.CarryoverEvents.AddRange(_externalEventBuffer);
                 return;
             }
@@ -677,73 +684,114 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     internal void ProcessEvents(IEnumerable<HistoryEvent> events, bool isReplaying)
     {
         _isReplaying = isReplaying;
-        
-        foreach (HistoryEvent historyEvent in events)
+        foreach (var item in GetExecutableEvents(events, isReplaying))
         {
-            switch (historyEvent)
+            ProcessEvent(item.Event, item.IsReplaying);
+        }
+    }
+
+    private IEnumerable<(HistoryEvent Event, bool IsReplaying)> GetExecutableEvents(
+        IEnumerable<HistoryEvent> events, bool isReplaying)
+    {
+        foreach (var historyEvent in events)
+        {
+            if (historyEvent.ExecutionSuspended is not null)
             {
-                case { WorkflowStarted: { } started }:
-                    HandleOrchestratorStarted(historyEvent, started);
-                    break;
-
-                case { TaskScheduled: not null }:
-                    OnTaskScheduled(historyEvent);
-                    break;
-
-                case { TaskCompleted: { } completed }:
-                    HandleActionCompleted(historyEvent, completed.TaskScheduledId);
-                    break;
-
-                case { TaskFailed: { } failed }:
-                    HandleActionCompleted(historyEvent, failed.TaskScheduledId);
-                    break;
-
-                case { ChildWorkflowInstanceCreated: {} created }:
-                    OnSubOrchestrationCreated(historyEvent, created);
-                    break;
-
-                case { ChildWorkflowInstanceCompleted: { } completed }:
-                    HandleActionCompleted(historyEvent, completed.TaskScheduledId);
-                    break;
-
-                case { ChildWorkflowInstanceFailed: { } failed }:
-                    HandleActionCompleted(historyEvent, failed.TaskScheduledId);
-                    break;
-
-                case { DetachedWorkflowInstanceCreated: { } created }:
-                    HandleDetachedWorkflowCreated(historyEvent, created);
-                    break;
-
-                case { TimerCreated: { } timerCreated }:
-                    OnTimerCreated(historyEvent, timerCreated);
-                    break;
-
-                case { TimerFired: { } fired }:
-                    HandleActionCompleted(historyEvent, fired.TimerId);
-                    break;
-
-                case { EventSent: not null }:
-                    HandleActionCreated(historyEvent);
-                    break;
-
-                case { EventRaised: { } raised }:
-                    HandleEventRaisedEvent(historyEvent, raised.Name);
-                    break;
+                IsSuspended = true;
             }
+            else if (historyEvent.ExecutionResumed is not null)
+            {
+                IsSuspended = false;
+                var buffered = _suspendedEvents.ToArray();
+                _suspendedEvents.Clear();
+                foreach (var item in buffered)
+                    yield return item;
+            }
+            else if (IsSuspended)
+            {
+                _suspendedEvents.Add((historyEvent, isReplaying));
+            }
+            else
+            {
+                yield return (historyEvent, isReplaying);
+            }
+        }
+    }
+
+    private void ProcessEvent(HistoryEvent historyEvent, bool isReplaying)
+    {
+        _isReplaying = isReplaying;
+        if (_continuedAsNew)
+        {
+            if (historyEvent.EventRaised is not null)
+                _externalEventBuffer.Add(historyEvent);
+            return;
+        }
+
+        switch (historyEvent)
+        {
+            case { WorkflowStarted: { } started }:
+                HandleOrchestratorStarted(historyEvent, started);
+                break;
+
+            case { TaskScheduled: not null }:
+                OnTaskScheduled(historyEvent);
+                break;
+
+            case { TaskCompleted: { } completed }:
+                HandleActionCompleted(historyEvent, completed.TaskScheduledId);
+                break;
+
+            case { TaskFailed: { } failed }:
+                HandleActionCompleted(historyEvent, failed.TaskScheduledId);
+                break;
+
+            case { ChildWorkflowInstanceCreated: {} created }:
+                OnSubOrchestrationCreated(historyEvent, created);
+                break;
+
+            case { ChildWorkflowInstanceCompleted: { } completed }:
+                HandleActionCompleted(historyEvent, completed.TaskScheduledId);
+                break;
+
+            case { ChildWorkflowInstanceFailed: { } failed }:
+                HandleActionCompleted(historyEvent, failed.TaskScheduledId);
+                break;
+
+            case { DetachedWorkflowInstanceCreated: { } created }:
+                HandleDetachedWorkflowCreated(historyEvent, created);
+                break;
+
+            case { TimerCreated: { } timerCreated }:
+                OnTimerCreated(historyEvent, timerCreated);
+                break;
+
+            case { TimerFired: { } fired }:
+                HandleActionCompleted(historyEvent, fired.TimerId);
+                break;
+
+            case { EventSent: not null }:
+                HandleActionCreated(historyEvent);
+                break;
+
+            case { EventRaised: { } raised }:
+                HandleEventRaisedEvent(historyEvent, raised.Name);
+                break;
         }
     }
 
     internal async Task ProcessEventsAsync(IEnumerable<HistoryEvent> events, bool isReplaying)
     {
+        _isReplaying = isReplaying;
         if (_payloads is null)
         {
             ProcessEvents(events, isReplaying);
             return;
         }
 
-        foreach (var historyEvent in events)
+        foreach (var item in GetExecutableEvents(events, isReplaying))
         {
-            ProcessEvents([historyEvent], isReplaying);
+            ProcessEvent(item.Event, item.IsReplaying);
             await _payloads.DrainAsync().ConfigureAwait(false);
         }
     }
@@ -773,6 +821,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
 
     private void HandleActionCreated(HistoryEvent historyEvent)
     {
+        while (TryDropOptionalTimerAt(historyEvent.EventId)) { }
         _pendingActions.Remove(historyEvent.EventId);
     }
 
@@ -781,7 +830,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         DetachedWorkflowInstanceCreatedEvent created)
     {
         var matchingAction = FindPendingDetachedWorkflowAction(created.InstanceId);
-        if (matchingAction is { } match &&
+        while (matchingAction is { } match &&
             match.Key > historyEvent.EventId &&
             TryDropOptionalTimerAt(historyEvent.EventId))
         {
@@ -826,7 +875,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     private void OnTaskScheduled(HistoryEvent historyEvent)
     {
         var eventId = historyEvent.EventId;
-        TryDropOptionalTimerAt(eventId);
+        while (TryDropOptionalTimerAt(eventId)) { }
         _pendingActions.Remove(eventId);
 
         // Record the scheduling-time TaskExecutionId and, when the workflow code
@@ -854,7 +903,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     private void OnSubOrchestrationCreated(HistoryEvent historyEvent,
         ChildWorkflowInstanceCreatedEvent created)
     {
-        TryDropOptionalTimerAt(historyEvent.EventId);
+        while (TryDropOptionalTimerAt(historyEvent.EventId)) { }
         HandleSubOrchestrationCreated(historyEvent, created);
     }
     
@@ -896,7 +945,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         var eventId = historyEvent.EventId;
 
         // Asymmetric case: pending is an optional timer but incoming TimerCreated is not.
-        if (_pendingActions.TryGetValue(eventId, out var pendingAction)
+        while (_pendingActions.TryGetValue(eventId, out var pendingAction)
             && pendingAction.CreateTimer != null
             && IsOptionalExternalEventTimerAction(pendingAction)
             && !IsOptionalExternalEventTimerCreatedEvent(timerCreated))
@@ -917,11 +966,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         // Remove the optional timer action
         _pendingActions.Remove(atId);
 
-        // Remove any open task (TCS) bound to this ID and cancel it
-        if (_openTasks.Remove(atId, out var tcs))
-        {
-            tcs.TrySetCanceled();
-        }
+        // This timer never existed in legacy history. Leave its task pending rather than
+        // winning WhenAny and canceling the indefinite event wait it represents.
+        _openTasks.Remove(atId);
 
         // Shift all pending actions with id > atId down by one
         var actionsToShift = _pendingActions.Where(kvp => kvp.Key > atId).ToList();
@@ -951,8 +998,30 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
             _openTasks[kvp.Key - 1] = kvp.Value;
         }
 
+        ShiftKeys(_taskIdToExecutionId, atId);
+        ShiftKeys(_unresolvableCallInputs, atId);
+        foreach (var key in _executionIdToTaskId.Keys.ToArray())
+            if (_executionIdToTaskId[key] > atId)
+                _executionIdToTaskId[key]--;
+        foreach (var key in _subOrchestrationInstanceIdToParentTaskId.Keys.ToArray())
+            if (_subOrchestrationInstanceIdToParentTaskId[key] > atId)
+                _subOrchestrationInstanceIdToParentTaskId[key]--;
+        foreach (var key in _subOrchestrationCreatedEventIdToParentTaskId.Keys.ToArray())
+            if (_subOrchestrationCreatedEventIdToParentTaskId[key] > atId)
+                _subOrchestrationCreatedEventIdToParentTaskId[key]--;
+        _payloads?.DropOptionalTimerAt(atId);
+
         // Decrement the sequence number counter
         _sequenceNumber--;
+    }
+
+    private static void ShiftKeys<T>(Dictionary<int, T> values, int atId)
+    {
+        foreach (var pair in values.Where(pair => pair.Key > atId).OrderBy(pair => pair.Key).ToArray())
+        {
+            values.Remove(pair.Key);
+            values[pair.Key - 1] = pair.Value;
+        }
     }
     
     private void HandleActionCompleted(HistoryEvent historyEvent, int taskId)
