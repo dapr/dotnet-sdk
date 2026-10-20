@@ -102,7 +102,18 @@ public sealed class MeilisearchContainer : IAsyncStartable
     {
         /// <summary>Writes a search.meilisearch component using the container-network URL, not the mapped host port.</summary>
         public static void WriteSearchStoreYamlToFolder(string folderPath, string host,
-            string? apiKey = null, string fileName = "meilisearch-search.yaml")
+            string? apiKey = null, string fileName = "meilisearch-search.yaml") =>
+            WriteStoreYaml(folderPath, host, apiKey, fileName,
+                Constants.DaprComponentNames.SearchComponentName, "search.meilisearch");
+
+        /// <summary>Writes a vector.meilisearch component using the container-network URL.</summary>
+        public static void WriteVectorStoreYamlToFolder(string folderPath, string host,
+            string? apiKey = null, string fileName = "meilisearch-vector.yaml") =>
+            WriteStoreYaml(folderPath, host, apiKey, fileName,
+                Constants.DaprComponentNames.VectorComponentName, "vector.meilisearch");
+
+        private static void WriteStoreYaml(string folderPath, string host, string? apiKey, string fileName,
+            string componentName, string componentType)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(folderPath);
             ArgumentException.ThrowIfNullOrWhiteSpace(host);
@@ -111,10 +122,10 @@ public sealed class MeilisearchContainer : IAsyncStartable
                         apiVersion: dapr.io/v1alpha1
                         kind: Component
                         metadata:
-                          name: {Constants.DaprComponentNames.SearchComponentName}
+                          name: {componentName}
                           namespace: default
                         spec:
-                          type: search.meilisearch
+                          type: {componentType}
                           version: v1
                           metadata:
                           - name: host

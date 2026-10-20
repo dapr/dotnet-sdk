@@ -11,6 +11,7 @@ This repository contains a samples that highlight the Dapr .NET SDK capabilities
 | [5. Cryptography](./Cryptography) | Demonstrates encryption and decryption operations using Dapr. |
 | [6. Binary Store](./BinaryStore) | Demonstrates typed and direct binary store clients, streaming uploads and downloads, and an in-memory Dapr component. |
 | [7. Search](./Search) | Demonstrates builder-created and source-generated typed Search clients with a Meilisearch-backed document lifecycle. |
+| [8. Vector](./Vector) | Demonstrates direct and source-generated Vector clients, pre-computed embeddings, metadata filtering and mixed-success batch queries. |
 
 ## Target frameworks
 

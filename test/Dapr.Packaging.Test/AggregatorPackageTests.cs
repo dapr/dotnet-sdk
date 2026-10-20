@@ -15,6 +15,21 @@ public sealed class AggregatorPackageTests
     public static TheoryData<PackageContractCase> PackagesWithBundledAssets => new()
     {
         new PackageContractCase(
+            PackageId: "Dapr.Vector",
+            ProjectPath: Path.Combine("src", "Dapr.Vector", "Dapr.Vector.csproj"),
+            RequiredProjectReferences: ["Dapr.Common.csproj", "Dapr.Protos.csproj"],
+            RequiredPackageReferences:
+            [
+                "Google.Protobuf",
+                "Grpc.Net.Client",
+                "Microsoft.Extensions.DependencyInjection.Abstractions",
+                "Microsoft.Extensions.Http",
+            ],
+            RequiredBundledProjects: ["Dapr.Vector.Abstractions.csproj", "Dapr.Vector.Runtime.csproj"],
+            RequiredAnalyzerProjects: ["Dapr.Vector.Generators.csproj"],
+            IncludeBuildOutput: false),
+
+        new PackageContractCase(
             PackageId: "Dapr.Search",
             ProjectPath: Path.Combine("src", "Dapr.Search", "Dapr.Search.csproj"),
             RequiredProjectReferences: ["Dapr.Common.csproj", "Dapr.Protos.csproj"],
@@ -230,16 +245,18 @@ public sealed class AggregatorPackageTests
         AssertTargetsTfmSpecificPackageFiles(elements);
     }
 
-    [Fact]
-    public async Task DaprSearchPackage_BundlesGeneratorAndRunsPackageOnlyConsumer()
+    [Theory]
+    [InlineData("Search")]
+    [InlineData("Vector")]
+    public async Task BuildingBlockPackage_BundlesGeneratorAndRunsPackageOnlyConsumer(string buildingBlock)
     {
         var repoRoot = FindRepoRoot();
-        var outputDirectory = Path.Combine(Path.GetTempPath(), $"dapr-search-package-{Guid.NewGuid():N}");
+        var outputDirectory = Path.Combine(Path.GetTempPath(), $"dapr-{buildingBlock}-package-{Guid.NewGuid():N}");
         Directory.CreateDirectory(outputDirectory);
         try
         {
-            var version = $"0.0.0-search-smoke.{Guid.NewGuid():N}";
-            foreach (var project in new[] { "Dapr.Protos", "Dapr.Common", "Dapr.Search" })
+            var version = $"0.0.0-{buildingBlock.ToLowerInvariant()}-smoke.{Guid.NewGuid():N}";
+            foreach (var project in new[] { "Dapr.Protos", "Dapr.Common", $"Dapr.{buildingBlock}" })
             {
                 var result = await RunDotNetAsync(repoRoot, "pack",
                     Path.Combine("src", project, project + ".csproj"),
@@ -248,20 +265,20 @@ public sealed class AggregatorPackageTests
                     "/nr:false", "/p:UseSharedCompilation=false");
                 Assert.True(result.ExitCode == 0, result.Output);
             }
-            var packagePath = Assert.Single(Directory.EnumerateFiles(outputDirectory, "Dapr.Search.*.nupkg"));
+            var packagePath = Assert.Single(Directory.EnumerateFiles(outputDirectory, $"Dapr.{buildingBlock}.*.nupkg"));
             using var package = ZipFile.OpenRead(packagePath);
             var entries = package.Entries.Select(entry => entry.FullName).ToHashSet(StringComparer.OrdinalIgnoreCase);
             foreach (var framework in new[] { "net8.0", "net9.0", "net10.0" })
             {
-                Assert.Contains($"lib/{framework}/Dapr.Search.Abstractions.dll", entries);
-                Assert.Contains($"lib/{framework}/Dapr.Search.Runtime.dll", entries);
-                Assert.Contains($"lib/{framework}/Dapr.Search.Abstractions.xml", entries);
-                Assert.Contains($"lib/{framework}/Dapr.Search.Runtime.xml", entries);
+                Assert.Contains($"lib/{framework}/Dapr.{buildingBlock}.Abstractions.dll", entries);
+                Assert.Contains($"lib/{framework}/Dapr.{buildingBlock}.Runtime.dll", entries);
+                Assert.Contains($"lib/{framework}/Dapr.{buildingBlock}.Abstractions.xml", entries);
+                Assert.Contains($"lib/{framework}/Dapr.{buildingBlock}.Runtime.xml", entries);
             }
-            Assert.Single(package.Entries, entry => entry.FullName == "analyzers/dotnet/cs/Dapr.Search.Generators.dll");
+            Assert.Single(package.Entries, entry => entry.FullName == $"analyzers/dotnet/cs/Dapr.{buildingBlock}.Generators.dll");
             Assert.DoesNotContain(entries, name => name.StartsWith("lib/", StringComparison.Ordinal) && name.Contains("Generators", StringComparison.Ordinal));
             Assert.DoesNotContain(entries, name => name.Contains("Microsoft.CodeAnalysis", StringComparison.Ordinal));
-            using var manifestStream = package.GetEntry("Dapr.Search.nuspec")!.Open();
+            using var manifestStream = package.GetEntry($"Dapr.{buildingBlock}.nuspec")!.Open();
             var dependencies = XDocument.Load(manifestStream).Descendants()
                 .Where(element => element.Name.LocalName == "dependency")
                 .Select(element => (string?)element.Attribute("id")).ToArray();
@@ -269,17 +286,88 @@ public sealed class AggregatorPackageTests
             Assert.Contains("Dapr.Protos", dependencies);
             Assert.Contains("Grpc.Net.Client", dependencies);
             Assert.Contains("Microsoft.Extensions.Http", dependencies);
-            Assert.DoesNotContain("Dapr.Search.Abstractions", dependencies);
-            Assert.DoesNotContain("Dapr.Search.Runtime", dependencies);
-            Assert.DoesNotContain("Dapr.Search.Generators", dependencies);
+            Assert.DoesNotContain($"Dapr.{buildingBlock}.Abstractions", dependencies);
+            Assert.DoesNotContain($"Dapr.{buildingBlock}.Runtime", dependencies);
+            Assert.DoesNotContain($"Dapr.{buildingBlock}.Generators", dependencies);
             Assert.DoesNotContain(dependencies, name => name!.StartsWith("Microsoft.CodeAnalysis", StringComparison.Ordinal));
 
-            await VerifySearchPackageConsumerAsync(outputDirectory, version);
+            if (buildingBlock == "Search")
+                await VerifySearchPackageConsumerAsync(outputDirectory, version);
+            else
+                await VerifyVectorPackageConsumerAsync(outputDirectory, version);
         }
         finally
         {
             Directory.Delete(outputDirectory, recursive: true);
         }
+    }
+
+    private static async Task VerifyVectorPackageConsumerAsync(string feed, string version)
+    {
+        var consumer = Path.Combine(feed, "consumer");
+        Directory.CreateDirectory(consumer);
+        var ct = TestContext.Current.CancellationToken;
+        await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <OutputType>Exe</OutputType>
+                <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+                <Nullable>enable</Nullable>
+                <ImplicitUsings>disable</ImplicitUsings>
+                <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+                <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+              </PropertyGroup>
+              <ItemGroup>
+                <PackageReference Include="Dapr.Vector" Version="{{version}}" />
+              </ItemGroup>
+            </Project>
+            """, ct);
+        await File.WriteAllTextAsync(Path.Combine(consumer, "Program.cs"), """
+            using System;
+            using System.Text.Json.Serialization;
+            using System.Threading;
+            using System.Threading.Tasks;
+            using Dapr.Vector;
+            using Dapr.Vector.Extensions;
+            using Microsoft.Extensions.DependencyInjection;
+
+            [VectorCollection("packaged-store", "products")]
+            public partial interface IProductVectors : IDaprVectorCollection<Product>;
+            public sealed record Product(string Title);
+            [JsonSerializable(typeof(Product))]
+            internal partial class ProductJsonContext : JsonSerializerContext;
+
+            internal static class Program
+            {
+                private static async Task Main()
+                {
+                    var services = new ServiceCollection();
+                    services.AddDaprVectorClient((_, builder) =>
+                        builder.UseJsonSerializationOptions(ProductJsonContext.Default.Options)).AddProductVectors();
+                    using var provider = services.BuildServiceProvider(new ServiceProviderOptions
+                    {
+                        ValidateScopes = true, ValidateOnBuild = true
+                    });
+                    var collection = provider.GetRequiredService<IProductVectors>();
+                    if (!ReferenceEquals(collection, provider.GetRequiredService<IProductVectors>()) || collection is IDisposable)
+                        throw new InvalidOperationException("Generated collection lifetime or ownership is incorrect.");
+                    using var cancellation = new CancellationTokenSource();
+                    cancellation.Cancel();
+                    // Serialization occurs before the RPC cancellation check; this also exercises the
+                    // package's JSON context support with reflection disabled, without needing a sidecar.
+                    try
+                    {
+                        await collection.UpsertVectorsAsync(
+                            new[] { new VectorRecord<Product>("1", new float[] { 1, 0, 0 }, new Product("Dapr")) },
+                            cancellationToken: cancellation.Token);
+                        throw new InvalidOperationException("Cancellation was not propagated.");
+                    }
+                    catch (OperationCanceledException error) when (error.CancellationToken == cancellation.Token) { }
+                    Console.WriteLine("PACKAGED_VECTOR_GENERATOR_OK");
+                }
+            }
+            """, ct);
+        await RunPackageConsumerAsync(consumer, feed, version, "Dapr.Vector", "PACKAGED_VECTOR_GENERATOR_OK");
     }
 
     private static async Task VerifySearchPackageConsumerAsync(string feed, string version)
@@ -392,6 +480,13 @@ public sealed class AggregatorPackageTests
             }
             """, ct);
 
+        await RunPackageConsumerAsync(consumer, feed, version, "Dapr.Search", "PACKAGED_SEARCH_GENERATOR_OK");
+    }
+
+    private static async Task RunPackageConsumerAsync(string consumer, string feed, string version,
+        string packageId, string successMarker)
+    {
+        var ct = TestContext.Current.CancellationToken;
         new XDocument(new XElement("configuration",
             new XElement("packageSources",
                 new XElement("clear"),
@@ -402,15 +497,15 @@ public sealed class AggregatorPackageTests
             "--packages", Path.Combine(feed, "packages"));
         Assert.True(restore.ExitCode == 0, restore.Output);
         using var assets = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(consumer, "obj", "project.assets.json"), ct));
-        Assert.True(assets.RootElement.GetProperty("libraries").TryGetProperty($"Dapr.Search/{version}", out _));
+        Assert.True(assets.RootElement.GetProperty("libraries").TryGetProperty($"{packageId}/{version}", out _));
         foreach (var framework in new[] { "net8.0", "net9.0", "net10.0" })
         {
             var run = await RunDotNetAsync(consumer, "run", "--no-restore", "--framework", framework,
                 "--configuration", "Release", "/p:UseSharedCompilation=false");
             Assert.True(run.ExitCode == 0, run.Output);
-            Assert.Contains("PACKAGED_SEARCH_GENERATOR_OK", run.Output);
+            Assert.Contains(successMarker, run.Output);
             var deps = await File.ReadAllTextAsync(Path.Combine(consumer, "bin", "Release", framework, "Consumer.deps.json"), ct);
-            Assert.DoesNotContain("Dapr.Search.Generators", deps);
+            Assert.DoesNotContain($"{packageId}.Generators", deps);
             Assert.DoesNotContain("Microsoft.CodeAnalysis", deps);
         }
     }

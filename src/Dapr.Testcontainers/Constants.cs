@@ -29,6 +29,8 @@ public static class Constants
         public const string StateManagementComponentName = "statestore";
         /// <summary>The name of the Search component.</summary>
         public const string SearchComponentName = "searchstore";
+        /// <summary>The name of the Vector component.</summary>
+        public const string VectorComponentName = "vectorstore";
         /// <summary>
         /// The name of the PubSub component.
         /// </summary>

@@ -107,6 +107,10 @@ public sealed class DaprHarnessBuilder
     public SearchHarness BuildSearch(string meilisearchImage = MeilisearchContainer.DefaultImage) =>
         new(_componentsDirectory, _startApp, _options, _environment, meilisearchImage);
 
+    /// <summary>Builds a Vector harness backed by Meilisearch. Select a Vector-capable runtime with WithOptions.</summary>
+    public VectorHarness BuildVector(string meilisearchImage = MeilisearchContainer.DefaultImage) =>
+        new(_componentsDirectory, _startApp, _options, _environment, meilisearchImage);
+
     /// <summary>
     /// Builds a conversation harness.
     /// </summary>

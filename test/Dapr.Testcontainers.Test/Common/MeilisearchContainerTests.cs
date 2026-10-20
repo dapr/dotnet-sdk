@@ -19,18 +19,23 @@ namespace Dapr.Testcontainers.Test.Common;
 public sealed class MeilisearchContainerTests
 {
     [Theory]
-    [InlineData(null)]
-    [InlineData("a\"key\nwith: yaml")]
-    public void WritesSearchComponentWithEscapedMetadata(string? apiKey)
+    [InlineData(null, false)]
+    [InlineData("a\"key\nwith: yaml", false)]
+    [InlineData(null, true)]
+    [InlineData("a\"key\nwith: yaml", true)]
+    public void WritesComponentWithEscapedMetadata(string? apiKey, bool vector)
     {
         var directory = Path.Combine(Path.GetTempPath(), $"dapr-search-yaml-{Guid.NewGuid():N}");
         var file = Path.Combine(directory, "meilisearch-search.yaml");
         try
         {
-            MeilisearchContainer.Yaml.WriteSearchStoreYamlToFolder(directory, "http://meilisearch:7700", apiKey);
+            if (vector)
+                MeilisearchContainer.Yaml.WriteVectorStoreYamlToFolder(directory, "http://meilisearch:7700", apiKey, Path.GetFileName(file));
+            else
+                MeilisearchContainer.Yaml.WriteSearchStoreYamlToFolder(directory, "http://meilisearch:7700", apiKey);
             var yaml = File.ReadAllText(file);
-            Assert.Contains($"name: {Constants.DaprComponentNames.SearchComponentName}", yaml);
-            Assert.Contains("type: search.meilisearch", yaml);
+            Assert.Contains($"name: {(vector ? Constants.DaprComponentNames.VectorComponentName : Constants.DaprComponentNames.SearchComponentName)}", yaml);
+            Assert.Contains($"type: {(vector ? "vector" : "search")}.meilisearch", yaml);
             Assert.Contains("version: v1", yaml);
             Assert.Contains("value: \"http://meilisearch:7700\"", yaml);
             if (apiKey is null)
