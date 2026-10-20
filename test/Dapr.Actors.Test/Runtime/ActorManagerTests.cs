@@ -14,21 +14,99 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Client;
+using Dapr.Actors.Communication;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Xunit;
 
 namespace Dapr.Actors.Runtime;
 
 public sealed class ActorManagerTests
 {
-    private ActorManager CreateActorManager(Type type, ActorActivator activator = null)
+    private ActorManager CreateActorManager(Type type, ActorActivator activator = null, IDaprInteractor interactor = null)
     {
         var registration = new ActorRegistration(ActorTypeInformation.Get(type, actorTypeName: null));
-        var interactor = new DaprHttpInteractor(clientHandler: null, "http://localhost:3500", apiToken: null, requestTimeout: null);
+        interactor ??= new DaprHttpInteractor(clientHandler: null, "http://localhost:3500", apiToken: null, requestTimeout: null);
         return new ActorManager(registration, activator ?? new DefaultActorActivator(), JsonSerializerDefaults.Web, false, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, interactor);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task MethodsAndCallbacksObserveLatestSavedState(bool timer, bool reentrancyHeader)
+    {
+        var stored = "";
+        var saves = 0;
+        var interactor = new Mock<TestDaprInteractor>();
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), "state", It.IsAny<CancellationToken>()))
+            .Returns(() => Task.FromResult(new ActorStateResponse<string>(stored, null, stored.Length == 0 ? 204 : 200)));
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((string actorType, string actorId, string data, CancellationToken ct) =>
+            {
+                using var document = JsonDocument.Parse(data);
+                var operation = Assert.Single(document.RootElement.EnumerateArray());
+                Assert.Equal("upsert", operation.GetProperty("operation").GetString());
+                stored = operation.GetProperty("request").GetProperty("value").GetRawText();
+                saves++;
+                return Task.CompletedTask;
+            });
+        var manager = CreateActorManager(typeof(StateConsistencyActor), interactor: interactor.Object);
+        var id = ActorId.CreateRandom();
+        var token = TestContext.Current.CancellationToken;
+
+        async Task<string> InvokeAsync(string method, string value = null)
+        {
+            ActorReentrancyContextAccessor.ReentrancyContext = reentrancyHeader ? Guid.NewGuid().ToString() : null;
+            using var input = new MemoryStream(JsonSerializer.SerializeToUtf8Bytes(value));
+            using var output = new MemoryStream();
+            await manager.DispatchWithoutRemotingAsync(id, method, input, output, token);
+            return output.Length == 0 ? null : JsonSerializer.Deserialize<string>(output.ToArray());
+        }
+
+        async Task CallbackAsync(string nextValue = null)
+        {
+            using var body = new MemoryStream(JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                callback = nameof(StateConsistencyActor.TimerCallback),
+                data = nextValue == null ? Array.Empty<byte>() : Encoding.UTF8.GetBytes(nextValue),
+                dueTime = "0h0m0s0ms",
+                period = "0h0m1s0ms"
+            }));
+            if (timer)
+            {
+                await manager.FireTimerAsync(id, body, token);
+            }
+            else
+            {
+                await manager.FireReminderAsync(id, "a-reminder", body, token);
+            }
+        }
+
+        await InvokeAsync(nameof(IStateConsistencyActor.Write), "state1");
+        Assert.Equal("\"state1\"", stored);
+        await CallbackAsync("state1.1");
+        Assert.True(manager.TryGetActorAsync(id, out var instance));
+        var actor = Assert.IsType<StateConsistencyActor>(instance);
+        Assert.Equal("state1", actor.ObservedState);
+        Assert.Equal("\"state1.1\"", stored);
+        Assert.Equal("state1.1", await InvokeAsync(nameof(IStateConsistencyActor.Read)));
+
+        await InvokeAsync(nameof(IStateConsistencyActor.Write), "state2");
+        Assert.Equal("\"state2\"", stored);
+        await CallbackAsync();
+        Assert.Equal("state2", actor.ObservedState);
+        Assert.Equal("state2", await InvokeAsync(nameof(IStateConsistencyActor.Read)));
+        Assert.Equal(3, saves);
+        Assert.True(manager.TryGetActorAsync(id, out var current));
+        Assert.Same(actor, current);
     }
 
     [Fact]
@@ -331,6 +409,37 @@ public sealed class ActorManagerTests
         Assert.Equal(TimeSpan.FromSeconds(7).Add(TimeSpan.FromMilliseconds(10)), result.Ttl);
     }
     
+    public interface IStateConsistencyActor : IActor
+    {
+        Task Write(string value);
+        Task<string> Read();
+    }
+
+    public sealed class StateConsistencyActor(ActorHost host) : Actor(host), IStateConsistencyActor, IRemindable
+    {
+        public string ObservedState { get; private set; }
+
+        public async Task Write(string value)
+        {
+            await StateManager.SetStateAsync("state", value);
+            await StateManager.SaveStateAsync();
+        }
+
+        public Task<string> Read() => StateManager.GetStateAsync<string>("state");
+
+        public Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period) =>
+            TimerCallback(state);
+
+        public async Task TimerCallback(byte[] state)
+        {
+            ObservedState = await Read();
+            if (state.Length > 0)
+            {
+                await StateManager.SetStateAsync("state", Encoding.UTF8.GetString(state));
+            }
+        }
+    }
+
     private interface ITestActor : IActor { }
         
     private class TestActor : Actor, ITestActor, IDisposable
