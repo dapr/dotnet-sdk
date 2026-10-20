@@ -90,56 +90,7 @@ public sealed class DaprdContainer : IAsyncStartable
         _logAttachment = ContainerLogAttachment.TryCreate(logDirectory, "daprd", _containerName);
         
         const string componentsPath = "/components";
-		var cmd =
-			new List<string>
-			{
-                "/daprd",
-				"-app-id", appId,
-				"-dapr-http-port", InternalHttpPort.ToString(),
-				"-dapr-grpc-port", InternalGrpcPort.ToString(),
-				"-log-level", options.LogLevel.ToString().ToLowerInvariant(),
-				"-resources-path", componentsPath
-			};
-
-        if (options.AppPort > 0)
-        {
-            cmd.Add("-app-port");
-            cmd.Add(options.AppPort.ToString());
-            cmd.Add("-app-channel-address");
-            cmd.Add("host.docker.internal");
-            cmd.Add("-app-protocol");
-            cmd.Add(options.AppProtocol);
-        }
-
-        if (configFilePath is not null)
-        {
-            cmd.Add("-config");
-            cmd.Add(configFilePath);
-        }
-
-		if (placementHostAndPort is not null)
-		{
-			cmd.Add("-placement-host-address");
-			cmd.Add(placementHostAndPort.ToString());
-		}
-        else
-        {
-            // Explicitly disable placement if not provided to speed up startup
-            cmd.Add("-placement-host-address");
-            cmd.Add("");
-        }
-
-		if (schedulerHostAndPort is not null)
-		{
-			cmd.Add("-scheduler-host-address");
-			cmd.Add(schedulerHostAndPort.ToString());
-		}
-        else
-        {
-            // Explicitly disable scheduler if not provider
-            cmd.Add("-scheduler-host-address");
-            cmd.Add("");
-        }
+        var cmd = BuildCommand(appId, componentsPath, options, placementHostAndPort, schedulerHostAndPort, configFilePath);
 
         var containerBuilder = new ContainerBuilder()
             .WithImage(options.RuntimeImageTag)
@@ -183,6 +134,67 @@ public sealed class DaprdContainer : IAsyncStartable
                 
         _container = containerBuilder.Build();
 	}
+
+    internal static List<string> BuildCommand(
+        string appId,
+        string componentsPath,
+        DaprRuntimeOptions options,
+        HostPortPair? placementHostAndPort = null,
+        HostPortPair? schedulerHostAndPort = null,
+        string? configFilePath = null)
+    {
+        var cmd = new List<string>
+        {
+            "/daprd",
+            "-app-id", appId,
+            "-dapr-http-port", InternalHttpPort.ToString(),
+            "-dapr-grpc-port", InternalGrpcPort.ToString(),
+            "-log-level", options.LogLevel.ToString().ToLowerInvariant(),
+            "-resources-path", componentsPath
+        };
+
+        if (options.AppPort > 0)
+        {
+            cmd.Add("-app-port");
+            cmd.Add(options.AppPort.ToString());
+            cmd.Add("-app-channel-address");
+            cmd.Add(options.AppChannelAddress);
+            cmd.Add("-app-protocol");
+            cmd.Add(options.AppProtocol);
+        }
+
+        if (configFilePath is not null)
+        {
+            cmd.Add("-config");
+            cmd.Add(configFilePath);
+        }
+
+        if (placementHostAndPort is not null)
+        {
+            cmd.Add("-placement-host-address");
+            cmd.Add(placementHostAndPort.ToString());
+        }
+        else
+        {
+            // Explicitly disable placement if not provided to speed up startup
+            cmd.Add("-placement-host-address");
+            cmd.Add("");
+        }
+
+        if (schedulerHostAndPort is not null)
+        {
+            cmd.Add("-scheduler-host-address");
+            cmd.Add(schedulerHostAndPort.ToString());
+        }
+        else
+        {
+            // Explicitly disable scheduler if not provided
+            cmd.Add("-scheduler-host-address");
+            cmd.Add("");
+        }
+
+        return cmd;
+    }
 
     /// <inheritdoc />
 	public async Task StartAsync(CancellationToken cancellationToken = default)

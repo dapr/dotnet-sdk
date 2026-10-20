@@ -9,6 +9,43 @@ public sealed class DaprRuntimeOptionsTests : IDisposable
     private const string DaprRuntimeVersionEnvVarName = "DAPR_RUNTIME_VERSION";
     
     [Fact]
+    public void ShouldUseHostDockerInternalAsDefaultAppChannelAddress()
+    {
+        var options = new DaprRuntimeOptions();
+
+        Assert.Equal("host.docker.internal", options.AppChannelAddress);
+    }
+
+    [Theory]
+    [InlineData("my-app")]
+    [InlineData("192.168.1.10")]
+    [InlineData("::1")]
+    public void ShouldSetAppChannelAddress(string address)
+    {
+        var options = new DaprRuntimeOptions();
+
+        var result = options.WithAppChannelAddress(address);
+
+        Assert.Same(options, result);
+        Assert.Equal(address, options.AppChannelAddress);
+        Assert.Equal(address, (options with { AppPort = 9090 }).AppChannelAddress);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t\r\n")]
+    public void ShouldRejectMissingAppChannelAddress(string? address)
+    {
+        var options = new DaprRuntimeOptions();
+
+        var exception = Assert.ThrowsAny<ArgumentException>(() => options.WithAppChannelAddress(address!));
+
+        Assert.Equal("appChannelAddress", exception.ParamName);
+        Assert.Equal("host.docker.internal", options.AppChannelAddress);
+    }
+
+    [Fact]
     public void ShouldUseEnvVarVersion_IfSet()
     {
         const string version = "1.16.2";
