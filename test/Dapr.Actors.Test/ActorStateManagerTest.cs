@@ -127,6 +127,99 @@ public class ActorStateManagerTest
         await Assert.ThrowsAsync<KeyNotFoundException>(() => mngr.GetStateAsync<string>("key2", token));
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task FailedSaveRetainsEntireBatchForRetry(bool contextual, bool canceled)
+    {
+        var interactor = new Mock<TestDaprInteractor>();
+        var host = ActorHost.CreateForTest<TestActor>();
+        host.StateProvider = new DaprStateProvider(interactor.Object, new JsonSerializerOptions());
+        var mngr = new ActorStateManager(new TestActor(host));
+        var token = TestContext.Current.CancellationToken;
+        var stored = new Dictionary<string, string>
+        {
+            ["updated"] = "\"old\"",
+            ["deleted"] = "\"old\""
+        };
+        var batches = new List<string>();
+        interactor
+            .Setup(d => d.GetStateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((string actorType, string actorId, string key, CancellationToken ct) =>
+                Task.FromResult(stored.TryGetValue(key, out var value)
+                    ? new ActorStateResponse<string>(value, null)
+                    : new ActorStateResponse<string>("", null, 204)));
+        interactor
+            .Setup(d => d.SaveStateTransactionallyAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns((string actorType, string actorId, string data, CancellationToken ct) =>
+            {
+                batches.Add(data);
+                if (batches.Count == 1)
+                {
+                    return canceled
+                        ? Task.FromCanceled(new CancellationToken(true))
+                        : Task.FromException(new InvalidOperationException("State store unavailable."));
+                }
+
+                using var document = JsonDocument.Parse(data);
+                foreach (var operation in document.RootElement.EnumerateArray())
+                {
+                    var request = operation.GetProperty("request");
+                    var key = request.GetProperty("key").GetString();
+                    if (operation.GetProperty("operation").GetString() == "delete")
+                    {
+                        stored.Remove(key);
+                    }
+                    else
+                    {
+                        stored[key] = request.GetProperty("value").GetRawText();
+                    }
+                }
+
+                return Task.CompletedTask;
+            });
+
+        Assert.Equal("old", await mngr.GetStateAsync<string>("updated", token));
+        Assert.Equal("old", await mngr.GetStateAsync<string>("deleted", token));
+        if (contextual)
+        {
+            await mngr.SetStateContext("method");
+        }
+
+        await mngr.AddStateAsync("added", "new", token);
+        await mngr.SetStateAsync("updated", "new", token);
+        await mngr.RemoveStateAsync("deleted", token);
+        if (canceled)
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => mngr.SaveStateAsync(token));
+        }
+        else
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() => mngr.SaveStateAsync(token));
+        }
+
+        Assert.Equal("\"old\"", stored["updated"]);
+        Assert.Equal("\"old\"", stored["deleted"]);
+        Assert.False(stored.ContainsKey("added"));
+        Assert.False((await mngr.TryGetStateAsync<string>("deleted", token)).HasValue);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => mngr.UnloadStateAsync("updated", cancellationToken: token));
+
+        await mngr.SaveStateAsync(token);
+        Assert.Equal(2, batches.Count);
+        Assert.Equal(batches[0], batches[1]);
+        Assert.Equal("\"new\"", stored["added"]);
+        Assert.Equal("\"new\"", stored["updated"]);
+        Assert.False(stored.ContainsKey("deleted"));
+        await mngr.SaveStateAsync(token);
+        Assert.Equal(2, batches.Count);
+
+        await mngr.SetStateContext(null);
+        Assert.Equal("new", await mngr.GetStateAsync<string>("updated", token));
+        Assert.False((await mngr.TryGetStateAsync<string>("deleted", token)).HasValue);
+    }
+
     [Fact]
     public async Task ReentrantSaveInvalidatesDefaultTracker()
     {

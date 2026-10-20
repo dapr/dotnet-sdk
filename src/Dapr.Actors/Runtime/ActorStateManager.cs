@@ -516,15 +516,18 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
                     {
                         statesToRemove.Add(stateName);
                     }
-
-                    // Mark the states as unmodified so that tracking for next invocation is done correctly.
-                    stateMetadata.ChangeKind = StateChangeKind.None;
                 }
             }
 
             if (stateChangeList.Count > 0)
             {
                 await this.actor.Host.StateProvider.SaveStateAsync(this.actorTypeName, this.actor.Id.ToString(), stateChangeList.AsReadOnly(), cancellationToken);
+
+                // A failed or canceled save must leave the entire batch pending for retry.
+                foreach (var stateChange in stateChangeList)
+                {
+                    stateChangeTracker[stateChange.StateName].ChangeKind = StateChangeKind.None;
+                }
 
                 if (!ReferenceEquals(stateChangeTracker, this.defaultTracker))
                 {
