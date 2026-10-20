@@ -1,0 +1,12 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: searchstore
+spec:
+  type: search.meilisearch
+  version: v1
+  metadata:
+    - name: host
+      value: "http://meilisearch:7700"
+    - name: apiKey
+      envRef: MEILI_MASTER_KEY

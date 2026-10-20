@@ -32,6 +32,7 @@ import "dapr/proto/runtime/v1/workflow.proto";
 import "dapr/proto/runtime/v1/jobs.proto";
 import "dapr/proto/runtime/v1/ai.proto";
 import "dapr/proto/runtime/v1/binarystore.proto";
+import "dapr/proto/runtime/v1/search.proto";
 
 option csharp_namespace = "Dapr.Client.Autogen.Grpc.v1";
 option java_outer_classname = "DaprProtos";
@@ -40,6 +41,16 @@ option go_package = "github.com/dapr/dapr/pkg/proto/runtime/v1;runtime";
 
 // Dapr service provides APIs to user application to access Dapr building blocks.
 service Dapr {
+  // Search building block (alpha1). See search.proto for semantics.
+  rpc CreateIndexAlpha1(CreateIndexRequestAlpha1) returns (google.protobuf.Empty) {}
+  rpc GetIndexAlpha1(GetIndexRequestAlpha1) returns (GetIndexResponseAlpha1) {}
+  rpc ListIndexesAlpha1(ListIndexesRequestAlpha1) returns (ListIndexesResponseAlpha1) {}
+  rpc DeleteIndexAlpha1(DeleteIndexRequestAlpha1) returns (google.protobuf.Empty) {}
+  rpc IndexDocumentsAlpha1(IndexDocumentsRequestAlpha1) returns (IndexDocumentsResponseAlpha1) {}
+  rpc GetDocumentsAlpha1(GetDocumentsRequestAlpha1) returns (GetDocumentsResponseAlpha1) {}
+  rpc DeleteDocumentsAlpha1(DeleteDocumentsRequestAlpha1) returns (DeleteDocumentsResponseAlpha1) {}
+  rpc SearchAlpha1(SearchRequestAlpha1) returns (SearchResponseAlpha1) {}
+
   // Invokes a method on a remote Dapr app.
   // Deprecated: Use proxy mode service invocation instead.
   rpc InvokeService(InvokeServiceRequest) returns (common.v1.InvokeResponse) {}

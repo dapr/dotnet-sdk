@@ -15,6 +15,7 @@ using System;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Common.Testing;
+using Dapr.Testcontainers.Containers;
 using Dapr.Testcontainers.Harnesses;
 
 namespace Dapr.Testcontainers.Common;
@@ -101,6 +102,10 @@ public sealed class DaprHarnessBuilder
     /// Builds a secret store harness.
     /// </summary>
     public SecretStoreHarness BuildSecretStore() => new(_componentsDirectory, _startApp, _options, _environment);
+
+    /// <summary>Builds a Search harness backed by Meilisearch. Select a Search-capable runtime with WithOptions.</summary>
+    public SearchHarness BuildSearch(string meilisearchImage = MeilisearchContainer.DefaultImage) =>
+        new(_componentsDirectory, _startApp, _options, _environment, meilisearchImage);
 
     /// <summary>
     /// Builds a conversation harness.
