@@ -212,10 +212,47 @@ public sealed class StateTransactionRegressionTests
         Assert.Null(await Cache(store).TryGetAsync<int>("value"));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Failed_store_commit_retains_entire_batch_for_retry(bool canceled)
+    {
+        var store = new PausedStore();
+        store.Release.SetResult();
+        var cache = Cache(store);
+        await cache.SetAsync("updated", 1);
+        await cache.SetAsync("deleted", 1);
+        await cache.SaveStateAsync();
+        await cache.SetAsync("added", 2);
+        await cache.SetAsync("updated", 2);
+        await cache.RemoveAsync("deleted");
+        store.CommitFailure = canceled
+            ? new OperationCanceledException(new CancellationToken(true))
+            : new InvalidOperationException("State store unavailable.");
+
+        if (canceled)
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => cache.SaveStateAsync().AsTask());
+        else
+            await Assert.ThrowsAsync<InvalidOperationException>(() => cache.SaveStateAsync().AsTask());
+
+        var durable = Cache(store);
+        Assert.Null(await durable.TryGetAsync<int>("added"));
+        Assert.Equal(1, (await durable.TryGetAsync<int>("updated"))!.Value);
+        Assert.Equal(1, (await durable.TryGetAsync<int>("deleted"))!.Value);
+        Assert.Null(await cache.TryGetAsync<int>("deleted"));
+        await cache.SaveStateAsync();
+        durable = Cache(store);
+        Assert.Equal(2, (await durable.TryGetAsync<int>("added"))!.Value);
+        Assert.Equal(2, (await durable.TryGetAsync<int>("updated"))!.Value);
+        Assert.Null(await durable.TryGetAsync<int>("deleted"));
+        await cache.EvictCacheAsync();
+    }
+
     private sealed class PausedStore : IActorStateStore
     {
         private readonly InMemoryActorStateStore inner = new();
         public bool PauseRead { get; init; }
+        public Exception? CommitFailure { get; set; }
         public TaskCompletionSource Reached { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public async ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default)
@@ -224,6 +261,11 @@ public sealed class StateTransactionRegressionTests
             {
                 Reached.TrySetResult();
                 await Release.Task.WaitAsync(cancellationToken);
+            }
+            if (CommitFailure is { } failure)
+            {
+                CommitFailure = null;
+                throw failure;
             }
             await inner.ApplyAsync(actorType, actorId, operations, cancellationToken);
         }
