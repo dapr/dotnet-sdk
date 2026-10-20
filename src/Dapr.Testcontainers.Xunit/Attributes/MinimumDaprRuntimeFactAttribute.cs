@@ -8,6 +8,7 @@ namespace Dapr.Testcontainers.Xunit.Attributes;
 /// </summary>
 /// <remarks>
 /// This will include RCs of that indicated version in addition to stable versions.
+/// The rolling runtime label <c>edge</c> (case-insensitive) satisfies every valid numerical minimum.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public sealed class MinimumDaprRuntimeFactAttribute : FactAttribute

@@ -14,6 +14,7 @@ internal static class DaprRuntimeVersionGate
         var currentRaw = Environment.GetEnvironmentVariable(RuntimeVersionEnvVarName);
         if (string.IsNullOrWhiteSpace(currentRaw) 
             || string.Equals(currentRaw, "latest", StringComparison.OrdinalIgnoreCase) 
+            || string.Equals(currentRaw.Trim(), "edge", StringComparison.OrdinalIgnoreCase)
             || !TryParseVersion(currentRaw, out var currentVersion) 
             || currentVersion >= minVersion)
         {
