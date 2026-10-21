@@ -34,9 +34,7 @@ public abstract class WorkflowActivityContext
     /// Gets the ID of the TaskScheduled history event for this activity attempt.
     /// </summary>
     /// <remarks>
-    /// This value is supplied by the runtime in the activity request's TaskId field.
-    /// It is distinct from TaskExecutionKey and is available before the activity completes.
-    /// Use it with the source instance ID when requesting a workflow rerun.
+    /// Available during activity execution. Use with the source instance ID for workflow reruns.
     /// </remarks>
     public virtual int ScheduledEventId => throw new System.NotSupportedException(
         "This activity context does not expose the scheduling history event ID.");
