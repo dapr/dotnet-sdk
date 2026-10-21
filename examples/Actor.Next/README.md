@@ -9,6 +9,7 @@ These are the worked examples for the six-part Dapr.Actors.Next tutorial.
 - [05-Interpreted](05-Interpreted/) - Runtime-defined smart-lock state machines verified before rollout and hosted by the interpreted actor. Tutorial: [Part 5](../../docs/dotnet-actorsnext/tutorial/part-5.md).
 - [06-Approvals](06-Approvals/) - Interpreted approval-document machines onboarded at runtime, composed with a settlement workflow that retries and compensates. Tutorial: [Part 6](../../docs/dotnet-actorsnext/tutorial/part-6.md).
 - [07-PerTypeOptions](07-PerTypeOptions/) - Two actor types with different lifecycle profiles: per-type idle timeout and reentrancy overrides that merge over the app-wide defaults.
+- [08-Timers](08-Timers/) - The full `IActorTimerScheduler` API over HTTP: schedule, get, list and cancel timers. Get and list need Dapr runtime 1.19+.
 
 Prerequisites: Dapr runtime 1.18+ for integration-style actor callback stream behavior, and the .NET 10 or .NET 11 SDK. The unit tests in these examples run with no sidecar, no state store, and no Docker.
 

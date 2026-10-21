@@ -1,0 +1,6 @@
+<Project>
+  <Import Project="..\..\..\..\properties\dapr_target_frameworks.props" />
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>
