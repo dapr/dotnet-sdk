@@ -99,6 +99,23 @@ public sealed class TimerConcurrencyTests
     }
 
     [Fact]
+    public async Task Core_timer_scheduler_reports_one_shot_periods_as_null()
+    {
+        var time = new ControlledTimeProvider();
+        using var scheduler = new CoreActorTimerScheduler(new CallbackRuntime(), Serializer, time);
+        await scheduler.ScheduleAsync("A", Id, "Zero", TimeSpan.FromSeconds(1), "OnTick", "{}", TimeSpan.Zero);
+        await scheduler.ScheduleAsync("A", Id, "Infinite", TimeSpan.FromSeconds(1), "OnTick", "{}", Timeout.InfiniteTimeSpan);
+        await scheduler.ScheduleAsync("A", Id, "Omitted", TimeSpan.FromSeconds(1), "OnTick", "{}");
+        await scheduler.ScheduleAsync("A", Id, "Periodic", TimeSpan.FromSeconds(1), "OnTick", "{}", TimeSpan.FromSeconds(1));
+
+        Assert.Null((await scheduler.GetAsync("A", Id, "Zero"))!.Period);
+        Assert.Null((await scheduler.GetAsync("A", Id, "Infinite"))!.Period);
+        Assert.Null((await scheduler.GetAsync("A", Id, "Omitted"))!.Period);
+        Assert.Equal(TimeSpan.FromSeconds(1), (await scheduler.GetAsync("A", Id, "Periodic"))!.Period);
+        Assert.Equal(["Periodic"], (await scheduler.ListAsync("A", Id)).Where(timer => timer.Timer.Period.HasValue).Select(timer => timer.Name));
+    }
+
+    [Fact]
     public async Task Fired_one_shot_timer_without_ttl_is_no_longer_queryable()
     {
         var time = new VirtualActorTimeProvider();

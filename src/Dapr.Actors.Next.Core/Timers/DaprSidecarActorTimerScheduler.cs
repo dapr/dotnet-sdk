@@ -303,7 +303,8 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
             timer.HasCallback ? timer.Callback : null);
 
     // The sidecar echoes "dueTime" as registered (a duration or an RFC 3339 timestamp), reports "period" as
-    // "@every <Go duration>", and reports "ttl" as the absolute RFC 3339 expiration computed at registration.
+    // "@every <Go duration>" (a registered zero period comes back as "@every 0s" for a one-shot timer), and
+    // reports "ttl" as the absolute RFC 3339 expiration computed at registration.
     private static ActorTimerInfo ToInfo(
         string actorType, string actorId, string? dueTime, string? period, Any? data, string? ttl, string? callback)
     {
@@ -313,7 +314,7 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
             ActorId.Create(actorId),
             dueDuration,
             dueAt,
-            ActorScheduleDurationParser.ParseOptional(period),
+            ActorTimerInfo.NormalizePeriod(ActorScheduleDurationParser.ParseOptional(period)),
             ActorSchedulePayloadDecoder.DecodeJson(data),
             ActorScheduleDurationParser.ParseOptionalTimestamp(ttl),
             callback);

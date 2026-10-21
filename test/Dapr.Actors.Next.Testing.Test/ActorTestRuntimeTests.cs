@@ -233,6 +233,9 @@ public sealed class ActorTestRuntimeTests
             period: TimeSpan.FromSeconds(1),
             ttl: TimeSpan.FromSeconds(2));
         await timers.ScheduleAsync("Testing", otherId, "Timer", TimeSpan.FromSeconds(10), "Timer", string.Empty);
+        var oneShotId = ActorId.Create("one-shot-timer");
+        await timers.ScheduleAsync("Testing", oneShotId, "Zero", TimeSpan.FromSeconds(10), "Timer", string.Empty, period: TimeSpan.Zero);
+        await timers.ScheduleAsync("Testing", oneShotId, "Infinite", TimeSpan.FromSeconds(10), "Timer", string.Empty, period: Timeout.InfiniteTimeSpan);
         var fetched = await timers.GetAsync("Testing", id, "Timer");
 
         Assert.NotNull(fetched);
@@ -245,6 +248,9 @@ public sealed class ActorTestRuntimeTests
         Assert.Equal("Timer", Assert.Single(await timers.ListAsync("Testing", id)).Name);
         Assert.Single(await timers.ListAsync("Testing", otherId));
         Assert.Null(await timers.GetAsync("Testing", id, "missing"));
+        Assert.Null((await timers.GetAsync("Testing", oneShotId, "Zero"))!.Period);
+        Assert.Null((await timers.GetAsync("Testing", oneShotId, "Infinite"))!.Period);
+        Assert.All(await timers.ListAsync("Testing", oneShotId), timer => Assert.Null(timer.Timer.Period));
 
         runtime.Time.Advance(TimeSpan.FromSeconds(3));
         await runtime.RunToIdle();

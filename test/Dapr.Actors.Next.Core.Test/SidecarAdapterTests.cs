@@ -227,6 +227,18 @@ public sealed class SidecarAdapterTests
                             Callback = "Tick",
                         },
                     },
+                    new P.NamedActorTimer
+                    {
+                        Name = "once",
+                        Timer = new P.ActorTimer
+                        {
+                            ActorType = "Counter",
+                            ActorId = "timer",
+                            DueTime = "+1.s",
+                            Period = "@every 0s",
+                            Callback = "Tick",
+                        },
+                    },
                 },
             },
         };
@@ -250,7 +262,7 @@ public sealed class SidecarAdapterTests
         Assert.Equal("""{"x":2}""", fetched.ArgumentsJson);
         Assert.Equal("Counter", client.ListActorTimersRequest!.ActorType);
         Assert.Equal("timer", client.ListActorTimersRequest.ActorId);
-        Assert.Equal(2, listed.Count);
+        Assert.Equal(3, listed.Count);
         Assert.Equal("tick", listed[0].Name);
         Assert.Equal("Tick", listed[0].Timer.OperationName);
         Assert.Null(listed[0].Timer.Period);
@@ -262,6 +274,9 @@ public sealed class SidecarAdapterTests
         Assert.Equal(TimeSpan.FromMilliseconds(0.5), listed[1].Timer.Period);
         Assert.Equal(new DateTimeOffset(2026, 10, 21, 10, 15, 30, TimeSpan.Zero), listed[1].Timer.ExpiresAt);
         Assert.Null(listed[1].Timer.ArgumentsJson);
+        Assert.Equal("once", listed[2].Name);
+        Assert.Equal(TimeSpan.FromSeconds(1), listed[2].Timer.DueTime);
+        Assert.Null(listed[2].Timer.Period);
 
         client.GetActorTimerNotFound = true;
         Assert.Null(await scheduler.GetAsync("Counter", actorId, "missing"));

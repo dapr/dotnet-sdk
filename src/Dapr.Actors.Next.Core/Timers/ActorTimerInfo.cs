@@ -43,7 +43,15 @@ public sealed record ActorTimerInfo(
     TimeSpan? Period,
     string? ArgumentsJson,
     DateTimeOffset? ExpiresAt,
-    string? OperationName);
+    string? OperationName)
+{
+    /// <summary>
+    /// Maps a registered period to the <see cref="Period"/> contract: every scheduler treats a zero, negative
+    /// or infinite period as one-shot, so only a positive period is reported.
+    /// </summary>
+    public static TimeSpan? NormalizePeriod(TimeSpan? period) =>
+        period is { } value && value > TimeSpan.Zero ? value : null;
+}
 
 /// <summary>
 /// Describes a named actor timer registration returned from a list operation.

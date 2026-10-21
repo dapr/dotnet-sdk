@@ -77,6 +77,20 @@ internal static partial class ActorScheduleDurationParser
             return XmlConvert.ToTimeSpan(duration);
         }
 
+        // Go's time.ParseDuration accepts an optional sign and numbers written as "1.", ".5" or "1.5".
+        var negative = false;
+        if (trimmed.StartsWith('+') || trimmed.StartsWith('-'))
+        {
+            negative = trimmed[0] == '-';
+            trimmed = trimmed[1..];
+        }
+
+        var parsed = ParseGoDuration(trimmed, value);
+        return negative ? parsed.Negate() : parsed;
+    }
+
+    private static TimeSpan ParseGoDuration(string trimmed, string value)
+    {
         var matches = DurationPartRegex().Matches(trimmed);
         if (matches.Count == 0)
         {
@@ -109,7 +123,7 @@ internal static partial class ActorScheduleDurationParser
         return result;
     }
 
-    [GeneratedRegex(@"(?<value>\d+(?:\.\d+)?)(?<unit>ms|us|\u00B5s|\u03BCs|ns|h|m|s)", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?<value>\d+(?:\.\d*)?|\.\d+)(?<unit>ms|us|\u00B5s|\u03BCs|ns|h|m|s)", RegexOptions.CultureInvariant)]
     private static partial Regex DurationPartRegex();
 
     [GeneratedRegex(@"^\d{4}-\d{2}-\d{2}T", RegexOptions.CultureInvariant)]

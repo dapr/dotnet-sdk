@@ -39,6 +39,14 @@ public sealed class ActorScheduleDurationParserTests
     [InlineData("PT10S", 10_000)]
     [InlineData("R5/PT10S", 10_000)]
     [InlineData("P1DT1H", 90_000_000)]
+    [InlineData("+1h", 3_600_000)]
+    [InlineData("-1h", -3_600_000)]
+    [InlineData("-1.5ms", -1.5)]
+    [InlineData(".5s", 500)]
+    [InlineData("1.s", 1000)]
+    [InlineData("1h.5m", 3_630_000)]
+    [InlineData("0", 0)]
+    [InlineData("@every +500ms", 500)]
     public void Parses_go_and_iso_durations(string value, double expectedMilliseconds)
     {
         Assert.Equal(TimeSpan.FromMilliseconds(expectedMilliseconds), ActorScheduleDurationParser.Parse(value));
@@ -90,6 +98,8 @@ public sealed class ActorScheduleDurationParserTests
     [InlineData("5 parsecs")]
     [InlineData("10x")]
     [InlineData("@every")]
+    [InlineData(".s")]
+    [InlineData("+-1s")]
     public void Rejects_unknown_formats(string value)
     {
         Assert.Throws<FormatException>(() => ActorScheduleDurationParser.Parse(value));
