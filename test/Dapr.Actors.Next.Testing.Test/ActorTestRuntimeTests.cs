@@ -238,7 +238,7 @@ public sealed class ActorTestRuntimeTests
         Assert.NotNull(fetched);
         Assert.Equal(TimeSpan.FromSeconds(1), fetched.DueTime);
         Assert.Equal(TimeSpan.FromSeconds(1), fetched.Period);
-        Assert.Equal(TimeSpan.FromSeconds(2), fetched.Ttl);
+        Assert.Equal(runtime.Time.GetUtcNow() + TimeSpan.FromSeconds(2), fetched.ExpiresAt);
         Assert.Equal("Timer", fetched.OperationName);
         Assert.Equal("""{"payload":true}""", fetched.ArgumentsJson);
         Assert.Equal("Timer", Assert.Single(await timers.ListAsync("Testing", id)).Name);

@@ -29,6 +29,19 @@ internal static partial class ActorScheduleDurationParser
         return Parse(value);
     }
 
+    /// <summary>
+    /// Parses an absolute RFC 3339 timestamp, as the sidecar reports timer and reminder expirations.
+    /// </summary>
+    internal static DateTimeOffset? ParseOptionalTimestamp(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return DateTimeOffset.Parse(value.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
+    }
+
     internal static TimeSpan Parse(string value)
     {
         var trimmed = value.Trim();

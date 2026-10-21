@@ -18,13 +18,23 @@ namespace Dapr.Actors.Next.Core.Timers;
 /// <summary>
 /// Describes an actor timer registration.
 /// </summary>
+/// <param name="ActorType">The actor type that owns the timer.</param>
+/// <param name="ActorId">The actor instance that owns the timer.</param>
+/// <param name="DueTime">The delay before the first callback, when the registration reports one.</param>
+/// <param name="Period">The interval between callbacks, or <see langword="null"/> for a one-shot timer.</param>
+/// <param name="ArgumentsJson">The callback payload as JSON text, when one was registered.</param>
+/// <param name="ExpiresAt">
+/// The absolute UTC instant after which the timer no longer fires, or <see langword="null"/> when it has no TTL.
+/// The sidecar reports the expiration computed at registration, so the original TTL duration is not preserved.
+/// </param>
+/// <param name="OperationName">The actor operation the timer invokes.</param>
 public sealed record ActorTimerInfo(
     string ActorType,
     ActorId ActorId,
     TimeSpan? DueTime,
     TimeSpan? Period,
     string? ArgumentsJson,
-    TimeSpan? Ttl,
+    DateTimeOffset? ExpiresAt,
     string? OperationName);
 
 /// <summary>

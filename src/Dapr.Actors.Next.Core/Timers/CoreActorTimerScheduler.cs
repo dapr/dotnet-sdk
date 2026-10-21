@@ -27,6 +27,7 @@ namespace Dapr.Actors.Next.Core.Timers;
 /// prevents new callback admissions; an already admitted actor turn may finish. Callbacks start
 /// independent call chains, without the registering actor's execution context or reentrancy headers.
 /// A disposed scheduler rejects further operations.
+/// A one-shot timer is removed once its callback is admitted; an expired timer is no longer reported.
 /// Timers are removed when their owning activation ends, including failed activation.
 /// Reminders have a separate lifetime and are not affected.
 /// </remarks>
@@ -170,7 +171,7 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
 
         var key = new TimerKey(actorType, actorId.Value, name);
         var periodValue = period.GetValueOrDefault(Timeout.InfiniteTimeSpan);
-        var info = new ActorTimerInfo(actorType, actorId, dueTime, period, System.Text.Encoding.UTF8.GetString(arguments), ttl, operationName);
+        var argumentsJson = System.Text.Encoding.UTF8.GetString(arguments);
         var request = new ActorRuntimeRequest(
             actorType,
             actorId,
@@ -184,9 +185,17 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             ObjectDisposedException.ThrowIf(disposed, this);
             var expiresAt = ttl.HasValue ? timeProvider.GetUtcNow() + ttl.Value : (DateTimeOffset?)null;
-            var timer = new ScheduledActorCallback(sync, runtime, timeProvider, request, expiresAt, logger);
+            var info = new ActorTimerInfo(actorType, actorId, dueTime, period, argumentsJson, expiresAt, operationName);
+            var timer = new ScheduledActorCallback(sync, runtime, timeProvider, request, expiresAt, logger,
+                onCompleted: completed =>
+                {
+                    // Runs under the scheduler lock when a one-shot is admitted. The identity check keeps a
+                    // consumed callback from dropping a registration that has since replaced it.
+                    if (timers.TryGetValue(key, out var registration) && ReferenceEquals(registration.Timer, completed))
+                        timers.Remove(key);
+                });
             timers.TryGetValue(key, out var existing);
-            timers[key] = new TimerRegistration(timer, info, expiresAt);
+            timers[key] = new TimerRegistration(timer, info);
             try
             {
                 timer.Start(dueTime, periodValue > TimeSpan.Zero ? periodValue : Timeout.InfiniteTimeSpan);
@@ -354,7 +363,7 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
 
     // Same rule as dispatch: a timer may still fire exactly at its deadline, so it is expired only after it.
     private bool Expired(TimerRegistration registration) =>
-        registration.ExpiresAt.HasValue && timeProvider.GetUtcNow() > registration.ExpiresAt.Value;
+        registration.Info.ExpiresAt.HasValue && timeProvider.GetUtcNow() > registration.Info.ExpiresAt.Value;
 
-    private sealed record TimerRegistration(ScheduledActorCallback Timer, ActorTimerInfo Info, DateTimeOffset? ExpiresAt);
+    private sealed record TimerRegistration(ScheduledActorCallback Timer, ActorTimerInfo Info);
 }

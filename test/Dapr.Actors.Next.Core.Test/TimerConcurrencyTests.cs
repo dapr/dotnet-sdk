@@ -76,7 +76,7 @@ public sealed class TimerConcurrencyTests
         Assert.Equal(Id, fetched.ActorId);
         Assert.Equal(TimeSpan.FromSeconds(1), fetched.DueTime);
         Assert.Equal(TimeSpan.FromSeconds(1), fetched.Period);
-        Assert.Equal(TimeSpan.FromSeconds(2), fetched.Ttl);
+        Assert.Equal(DateTimeOffset.UnixEpoch + TimeSpan.FromSeconds(2), fetched.ExpiresAt);
         Assert.Equal("OnTick", fetched.OperationName);
         Assert.Equal("""{"x":1}""", fetched.ArgumentsJson);
         Assert.Equal("Tick", Assert.Single(await scheduler.ListAsync("A", Id)).Name);
@@ -95,6 +95,50 @@ public sealed class TimerConcurrencyTests
         scheduler.Dispose();
         await Assert.ThrowsAsync<ObjectDisposedException>(async () => await scheduler.GetAsync("A", Id, "Tick"));
         await Assert.ThrowsAsync<ObjectDisposedException>(async () => await scheduler.ListAsync("A", Id));
+    }
+
+    [Fact]
+    public async Task Fired_one_shot_timer_without_ttl_is_no_longer_queryable()
+    {
+        var time = new VirtualActorTimeProvider();
+        var calls = 0;
+        using var scheduler = new CoreActorTimerScheduler(new CallbackRuntime(_ =>
+        {
+            Interlocked.Increment(ref calls);
+            return Task.FromResult<byte[]?>(null);
+        }), Serializer, time);
+        await scheduler.ScheduleAsync("A", Id, "Once", TimeSpan.FromSeconds(1), "OnTick", "{}");
+        await scheduler.ScheduleAsync("A", Id, "Periodic", TimeSpan.FromSeconds(1), "OnTick", "{}", TimeSpan.FromSeconds(1));
+        Assert.NotNull(await scheduler.GetAsync("A", Id, "Once"));
+        Assert.Equal(2, (await scheduler.ListAsync("A", Id)).Count);
+
+        time.Advance(TimeSpan.FromSeconds(1));
+
+        Assert.Equal(2, calls);
+        Assert.Null(await scheduler.GetAsync("A", Id, "Once"));
+        Assert.Equal("Periodic", Assert.Single(await scheduler.ListAsync("A", Id)).Name);
+        time.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(3, calls);
+        Assert.Equal("Periodic", Assert.Single(await scheduler.ListAsync("A", Id)).Name);
+    }
+
+    [Fact]
+    public async Task Completion_of_replaced_one_shot_timer_cannot_delete_its_replacement()
+    {
+        var time = new ControlledTimeProvider();
+        using var scheduler = new CoreActorTimerScheduler(new CallbackRuntime(), Serializer, time);
+        await scheduler.ScheduleAsync("A", Id, "Once", TimeSpan.Zero, "OnTick", "\"old\"");
+        var oldTimers = time.Timers.ToArray();
+        await scheduler.ScheduleAsync("A", Id, "Once", TimeSpan.Zero, "OnTick", "\"new\"");
+        var newTimers = time.Timers.Except(oldTimers).ToArray();
+
+        foreach (var timer in oldTimers) timer.Fire();
+        Assert.Equal("\"new\"", (await scheduler.GetAsync("A", Id, "Once"))!.ArgumentsJson);
+
+        foreach (var timer in newTimers) timer.Fire();
+        Assert.All(newTimers, timer => Assert.True(timer.Disposed));
+        Assert.Null(await scheduler.GetAsync("A", Id, "Once"));
+        Assert.Empty(await scheduler.ListAsync("A", Id));
     }
 
     [Fact]

@@ -281,6 +281,7 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
             .ToArray();
     }
 
+    // The sidecar reports "ttl" as the absolute RFC 3339 expiration computed at registration, not as a duration.
     private static ActorTimerInfo ToInfo(P.GetActorTimerResponse response) =>
         new(
             response.ActorType,
@@ -288,7 +289,7 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
             ActorScheduleDurationParser.ParseOptional(response.HasDueTime ? response.DueTime : null),
             ActorScheduleDurationParser.ParseOptional(response.HasPeriod ? response.Period : null),
             ActorSchedulePayloadDecoder.DecodeJson(response.Data),
-            ActorScheduleDurationParser.ParseOptional(response.HasTtl ? response.Ttl : null),
+            ActorScheduleDurationParser.ParseOptionalTimestamp(response.HasTtl ? response.Ttl : null),
             response.HasCallback ? response.Callback : null);
 
     private static ActorTimerInfo ToInfo(P.ActorTimer timer) =>
@@ -298,7 +299,7 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
             ActorScheduleDurationParser.ParseOptional(timer.HasDueTime ? timer.DueTime : null),
             ActorScheduleDurationParser.ParseOptional(timer.HasPeriod ? timer.Period : null),
             ActorSchedulePayloadDecoder.DecodeJson(timer.Data),
-            ActorScheduleDurationParser.ParseOptional(timer.HasTtl ? timer.Ttl : null),
+            ActorScheduleDurationParser.ParseOptionalTimestamp(timer.HasTtl ? timer.Ttl : null),
             timer.HasCallback ? timer.Callback : null);
 
     internal static void ValidatePeriod(TimeSpan? period)

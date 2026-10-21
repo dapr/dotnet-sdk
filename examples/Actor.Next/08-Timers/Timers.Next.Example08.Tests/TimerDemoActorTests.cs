@@ -33,7 +33,7 @@ public sealed class TimerDemoActorTests
         Assert.Equal(nameof(ITimerDemoActor.Tick), heartbeat.OperationName);
         Assert.Equal(TimeSpan.FromSeconds(1), heartbeat.DueTime);
         Assert.Equal(TimeSpan.FromSeconds(1), heartbeat.Period);
-        Assert.Equal(TimeSpan.FromSeconds(2), heartbeat.Ttl);
+        Assert.Equal(runtime.Time.GetUtcNow() + TimeSpan.FromSeconds(2), heartbeat.ExpiresAt);
         Assert.Contains("beat", heartbeat.ArgumentsJson);
         Assert.Null((await Run(runtime, actor.Get("missing"))).Timer);
         Assert.Equal(["heartbeat", "one-shot"], (await Run(runtime, actor.List())).Select(timer => timer.Name).Order());

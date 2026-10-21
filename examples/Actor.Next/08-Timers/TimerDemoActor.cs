@@ -45,7 +45,7 @@ public sealed record ScheduleTimerRequest(string Name, int DueSeconds, string Me
 
 public sealed record TickPayload(string TimerName, string Message);
 
-public sealed record TimerView(string Name, string? OperationName, TimeSpan? DueTime, TimeSpan? Period, TimeSpan? Ttl, string? ArgumentsJson);
+public sealed record TimerView(string Name, string? OperationName, TimeSpan? DueTime, TimeSpan? Period, DateTimeOffset? ExpiresAt, string? ArgumentsJson);
 
 // Generated actor clients do not support nullable reference return types, so the lookup result is wrapped.
 public sealed record TimerLookup(TimerView? Timer);
@@ -108,5 +108,5 @@ public sealed class TimerDemoActor(ActorActivationContext context, IActorTimerSc
     }
 
     private static TimerView ToView(string name, ActorTimerInfo timer) =>
-        new(name, timer.OperationName, timer.DueTime, timer.Period, timer.Ttl, timer.ArgumentsJson);
+        new(name, timer.OperationName, timer.DueTime, timer.Period, timer.ExpiresAt, timer.ArgumentsJson);
 }
