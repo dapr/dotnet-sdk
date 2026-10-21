@@ -154,37 +154,9 @@ public sealed class DaprActorEventsTransport : ISubscribeActorEventsTransport
                 headers);
         }
 
-        private static ReadOnlyMemory<byte> DecodeCallbackData(Any? data)
-        {
-            if (data is null)
-            {
-                return ReadOnlyMemory<byte>.Empty;
-            }
-
-            if (!data.Is(BytesValue.Descriptor))
-            {
-                return data.Value.Memory;
-            }
-
-            // The sidecar wraps gRPC timer/reminder bytes in BytesValue after JSON-encoding
-            // them as a base64 string. Neither envelope is part of the actor's wire payload.
-            var payload = data.Unpack<BytesValue>().Value;
-            try
-            {
-                using var document = System.Text.Json.JsonDocument.Parse(payload.Memory);
-                if (document.RootElement.ValueKind == System.Text.Json.JsonValueKind.String &&
-                    document.RootElement.TryGetBytesFromBase64(out var bytes))
-                {
-                    return bytes;
-                }
-            }
-            catch (System.Text.Json.JsonException)
-            {
-                // Non-JSON callback data is also supported by the byte[] scheduling API.
-            }
-
-            return payload.Memory;
-        }
+        // Shared with the timer/reminder get and list mappings so a registration reads back exactly as it fires.
+        private static ReadOnlyMemory<byte> DecodeCallbackData(Any? data) =>
+            Timers.ActorSchedulePayloadDecoder.DecodeCallbackData(data);
 
         private static SubscribeActorEventsRequest ToRuntimeRequest(P.SubscribeActorEventsResponseDeactivateRequestAlpha1 request)
         {

@@ -209,7 +209,7 @@ public sealed class SidecarAdapterTests
                             ActorId = "timer",
                             DueTime = "250ms",
                             Callback = "Tick",
-                            Data = new Any { Value = new BytesValue { Value = ByteString.CopyFromUtf8("\"eyJ4IjozfQ==\"") }.ToByteString() },
+                            Data = Any.Pack(new BytesValue { Value = ByteString.CopyFromUtf8("\"eyJ4IjozfQ==\"") }),
                         },
                     },
                     new P.NamedActorTimer
@@ -318,7 +318,7 @@ public sealed class SidecarAdapterTests
                             ActorId = "reminder",
                             DueTime = "250ms",
                             Period = "@every 5s",
-                            Data = new Any { Value = new BytesValue { Value = ByteString.CopyFromUtf8("\"eyJ4IjozfQ==\"") }.ToByteString() },
+                            Data = Any.Pack(new BytesValue { Value = ByteString.CopyFromUtf8("\"eyJ4IjozfQ==\"") }),
                             Ttl = "60000ms",
                         },
                     },
