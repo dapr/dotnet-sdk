@@ -15,6 +15,7 @@ using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.Transport;
 using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
@@ -281,26 +282,42 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
             .ToArray();
     }
 
-    // The sidecar reports "ttl" as the absolute RFC 3339 expiration computed at registration, not as a duration.
     private static ActorTimerInfo ToInfo(P.GetActorTimerResponse response) =>
-        new(
+        ToInfo(
             response.ActorType,
-            ActorId.Create(response.ActorId),
-            ActorScheduleDurationParser.ParseOptional(response.HasDueTime ? response.DueTime : null),
-            ActorScheduleDurationParser.ParseOptional(response.HasPeriod ? response.Period : null),
-            ActorSchedulePayloadDecoder.DecodeJson(response.Data),
-            ActorScheduleDurationParser.ParseOptionalTimestamp(response.HasTtl ? response.Ttl : null),
+            response.ActorId,
+            response.HasDueTime ? response.DueTime : null,
+            response.HasPeriod ? response.Period : null,
+            response.Data,
+            response.HasTtl ? response.Ttl : null,
             response.HasCallback ? response.Callback : null);
 
     private static ActorTimerInfo ToInfo(P.ActorTimer timer) =>
-        new(
+        ToInfo(
             timer.ActorType,
-            ActorId.Create(timer.ActorId),
-            ActorScheduleDurationParser.ParseOptional(timer.HasDueTime ? timer.DueTime : null),
-            ActorScheduleDurationParser.ParseOptional(timer.HasPeriod ? timer.Period : null),
-            ActorSchedulePayloadDecoder.DecodeJson(timer.Data),
-            ActorScheduleDurationParser.ParseOptionalTimestamp(timer.HasTtl ? timer.Ttl : null),
+            timer.ActorId,
+            timer.HasDueTime ? timer.DueTime : null,
+            timer.HasPeriod ? timer.Period : null,
+            timer.Data,
+            timer.HasTtl ? timer.Ttl : null,
             timer.HasCallback ? timer.Callback : null);
+
+    // The sidecar echoes "dueTime" as registered (a duration or an RFC 3339 timestamp), reports "period" as
+    // "@every <Go duration>", and reports "ttl" as the absolute RFC 3339 expiration computed at registration.
+    private static ActorTimerInfo ToInfo(
+        string actorType, string actorId, string? dueTime, string? period, Any? data, string? ttl, string? callback)
+    {
+        var (dueDuration, dueAt) = ActorScheduleDurationParser.ParseOptionalDueTime(dueTime);
+        return new ActorTimerInfo(
+            actorType,
+            ActorId.Create(actorId),
+            dueDuration,
+            dueAt,
+            ActorScheduleDurationParser.ParseOptional(period),
+            ActorSchedulePayloadDecoder.DecodeJson(data),
+            ActorScheduleDurationParser.ParseOptionalTimestamp(ttl),
+            callback);
+    }
 
     internal static void ValidatePeriod(TimeSpan? period)
     {

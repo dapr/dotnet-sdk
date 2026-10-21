@@ -836,7 +836,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         public bool Canceled { get; set; }
 
         public ActorTimerInfo ToTimerInfo() =>
-            new(ActorType, ActorId, OriginalDueTime, OriginalPeriod, ArgumentsJson, ExpiresAt, OperationName);
+            new(ActorType, ActorId, OriginalDueTime, DueAt: null, OriginalPeriod, ArgumentsJson, ExpiresAt, OperationName);
 
         public ActorReminderInfo ToReminderInfo() =>
             new(ActorType, ActorId, OriginalDueTime, OriginalPeriod, ArgumentsJson, OriginalTtl, FailurePolicy);

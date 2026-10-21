@@ -185,7 +185,7 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             ObjectDisposedException.ThrowIf(disposed, this);
             var expiresAt = ttl.HasValue ? timeProvider.GetUtcNow() + ttl.Value : (DateTimeOffset?)null;
-            var info = new ActorTimerInfo(actorType, actorId, dueTime, period, argumentsJson, expiresAt, operationName);
+            var info = new ActorTimerInfo(actorType, actorId, dueTime, DueAt: null, period, argumentsJson, expiresAt, operationName);
             var timer = new ScheduledActorCallback(sync, runtime, timeProvider, request, expiresAt, logger,
                 onCompleted: completed =>
                 {

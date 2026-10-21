@@ -237,6 +237,7 @@ public sealed class ActorTestRuntimeTests
 
         Assert.NotNull(fetched);
         Assert.Equal(TimeSpan.FromSeconds(1), fetched.DueTime);
+        Assert.Null(fetched.DueAt);
         Assert.Equal(TimeSpan.FromSeconds(1), fetched.Period);
         Assert.Equal(runtime.Time.GetUtcNow() + TimeSpan.FromSeconds(2), fetched.ExpiresAt);
         Assert.Equal("Timer", fetched.OperationName);

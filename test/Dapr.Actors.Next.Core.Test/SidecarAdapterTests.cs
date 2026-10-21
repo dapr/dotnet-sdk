@@ -183,7 +183,9 @@ public sealed class SidecarAdapterTests
     [MinimumDaprRuntimeFact("1.19")]
     public async Task Timer_scheduler_maps_sidecar_get_and_list_requests()
     {
-        // The sidecar reports "ttl" as the absolute RFC 3339 expiration (Go's RFC3339Nano, up to nine fractional digits).
+        // The sidecar reports "ttl" as the absolute RFC 3339 expiration (Go's RFC3339Nano, up to nine fractional
+        // digits), "period" as "@every <Go duration>" (microseconds as "µs"), and echoes "dueTime" as registered,
+        // which over HTTP may be an RFC 3339 timestamp.
         var client = new RecordingDaprClient
         {
             GetActorTimerResponse = new P.GetActorTimerResponse
@@ -219,7 +221,8 @@ public sealed class SidecarAdapterTests
                         {
                             ActorType = "Counter",
                             ActorId = "timer",
-                            DueTime = "1s",
+                            DueTime = "2026-10-21T10:00:00Z",
+                            Period = "@every 500\u00B5s",
                             Ttl = "2026-10-21T12:15:30+02:00",
                             Callback = "Tick",
                         },
@@ -239,6 +242,7 @@ public sealed class SidecarAdapterTests
         Assert.Equal("Counter", fetched!.ActorType);
         Assert.Equal(actorId, fetched.ActorId);
         Assert.Equal(TimeSpan.FromMilliseconds(250), fetched.DueTime);
+        Assert.Null(fetched.DueAt);
         Assert.Equal(TimeSpan.FromSeconds(5), fetched.Period);
         // Nanoseconds beyond .NET's 100ns tick resolution are rounded.
         Assert.Equal(new DateTimeOffset(2026, 10, 21, 10, 15, 30, TimeSpan.Zero).AddTicks(1234568), fetched.ExpiresAt);
@@ -253,6 +257,9 @@ public sealed class SidecarAdapterTests
         Assert.Null(listed[0].Timer.ExpiresAt);
         Assert.Equal("""{"x":3}""", listed[0].Timer.ArgumentsJson);
         Assert.Equal("expiring", listed[1].Name);
+        Assert.Null(listed[1].Timer.DueTime);
+        Assert.Equal(new DateTimeOffset(2026, 10, 21, 10, 0, 0, TimeSpan.Zero), listed[1].Timer.DueAt);
+        Assert.Equal(TimeSpan.FromMilliseconds(0.5), listed[1].Timer.Period);
         Assert.Equal(new DateTimeOffset(2026, 10, 21, 10, 15, 30, TimeSpan.Zero), listed[1].Timer.ExpiresAt);
         Assert.Null(listed[1].Timer.ArgumentsJson);
 

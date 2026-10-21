@@ -20,7 +20,14 @@ namespace Dapr.Actors.Next.Core.Timers;
 /// </summary>
 /// <param name="ActorType">The actor type that owns the timer.</param>
 /// <param name="ActorId">The actor instance that owns the timer.</param>
-/// <param name="DueTime">The delay before the first callback, when the registration reports one.</param>
+/// <param name="DueTime">
+/// The delay before the first callback, when the registration used a duration. Registrations made through
+/// this SDK always use a duration.
+/// </param>
+/// <param name="DueAt">
+/// The absolute UTC instant of the first callback, when the registration used an RFC 3339 timestamp (which
+/// the sidecar HTTP API accepts). At most one of <paramref name="DueTime"/> and <paramref name="DueAt"/> is set.
+/// </param>
 /// <param name="Period">The interval between callbacks, or <see langword="null"/> for a one-shot timer.</param>
 /// <param name="ArgumentsJson">The callback payload as JSON text, when one was registered.</param>
 /// <param name="ExpiresAt">
@@ -32,6 +39,7 @@ public sealed record ActorTimerInfo(
     string ActorType,
     ActorId ActorId,
     TimeSpan? DueTime,
+    DateTimeOffset? DueAt,
     TimeSpan? Period,
     string? ArgumentsJson,
     DateTimeOffset? ExpiresAt,

@@ -75,6 +75,7 @@ public sealed class TimerConcurrencyTests
         Assert.Equal("A", fetched.ActorType);
         Assert.Equal(Id, fetched.ActorId);
         Assert.Equal(TimeSpan.FromSeconds(1), fetched.DueTime);
+        Assert.Null(fetched.DueAt);
         Assert.Equal(TimeSpan.FromSeconds(1), fetched.Period);
         Assert.Equal(DateTimeOffset.UnixEpoch + TimeSpan.FromSeconds(2), fetched.ExpiresAt);
         Assert.Equal("OnTick", fetched.OperationName);

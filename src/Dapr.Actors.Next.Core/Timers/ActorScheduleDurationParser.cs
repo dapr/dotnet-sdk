@@ -42,6 +42,24 @@ internal static partial class ActorScheduleDurationParser
         return DateTimeOffset.Parse(value.Trim(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal);
     }
 
+    /// <summary>
+    /// Parses a due time the sidecar echoes back as registered: either a duration (ISO 8601 or Go format)
+    /// or an absolute RFC 3339 timestamp, which the HTTP API accepts. Exactly one result is set for a value.
+    /// </summary>
+    internal static (TimeSpan? Duration, DateTimeOffset? At) ParseOptionalDueTime(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return (null, null);
+        }
+
+        return IsTimestamp(value.Trim())
+            ? (null, ParseOptionalTimestamp(value))
+            : (Parse(value), null);
+    }
+
+    private static bool IsTimestamp(string value) => TimestampPrefixRegex().IsMatch(value);
+
     internal static TimeSpan Parse(string value)
     {
         var trimmed = value.Trim();
@@ -81,7 +99,8 @@ internal static partial class ActorScheduleDurationParser
                 "m" => TimeSpan.FromMinutes(amount),
                 "s" => TimeSpan.FromSeconds(amount),
                 "ms" => TimeSpan.FromMilliseconds(amount),
-                "us" => TimeSpan.FromTicks((long)(amount * 10)),
+                // Go formats microseconds as "µs" (U+00B5) and also parses "μs" (U+03BC) and "us".
+                "us" or "\u00B5s" or "\u03BCs" => TimeSpan.FromTicks((long)(amount * 10)),
                 "ns" => TimeSpan.FromTicks((long)(amount / 100)),
                 _ => throw new FormatException($"Unsupported duration unit in '{value}'."),
             };
@@ -90,6 +109,9 @@ internal static partial class ActorScheduleDurationParser
         return result;
     }
 
-    [GeneratedRegex(@"(?<value>\d+(?:\.\d+)?)(?<unit>ms|us|ns|h|m|s)", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"(?<value>\d+(?:\.\d+)?)(?<unit>ms|us|\u00B5s|\u03BCs|ns|h|m|s)", RegexOptions.CultureInvariant)]
     private static partial Regex DurationPartRegex();
+
+    [GeneratedRegex(@"^\d{4}-\d{2}-\d{2}T", RegexOptions.CultureInvariant)]
+    private static partial Regex TimestampPrefixRegex();
 }
