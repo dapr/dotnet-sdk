@@ -15,6 +15,7 @@ using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.Transport;
 using Google.Protobuf;
+using Grpc.Core;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
 namespace Dapr.Actors.Next.Core.Timers;
@@ -238,6 +239,67 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
             new P.UnregisterActorTimerRequest { ActorType = actorType, ActorId = actorId.Value, Name = name },
             DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
     }
+
+    /// <inheritdoc />
+    public async ValueTask<ActorTimerInfo?> GetAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        try
+        {
+            var response = await client.Value.GetActorTimerAsync(
+                new P.GetActorTimerRequest { ActorType = actorType, ActorId = actorId.Value, Name = name },
+                DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+
+            return ToInfo(response);
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<IReadOnlyList<NamedActorTimerInfo>> ListAsync(
+        string actorType,
+        ActorId actorId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+
+        var response = await client.Value.ListActorTimersAsync(
+            new P.ListActorTimersRequest { ActorType = actorType, ActorId = actorId.Value },
+            DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+
+        return response.Timers
+            .Select(timer => new NamedActorTimerInfo(timer.Name, ToInfo(timer.Timer)))
+            .ToArray();
+    }
+
+    private static ActorTimerInfo ToInfo(P.GetActorTimerResponse response) =>
+        new(
+            response.ActorType,
+            ActorId.Create(response.ActorId),
+            ActorScheduleDurationParser.ParseOptional(response.HasDueTime ? response.DueTime : null),
+            ActorScheduleDurationParser.ParseOptional(response.HasPeriod ? response.Period : null),
+            ActorSchedulePayloadDecoder.DecodeJson(response.Data),
+            ActorScheduleDurationParser.ParseOptional(response.HasTtl ? response.Ttl : null),
+            response.HasCallback ? response.Callback : null);
+
+    private static ActorTimerInfo ToInfo(P.ActorTimer timer) =>
+        new(
+            timer.ActorType,
+            ActorId.Create(timer.ActorId),
+            ActorScheduleDurationParser.ParseOptional(timer.HasDueTime ? timer.DueTime : null),
+            ActorScheduleDurationParser.ParseOptional(timer.HasPeriod ? timer.Period : null),
+            ActorSchedulePayloadDecoder.DecodeJson(timer.Data),
+            ActorScheduleDurationParser.ParseOptional(timer.HasTtl ? timer.Ttl : null),
+            timer.HasCallback ? timer.Callback : null);
 
     internal static void ValidatePeriod(TimeSpan? period)
     {

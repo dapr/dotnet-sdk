@@ -37,7 +37,7 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
     private readonly TimeProvider timeProvider;
     private readonly ILogger<CoreActorTimerScheduler>? logger;
     private readonly object sync = new();
-    private readonly Dictionary<TimerKey, ScheduledActorCallback> timers = [];
+    private readonly Dictionary<TimerKey, TimerRegistration> timers = [];
     private bool disposed;
 
     /// <summary>
@@ -170,6 +170,7 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
 
         var key = new TimerKey(actorType, actorId.Value, name);
         var periodValue = period.GetValueOrDefault(Timeout.InfiniteTimeSpan);
+        var info = new ActorTimerInfo(actorType, actorId, dueTime, period, System.Text.Encoding.UTF8.GetString(arguments), ttl, operationName);
         var request = new ActorRuntimeRequest(
             actorType,
             actorId,
@@ -182,10 +183,10 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             ObjectDisposedException.ThrowIf(disposed, this);
-            var timer = new ScheduledActorCallback(sync, runtime, timeProvider, request,
-                ttl.HasValue ? timeProvider.GetUtcNow() + ttl.Value : null, logger);
+            var expiresAt = ttl.HasValue ? timeProvider.GetUtcNow() + ttl.Value : (DateTimeOffset?)null;
+            var timer = new ScheduledActorCallback(sync, runtime, timeProvider, request, expiresAt, logger);
             timers.TryGetValue(key, out var existing);
-            timers[key] = timer;
+            timers[key] = new TimerRegistration(timer, info, expiresAt);
             try
             {
                 timer.Start(dueTime, periodValue > TimeSpan.Zero ? periodValue : Timeout.InfiniteTimeSpan);
@@ -205,7 +206,7 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
                 throw;
             }
 
-            existing?.Stop();
+            existing?.Timer.Stop();
         }
 
         return ValueTask.CompletedTask;
@@ -260,6 +261,44 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
     }
 
     /// <inheritdoc />
+    public ValueTask<ActorTimerInfo?> GetAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        lock (sync)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ObjectDisposedException.ThrowIf(disposed, this);
+            return ValueTask.FromResult(
+                timers.TryGetValue(new TimerKey(actorType, actorId.Value, name), out var registration) && !Expired(registration)
+                    ? registration.Info
+                    : null);
+        }
+    }
+
+    /// <inheritdoc />
+    public ValueTask<IReadOnlyList<NamedActorTimerInfo>> ListAsync(string actorType, ActorId actorId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+
+        lock (sync)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ObjectDisposedException.ThrowIf(disposed, this);
+            var result = timers
+                .Where(pair =>
+                    string.Equals(pair.Key.ActorType, actorType, StringComparison.Ordinal)
+                    && string.Equals(pair.Key.ActorId, actorId.Value, StringComparison.Ordinal)
+                    && !Expired(pair.Value))
+                .Select(static pair => new NamedActorTimerInfo(pair.Key.Name, pair.Value.Info))
+                .ToArray();
+
+            return ValueTask.FromResult<IReadOnlyList<NamedActorTimerInfo>>(result);
+        }
+    }
+
+    /// <inheritdoc />
     public ValueTask CancelAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
@@ -268,9 +307,9 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             ObjectDisposedException.ThrowIf(disposed, this);
-            if (timers.Remove(new TimerKey(actorType, actorId.Value, name), out var timer))
+            if (timers.Remove(new TimerKey(actorType, actorId.Value, name), out var registration))
             {
-                timer.Stop();
+                registration.Timer.Stop();
             }
         }
 
@@ -290,9 +329,9 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
             disposed = true;
             if (runtime is ActorRuntime actorRuntime)
                 actorRuntime.ActivationEnded -= CancelActivationTimers;
-            foreach (var timer in timers.Values)
+            foreach (var registration in timers.Values)
             {
-                timer.Stop();
+                registration.Timer.Stop();
             }
 
             timers.Clear();
@@ -305,11 +344,17 @@ public sealed class CoreActorTimerScheduler : IActorTimerScheduler, IDisposable
         {
             foreach (var key in timers.Keys.Where(key => key.ActorType == actorType && key.ActorId == actorId.Value).ToArray())
             {
-                timers[key].Stop();
+                timers[key].Timer.Stop();
                 timers.Remove(key);
             }
         }
     }
 
     private readonly record struct TimerKey(string ActorType, string ActorId, string Name);
+
+    // Same rule as dispatch: a timer may still fire exactly at its deadline, so it is expired only after it.
+    private bool Expired(TimerRegistration registration) =>
+        registration.ExpiresAt.HasValue && timeProvider.GetUtcNow() > registration.ExpiresAt.Value;
+
+    private sealed record TimerRegistration(ScheduledActorCallback Timer, ActorTimerInfo Info, DateTimeOffset? ExpiresAt);
 }

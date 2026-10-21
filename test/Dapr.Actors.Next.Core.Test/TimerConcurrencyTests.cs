@@ -62,6 +62,42 @@ public sealed class TimerConcurrencyTests
     }
 
     [Fact]
+    public async Task Core_timer_scheduler_gets_lists_and_drops_expired_timers()
+    {
+        var time = new ControlledTimeProvider();
+        var scheduler = new CoreActorTimerScheduler(new CallbackRuntime(), Serializer, time);
+        var otherId = ActorId.Create("other");
+        await scheduler.ScheduleAsync("A", Id, "Tick", TimeSpan.FromSeconds(1), "OnTick", """{"x":1}""", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
+        await scheduler.ScheduleAsync("A", otherId, "Tick", TimeSpan.FromSeconds(1), "OnTick", "{}");
+
+        var fetched = await scheduler.GetAsync("A", Id, "Tick");
+        Assert.NotNull(fetched);
+        Assert.Equal("A", fetched.ActorType);
+        Assert.Equal(Id, fetched.ActorId);
+        Assert.Equal(TimeSpan.FromSeconds(1), fetched.DueTime);
+        Assert.Equal(TimeSpan.FromSeconds(1), fetched.Period);
+        Assert.Equal(TimeSpan.FromSeconds(2), fetched.Ttl);
+        Assert.Equal("OnTick", fetched.OperationName);
+        Assert.Equal("""{"x":1}""", fetched.ArgumentsJson);
+        Assert.Equal("Tick", Assert.Single(await scheduler.ListAsync("A", Id)).Name);
+        Assert.Null(await scheduler.GetAsync("A", Id, "missing"));
+        Assert.Empty(await scheduler.ListAsync("B", Id));
+
+        time.Now += TimeSpan.FromSeconds(2);
+        Assert.NotNull(await scheduler.GetAsync("A", Id, "Tick"));
+        time.Now += TimeSpan.FromTicks(1);
+        Assert.Null(await scheduler.GetAsync("A", Id, "Tick"));
+        Assert.Empty(await scheduler.ListAsync("A", Id));
+        Assert.Single(await scheduler.ListAsync("A", otherId));
+
+        await scheduler.CancelAsync("A", otherId, "Tick");
+        Assert.Empty(await scheduler.ListAsync("A", otherId));
+        scheduler.Dispose();
+        await Assert.ThrowsAsync<ObjectDisposedException>(async () => await scheduler.GetAsync("A", Id, "Tick"));
+        await Assert.ThrowsAsync<ObjectDisposedException>(async () => await scheduler.ListAsync("A", Id));
+    }
+
+    [Fact]
     public async Task Expiration_of_replaced_reminder_cannot_delete_its_replacement()
     {
         var time = new ControlledTimeProvider();

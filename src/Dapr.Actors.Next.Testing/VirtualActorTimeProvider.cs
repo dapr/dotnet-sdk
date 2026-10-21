@@ -312,6 +312,49 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
     }
 
     /// <inheritdoc />
+    ValueTask<ActorTimerInfo?> IActorTimerScheduler.GetAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        CancellationToken cancellationToken)
+    {
+        lock (syncRoot)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var callback = callbacks.LastOrDefault(callback =>
+                !callback.Canceled && !Expired(callback)
+                && callback.Kind == ActorTurnKind.Timer
+                && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
+                && callback.ActorId.Equals(actorId)
+                && string.Equals(callback.Name, name, StringComparison.Ordinal));
+
+            return ValueTask.FromResult(callback?.ToTimerInfo());
+        }
+    }
+
+    /// <inheritdoc />
+    ValueTask<IReadOnlyList<NamedActorTimerInfo>> IActorTimerScheduler.ListAsync(
+        string actorType,
+        ActorId actorId,
+        CancellationToken cancellationToken)
+    {
+        lock (syncRoot)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var timers = callbacks
+                .Where(callback =>
+                    !callback.Canceled && !Expired(callback)
+                    && callback.Kind == ActorTurnKind.Timer
+                    && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
+                    && callback.ActorId.Equals(actorId))
+                .Select(static callback => new NamedActorTimerInfo(callback.Name, callback.ToTimerInfo()))
+                .ToArray();
+
+            return ValueTask.FromResult<IReadOnlyList<NamedActorTimerInfo>>(timers);
+        }
+    }
+
+    /// <inheritdoc />
     ValueTask<ActorReminderInfo?> IActorReminderScheduler.GetAsync(
         string actorType,
         ActorId actorId,
@@ -322,7 +365,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         {
             cancellationToken.ThrowIfCancellationRequested();
             var callback = callbacks.LastOrDefault(callback =>
-                !callback.Canceled && !ReminderExpired(callback)
+                !callback.Canceled && !Expired(callback)
                 && callback.Kind == ActorTurnKind.Reminder
                 && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
                 && callback.ActorId.Equals(actorId)
@@ -343,7 +386,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
             cancellationToken.ThrowIfCancellationRequested();
             var reminders = callbacks
                 .Where(callback =>
-                    !callback.Canceled && !ReminderExpired(callback)
+                    !callback.Canceled && !Expired(callback)
                     && callback.Kind == ActorTurnKind.Reminder
                     && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
                     && (!actorId.HasValue || callback.ActorId.Equals(actorId.Value)))
@@ -356,6 +399,11 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
 
     private bool ReminderExpired(ScheduledCallback callback) =>
         callback.Kind == ActorTurnKind.Reminder && callback.ExpiresAt.HasValue && utcNow >= callback.ExpiresAt.Value;
+
+    // Same rule the advance loop applies: reminders expire at the deadline, timers only after it.
+    private bool Expired(ScheduledCallback callback) =>
+        ReminderExpired(callback)
+        || (callback.Kind == ActorTurnKind.Timer && callback.ExpiresAt.HasValue && utcNow > callback.ExpiresAt.Value);
 
     /// <inheritdoc />
     ValueTask IActorReminderScheduler.CancelAsync(
@@ -502,7 +550,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         lock (syncRoot)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var existing = callbacks.Where(callback => !callback.Canceled && !ReminderExpired(callback)
+            var existing = callbacks.Where(callback => !callback.Canceled && !Expired(callback)
                 && callback.Kind == kind
                 && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
                 && callback.ActorId.Equals(actorId)
@@ -786,6 +834,9 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         public ActorReminderFailurePolicy? FailurePolicy { get; } = failurePolicy;
 
         public bool Canceled { get; set; }
+
+        public ActorTimerInfo ToTimerInfo() =>
+            new(ActorType, ActorId, OriginalDueTime, OriginalPeriod, ArgumentsJson, OriginalTtl, OperationName);
 
         public ActorReminderInfo ToReminderInfo() =>
             new(ActorType, ActorId, OriginalDueTime, OriginalPeriod, ArgumentsJson, OriginalTtl, FailurePolicy);

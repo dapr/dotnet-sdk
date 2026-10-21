@@ -287,7 +287,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             ActorId.Create(response.ActorId),
             ActorScheduleDurationParser.ParseOptional(response.HasDueTime ? response.DueTime : null),
             ActorScheduleDurationParser.ParseOptional(response.HasPeriod ? response.Period : null),
-            DecodeJson(response.Data),
+            ActorSchedulePayloadDecoder.DecodeJson(response.Data),
             ActorScheduleDurationParser.ParseOptional(response.HasTtl ? response.Ttl : null));
 
     private ActorReminderInfo ToInfo(P.ActorReminder reminder) =>
@@ -296,7 +296,7 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
             ActorId.Create(reminder.ActorId),
             ActorScheduleDurationParser.ParseOptional(reminder.HasDueTime ? reminder.DueTime : null),
             ActorScheduleDurationParser.ParseOptional(reminder.HasPeriod ? reminder.Period : null),
-            DecodeJson(reminder.Data),
+            ActorSchedulePayloadDecoder.DecodeJson(reminder.Data),
             ActorScheduleDurationParser.ParseOptional(reminder.HasTtl ? reminder.Ttl : null));
 
     private static P.JobFailurePolicy ToProto(ActorReminderFailurePolicy failurePolicy)
@@ -322,65 +322,6 @@ public sealed class DaprSidecarActorReminderScheduler : IActorReminderScheduler
                 return policy;
             default:
                 throw new ArgumentOutOfRangeException(nameof(failurePolicy), failurePolicy, "Unsupported actor reminder failure policy.");
-        }
-    }
-
-    private static string? DecodeJson(Any? data)
-    {
-        if (data?.Value is not { Length: > 0 } bytes)
-        {
-            return null;
-        }
-
-        if (TryDecodeBytesValue(bytes, out var nestedBytes))
-        {
-            return DecodePayload(nestedBytes, unwrapJsonBase64String: true);
-        }
-
-        return DecodePayload(bytes, unwrapJsonBase64String: false);
-    }
-
-    private static bool TryDecodeBytesValue(ByteString bytes, out ByteString nestedBytes)
-    {
-        try
-        {
-            nestedBytes = BytesValue.Parser.ParseFrom(bytes).Value;
-            return nestedBytes.Length > 0;
-        }
-        catch (InvalidProtocolBufferException)
-        {
-            nestedBytes = ByteString.Empty;
-            return false;
-        }
-    }
-
-    private static string? DecodePayload(ByteString bytes, bool unwrapJsonBase64String)
-    {
-        if (bytes.Length == 0)
-        {
-            return null;
-        }
-
-        var text = System.Text.Encoding.UTF8.GetString(bytes.Span);
-        if (!unwrapJsonBase64String)
-        {
-            return text;
-        }
-
-        try
-        {
-            var encoded = System.Text.Json.JsonSerializer.Deserialize<string>(text);
-            if (string.IsNullOrEmpty(encoded))
-            {
-                return text;
-            }
-
-            var decoded = Convert.FromBase64String(encoded);
-            return System.Text.Encoding.UTF8.GetString(decoded);
-        }
-        catch (Exception ex) when (ex is FormatException or System.Text.Json.JsonException)
-        {
-            return text;
         }
     }
 }
