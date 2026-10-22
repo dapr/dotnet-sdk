@@ -23,17 +23,18 @@ public class WorkflowActivityContextImplTests
     {
         var identifier = new TaskIdentifier("ActivityA");
 
-        Assert.Throws<ArgumentNullException>(() => new WorkflowActivityContextImpl(identifier, null!, "tek"));
+        Assert.Throws<ArgumentNullException>(() => new WorkflowActivityContextImpl(identifier, null!, "tek", 42));
     }
 
     [Fact]
     public void Properties_ShouldExposeIdentifierAndInstanceId()
     {
         var identifier = new TaskIdentifier("ActivityA");
-        var context = new WorkflowActivityContextImpl(identifier, "instance-1", "tek");
+        var context = new WorkflowActivityContextImpl(identifier, "instance-1", "tek", 42);
 
         Assert.Equal(identifier, context.Identifier);
         Assert.Equal("instance-1", context.InstanceId);
         Assert.Equal("tek", context.TaskExecutionKey);
+        Assert.Equal(42, context.ScheduledEventId);
     }
 }

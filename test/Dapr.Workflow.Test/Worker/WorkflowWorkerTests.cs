@@ -2493,6 +2493,41 @@ public class WorkflowWorkerTests
         Assert.Equal(77, response.TaskId);
     }
 
+    [Theory]
+    [InlineData("exec-abc-123", 77, false)]
+    [InlineData("exec-abc-123", 77, true)]
+    [InlineData("", 0, false)]
+    [InlineData("", 0, true)]
+    public async Task ActivityContext_ShouldExposeScheduledEventIdBeforeCompletion(
+        string executionId, int scheduledEventId, bool fail)
+    {
+        using var sp = new ServiceCollection().BuildServiceProvider();
+        var factory = new StubWorkflowsFactory();
+        int? observedEventId = null;
+        string? observedExecutionKey = null;
+        factory.AddActivity("act", new InlineActivity(typeof(int), (context, _) =>
+        {
+            observedEventId = context.ScheduledEventId;
+            observedExecutionKey = context.TaskExecutionKey;
+            return fail
+                ? Task.FromException<object?>(new InvalidOperationException("intentional"))
+                : Task.FromResult<object?>(null);
+        }));
+        var worker = new WorkflowWorker(CreateGrpcClientMock().Object, factory,
+            NullLoggerFactory.Instance, new JsonDaprSerializer(), sp);
+        var response = await InvokeHandleActivityResponseAsync(worker, new ActivityRequest
+        {
+            Name = "act", TaskId = scheduledEventId, TaskExecutionId = executionId,
+            WorkflowInstance = new WorkflowInstance { InstanceId = "wf-1" }, Input = ""
+        });
+
+        Assert.Equal(scheduledEventId, observedEventId);
+        Assert.Equal(string.IsNullOrEmpty(executionId) ? scheduledEventId.ToString() : executionId, observedExecutionKey);
+        Assert.Equal(scheduledEventId, response.TaskId);
+        if (fail) Assert.NotNull(response.FailureDetails);
+        else Assert.Null(response.FailureDetails);
+    }
+
     // -------------------------------------------------------------------------
     // CompletionToken propagation
     // -------------------------------------------------------------------------
