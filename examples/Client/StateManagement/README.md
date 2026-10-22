@@ -43,17 +43,6 @@ dapr run -f dapr-with-token.yaml
 
 With the token enabled, the sidecar logs that API token authentication is on, and a `DaprClient` method that does not forward the header fails with an `Unauthenticated` gRPC status instead of completing (see [dapr/dotnet-sdk#1282](https://github.com/dapr/dotnet-sdk/issues/1282)). Edit the last element of `command` in the run file to run a different sample.
 
-The same can be done without run files by exporting the variable before `dapr run`, since the CLI passes its environment to both processes:
-
-```sh
-# bash
-DAPR_API_TOKEN=my-dapr-api-token dapr run --app-id DaprClient -- dotnet run --framework net10.0 -- 3
-```
-
-```powershell
-# PowerShell
-$env:DAPR_API_TOKEN = "my-dapr-api-token"; dapr run --app-id DaprClient -- dotnet run --framework net10.0 -- 3
-```
 ## State operations
 
 See [StateStoreExample.cs](./StateStoreExample.cs) for an example of using `DaprClient` for basic state store operations like get, set, and delete.
