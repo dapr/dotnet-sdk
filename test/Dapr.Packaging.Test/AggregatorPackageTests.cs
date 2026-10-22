@@ -203,6 +203,39 @@ public sealed class AggregatorPackageTests
     };
 
     [Theory]
+    [InlineData("Dapr.BinaryStore", null)]
+    [InlineData("Dapr.BinaryStore", "false")]
+    [InlineData("Dapr.BinaryStore", "true")]
+    [InlineData("Dapr.Messaging", null)]
+    [InlineData("Dapr.Messaging", "false")]
+    [InlineData("Dapr.Messaging", "true")]
+    public async Task AggregatorPackage_OnlyPreviewBuildsAllowPrereleaseDependencyWarnings(
+        string projectName, string? enableNet11)
+    {
+        // Pack runs in the outer build, where TargetFramework is empty, in a separate dotnet process.
+        var result = await RunDotNetAsync(FindRepoRoot(), "msbuild",
+            Path.Combine("src", projectName, projectName + ".csproj"),
+            $"-p:DaprEnableNet11={enableNet11}",
+            "-getProperty:TargetFramework,TreatWarningsAsErrors,WarningsNotAsErrors,NoWarn");
+        Assert.True(result.ExitCode == 0, result.Output);
+
+        using var evaluation = JsonDocument.Parse(result.Output);
+        var properties = evaluation.RootElement.GetProperty("Properties");
+        Assert.Equal("", properties.GetProperty("TargetFramework").GetString());
+        Assert.Equal("true", properties.GetProperty("TreatWarningsAsErrors").GetString());
+
+        var warningsNotAsErrors = properties.GetProperty("WarningsNotAsErrors").GetString()!
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.Equal(enableNet11 == "true", warningsNotAsErrors.Contains("NU5104"));
+        Assert.Contains("NU1901", warningsNotAsErrors);
+        Assert.Contains("NU1902", warningsNotAsErrors);
+        Assert.Contains("NU1903", warningsNotAsErrors);
+        Assert.Contains("NU1904", warningsNotAsErrors);
+        Assert.DoesNotContain("NU5104", properties.GetProperty("NoWarn").GetString()!
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    }
+
+    [Theory]
     [MemberData(nameof(PackagesWithBundledAssets))]
     public void AggregatorPackage_ProjectFilePreservesPackagingContract(PackageContractCase package)
     {

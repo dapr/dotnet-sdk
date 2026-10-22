@@ -11,6 +11,12 @@
     <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
    </PropertyGroup>
 
+  <!-- Preview dependencies are expected when opting into .NET 11. Pack checks NU5104 in the
+       outer build (no TargetFramework), including dotnet pack processes launched by tests. -->
+  <PropertyGroup Condition="'$(DaprEnableNet11)' == 'true'">
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU5104</WarningsNotAsErrors>
+  </PropertyGroup>
+
    <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)\IsExternalInit.cs" />
    </ItemGroup>
