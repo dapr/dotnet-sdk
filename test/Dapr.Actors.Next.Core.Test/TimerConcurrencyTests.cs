@@ -62,6 +62,104 @@ public sealed class TimerConcurrencyTests
     }
 
     [Fact]
+    public async Task Core_timer_scheduler_gets_lists_and_drops_expired_timers()
+    {
+        var time = new ControlledTimeProvider();
+        var scheduler = new CoreActorTimerScheduler(new CallbackRuntime(), Serializer, time);
+        var otherId = ActorId.Create("other");
+        await scheduler.ScheduleAsync("A", Id, "Tick", TimeSpan.FromSeconds(1), "OnTick", """{"x":1}""", TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
+        await scheduler.ScheduleAsync("A", otherId, "Tick", TimeSpan.FromSeconds(1), "OnTick", "{}");
+
+        var fetched = await scheduler.GetAsync("A", Id, "Tick");
+        Assert.NotNull(fetched);
+        Assert.Equal("A", fetched.ActorType);
+        Assert.Equal(Id, fetched.ActorId);
+        Assert.Equal(TimeSpan.FromSeconds(1), fetched.DueTime);
+        Assert.Null(fetched.DueAt);
+        Assert.Equal(TimeSpan.FromSeconds(1), fetched.Period);
+        Assert.Equal(DateTimeOffset.UnixEpoch + TimeSpan.FromSeconds(2), fetched.ExpiresAt);
+        Assert.Equal("OnTick", fetched.OperationName);
+        Assert.Equal("""{"x":1}""", fetched.ArgumentsJson);
+        Assert.Equal("Tick", Assert.Single(await scheduler.ListAsync("A", Id)).Name);
+        Assert.Null(await scheduler.GetAsync("A", Id, "missing"));
+        Assert.Empty(await scheduler.ListAsync("B", Id));
+
+        time.Now += TimeSpan.FromSeconds(2);
+        Assert.NotNull(await scheduler.GetAsync("A", Id, "Tick"));
+        time.Now += TimeSpan.FromTicks(1);
+        Assert.Null(await scheduler.GetAsync("A", Id, "Tick"));
+        Assert.Empty(await scheduler.ListAsync("A", Id));
+        Assert.Single(await scheduler.ListAsync("A", otherId));
+
+        await scheduler.CancelAsync("A", otherId, "Tick");
+        Assert.Empty(await scheduler.ListAsync("A", otherId));
+        scheduler.Dispose();
+        await Assert.ThrowsAsync<ObjectDisposedException>(async () => await scheduler.GetAsync("A", Id, "Tick"));
+        await Assert.ThrowsAsync<ObjectDisposedException>(async () => await scheduler.ListAsync("A", Id));
+    }
+
+    [Fact]
+    public async Task Core_timer_scheduler_reports_one_shot_periods_as_null()
+    {
+        var time = new ControlledTimeProvider();
+        using var scheduler = new CoreActorTimerScheduler(new CallbackRuntime(), Serializer, time);
+        await scheduler.ScheduleAsync("A", Id, "Zero", TimeSpan.FromSeconds(1), "OnTick", "{}", TimeSpan.Zero);
+        await scheduler.ScheduleAsync("A", Id, "Infinite", TimeSpan.FromSeconds(1), "OnTick", "{}", Timeout.InfiniteTimeSpan);
+        await scheduler.ScheduleAsync("A", Id, "Omitted", TimeSpan.FromSeconds(1), "OnTick", "{}");
+        await scheduler.ScheduleAsync("A", Id, "Periodic", TimeSpan.FromSeconds(1), "OnTick", "{}", TimeSpan.FromSeconds(1));
+
+        Assert.Null((await scheduler.GetAsync("A", Id, "Zero"))!.Period);
+        Assert.Null((await scheduler.GetAsync("A", Id, "Infinite"))!.Period);
+        Assert.Null((await scheduler.GetAsync("A", Id, "Omitted"))!.Period);
+        Assert.Equal(TimeSpan.FromSeconds(1), (await scheduler.GetAsync("A", Id, "Periodic"))!.Period);
+        Assert.Equal(["Periodic"], (await scheduler.ListAsync("A", Id)).Where(timer => timer.Timer.Period.HasValue).Select(timer => timer.Name));
+    }
+
+    [Fact]
+    public async Task Fired_one_shot_timer_without_ttl_is_no_longer_queryable()
+    {
+        var time = new VirtualActorTimeProvider();
+        var calls = 0;
+        using var scheduler = new CoreActorTimerScheduler(new CallbackRuntime(_ =>
+        {
+            Interlocked.Increment(ref calls);
+            return Task.FromResult<byte[]?>(null);
+        }), Serializer, time);
+        await scheduler.ScheduleAsync("A", Id, "Once", TimeSpan.FromSeconds(1), "OnTick", "{}");
+        await scheduler.ScheduleAsync("A", Id, "Periodic", TimeSpan.FromSeconds(1), "OnTick", "{}", TimeSpan.FromSeconds(1));
+        Assert.NotNull(await scheduler.GetAsync("A", Id, "Once"));
+        Assert.Equal(2, (await scheduler.ListAsync("A", Id)).Count);
+
+        time.Advance(TimeSpan.FromSeconds(1));
+
+        Assert.Equal(2, calls);
+        Assert.Null(await scheduler.GetAsync("A", Id, "Once"));
+        Assert.Equal("Periodic", Assert.Single(await scheduler.ListAsync("A", Id)).Name);
+        time.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(3, calls);
+        Assert.Equal("Periodic", Assert.Single(await scheduler.ListAsync("A", Id)).Name);
+    }
+
+    [Fact]
+    public async Task Completion_of_replaced_one_shot_timer_cannot_delete_its_replacement()
+    {
+        var time = new ControlledTimeProvider();
+        using var scheduler = new CoreActorTimerScheduler(new CallbackRuntime(), Serializer, time);
+        await scheduler.ScheduleAsync("A", Id, "Once", TimeSpan.Zero, "OnTick", "\"old\"");
+        var oldTimers = time.Timers.ToArray();
+        await scheduler.ScheduleAsync("A", Id, "Once", TimeSpan.Zero, "OnTick", "\"new\"");
+        var newTimers = time.Timers.Except(oldTimers).ToArray();
+
+        foreach (var timer in oldTimers) timer.Fire();
+        Assert.Equal("\"new\"", (await scheduler.GetAsync("A", Id, "Once"))!.ArgumentsJson);
+
+        foreach (var timer in newTimers) timer.Fire();
+        Assert.All(newTimers, timer => Assert.True(timer.Disposed));
+        Assert.Null(await scheduler.GetAsync("A", Id, "Once"));
+        Assert.Empty(await scheduler.ListAsync("A", Id));
+    }
+
+    [Fact]
     public async Task Expiration_of_replaced_reminder_cannot_delete_its_replacement()
     {
         var time = new ControlledTimeProvider();

@@ -28,7 +28,9 @@ internal sealed class ScheduledActorCallback
     private readonly ITimer timer;
     private readonly ITimer? expirationTimer;
     private readonly Action<ScheduledActorCallback>? onExpired;
+    private readonly Action<ScheduledActorCallback>? onCompleted;
     private bool active;
+    private bool oneShot;
 
     public ScheduledActorCallback(
         object sync,
@@ -37,7 +39,8 @@ internal sealed class ScheduledActorCallback
         ActorRuntimeRequest request,
         DateTimeOffset? expiresAt,
         ILogger? logger,
-        Action<ScheduledActorCallback>? onExpired = null)
+        Action<ScheduledActorCallback>? onExpired = null,
+        Action<ScheduledActorCallback>? onCompleted = null)
     {
         this.sync = sync;
         this.runtime = runtime;
@@ -46,6 +49,7 @@ internal sealed class ScheduledActorCallback
         this.expiresAt = expiresAt;
         this.logger = logger;
         this.onExpired = onExpired;
+        this.onCompleted = onCompleted;
 
         // System timers otherwise retain the registering actor's AsyncLocal call chain.
         if (ExecutionContext.IsFlowSuppressed())
@@ -67,6 +71,7 @@ internal sealed class ScheduledActorCallback
     public void Start(TimeSpan dueTime, TimeSpan period)
     {
         active = true;
+        oneShot = period <= TimeSpan.Zero;
         if (expirationTimer is not null)
         {
             var remaining = expiresAt!.Value - timeProvider.GetUtcNow();
@@ -180,6 +185,14 @@ internal sealed class ScheduledActorCallback
                 {
                     Expire();
                     return;
+                }
+
+                // A one-shot is consumed by its admission: the owner may drop the registration under its lock
+                // while the turn itself still runs to completion.
+                if (oneShot && onCompleted is not null)
+                {
+                    Stop();
+                    onCompleted(this);
                 }
             }
 

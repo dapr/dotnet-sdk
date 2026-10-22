@@ -210,6 +210,12 @@ public sealed class StateMachineEdgeTests
         public ValueTask RescheduleAsync<TArguments>(string actorType, ActorId actorId, string name, TimeSpan dueTime, string operationName, TArguments arguments, TimeSpan? period = null, TimeSpan? ttl = null, IReadOnlyDictionary<string, string>? headers = null, CancellationToken cancellationToken = default) =>
             ValueTask.CompletedTask;
 
+        public ValueTask<ActorTimerInfo?> GetAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult<ActorTimerInfo?>(null);
+
+        public ValueTask<IReadOnlyList<NamedActorTimerInfo>> ListAsync(string actorType, ActorId actorId, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult<IReadOnlyList<NamedActorTimerInfo>>([]);
+
         public ValueTask CancelAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default) =>
             ValueTask.CompletedTask;
     }

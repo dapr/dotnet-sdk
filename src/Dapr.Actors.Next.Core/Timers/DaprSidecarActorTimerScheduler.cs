@@ -15,6 +15,8 @@ using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Core.Serialization;
 using Dapr.Actors.Next.Core.Transport;
 using Google.Protobuf;
+using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
 namespace Dapr.Actors.Next.Core.Timers;
@@ -237,6 +239,85 @@ public sealed class DaprSidecarActorTimerScheduler : IActorTimerScheduler
         await client.Value.UnregisterActorTimerAsync(
             new P.UnregisterActorTimerRequest { ActorType = actorType, ActorId = actorId.Value, Name = name },
             DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<ActorTimerInfo?> GetAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        try
+        {
+            var response = await client.Value.GetActorTimerAsync(
+                new P.GetActorTimerRequest { ActorType = actorType, ActorId = actorId.Value, Name = name },
+                DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+
+            return ToInfo(response);
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<IReadOnlyList<NamedActorTimerInfo>> ListAsync(
+        string actorType,
+        ActorId actorId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+
+        var response = await client.Value.ListActorTimersAsync(
+            new P.ListActorTimersRequest { ActorType = actorType, ActorId = actorId.Value },
+            DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+
+        return response.Timers
+            .Select(timer => new NamedActorTimerInfo(timer.Name, ToInfo(timer.Timer)))
+            .ToArray();
+    }
+
+    private static ActorTimerInfo ToInfo(P.GetActorTimerResponse response) =>
+        ToInfo(
+            response.ActorType,
+            response.ActorId,
+            response.HasDueTime ? response.DueTime : null,
+            response.HasPeriod ? response.Period : null,
+            response.Data,
+            response.HasTtl ? response.Ttl : null,
+            response.HasCallback ? response.Callback : null);
+
+    private static ActorTimerInfo ToInfo(P.ActorTimer timer) =>
+        ToInfo(
+            timer.ActorType,
+            timer.ActorId,
+            timer.HasDueTime ? timer.DueTime : null,
+            timer.HasPeriod ? timer.Period : null,
+            timer.Data,
+            timer.HasTtl ? timer.Ttl : null,
+            timer.HasCallback ? timer.Callback : null);
+
+    // The sidecar echoes "dueTime" as registered (a duration or an RFC 3339 timestamp), reports "period" as
+    // "@every <Go duration>" (a registered zero period comes back as "@every 0s" for a one-shot timer), and
+    // reports "ttl" as the absolute RFC 3339 expiration computed at registration.
+    private static ActorTimerInfo ToInfo(
+        string actorType, string actorId, string? dueTime, string? period, Any? data, string? ttl, string? callback)
+    {
+        var (dueDuration, dueAt) = ActorScheduleDurationParser.ParseOptionalDueTime(dueTime);
+        return new ActorTimerInfo(
+            actorType,
+            ActorId.Create(actorId),
+            dueDuration,
+            dueAt,
+            ActorTimerInfo.NormalizePeriod(ActorScheduleDurationParser.ParseOptional(period)),
+            ActorSchedulePayloadDecoder.DecodeJson(data),
+            ActorScheduleDurationParser.ParseOptionalTimestamp(ttl),
+            callback);
     }
 
     internal static void ValidatePeriod(TimeSpan? period)

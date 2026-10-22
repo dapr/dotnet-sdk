@@ -333,6 +333,26 @@ public sealed partial class RealSidecarActorTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// Verifies timer get/list RPCs are available through the actor-injected scheduler.
+    /// </summary>
+    [MinimumDaprRuntimeFact("1.19")]
+    public async Task Timer_management_works_through_real_sidecar_scheduler()
+    {
+        using var cts = new CancellationTokenSource(Timeout);
+        var actorId = $"timer-management-{Guid.NewGuid():N}";
+
+        var response = await client!.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "ManageTimers", ReadOnlyMemory<byte>.Empty), cancellationToken: cts.Token);
+        var result = JsonSerializer.Deserialize<TimerManagementResult>(response.Data.Span)!;
+
+        Assert.True(result.Fetched);
+        Assert.Equal("TimerFired", result.OperationName);
+        Assert.Equal("\"managed\"", result.ArgumentsJson);
+        Assert.Equal(2, result.CountBeforeCancel);
+        Assert.True(result.MissingAfterCancel);
+        Assert.Equal(1, result.CountAfterCancel);
+    }
+
+    /// <summary>
     /// Verifies idle deactivation is delivered over the real app-callback stream.
     /// </summary>
     [MinimumDaprRuntimeFact("1.18")]
@@ -567,6 +587,17 @@ public sealed record ReminderManagementResult(
     bool MissingAfterCancel,
     int ActorScopedCountBeforeCancelAll,
     int ActorScopedCountAfterCancelAll);
+
+/// <summary>
+/// Timer management result used by the real sidecar test.
+/// </summary>
+public sealed record TimerManagementResult(
+    bool Fetched,
+    string? OperationName,
+    string? ArgumentsJson,
+    int CountBeforeCancel,
+    bool MissingAfterCancel,
+    int CountAfterCancel);
 
 /// <summary>
 /// Result of probing an absent actor state value.
@@ -909,6 +940,30 @@ public sealed class ProtocolActor(
     }
 
     /// <summary>
+    /// Exercises timer get/list/cancel through the injected scheduler on the hosting sidecar.
+    /// </summary>
+    public async Task<TimerManagementResult> ManageTimersAsync(CancellationToken cancellationToken)
+    {
+        await timerScheduler.ScheduleAsync("ProtocolActor", Id, "managed", TimeSpan.FromMinutes(5), "TimerFired", JsonSerializer.Serialize("managed"), cancellationToken: cancellationToken);
+        await timerScheduler.ScheduleAsync("ProtocolActor", Id, "other", TimeSpan.FromMinutes(5), "TimerFired", JsonSerializer.Serialize("other"), cancellationToken: cancellationToken);
+
+        var fetched = await timerScheduler.GetAsync("ProtocolActor", Id, "managed", cancellationToken);
+        var listedBeforeCancel = await timerScheduler.ListAsync("ProtocolActor", Id, cancellationToken);
+        await timerScheduler.CancelAsync("ProtocolActor", Id, "managed", cancellationToken);
+        var missingAfterCancel = await timerScheduler.GetAsync("ProtocolActor", Id, "managed", cancellationToken) is null;
+        var listedAfterCancel = await timerScheduler.ListAsync("ProtocolActor", Id, cancellationToken);
+        await timerScheduler.CancelAsync("ProtocolActor", Id, "other", cancellationToken);
+
+        return new TimerManagementResult(
+            fetched is not null,
+            fetched?.OperationName,
+            fetched?.ArgumentsJson,
+            listedBeforeCancel.Count,
+            missingAfterCancel,
+            listedAfterCancel.Count);
+    }
+
+    /// <summary>
     /// Handles a real Dapr timer callback.
     /// </summary>
     public Task TimerFiredAsync(CancellationToken cancellationToken)
@@ -1059,6 +1114,7 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
             "ScheduleReminder" => await CompleteAsync(protocol.ScheduleReminderAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),
             "ScheduleTimer" => await CompleteAsync(protocol.ScheduleTimerAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),
             "ManageReminders" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ManageRemindersAsync(cancellationToken))),
+            "ManageTimers" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ManageTimersAsync(cancellationToken))),
             "TimerFired" => await CompleteAsync(protocol.TimerFiredAsync(cancellationToken)),
             "reminder" => await CompleteAsync(protocol.ReminderAsync(cancellationToken)),
             "state-reentrancy" => await CompleteAsync(protocol.ReminderAsync(cancellationToken)),
