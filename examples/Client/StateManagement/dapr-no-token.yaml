@@ -11,3 +11,5 @@ apps:
     appLogDestination: console
     daprdLogDestination: console
     command: ["dotnet", "run", "--framework", "net10.0", "--", "3"]
+    env:
+      DAPR_API_TOKEN: ""
