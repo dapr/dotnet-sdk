@@ -1,0 +1,13 @@
+# Dapr multi-app run file: runs the bulk state sample (3) with a sidecar WITHOUT API token authentication.
+#
+#   dapr run -f dapr-no-token.yaml
+#
+# Change the last element of "command" to run a different sample (see Program.cs for the list).
+version: 1
+apps:
+  - appID: DaprClient
+    appDirPath: .
+    daprGRPCPort: 50001
+    appLogDestination: console
+    daprdLogDestination: console
+    command: ["dotnet", "run", "--framework", "net10.0", "--", "3"]
