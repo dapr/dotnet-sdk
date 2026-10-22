@@ -215,6 +215,52 @@ public sealed class ActorTestRuntimeTests
         Assert.Equal(2, runtime.Transcript.Count(entry => entry.OperationName == "Timer"));
     }
 
+    [MinimumDaprRuntimeFact("1.18")]
+    public async Task Virtual_timer_scheduler_gets_lists_and_drops_expired_timers()
+    {
+        await using var runtime = CreateTestingRuntime(new PriorityActorScheduler(4));
+        var id = ActorId.Create("virtual-timer");
+        var otherId = ActorId.Create("other-timer");
+        var timers = (IActorTimerScheduler)runtime.Time;
+
+        await timers.ScheduleAsync(
+            "Testing",
+            id,
+            "Timer",
+            TimeSpan.FromSeconds(1),
+            "Timer",
+            """{"payload":true}""",
+            period: TimeSpan.FromSeconds(1),
+            ttl: TimeSpan.FromSeconds(2));
+        await timers.ScheduleAsync("Testing", otherId, "Timer", TimeSpan.FromSeconds(10), "Timer", string.Empty);
+        var oneShotId = ActorId.Create("one-shot-timer");
+        await timers.ScheduleAsync("Testing", oneShotId, "Zero", TimeSpan.FromSeconds(10), "Timer", string.Empty, period: TimeSpan.Zero);
+        await timers.ScheduleAsync("Testing", oneShotId, "Infinite", TimeSpan.FromSeconds(10), "Timer", string.Empty, period: Timeout.InfiniteTimeSpan);
+        var fetched = await timers.GetAsync("Testing", id, "Timer");
+
+        Assert.NotNull(fetched);
+        Assert.Equal(TimeSpan.FromSeconds(1), fetched.DueTime);
+        Assert.Null(fetched.DueAt);
+        Assert.Equal(TimeSpan.FromSeconds(1), fetched.Period);
+        Assert.Equal(runtime.Time.GetUtcNow() + TimeSpan.FromSeconds(2), fetched.ExpiresAt);
+        Assert.Equal("Timer", fetched.OperationName);
+        Assert.Equal("""{"payload":true}""", fetched.ArgumentsJson);
+        Assert.Equal("Timer", Assert.Single(await timers.ListAsync("Testing", id)).Name);
+        Assert.Single(await timers.ListAsync("Testing", otherId));
+        Assert.Null(await timers.GetAsync("Testing", id, "missing"));
+        Assert.Null((await timers.GetAsync("Testing", oneShotId, "Zero"))!.Period);
+        Assert.Null((await timers.GetAsync("Testing", oneShotId, "Infinite"))!.Period);
+        Assert.All(await timers.ListAsync("Testing", oneShotId), timer => Assert.Null(timer.Timer.Period));
+
+        runtime.Time.Advance(TimeSpan.FromSeconds(3));
+        await runtime.RunToIdle();
+
+        Assert.Null(await timers.GetAsync("Testing", id, "Timer"));
+        Assert.Empty(await timers.ListAsync("Testing", id));
+        await timers.CancelAsync("Testing", otherId, "Timer");
+        Assert.Empty(await timers.ListAsync("Testing", otherId));
+    }
+
     // The following three tests anchor the DAPR1429/1430/1431 analyzers to real runtime behavior: a callback name
     // that resolves to a dispatchable method runs the method, while a name that does not resolve fails the turn with
     // the generated dispatcher's "Unknown actor method" error. If the dispatch contract ever changes, these break and
