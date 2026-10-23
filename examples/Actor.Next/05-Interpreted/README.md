@@ -30,7 +30,7 @@ Start the app from this sample directory:
 
 ```powershell
 cd examples\Actor.Next\05-Interpreted
-dotnet run
+dotnet run --framework net10.0
 ```
 
 Then open `Device.Next.Example05.http` in Rider or Visual Studio and run the requests in order:

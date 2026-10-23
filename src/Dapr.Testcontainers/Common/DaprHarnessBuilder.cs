@@ -15,6 +15,7 @@ using System;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common.Options;
 using Dapr.Testcontainers.Common.Testing;
+using Dapr.Testcontainers.Containers;
 using Dapr.Testcontainers.Harnesses;
 
 namespace Dapr.Testcontainers.Common;
@@ -28,14 +29,17 @@ public sealed class DaprHarnessBuilder
     /// The Dapr container runtime options.
     /// </summary>
     private DaprRuntimeOptions _options { get; set; } = new("1.17.0-rc.3");
+
     /// <summary>
     /// The isolated test environment to use with the harness, if any.
     /// </summary>
     private DaprTestEnvironment? _environment { get; set; }
+
     /// <summary>
     /// The directory containing the Dapr component resources.
     /// </summary>
     private string _componentsDirectory { get; set; }
+
     /// <summary>
     /// An application to run at startup.
     /// </summary>
@@ -49,7 +53,7 @@ public sealed class DaprHarnessBuilder
     {
         _componentsDirectory = componentsDirectory;
     }
-    
+
     /// <summary>
     /// Sets the <see cref="DaprRuntimeOptions"/> on the builder.
     /// </summary>
@@ -82,33 +86,42 @@ public sealed class DaprHarnessBuilder
         this._environment = environment;
         return this;
     }
-    
+
     /// <summary>
     /// Builds a workflow harness.
     /// </summary>
-	public WorkflowHarness BuildWorkflow() => new(_componentsDirectory, _startApp, _options, _environment);
+    public WorkflowHarness BuildWorkflow() => new(_componentsDirectory, _startApp, _options, _environment);
 
     /// <summary>
     /// Builds a distributed lock harness.
     /// </summary>
-	public DistributedLockHarness BuildDistributedLock() => new(_componentsDirectory, _startApp, _options, _environment);
+    public DistributedLockHarness BuildDistributedLock() =>
+        new(_componentsDirectory, _startApp, _options, _environment);
 
     /// <summary>
     /// Builds a secret store harness.
     /// </summary>
-	public SecretStoreHarness BuildSecretStore() => new(_componentsDirectory, _startApp, _options, _environment);
-    
+    public SecretStoreHarness BuildSecretStore() => new(_componentsDirectory, _startApp, _options, _environment);
+
+    /// <summary>Builds a Search harness backed by Meilisearch. Select a Search-capable runtime with WithOptions.</summary>
+    public SearchHarness BuildSearch(string meilisearchImage = MeilisearchContainer.DefaultImage) =>
+        new(_componentsDirectory, _startApp, _options, _environment, meilisearchImage);
+
+    /// <summary>Builds a Vector harness backed by Meilisearch. Select a Vector-capable runtime with WithOptions.</summary>
+    public VectorHarness BuildVector(string meilisearchImage = MeilisearchContainer.DefaultImage) =>
+        new(_componentsDirectory, _startApp, _options, _environment, meilisearchImage);
+
     /// <summary>
     /// Builds a conversation harness.
     /// </summary>
-	public ConversationHarness BuildConversation() => new(_componentsDirectory, _startApp, _options, _environment);
-    
-     /// <summary>
-     /// Builds a cryptography harness.
-     /// </summary>
-     /// <param name="keysDir">The path to the cryptography keys.</param>
-     public CryptographyHarness BuildCryptography(string keysDir) =>
-         new(_componentsDirectory, _startApp, keysDir, _options, _environment);
+    public ConversationHarness BuildConversation() => new(_componentsDirectory, _startApp, _options, _environment);
+
+    /// <summary>
+    /// Builds a cryptography harness.
+    /// </summary>
+    /// <param name="keysDir">The path to the cryptography keys.</param>
+    public CryptographyHarness BuildCryptography(string keysDir) =>
+        new(_componentsDirectory, _startApp, keysDir, _options, _environment);
 
     /// <summary>
     /// Builds a binary store harness.
@@ -121,7 +134,7 @@ public sealed class DaprHarnessBuilder
     /// <summary>
     /// Builds a jobs harness.
     /// </summary>
-	public JobsHarness BuildJobs() => new(_componentsDirectory, _startApp, _options, _environment);
+    public JobsHarness BuildJobs() => new(_componentsDirectory, _startApp, _options, _environment);
 
     /// <summary>
     /// Builds a Metadata harness.
@@ -131,12 +144,18 @@ public sealed class DaprHarnessBuilder
     /// <summary>
     /// Builds a PubSub harness.
     /// </summary>
-	public PubSubHarness BuildPubSub() => new(_componentsDirectory, _startApp, _options, _environment);
- 
+    public PubSubHarness BuildPubSub() => new(_componentsDirectory, _startApp, _options, _environment);
+
     /// <summary>
     /// Builds an actor harness.
     /// </summary>
     public ActorHarness BuildActors() => new(_componentsDirectory, _startApp, _options, _environment);
+
+    /// <summary>
+    /// Builds a service invocation harness.
+    /// </summary>
+    public ServiceInvocationHarness BuildServiceInvocation() =>
+        new(_componentsDirectory, _startApp, _options, _environment);
 
     /// <summary>
     /// Creates a test application builder for the specified harness.

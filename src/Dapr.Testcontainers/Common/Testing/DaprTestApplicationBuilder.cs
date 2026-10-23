@@ -73,7 +73,7 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
     {
         const int maxAttempts = 5;
         Exception? lastError = null;
-        
+
         if (_shouldLoadResourcesFirst)
         {
             // Load the harness and resources, then the app
@@ -93,7 +93,7 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
                         await attemptApp.StartAsync();
                     }
 
-                    return new DaprTestApplication(harness, attemptApp);
+                    return new DaprTestApplication(harness, attemptApp, GetApplicationEndpoint(attemptApp));
                 }
                 catch (Exception ex)
                 {
@@ -104,7 +104,7 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
             throw new InvalidOperationException(
                 $"Failed to start resource-first Dapr test application after {maxAttempts} attempts.", lastError);
         }
-        
+
         // App-first: start app, then start resources
         // If daprd cannot bind the chosen ports, restart the app with new ports
 
@@ -119,7 +119,7 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
                 var grpcPort = PortUtilities.GetAvailablePort();
                 while (grpcPort == httpPort)
                     grpcPort = PortUtilities.GetAvailablePort();
-                
+
                 harness.SetPorts(httpPort, grpcPort);
 
                 // Load the app (configuration/services/pipeline), but delay StartAsync until daprd is up
@@ -132,12 +132,12 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
 
                 await harness.InitializeAsync();
 
-                return new DaprTestApplication(harness, attemptApp);
+                return new DaprTestApplication(harness, attemptApp, GetApplicationEndpoint(attemptApp));
             }
             catch (Exception ex)
             {
                 lastError = await StopAndDisposeAppAsync(attemptApp, ex);
-                
+
                 // Try again with a frest set of ports
             }
         }
@@ -149,22 +149,22 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
     private WebApplication CreateApp(int appPort)
     {
         var builder = WebApplication.CreateBuilder();
-        
+
         // Configure Dapr endpoints via in-memory configuration instead of environment variables
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             { "DAPR_HTTP_ENDPOINT", $"http://127.0.0.1:{harness.DaprHttpPort}" },
             { "DAPR_GRPC_ENDPOINT", $"http://127.0.0.1:{harness.DaprGrpcPort}" }
         });
-        
+
         builder.Logging.ClearProviders();
         builder.Logging.AddSimpleConsole();
         builder.WebHost.UseUrls($"http://0.0.0.0:{appPort}");
-        
+
         _configureServices?.Invoke(builder);
 
         var app = builder.Build();
-            
+
         _configureApp?.Invoke(app);
 
         return app;
@@ -186,7 +186,28 @@ public sealed class DaprTestApplicationBuilder(BaseHarness harness)
                 return uri.Port;
         }
 
-        throw new InvalidOperationException($"Unable to determine bound port from addresses: {string.Join(", ", addresses)}");
+        throw new InvalidOperationException(
+            $"Unable to determine bound port from addresses: {string.Join(", ", addresses)}");
+    }
+
+    private static Uri? GetApplicationEndpoint(WebApplication? app)
+    {
+        if (app is null)
+            return null;
+
+        var server = app.Services.GetRequiredService<IServer>();
+        var addresses = server.Features.Get<IServerAddressesFeature>()?.Addresses;
+        if (addresses is null)
+            return null;
+
+        foreach (var address in addresses)
+        {
+            if (Uri.TryCreate(address.Replace("0.0.0.0", "127.0.0.1", StringComparison.Ordinal), UriKind.Absolute,
+                    out var endpoint))
+                return endpoint;
+        }
+
+        return null;
     }
 
     private static async Task<Exception> StopAndDisposeAppAsync(WebApplication? app, Exception startupException)

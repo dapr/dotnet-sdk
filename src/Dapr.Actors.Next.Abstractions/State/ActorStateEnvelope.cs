@@ -11,6 +11,8 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Text.Json.Serialization;
+
 namespace Dapr.Actors.Next.Abstractions.State;
 
 /// <summary>
@@ -32,17 +34,18 @@ public enum ActorStateFormKind : byte
 /// <summary>
 /// The fixed header read before every SDK-written actor state payload.
 /// </summary>
+/// <remarks>JSON metadata names are fixed independently of the state payload's serializer naming policy.</remarks>
 /// <param name="Magic">The content-independent format tag.</param>
 /// <param name="FormatVersion">The actor state envelope format version.</param>
 /// <param name="FormKind">The logical payload form.</param>
 /// <param name="SerializerId">The serializer that wrote the payload.</param>
 /// <param name="SerializerVersion">The serializer format or configuration version.</param>
 public readonly record struct ActorStateEnvelopeHeader(
-    byte Magic,
-    int FormatVersion,
-    ActorStateFormKind FormKind,
-    string SerializerId,
-    int SerializerVersion)
+    [property: JsonPropertyName("magic")] byte Magic,
+    [property: JsonPropertyName("formatVersion")] int FormatVersion,
+    [property: JsonPropertyName("formKind")] ActorStateFormKind FormKind,
+    [property: JsonPropertyName("serializerId")] string SerializerId,
+    [property: JsonPropertyName("serializerVersion")] int SerializerVersion)
 {
     /// <summary>
     /// The current non-JSON magic byte used to identify SDK-written actor state.
@@ -69,7 +72,9 @@ public readonly record struct ActorStateEnvelopeHeader(
 /// </summary>
 /// <param name="ChainIndex">The node position in its family's migration chain.</param>
 /// <param name="ShapeHash">The algorithm-versioned structural hash for the node, for example <c>h1:...</c>.</param>
-public readonly record struct ActorStateDiscriminator(int ChainIndex, string ShapeHash)
+public readonly record struct ActorStateDiscriminator(
+    [property: JsonPropertyName("chainIndex")] int ChainIndex,
+    [property: JsonPropertyName("shapeHash")] string ShapeHash)
 {
     /// <summary>
     /// The current shape-hash algorithm prefix.
@@ -84,9 +89,9 @@ public readonly record struct ActorStateDiscriminator(int ChainIndex, string Sha
 /// <param name="Discriminator">The migration-chain discriminator.</param>
 /// <param name="Value">The typed payload.</param>
 public sealed record ActorStateEnvelope<T>(
-    ActorStateEnvelopeHeader Header,
-    ActorStateDiscriminator Discriminator,
-    T Value);
+    [property: JsonPropertyName("header")] ActorStateEnvelopeHeader Header,
+    [property: JsonPropertyName("discriminator")] ActorStateDiscriminator Discriminator,
+    [property: JsonPropertyName("value")] T Value);
 
 /// <summary>
 /// The persisted actor state envelope for a plain payload.
@@ -94,5 +99,5 @@ public sealed record ActorStateEnvelope<T>(
 /// <param name="Header">The payload header.</param>
 /// <param name="Value">The typed payload.</param>
 public sealed record ActorStatePlainEnvelope<T>(
-    ActorStateEnvelopeHeader Header,
-    T Value);
+    [property: JsonPropertyName("header")] ActorStateEnvelopeHeader Header,
+    [property: JsonPropertyName("value")] T Value);

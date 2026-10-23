@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -44,7 +44,7 @@ namespace Dapr.IntegrationTest.Actors.Next;
 /// <summary>
 /// Real-sidecar integration tests for the Actors Next app-callback stream.
 /// </summary>
-public sealed class RealSidecarActorTests : IAsyncLifetime
+public sealed partial class RealSidecarActorTests : IAsyncLifetime
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(90);
     private DaprTestEnvironment? environment;
@@ -155,6 +155,7 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
 
     private static void ConfigureActorHost(WebApplicationBuilder builder)
     {
+        ConfigureGeneratedRegressionActors(builder);
         builder.Services.AddSingleton(_ =>
         {
             var endpoint = builder.Configuration["DAPR_GRPC_ENDPOINT"] ?? throw new InvalidOperationException("Missing Dapr gRPC endpoint.");
@@ -165,6 +166,8 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         builder.Services.AddSingleton<IActorStateStore>(sp => sp.GetRequiredService<RecordingActorStateStore>());
         builder.Services.AddSingleton<ISubscribeActorEventsTransport>(sp =>
             new RecordingActorEventsTransport(sp.GetRequiredService<P.Dapr.DaprClient>()));
+        builder.Services.AddSingleton<RecordingActorScheduler>();
+        builder.Services.AddSingleton<IActorScheduler>(sp => sp.GetRequiredService<RecordingActorScheduler>());
         builder.Services.AddSingleton<Probe>();
         builder.Services.AddDaprActors(options =>
         {
@@ -195,9 +198,11 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
                     static (_, _, _, _) => ValueTask.CompletedTask),
                 typeOptions: new DaprActorTypeOptions { IdleTimeout = TimeSpan.FromSeconds(2) });
         });
-        builder.Services.AddSingleton<RecordingActorScheduler>();
-        builder.Services.AddSingleton<IActorScheduler>(sp => sp.GetRequiredService<RecordingActorScheduler>());
+        ConfigureConcurrencyActors(builder);
     }
+
+    private static partial void ConfigureConcurrencyActors(WebApplicationBuilder builder);
+    private static partial void ConfigureGeneratedRegressionActors(WebApplicationBuilder builder);
 
     private static void WriteActorConfigYaml(string componentsDirectory)
     {
@@ -325,6 +330,26 @@ public sealed class RealSidecarActorTests : IAsyncLifetime
         Assert.True(result.MissingAfterCancel);
         Assert.Equal(1, result.ActorScopedCountBeforeCancelAll);
         Assert.Equal(0, result.ActorScopedCountAfterCancelAll);
+    }
+
+    /// <summary>
+    /// Verifies timer get/list RPCs are available through the actor-injected scheduler.
+    /// </summary>
+    [MinimumDaprRuntimeFact("1.19")]
+    public async Task Timer_management_works_through_real_sidecar_scheduler()
+    {
+        using var cts = new CancellationTokenSource(Timeout);
+        var actorId = $"timer-management-{Guid.NewGuid():N}";
+
+        var response = await client!.InvokeActorAsync(CreateInvoke("ProtocolActor", actorId, "ManageTimers", ReadOnlyMemory<byte>.Empty), cancellationToken: cts.Token);
+        var result = JsonSerializer.Deserialize<TimerManagementResult>(response.Data.Span)!;
+
+        Assert.True(result.Fetched);
+        Assert.Equal("TimerFired", result.OperationName);
+        Assert.Equal("\"managed\"", result.ArgumentsJson);
+        Assert.Equal(2, result.CountBeforeCancel);
+        Assert.True(result.MissingAfterCancel);
+        Assert.Equal(1, result.CountAfterCancel);
     }
 
     /// <summary>
@@ -562,6 +587,17 @@ public sealed record ReminderManagementResult(
     bool MissingAfterCancel,
     int ActorScopedCountBeforeCancelAll,
     int ActorScopedCountAfterCancelAll);
+
+/// <summary>
+/// Timer management result used by the real sidecar test.
+/// </summary>
+public sealed record TimerManagementResult(
+    bool Fetched,
+    string? OperationName,
+    string? ArgumentsJson,
+    int CountBeforeCancel,
+    bool MissingAfterCancel,
+    int CountAfterCancel);
 
 /// <summary>
 /// Result of probing an absent actor state value.
@@ -904,6 +940,30 @@ public sealed class ProtocolActor(
     }
 
     /// <summary>
+    /// Exercises timer get/list/cancel through the injected scheduler on the hosting sidecar.
+    /// </summary>
+    public async Task<TimerManagementResult> ManageTimersAsync(CancellationToken cancellationToken)
+    {
+        await timerScheduler.ScheduleAsync("ProtocolActor", Id, "managed", TimeSpan.FromMinutes(5), "TimerFired", JsonSerializer.Serialize("managed"), cancellationToken: cancellationToken);
+        await timerScheduler.ScheduleAsync("ProtocolActor", Id, "other", TimeSpan.FromMinutes(5), "TimerFired", JsonSerializer.Serialize("other"), cancellationToken: cancellationToken);
+
+        var fetched = await timerScheduler.GetAsync("ProtocolActor", Id, "managed", cancellationToken);
+        var listedBeforeCancel = await timerScheduler.ListAsync("ProtocolActor", Id, cancellationToken);
+        await timerScheduler.CancelAsync("ProtocolActor", Id, "managed", cancellationToken);
+        var missingAfterCancel = await timerScheduler.GetAsync("ProtocolActor", Id, "managed", cancellationToken) is null;
+        var listedAfterCancel = await timerScheduler.ListAsync("ProtocolActor", Id, cancellationToken);
+        await timerScheduler.CancelAsync("ProtocolActor", Id, "other", cancellationToken);
+
+        return new TimerManagementResult(
+            fetched is not null,
+            fetched?.OperationName,
+            fetched?.ArgumentsJson,
+            listedBeforeCancel.Count,
+            missingAfterCancel,
+            listedAfterCancel.Count);
+    }
+
+    /// <summary>
     /// Handles a real Dapr timer callback.
     /// </summary>
     public Task TimerFiredAsync(CancellationToken cancellationToken)
@@ -1054,6 +1114,7 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
             "ScheduleReminder" => await CompleteAsync(protocol.ScheduleReminderAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),
             "ScheduleTimer" => await CompleteAsync(protocol.ScheduleTimerAsync(JsonSerializer.Deserialize<string>(request.Payload.Span)!, cancellationToken)),
             "ManageReminders" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ManageRemindersAsync(cancellationToken))),
+            "ManageTimers" => new ActorDispatchResponse(JsonSerializer.SerializeToUtf8Bytes(await protocol.ManageTimersAsync(cancellationToken))),
             "TimerFired" => await CompleteAsync(protocol.TimerFiredAsync(cancellationToken)),
             "reminder" => await CompleteAsync(protocol.ReminderAsync(cancellationToken)),
             "state-reentrancy" => await CompleteAsync(protocol.ReminderAsync(cancellationToken)),
@@ -1083,11 +1144,19 @@ public sealed class ProtocolActorDispatcher : IActorDispatcher
 /// </summary>
 public sealed class RecordingActorStateStore(IActorStateStore inner) : IActorStateStore
 {
+    internal bool FailNextInterpretedRead;
+    public ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default) =>
+        inner.ApplyAsync(actorType, actorId, operations, cancellationToken);
     private readonly ConcurrentDictionary<(string ActorType, string ActorId, string Name), int> readCounts = new();
 
     /// <inheritdoc />
     public async ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default)
     {
+        if (name == "__interpreted" && FailNextInterpretedRead)
+        {
+            FailNextInterpretedRead = false;
+            throw new IOException("Injected interpreted state read failure.");
+        }
         readCounts.AddOrUpdate((actorType, actorId, name), 1, static (_, count) => count + 1);
         return await inner.ReadAsync(actorType, actorId, name, cancellationToken);
     }

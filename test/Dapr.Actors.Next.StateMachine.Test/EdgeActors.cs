@@ -66,7 +66,6 @@ public sealed class EdgeActor(ActorActivationContext context, IActorTimerSchedul
     {
         sm.InitialState(EdgeState.A);
         sm.In(EdgeState.A)
-            .OnEntry("named-entry")
             .OnExit(async ctx =>
             {
                 await Task.Yield();

@@ -23,7 +23,7 @@ public sealed class WorkflowRouterRegistry : IWorkflowRouterRegistry
 {
     private readonly object _sync = new();
     private Dictionary<string, IReadOnlyList<string>> _routes = new(StringComparer.Ordinal);
-    private HashSet<string> _knownNames = new(StringComparer.Ordinal);
+    private HashSet<string> _knownNames = new(StringComparer.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     public void UpdateRoutes(IReadOnlyDictionary<string, IReadOnlyList<string>> routes)
@@ -31,7 +31,7 @@ public sealed class WorkflowRouterRegistry : IWorkflowRouterRegistry
         ArgumentNullException.ThrowIfNull(routes);
 
         var updatedRoutes = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        var updatedNames = new HashSet<string>(StringComparer.Ordinal);
+        var updatedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var kvp in routes)
         {

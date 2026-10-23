@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Dapr.Testcontainers.Common.Testing;
 using Dapr.Testcontainers.Harnesses;
@@ -43,6 +44,11 @@ public sealed class ActorTestContext : IAsyncDisposable
     /// Creates a DI service scope from the running test application.
     /// </summary>
     public IServiceScope CreateScope() => _app.CreateScope();
+
+    /// <summary>
+    /// Creates an HTTP client for the actor application.
+    /// </summary>
+    public HttpClient CreateHttpClient() => _app.CreateHttpClient();
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()

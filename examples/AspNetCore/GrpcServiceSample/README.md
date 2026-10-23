@@ -25,7 +25,9 @@ The application also registers for pub/sub with the `deposit` and `withdraw` top
 
  The application will listen on port 5050 for GRPC.
 
- ### Client Examples
+### Client Examples
+
+For a generated gRPC client using Dapr's gRPC proxy, see the [gRPC proxy example](../../Client/GrpcProxy). It calls the `GreeterService` exposed by this application without using the `AppCallback` invocation API.
 
 See InvokeGrpcBalanceServiceOperationAsync, InvokeGrpcDepositServiceOperationAsync and InvokeGrpcWithdrawServiceOperationAsync on DaprClient project.
 

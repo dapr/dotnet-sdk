@@ -222,9 +222,7 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
     {
         var grpcClientMock = CreateGrpcClientMock();
 
-        // History streaming also treats PastEvents as partial and appends its own GetInstanceHistory
-        // fetch downstream, so reconstructing here too would hand the workflow a doubled history.
-        // The two modes are mutually exclusive; PastEvents must reach the handler untouched.
+        // Streaming appends the remainder exactly once, without delta reconstruction.
         var request = new WorkflowRequest
         {
             InstanceId = "i-1",
@@ -232,6 +230,9 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
             RequiresHistoryStreaming = true
         };
         request.CachedHistory = new CachedHistory { EventCount = 2 };
+        grpcClientMock
+            .Setup(x => x.GetInstanceHistoryAsync(It.IsAny<GetInstanceHistoryRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCall(new GetInstanceHistoryResponse { Events = { Events(3) } }));
         grpcClientMock
             .Setup(x => x.GetWorkItems(It.IsAny<GetWorkItemsRequest>(), It.IsAny<CallOptions>()))
             .Returns(CreateServerStreamingCall([new WorkItem { WorkflowRequest = request }]));
@@ -254,10 +255,10 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
             NoActivityHandler,
             untilCondition: () => Volatile.Read(ref completed) >= 1, timeout: TimeSpan.FromSeconds(2));
 
-        Assert.Equal([2], seenPastEvents); // untouched; the streaming path appends the rest itself
+        Assert.Equal([5], seenPastEvents);
         grpcClientMock.Verify(
             x => x.GetInstanceHistoryAsync(It.IsAny<GetInstanceHistoryRequest>(), It.IsAny<CallOptions>()),
-            Times.Never);
+            Times.Once);
     }
 
     [Theory]
@@ -364,7 +365,7 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
         var neverCompletes = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var retiredHandlerStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var releaseRetiredHandler = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var retiredCompletionSent = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var retiredHandlerReturned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         // The failing delta tears down the first stream, which cancels that stream's token. A work item
         // whose task has not started by then never runs, so deliver the failing delta only once the
@@ -380,7 +381,7 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
             .Returns(CreateServerStreamingCallFromReader(new GatedStreamReader(
             [
                 (currentTurn, null),
-                (new WorkItem { WorkflowRequest = currentDelta }, retiredCompletionSent.Task)
+                (new WorkItem { WorkflowRequest = currentDelta }, retiredHandlerReturned.Task)
             ])))
             .Returns(CreateServerStreamingCall([]));
 
@@ -408,10 +409,7 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
                 {
                     releaseRetiredHandler.TrySetResult();
                 }
-                else if (response.CustomStatus == "retired")
-                {
-                    retiredCompletionSent.TrySetResult();
-                }
+                Assert.NotEqual("retired", response.CustomStatus);
             })
             .Returns(CreateAsyncUnaryCall(new CompleteTaskResponse()));
 
@@ -426,6 +424,7 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
                 {
                     retiredHandlerStarted.TrySetResult();
                     await releaseRetiredHandler.Task;
+                    retiredHandlerReturned.TrySetResult();
                     return new WorkflowResponse { InstanceId = request.InstanceId, CustomStatus = "retired" };
                 }
 
@@ -439,7 +438,7 @@ public sealed class GrpcProtocolHandlerStatefulHistoryTests
                 return new WorkflowResponse { InstanceId = request.InstanceId, CustomStatus = "delta" };
             },
             NoActivityHandler,
-            untilCondition: () => Volatile.Read(ref completed) >= 3,
+            untilCondition: () => Volatile.Read(ref completed) >= 2,
             timeout: TimeSpan.FromSeconds(20));
 
         Assert.Equal([10, 11, 12], reconstructedHistory);

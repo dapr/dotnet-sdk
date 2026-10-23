@@ -23,7 +23,7 @@ Run `dapr init` once so a default state store with `actorStateStore` enabled is 
 ## Start the Dapr runtime
 
 ```powershell
-dapr run --app-id actors-example-06 --dapr-grpc-port 50001 --app-protocol grpc --app-port 5056 -- dotnet run
+dapr run --app-id actors-example-06 --dapr-grpc-port 50001 --app-protocol grpc --app-port 5056 -- dotnet run --framework net10.0
 ```
 
 ## Run Locally
@@ -32,7 +32,7 @@ Or start the app separately from this sample directory (it assumes the gRPC port
 
 ```powershell
 cd examples\Actor.Next\06-Approvals
-dotnet run
+dotnet run --framework net10.0
 ```
 
 Then open `Approvals.Next.Example06.http` in Rider or Visual Studio and run the requests in order. The happy path (`exp-001`) auto-approves a small expense and the settlement workflow drives it to `Archived`. The `exp-002` path escalates a large expense to a manager and then fails the charge, so the workflow compensates and drives the document to `SettlementFailed`. The `con-001` path shows a different document type (a contract, with a legal-review stage) running on the same compiled actor.

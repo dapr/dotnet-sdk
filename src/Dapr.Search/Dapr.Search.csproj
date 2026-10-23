@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <IsPackable>true</IsPackable>
+        <PackageId>Dapr.Search</PackageId>
+        <Description>Dapr Search SDK for .NET (alpha API).</Description>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <NoWarn>$(NoWarn);NU5128</NoWarn>
+        <IncludeSymbols>false</IncludeSymbols>
+        <TargetsForTfmSpecificContentInPackage>
+            $(TargetsForTfmSpecificContentInPackage);
+            _CollectChildOutputsForCurrentTFM
+        </TargetsForTfmSpecificContentInPackage>
+    </PropertyGroup>
+    <ItemGroup>
+        <_SearchChildLib Include="..\Dapr.Search.Abstractions\Dapr.Search.Abstractions.csproj" />
+        <_SearchChildLib Include="..\Dapr.Search.Runtime\Dapr.Search.Runtime.csproj" />
+        <ProjectReference Include="@(_SearchChildLib)" PrivateAssets="all" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\Dapr.Search.Generators\Dapr.Search.Generators.csproj"
+                          PrivateAssets="all" ReferenceOutputAssembly="false"
+                          SetTargetFramework="TargetFramework=netstandard2.0" />
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+        <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+        <PackageReference Include="Google.Protobuf" />
+        <PackageReference Include="Grpc.Net.Client" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Http" />
+    </ItemGroup>
+    <Target Name="_BundleSearchGenerator" BeforeTargets="_GetPackageFiles">
+        <MSBuild Projects="..\Dapr.Search.Generators\Dapr.Search.Generators.csproj"
+                 Targets="Build"
+                 Properties="TargetFramework=netstandard2.0;Configuration=$(Configuration)" />
+        <MSBuild Projects="..\Dapr.Search.Generators\Dapr.Search.Generators.csproj"
+                 Targets="GetTargetPath"
+                 Properties="TargetFramework=netstandard2.0;Configuration=$(Configuration)">
+            <Output TaskParameter="TargetOutputs" ItemName="_SearchGeneratorOutput" />
+        </MSBuild>
+        <ItemGroup>
+            <None Include="@(_SearchGeneratorOutput)" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+        </ItemGroup>
+    </Target>
+    <Target Name="_BuildChildrenForCurrentTFM">
+        <MSBuild Projects="@(_SearchChildLib)" Targets="Build"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)" BuildInParallel="true" />
+    </Target>
+    <Target Name="_CollectChildOutputsForCurrentTFM" DependsOnTargets="_BuildChildrenForCurrentTFM">
+        <MSBuild Projects="@(_SearchChildLib)" Targets="GetTargetPath"
+                 Properties="TargetFramework=$(TargetFramework);Configuration=$(Configuration)">
+            <Output TaskParameter="TargetOutputs" ItemName="_BuiltChildOutputs" />
+        </MSBuild>
+        <PropertyGroup>
+            <_EffectiveTfmFolder>$(NuGetTargetFrameworkFolderName)</_EffectiveTfmFolder>
+            <_EffectiveTfmFolder Condition="'$(_EffectiveTfmFolder)' == ''">$(TargetFramework)</_EffectiveTfmFolder>
+        </PropertyGroup>
+        <ItemGroup>
+            <_ChildDll Include="@(_BuiltChildOutputs)" Condition="'%(_BuiltChildOutputs.Extension)' == '.dll'" />
+            <_ChildXml Include="%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).xml"
+                       Condition="Exists('%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).xml')" />
+            <_ChildPdb Include="%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).pdb"
+                       Condition="Exists('%(_ChildDll.RootDir)%(_ChildDll.Directory)%(_ChildDll.Filename).pdb')" />
+            <TfmSpecificPackageFile Include="@(_ChildDll);@(_ChildXml);@(_ChildPdb)">
+                <TargetFramework>$(TargetFramework)</TargetFramework>
+                <PackagePath>lib/$(_EffectiveTfmFolder)/%(Filename)%(Extension)</PackagePath>
+            </TfmSpecificPackageFile>
+        </ItemGroup>
+    </Target>
+</Project>

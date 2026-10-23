@@ -10,7 +10,7 @@ export type ComputeInput = {
 }
 
 export type ComputeOutput = {
-    matrix_json: { version: string; channel: "rc" | "stable" }[];
+    matrix_json: { version: string; channel: "edge" | "rc" | "stable" }[];
 }
 
 export function stripPrefix(tag: string, prefix?: string): string {
@@ -29,12 +29,14 @@ export function stripPrefix(tag: string, prefix?: string): string {
  *    versions, starting from the minor just below any RC-only newest minor (or
  *    from the highest stable minor when there is no RC phase), and scanning
  *    downwards — skipping gaps where a minor has no stable release.
+ * 4. Always include the rolling edge image, independently of numerical releases.
  */
 export function computeFromTags(input: ComputeInput): ComputeOutput {
     const tagPrefix = input.tagPrefix ?? "";
     const stableCount = input.stableCount ?? 2;
     const rcCount = input.rcCount ?? 1;
     const rcIdent = input.rcIdent ?? "rc";
+    const edge: ComputeOutput["matrix_json"] = [{ version: "edge", channel: "edge" }];
     const prereleaseTagSet = new Set(
         (input.prereleaseTags ?? []).map((t) => stripPrefix(t.replace(/^refs\/tags\//, ""), tagPrefix))
     );
@@ -53,7 +55,7 @@ export function computeFromTags(input: ComputeInput): ComputeOutput {
     }
 
     if (versions.length === 0) {
-        return { matrix_json: [] };
+        return { matrix_json: edge };
     }
 
     const stable = versions
@@ -112,6 +114,7 @@ export function computeFromTags(input: ComputeInput): ComputeOutput {
     }
 
     const matrix = [
+        ...edge,
         ...latestRcs.map((v) => ({ version: v, channel: "rc" as const })),
         ...stablePatches.map((v) => ({ version: v, channel: "stable" as const })),
     ];

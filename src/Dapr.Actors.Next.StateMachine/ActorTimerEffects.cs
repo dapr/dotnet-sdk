@@ -20,12 +20,12 @@ namespace Dapr.Actors.Next.StateMachine;
 /// <summary>
 /// Effect-context timer surface backed by the Core actor timer scheduler.
 /// </summary>
-internal sealed class ActorTimerEffects<TState>(
+internal sealed class ActorTimerEffects(
     IActorTimerScheduler scheduler,
     string actorType,
     ActorId actorId,
-    Func<TState> currentState) : IActorTimerEffects
-    where TState : struct, Enum
+    Action<TimeSpan, bool> scheduleTimeout,
+    Action cancelTimeout) : IActorTimerEffects
 {
     /// <inheritdoc />
     public void Schedule(string name, TimeSpan dueTime) => ScheduleCore(name, dueTime, reschedule: false);
@@ -36,6 +36,11 @@ internal sealed class ActorTimerEffects<TState>(
     /// <inheritdoc />
     public void Cancel(string name)
     {
+        if (string.Equals(name, StateMachineConstants.StateTimeoutTimerName, StringComparison.Ordinal))
+        {
+            cancelTimeout();
+            return;
+        }
         scheduler.CancelAsync(actorType, actorId, name).AsTask().GetAwaiter().GetResult();
     }
 
@@ -44,10 +49,12 @@ internal sealed class ActorTimerEffects<TState>(
     /// </summary>
     private void ScheduleCore(string name, TimeSpan dueTime, bool reschedule)
     {
-        var state = string.Equals(name, StateMachineConstants.StateTimeoutTimerName, StringComparison.Ordinal)
-            ? currentState().ToString()
-            : null;
-        var payload = JsonSerializer.Serialize(new StateMachineTimerPayload(name, state));
+        if (string.Equals(name, StateMachineConstants.StateTimeoutTimerName, StringComparison.Ordinal))
+        {
+            scheduleTimeout(dueTime, reschedule);
+            return;
+        }
+        var payload = JsonSerializer.Serialize(new StateMachineTimerPayload(name, null));
         if (reschedule)
         {
             scheduler.RescheduleAsync(actorType, actorId, name, dueTime, StateMachineConstants.TimerOperationName, payload).AsTask().GetAwaiter().GetResult();
@@ -67,10 +74,11 @@ internal sealed record StateMachineTimerPayload
     /// <summary>
     /// Initializes a new instance of the <see cref="StateMachineTimerPayload"/> record.
     /// </summary>
-    public StateMachineTimerPayload(string name, string? state)
+    public StateMachineTimerPayload(string name, string? state, Guid? generation = null)
     {
         Name = name;
         State = state;
+        Generation = generation;
     }
 
     /// <summary>
@@ -82,4 +90,9 @@ internal sealed record StateMachineTimerPayload
     /// Gets the state name expected for a declarative state timeout.
     /// </summary>
     public string? State { get; init; }
+
+    /// <summary>
+    /// Gets the registration identity used to reject superseded timeout callbacks.
+    /// </summary>
+    public Guid? Generation { get; init; }
 }

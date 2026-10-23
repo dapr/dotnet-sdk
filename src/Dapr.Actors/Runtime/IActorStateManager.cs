@@ -351,5 +351,10 @@ public interface IActorStateManager
     /// <returns>
     /// A task that represents the asynchronous save operation.
     /// </returns>
+    /// <remarks>
+    /// Changes are marked as saved only after persistence succeeds. If this operation fails or is canceled,
+    /// the pending changes are retained so it can be retried. If the exception escapes the actor method,
+    /// the actor runtime clears the cache as part of its normal failure handling.
+    /// </remarks>
     Task SaveStateAsync(CancellationToken cancellationToken = default);
 }

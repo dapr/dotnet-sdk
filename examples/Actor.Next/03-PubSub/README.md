@@ -25,7 +25,7 @@ Start the app from this sample directory:
 
 ```powershell
 cd examples\Actor.Next\03-PubSub
-dotnet run
+dotnet run --framework net10.0
 ```
 
 Then open `Cart.Next.Example03.http` in Rider or Visual Studio and run the requests in order:

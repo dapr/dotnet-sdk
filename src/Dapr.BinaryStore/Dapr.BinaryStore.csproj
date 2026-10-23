@@ -47,6 +47,12 @@
         <ProjectReference Include="@(_BinaryStoreChildLib)"
                           PrivateAssets="all" ReferenceOutputAssembly="false" />
 
+        <!-- Include the packaged generator in the restore graph without exposing it as a dependency. -->
+        <ProjectReference Include="..\Dapr.BinaryStore.Generators\Dapr.BinaryStore.Generators.csproj"
+                          PrivateAssets="all"
+                          ReferenceOutputAssembly="false"
+                          SetTargetFramework="TargetFramework=netstandard2.0" />
+
         <!-- Dapr.Common remains a visible dependency because the bundled assemblies expose and use
              its public types, and consumers need it as a compile/runtime asset. -->
         <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />

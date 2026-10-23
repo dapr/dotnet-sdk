@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+option csharp_namespace = "Dapr.IntegrationTest.DaprClient.ServiceInvocation";
+
+import "google/protobuf/empty.proto";
+
+package dapr.integrationtest.daprclient.serviceinvocation;
+
+service Messager {
+  rpc SendMessage(SendMessageRequest) returns (google.protobuf.Empty);
+  rpc GetMessage(GetMessageRequest) returns (MessageResponse);
+  rpc StreamBroadcast(stream Broadcast) returns (stream MessageResponse);
+  rpc DelayedResponse(google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
+message SendMessageRequest {
+  string recipient = 1;
+  string message = 2;
+}
+
+message GetMessageRequest {
+  string recipient = 1;
+}
+
+message MessageResponse {
+  string message = 1;
+}
+
+message Broadcast {
+  string message = 1;
+}

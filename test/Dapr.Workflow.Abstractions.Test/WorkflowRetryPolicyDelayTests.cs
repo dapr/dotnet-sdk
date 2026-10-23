@@ -57,4 +57,13 @@ public sealed class WorkflowRetryPolicyDelayTests
 
     private static TimeSpan InvokeGetNextDelay(WorkflowRetryPolicy policy, int attemptNumber) =>
         (TimeSpan)GetNextDelayMethod.Invoke(policy, [attemptNumber])!;
+
+    [Theory]
+    [InlineData(2, 100)]
+    [InlineData(double.MaxValue, 3)]
+    public void GetNextDelay_ClampsBeforeConvertingOverflowingBackoff(double coefficient, int attempt)
+    {
+        var policy = new WorkflowRetryPolicy(100, TimeSpan.FromSeconds(1), coefficient, TimeSpan.FromSeconds(5));
+        Assert.Equal(TimeSpan.FromSeconds(5), InvokeGetNextDelay(policy, attempt));
+    }
 }

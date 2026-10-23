@@ -1,6 +1,6 @@
 <Project>
+    <Import Project="..\..\..\properties\dapr_target_frameworks.props" />
     <PropertyGroup>
-        <TargetFramework>net9</TargetFramework>
         <IsPackable>false</IsPackable>
         <NoWarn>$(NoWarn);DAPR_CONVERSATION;DAPR_DISTRIBUTEDLOCK;DAPR_CRYPTOGRAPHY</NoWarn>
     </PropertyGroup>

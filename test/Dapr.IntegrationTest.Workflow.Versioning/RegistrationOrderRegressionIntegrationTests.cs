@@ -23,7 +23,7 @@ using Dapr.Workflow.Worker;
 using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-#if NET10_0
+#if NET10_0_OR_GREATER
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Xml.Linq;
@@ -90,7 +90,7 @@ public sealed class RegistrationOrderRegressionIntegrationTests
         Assert.Equal("v3:runtime", state.ReadOutputAs<string>());
     }
 
-#if NET10_0
+#if NET10_0_OR_GREATER
     [Fact]
     public void PackedDaprWorkflowPackageShouldExposeVersioningAndRouteCanonicalNameToLatest()
     {
@@ -106,9 +106,13 @@ public sealed class RegistrationOrderRegressionIntegrationTests
         try
         {
             var packageVersion = $"1.18.1-regression.{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
-            RunDotNet(repoRoot, "pack", "src\\Dapr.Workflow\\Dapr.Workflow.csproj", "--no-restore", "-c", "Debug",
-                "-p:TargetFrameworks=net8.0", "-p:BuildInParallel=false", $"-p:MinVerVersionOverride={packageVersion}",
-                $"-p:PackageOutputPath={packageFeed}");
+            // Packing Workflow does not pack its project references; consumers need matching local dependencies.
+            foreach (var project in new[] { "Dapr.Protos", "Dapr.Common", "Dapr.BinaryStore", "Dapr.Workflow" })
+            {
+                RunDotNet(repoRoot, "pack", Path.Combine("src", project, $"{project}.csproj"), "--no-restore", "-c", "Debug",
+                    "-p:BuildInParallel=false", $"-p:MinVerVersionOverride={packageVersion}",
+                    $"-p:PackageOutputPath={packageFeed}");
+            }
 
             var packagePath = Directory.GetFiles(packageFeed, "Dapr.Workflow.*.nupkg")
                 .Single(path => !path.EndsWith(".snupkg", StringComparison.OrdinalIgnoreCase));
@@ -133,6 +137,7 @@ public sealed class RegistrationOrderRegressionIntegrationTests
                     <TargetFramework>net8.0</TargetFramework>
                     <ImplicitUsings>enable</ImplicitUsings>
                     <Nullable>enable</Nullable>
+                    <WarningsAsErrors>$(WarningsAsErrors);NU1603</WarningsAsErrors>
                   </PropertyGroup>
                   <ItemGroup>
                     <PackageReference Include="Dapr.Workflow" Version="{packageVersion}" />
@@ -274,7 +279,7 @@ public sealed class RegistrationOrderRegressionIntegrationTests
     private static bool IsTransientRpc(RpcException ex) =>
         ex.StatusCode is StatusCode.Unavailable or StatusCode.DeadlineExceeded;
 
-#if NET10_0
+#if NET10_0_OR_GREATER
     private static string FindRepoRoot()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

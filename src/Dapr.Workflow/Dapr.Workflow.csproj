@@ -25,6 +25,11 @@
   <!-- Normal (compile-time + transitive) project references -->
   <ItemGroup>
     <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+    <ProjectReference Include="..\Dapr.BinaryStore\Dapr.BinaryStore.csproj" />
+    <!-- Compile against the bundled BinaryStore assemblies without publishing dependencies on
+         its implementation projects. Dapr.BinaryStore supplies these assets to package consumers. -->
+    <ProjectReference Include="..\Dapr.BinaryStore.Abstractions\Dapr.BinaryStore.Abstractions.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Dapr.BinaryStore.Runtime\Dapr.BinaryStore.Runtime.csproj" PrivateAssets="all" />
   </ItemGroup>
 
   <!-- Child projects whose outputs are bundled into this package but are NOT NuGet dependencies.
@@ -114,6 +119,9 @@
   <ItemGroup>
     <_WorkflowGeneratorProj Include="..\Dapr.Workflow.Analyzers\Dapr.Workflow.Analyzers.csproj" />
     <_WorkflowGeneratorProj Include="..\Dapr.Workflow.Versioning.Generators\Dapr.Workflow.Versioning.Generators.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Payloads\Extensions\" />
   </ItemGroup>
 
   <Target Name="_AddWorkflowAnalyzerOnce">

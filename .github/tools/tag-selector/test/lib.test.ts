@@ -34,6 +34,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.18.0-rc.2", channel: "rc" },
             { version: "1.17.6", channel: "stable" },
             { version: "1.16.14", channel: "stable" },
@@ -57,6 +58,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.17.0", channel: "stable" },
             { version: "1.16.8", channel: "stable" },
         ]);
@@ -80,6 +82,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.17.0-rc.3", channel: "rc" },
             { version: "1.16.8", channel: "stable" },
             { version: "1.15.9", channel: "stable" },
@@ -103,6 +106,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.17.0-rc.3", channel: "rc" },
             { version: "1.17.0-rc.2", channel: "rc" },
             { version: "1.16.8", channel: "stable" },
@@ -124,6 +128,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.17.0-rc.1", channel: "rc" },
             { version: "1.16.8", channel: "stable" },
         ]);
@@ -146,6 +151,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.18.0", channel: "stable" },
         ]);
     });
@@ -169,6 +175,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.18.0", channel: "stable" },
             { version: "1.17.8", channel: "stable" },
             { version: "1.16.15", channel: "stable" },
@@ -194,6 +201,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.19.0-rc.3", channel: "rc" },
             { version: "1.18.0", channel: "stable" },
             { version: "1.17.8", channel: "stable" },
@@ -219,6 +227,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.17.1", channel: "stable" },
             { version: "1.16.8", channel: "stable" },
         ]);
@@ -242,6 +251,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.18.0", channel: "stable" },
             { version: "1.16.15", channel: "stable" },
             { version: "1.15.14", channel: "stable" },
@@ -264,6 +274,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.18.0", channel: "stable" },
             { version: "1.16.15", channel: "stable" },
             { version: "1.15.14", channel: "stable" },
@@ -286,6 +297,7 @@ describe("computeFromTags - core scenarios", () => {
         });
 
         expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
             { version: "1.17.0", channel: "stable" },
             { version: "1.15.3", channel: "stable" },
             { version: "1.14.9", channel: "stable" },
@@ -295,11 +307,38 @@ describe("computeFromTags - core scenarios", () => {
     test("fewer stables than stableCount returns only what is available", () => {
         const tags = ["v2.5.1"];
         const out = computeFromTags({ tags, tagPrefix: "v", stableCount: 3 });
-        expect(out.matrix_json).toEqual([{ version: "2.5.1", channel: "stable" }]);
+        expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
+            { version: "2.5.1", channel: "stable" },
+        ]);
     });
 
-    test("no versions at all", () => {
+    test("no numerical releases still includes edge", () => {
         const out = computeFromTags({ tags: [], stableCount: 2 });
-        expect(out).toEqual({ matrix_json: [] });
+        expect(out).toEqual({ matrix_json: [{ version: "edge", channel: "edge" }] });
+    });
+
+    test("edge release tags do not duplicate edge or affect numerical selection", () => {
+        const out = computeFromTags({
+            tags: ["edge", "EDGE", "refs/tags/edge", "v1.18.0-rc.1", "v1.17.6", "junk-tag"],
+            prereleaseTags: ["edge"],
+            tagPrefix: "v",
+            stableCount: 1,
+        });
+        expect(out.matrix_json).toEqual([
+            { version: "edge", channel: "edge" },
+            { version: "1.18.0-rc.1", channel: "rc" },
+            { version: "1.17.6", channel: "stable" },
+        ]);
+    });
+
+    test("edge is included even when numerical channels are disabled", () => {
+        const out = computeFromTags({
+            tags: ["v1.18.0-rc.1", "v1.17.6"],
+            tagPrefix: "v",
+            stableCount: 0,
+            rcCount: 0,
+        });
+        expect(out.matrix_json).toEqual([{ version: "edge", channel: "edge" }]);
     });
 });

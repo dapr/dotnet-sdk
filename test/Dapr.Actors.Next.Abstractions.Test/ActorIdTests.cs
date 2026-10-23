@@ -15,6 +15,35 @@ namespace Dapr.Actors.Next.Abstractions.Test;
 
 public sealed class ActorIdTests
 {
+    [Fact]
+    public void Json_roundtrips_direct_and_nested_actor_ids()
+    {
+        var id = ActorId.Create("cart-1");
+        Assert.Equal(id, System.Text.Json.JsonSerializer.Deserialize<ActorId>(
+            System.Text.Json.JsonSerializer.Serialize(id)));
+        var message = new ActorIdMessage(id, [id, ActorId.Create("cart-2")]);
+        var restored = System.Text.Json.JsonSerializer.Deserialize<ActorIdMessage>(
+            System.Text.Json.JsonSerializer.Serialize(message))!;
+        Assert.Equal(message.Id, restored.Id);
+        Assert.Equal(message.Ids, restored.Ids);
+    }
+
+    [Fact]
+    public void Json_rejects_missing_null_empty_whitespace_and_nonstring_values()
+    {
+        foreach (var json in new[] { "{}", """{"Value":null}""", """{"Value":""}""", """{"Value":" "}""" })
+        {
+            Assert.Throws<ArgumentException>(() => System.Text.Json.JsonSerializer.Deserialize<ActorId>(json));
+        }
+
+        foreach (var json in new[] { "null", "42", """{"Value":42}""", """{"Value":{}}""" })
+        {
+            Assert.Throws<System.Text.Json.JsonException>(() => System.Text.Json.JsonSerializer.Deserialize<ActorId>(json));
+        }
+    }
+
+    public sealed record ActorIdMessage(ActorId Id, ActorId[] Ids);
+
     [MinimumDaprRuntimeFact("1.18")]
     public void Create_StoresValueAndFormatsAsValue()
     {

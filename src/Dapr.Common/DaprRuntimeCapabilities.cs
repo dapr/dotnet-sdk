@@ -9,6 +9,10 @@ namespace Dapr.Common;
 /// <summary>
 /// Used to determine Dapr runtime capability for fallback purposes by the SDKs.
 /// </summary>
+/// <remarks>
+/// Capabilities come from reflected service and method descriptors, independently
+/// of the runtime release label (including <c>edge</c>).
+/// </remarks>
 internal sealed class DaprRuntimeCapabilities : IDaprRuntimeCapabilities
 {
     private static readonly TimeSpan DefaultReflectionTimeout = TimeSpan.FromSeconds(5);

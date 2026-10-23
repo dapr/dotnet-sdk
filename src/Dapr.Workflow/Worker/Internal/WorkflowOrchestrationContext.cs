@@ -1,5 +1,5 @@
 ﻿// ------------------------------------------------------------------------
-// Copyright 2025 The Dapr Authors
+// Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 using Dapr.Common.Serialization;
 using Dapr.DurableTask.Protobuf;
 using Dapr.Workflow.Client;
+using Dapr.Workflow.Payloads;
 using Dapr.Workflow.Versioning;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
@@ -38,7 +39,7 @@ namespace Dapr.Workflow.Worker.Internal;
 /// Subsequent executions: History is replayed, tasks complete from history, workflow advances further
 /// Completion: When no more awaitable operations exist, workflow returns the final result
 /// </remarks>
-internal sealed class WorkflowOrchestrationContext : WorkflowContext
+internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowFeatureSource
 {
     /// <summary>
     /// Used to track patch-based versioning semantics.
@@ -87,14 +88,25 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private bool _isReplaying;
     private bool _turnInitialized;
     private bool _preserveUnprocessedEvents;
+    private bool _continuedAsNew;
+    private readonly List<(HistoryEvent Event, bool IsReplaying)> _suspendedEvents = [];
+    internal bool IsSuspended { get; private set; }
+    private readonly WorkflowPayloadHandler? _payloads;
+    private readonly Dictionary<int, PayloadSite> _unresolvableCallInputs = [];
+    private readonly WorkflowFeatureCollection? _features;
+    private string? _serializedCustomStatus;
 
     public WorkflowOrchestrationContext(string name, string instanceId, DateTime currentUtcDateTime,
         IDaprSerializer workflowSerializer, ILoggerFactory loggerFactory, WorkflowVersionTracker versionTracker,
         string? appId = null, string? executionId = null,
         IReadOnlyList<HistoryEvent>? ownHistory = null,
         IEnumerable<PropagatedHistoryChunk>? incomingPropagatedHistory = null,
-        string? historyExecutionId = null)
+        string? historyExecutionId = null,
+        WorkflowPayloadHandler? payloads = null,
+        WorkflowFeatureCollection? features = null)
     {
+        _payloads = payloads;
+        _features = features;
         _workflowSerializer = workflowSerializer;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<WorkflowOrchestrationContext>() ??
@@ -148,15 +160,29 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <inheritdoc />
     public override bool IsPatched(string patchName) => _versionTracker.RequestPatch(patchName, isReplaying: this.IsReplaying);
 
+    TFeature? IWorkflowFeatureSource.GetFeature<TFeature>() where TFeature : class => _features?.Get<TFeature>();
+
     /// <summary>
     /// Gets the list of pending orchestrator actions to be sent to the Dapr sidecar.
     /// </summary>
     internal IReadOnlyCollection<WorkflowAction> PendingActions => _pendingActions.Values;
 
+    internal void ValidatePendingCallInputs()
+    {
+        foreach (var actionId in _pendingActions.Keys)
+        {
+            if (_unresolvableCallInputs.TryGetValue(actionId, out var site))
+            {
+                throw new PayloadNotResolvableException(site);
+            }
+        }
+    }
+
     /// <summary>
     /// Gets the custom status set by the workflow, if any.
     /// </summary>
     internal object? CustomStatus => _customStatus;
+    internal string? SerializedCustomStatus => _serializedCustomStatus;
 
     /// <inheritdoc />
     public override async Task<T> CallActivityAsync<T>(string name, object? input = null,
@@ -207,7 +233,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var scheduleTaskAction = new ScheduleTaskAction
         {
             Name = name,
-            Input = _workflowSerializer.Serialize(input),
+            Input = SnapshotCallInput(input, options, taskId, PayloadKind.ActivityInput, name),
             Router = router,
             TaskExecutionId = taskExecutionId
         };
@@ -273,16 +299,16 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             _openTasks.Remove(taskId);
         }
 
-        if (cancellationToken.CanBeCanceled)
+        using var registration = cancellationToken.Register(() =>
         {
-            cancellationToken.Register(() =>
+            if (tcs.TrySetCanceled())
             {
-                if (tcs.TrySetCanceled())
-                {
-                    _openTasks.Remove(taskId);
-                }
-            });
-        }
+                // Compatibility replay may have reassigned this timer's action ID.
+                var entry = _openTasks.FirstOrDefault(pair => ReferenceEquals(pair.Value, tcs));
+                if (entry.Value is not null)
+                    _openTasks.Remove(entry.Key);
+            }
+        });
 
         await tcs.Task;
     }
@@ -365,7 +391,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     {
         if (TryTakeExternalEvent(eventName, out string? eventData))
         {
-            return DeserializeResult<T>(eventData!);
+            return await DeserializeResultAsync<T>(eventData!, PayloadKind.ExternalEvent, eventName);
         }
 
         // Create a task completion source that will be set when the external event arrives.
@@ -381,15 +407,12 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             _externalEventSources.Add(eventName, eventSourceQueue);
         }
 
-        if (cancellationToken.CanBeCanceled)
-        {
-            cancellationToken.Register(() => eventSource.TrySetCanceled(cancellationToken));
-        }
+        using var registration = cancellationToken.Register(() => eventSource.TrySetCanceled(cancellationToken));
 
         var historyEvent = await eventSource.Task;
 
         eventData = historyEvent.EventRaised.Input ?? string.Empty;
-        return DeserializeResult<T>(eventData);
+        return await DeserializeResultAsync<T>(eventData, PayloadKind.ExternalEvent, eventName);
     }
 
     /// <summary>
@@ -423,13 +446,20 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             {
                 Instance = new WorkflowInstance { InstanceId = instanceId },
                 Name = eventName,
-                Data = _workflowSerializer.Serialize(payload)
+                Data = Snapshot(payload)
             }
         });
     }
 
     /// <inheritdoc />
-    public override void SetCustomStatus(object? customStatus) => _customStatus = customStatus;
+    public override void SetCustomStatus(object? customStatus)
+    {
+        _customStatus = customStatus;
+        if (_payloads is not null)
+        {
+            _serializedCustomStatus = _payloads.Snapshot(customStatus);
+        }
+    }
 
     public override async Task<TResult> CallChildWorkflowAsync<TResult>(string workflowName, object? input = null,
         ChildWorkflowTaskOptions? options = null)
@@ -437,11 +467,15 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         if (options?.RetryPolicy is { } retryPolicy)
         {
             // First-child rule: capture the first child's instance ID for the entire retry chain.
-            var firstChildInstanceId = options.InstanceId ?? NewGuid().ToString();
+            // Retain the historical GUID consumption so existing child IDs replay unchanged.
+            if (options.InstanceId is null)
+                _ = NewGuid();
+            string? firstChildInstanceId = null;
             var attemptOptions = options with { RetryPolicy = null };
             var interceptor = new RetryInterceptor<TResult>(this, retryPolicy,
-                () => CallChildWorkflowInternalAsync<TResult>(workflowName, input, attemptOptions),
-                delay => CreateChildWorkflowRetryTimer(delay, firstChildInstanceId));
+                () => CallChildWorkflowInternalAsync<TResult>(workflowName, input, attemptOptions,
+                    id => firstChildInstanceId ??= id),
+                delay => CreateChildWorkflowRetryTimer(delay, firstChildInstanceId!));
             var result = await interceptor.Invoke();
             return result!;
         }
@@ -452,13 +486,14 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private async Task<TResult> CallChildWorkflowInternalAsync<TResult>(
         string workflowName,
         object? input,
-        ChildWorkflowTaskOptions? options)
+        ChildWorkflowTaskOptions? options, Action<string>? onScheduled = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
 
         // CRITICAL: Child instance IDs must be deterministic across replays
         // Generate the child instance ID BEFORE incrementing sequence
         var childInstanceId = options?.InstanceId ?? NewGuid().ToString();
+        onScheduled?.Invoke(childInstanceId);
         var taskId = _sequenceNumber++;
 
         var router = CreateRouter(options?.TargetAppId);
@@ -467,7 +502,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         {
             Name = workflowName,
             InstanceId = childInstanceId,
-            Input = _workflowSerializer.Serialize(input),
+            Input = SnapshotCallInput(input, options, taskId, PayloadKind.ChildWorkflowInput, workflowName),
             Router = router
         };
 
@@ -512,9 +547,20 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         string workflowName,
         string? instanceId = null,
         object? input = null,
-        DateTimeOffset? startTime = null)
+        DateTimeOffset? startTime = null) =>
+        ScheduleNewDetachedWorkflowAsync(workflowName, instanceId, input, startTime, new WorkflowTaskOptions());
+
+    /// <inheritdoc />
+    public override Task<string> ScheduleNewDetachedWorkflowAsync(
+        string workflowName, string? instanceId, object? input, DateTimeOffset? startTime,
+        WorkflowTaskOptions options)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
+        ArgumentNullException.ThrowIfNull(options);
+        if (options.RetryPolicy is not null || options.PropagationScope != HistoryPropagationScope.None)
+        {
+            throw new ArgumentException("Detached workflows do not support retries or history propagation.", nameof(options));
+        }
 
         var detachedInstanceId = instanceId ?? NewGuid().ToString();
         ArgumentException.ThrowIfNullOrWhiteSpace(detachedInstanceId, nameof(instanceId));
@@ -530,11 +576,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         }
 
         var taskId = _sequenceNumber++;
+        var router = CreateRouter(options.TargetAppId);
         var action = new CreateDetachedWorkflowAction
         {
             Name = workflowName,
             InstanceId = detachedInstanceId,
-            Input = _workflowSerializer.Serialize(input)
+            Input = SnapshotCallInput(input, options, taskId, PayloadKind.WorkflowInput, workflowName),
+            Router = router
         };
 
         if (startTime is { } scheduledStart)
@@ -545,7 +593,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         _pendingActions.Add(taskId, new WorkflowAction
         {
             Id = taskId,
-            CreateDetachedWorkflow = action
+            CreateDetachedWorkflow = action,
+            Router = router
         });
 
         return Task.FromResult(detachedInstanceId);
@@ -560,7 +609,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             CompleteWorkflow = new CompleteWorkflowAction
             {
                 WorkflowStatus = OrchestrationStatus.ContinuedAsNew,
-                Result = _workflowSerializer.Serialize(newInput),
+                Result = Snapshot(newInput),
             }
         };
 
@@ -569,6 +618,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         // the same NewEvents batch will be buffered AFTER this point and would be missed.
         // FinalizeCarryoverEvents() is called after all ProcessEvents calls are complete.
         _preserveUnprocessedEvents = preserveUnprocessedEvents;
+        _continuedAsNew = true;
         _pendingActions.Add(action.Id, action);
     }
 
@@ -587,6 +637,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         {
             if (action.CompleteWorkflow?.WorkflowStatus == OrchestrationStatus.ContinuedAsNew)
             {
+                action.CompleteWorkflow.CarryoverEvents.Clear();
                 action.CompleteWorkflow.CarryoverEvents.AddRange(_externalEventBuffer);
                 return;
             }
@@ -633,59 +684,115 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     internal void ProcessEvents(IEnumerable<HistoryEvent> events, bool isReplaying)
     {
         _isReplaying = isReplaying;
-        
-        foreach (HistoryEvent historyEvent in events)
+        foreach (var item in GetExecutableEvents(events, isReplaying))
         {
-            switch (historyEvent)
+            ProcessEvent(item.Event, item.IsReplaying);
+        }
+    }
+
+    private IEnumerable<(HistoryEvent Event, bool IsReplaying)> GetExecutableEvents(
+        IEnumerable<HistoryEvent> events, bool isReplaying)
+    {
+        foreach (var historyEvent in events)
+        {
+            if (historyEvent.ExecutionSuspended is not null)
             {
-                case { WorkflowStarted: { } started }:
-                    HandleOrchestratorStarted(historyEvent, started);
-                    break;
-
-                case { TaskScheduled: not null }:
-                    OnTaskScheduled(historyEvent);
-                    break;
-
-                case { TaskCompleted: { } completed }:
-                    HandleActionCompleted(historyEvent, completed.TaskScheduledId);
-                    break;
-
-                case { TaskFailed: { } failed }:
-                    HandleActionCompleted(historyEvent, failed.TaskScheduledId);
-                    break;
-
-                case { ChildWorkflowInstanceCreated: {} created }:
-                    OnSubOrchestrationCreated(historyEvent, created);
-                    break;
-
-                case { ChildWorkflowInstanceCompleted: { } completed }:
-                    HandleActionCompleted(historyEvent, completed.TaskScheduledId);
-                    break;
-
-                case { ChildWorkflowInstanceFailed: { } failed }:
-                    HandleActionCompleted(historyEvent, failed.TaskScheduledId);
-                    break;
-
-                case { DetachedWorkflowInstanceCreated: { } created }:
-                    HandleDetachedWorkflowCreated(historyEvent, created);
-                    break;
-
-                case { TimerCreated: { } timerCreated }:
-                    OnTimerCreated(historyEvent, timerCreated);
-                    break;
-
-                case { TimerFired: { } fired }:
-                    HandleActionCompleted(historyEvent, fired.TimerId);
-                    break;
-
-                case { EventSent: not null }:
-                    HandleActionCreated(historyEvent);
-                    break;
-
-                case { EventRaised: { } raised }:
-                    HandleEventRaisedEvent(historyEvent, raised.Name);
-                    break;
+                IsSuspended = true;
             }
+            else if (historyEvent.ExecutionResumed is not null)
+            {
+                IsSuspended = false;
+                var buffered = _suspendedEvents.ToArray();
+                _suspendedEvents.Clear();
+                foreach (var item in buffered)
+                    yield return item;
+            }
+            else if (IsSuspended)
+            {
+                _suspendedEvents.Add((historyEvent, isReplaying));
+            }
+            else
+            {
+                yield return (historyEvent, isReplaying);
+            }
+        }
+    }
+
+    private void ProcessEvent(HistoryEvent historyEvent, bool isReplaying)
+    {
+        _isReplaying = isReplaying;
+        if (_continuedAsNew)
+        {
+            if (historyEvent.EventRaised is not null)
+                _externalEventBuffer.Add(historyEvent);
+            return;
+        }
+
+        switch (historyEvent)
+        {
+            case { WorkflowStarted: { } started }:
+                HandleOrchestratorStarted(historyEvent, started);
+                break;
+
+            case { TaskScheduled: not null }:
+                OnTaskScheduled(historyEvent);
+                break;
+
+            case { TaskCompleted: { } completed }:
+                HandleActionCompleted(historyEvent, completed.TaskScheduledId);
+                break;
+
+            case { TaskFailed: { } failed }:
+                HandleActionCompleted(historyEvent, failed.TaskScheduledId);
+                break;
+
+            case { ChildWorkflowInstanceCreated: {} created }:
+                OnSubOrchestrationCreated(historyEvent, created);
+                break;
+
+            case { ChildWorkflowInstanceCompleted: { } completed }:
+                HandleActionCompleted(historyEvent, completed.TaskScheduledId);
+                break;
+
+            case { ChildWorkflowInstanceFailed: { } failed }:
+                HandleActionCompleted(historyEvent, failed.TaskScheduledId);
+                break;
+
+            case { DetachedWorkflowInstanceCreated: { } created }:
+                HandleDetachedWorkflowCreated(historyEvent, created);
+                break;
+
+            case { TimerCreated: { } timerCreated }:
+                OnTimerCreated(historyEvent, timerCreated);
+                break;
+
+            case { TimerFired: { } fired }:
+                HandleActionCompleted(historyEvent, fired.TimerId);
+                break;
+
+            case { EventSent: not null }:
+                HandleActionCreated(historyEvent);
+                break;
+
+            case { EventRaised: { } raised }:
+                HandleEventRaisedEvent(historyEvent, raised.Name);
+                break;
+        }
+    }
+
+    internal async Task ProcessEventsAsync(IEnumerable<HistoryEvent> events, bool isReplaying)
+    {
+        _isReplaying = isReplaying;
+        if (_payloads is null)
+        {
+            ProcessEvents(events, isReplaying);
+            return;
+        }
+
+        foreach (var item in GetExecutableEvents(events, isReplaying))
+        {
+            ProcessEvent(item.Event, item.IsReplaying);
+            await _payloads.DrainAsync().ConfigureAwait(false);
         }
     }
 
@@ -714,6 +821,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
 
     private void HandleActionCreated(HistoryEvent historyEvent)
     {
+        while (TryDropOptionalTimerAt(historyEvent.EventId)) { }
         _pendingActions.Remove(historyEvent.EventId);
     }
 
@@ -722,7 +830,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         DetachedWorkflowInstanceCreatedEvent created)
     {
         var matchingAction = FindPendingDetachedWorkflowAction(created.InstanceId);
-        if (matchingAction is { } match &&
+        while (matchingAction is { } match &&
             match.Key > historyEvent.EventId &&
             TryDropOptionalTimerAt(historyEvent.EventId))
         {
@@ -767,7 +875,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private void OnTaskScheduled(HistoryEvent historyEvent)
     {
         var eventId = historyEvent.EventId;
-        TryDropOptionalTimerAt(eventId);
+        while (TryDropOptionalTimerAt(eventId)) { }
         _pendingActions.Remove(eventId);
 
         // Record the scheduling-time TaskExecutionId and, when the workflow code
@@ -795,7 +903,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private void OnSubOrchestrationCreated(HistoryEvent historyEvent,
         ChildWorkflowInstanceCreatedEvent created)
     {
-        TryDropOptionalTimerAt(historyEvent.EventId);
+        while (TryDropOptionalTimerAt(historyEvent.EventId)) { }
         HandleSubOrchestrationCreated(historyEvent, created);
     }
     
@@ -837,7 +945,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         var eventId = historyEvent.EventId;
 
         // Asymmetric case: pending is an optional timer but incoming TimerCreated is not.
-        if (_pendingActions.TryGetValue(eventId, out var pendingAction)
+        while (_pendingActions.TryGetValue(eventId, out var pendingAction)
             && pendingAction.CreateTimer != null
             && IsOptionalExternalEventTimerAction(pendingAction)
             && !IsOptionalExternalEventTimerCreatedEvent(timerCreated))
@@ -858,11 +966,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         // Remove the optional timer action
         _pendingActions.Remove(atId);
 
-        // Remove any open task (TCS) bound to this ID and cancel it
-        if (_openTasks.Remove(atId, out var tcs))
-        {
-            tcs.TrySetCanceled();
-        }
+        // This timer never existed in legacy history. Leave its task pending rather than
+        // winning WhenAny and canceling the indefinite event wait it represents.
+        _openTasks.Remove(atId);
 
         // Shift all pending actions with id > atId down by one
         var actionsToShift = _pendingActions.Where(kvp => kvp.Key > atId).ToList();
@@ -892,8 +998,30 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
             _openTasks[kvp.Key - 1] = kvp.Value;
         }
 
+        ShiftKeys(_taskIdToExecutionId, atId);
+        ShiftKeys(_unresolvableCallInputs, atId);
+        foreach (var key in _executionIdToTaskId.Keys.ToArray())
+            if (_executionIdToTaskId[key] > atId)
+                _executionIdToTaskId[key]--;
+        foreach (var key in _subOrchestrationInstanceIdToParentTaskId.Keys.ToArray())
+            if (_subOrchestrationInstanceIdToParentTaskId[key] > atId)
+                _subOrchestrationInstanceIdToParentTaskId[key]--;
+        foreach (var key in _subOrchestrationCreatedEventIdToParentTaskId.Keys.ToArray())
+            if (_subOrchestrationCreatedEventIdToParentTaskId[key] > atId)
+                _subOrchestrationCreatedEventIdToParentTaskId[key]--;
+        _payloads?.DropOptionalTimerAt(atId);
+
         // Decrement the sequence number counter
         _sequenceNumber--;
+    }
+
+    private static void ShiftKeys<T>(Dictionary<int, T> values, int atId)
+    {
+        foreach (var pair in values.Where(pair => pair.Key > atId).OrderBy(pair => pair.Key).ToArray())
+        {
+            values.Remove(pair.Key);
+            values[pair.Key - 1] = pair.Value;
+        }
     }
     
     private void HandleActionCompleted(HistoryEvent historyEvent, int taskId)
@@ -983,11 +1111,24 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         _externalEventBuffer.Add(historyEvent);
     }
 
+    private string SnapshotCallInput(object? input, WorkflowTaskOptions? options, int actionId,
+        PayloadKind kind, string name)
+    {
+        _payloads?.ConfigureCallInput(actionId, _appId, options);
+        if (options?.AllowPayloadReferences != true && _payloads is null && input is PayloadReference &&
+            !string.IsNullOrWhiteSpace(options?.TargetAppId) &&
+            !string.Equals(options.TargetAppId, _appId, StringComparison.Ordinal))
+        {
+            // Validate only after replay has removed calls already recorded in history.
+            _unresolvableCallInputs[actionId] = new(kind, InstanceId, name, RequireInline: true);
+        }
+
+        return Snapshot(input);
+    }
+
     /// <summary>
-    /// Creates a new TaskRouter in a centralized location.
+    /// Creates a router when both the source and destination app IDs are available.
     /// </summary>
-    /// <param name="targetAppId">The app ID containing the target workflow resource.</param>
-    /// <returns>Either a <see cref="TaskRouter"/> if the requisite values are provided or a <c>null</c>.</returns>
     private TaskRouter? CreateRouter(string? targetAppId)
     {
         return !string.IsNullOrWhiteSpace(targetAppId) && !string.IsNullOrWhiteSpace(_appId)
@@ -1001,7 +1142,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     private Task<T> HandleCompletedActivityFromHistory<T>(string activityName, TaskCompletedEvent completed)
     {
         _logger.LogActivityCompletedFromHistory(activityName, InstanceId);
-        return Task.FromResult(DeserializeResult<T>(completed.Result ?? string.Empty));
+        return DeserializeResultAsync<T>(completed.Result ?? string.Empty, PayloadKind.ActivityOutput, activityName);
     }
 
     /// <summary>
@@ -1046,7 +1187,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
         ChildWorkflowInstanceCompletedEvent completed)
     {
         _logger.LogChildWorkflowCompletedFromHistory(workflowName, InstanceId);
-        return Task.FromResult(DeserializeResult<TResult>(completed.Result ?? string.Empty));
+        return DeserializeResultAsync<TResult>(completed.Result ?? string.Empty, PayloadKind.ChildWorkflowOutput, workflowName);
     }
 
     /// <summary>
@@ -1113,8 +1254,17 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext
     /// <param name="value">The string value to deserialize.</param>
     /// <typeparam name="T">The type to deserialize to.</typeparam>
     /// <returns>The strongly typed deserialized data.</returns>
-    private T DeserializeResult<T>(string value)
-        => string.IsNullOrEmpty(value) ? default! : _workflowSerializer.Deserialize<T>(value)!;
+    /// <param name="kind">The inbound payload boundary.</param>
+    /// <param name="name">The activity, workflow, or event name.</param>
+    private Task<T> DeserializeResultAsync<T>(string value, PayloadKind kind, string name)
+        => _payloads is null
+            ? Task.FromResult(string.IsNullOrEmpty(value) ? default! : _workflowSerializer.Deserialize<T>(value)!)
+            : _payloads.QueueAsync(async () =>
+                (await _payloads.DecodeAsync<T>(value, new(kind, InstanceId, name)).ConfigureAwait(false))!);
+
+    private string Snapshot(object? value) => _payloads is null
+        ? _workflowSerializer.Serialize(value)
+        : _payloads.Snapshot(value);
 
     /// <summary>
     /// An exception that represents a task failed event.

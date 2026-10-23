@@ -25,6 +25,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\Dapr.Actors.Next.SourceGenerators\Dapr.Actors.Next.SourceGenerators.csproj" />
         <ProjectReference Include="..\Dapr.Actors.Next.SourceGenerators.Sample\Dapr.Actors.Next.SourceGenerators.Sample.csproj" />
+        <ProjectReference Include="..\Dapr.Actors.Next.SourceGenerators.OtherSample\Dapr.Actors.Next.SourceGenerators.OtherSample.csproj" />
         <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
 
     </ItemGroup>

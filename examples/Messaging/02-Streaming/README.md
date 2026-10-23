@@ -77,7 +77,7 @@ app.Run();
 Run the application with the Dapr CLI:
 
 ```bash
-dapr run --app-id streaming-example --dapr-grpc-port 50001 -- dotnet run --project examples/Messaging/02-Streaming/Streaming.Example02.csproj
+dapr run --app-id streaming-example --dapr-grpc-port 50001 -- dotnet run --framework net10.0 --project examples/Messaging/02-Streaming/Streaming.Example02.csproj
 ```
 
 Send test requests using `Streaming.Example02.http` or `curl`:

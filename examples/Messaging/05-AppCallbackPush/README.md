@@ -67,7 +67,7 @@ dapr run --app-id appcallback-example \
          --app-port 5000 \
          --app-protocol grpc \
          --dapr-grpc-port 50001 \
-         -- dotnet run --project examples/Messaging/05-AppCallbackPush/AppCallback.Example05.csproj
+         -- dotnet run --framework net10.0 --project examples/Messaging/05-AppCallbackPush/AppCallback.Example05.csproj
 ```
 
 ## Testing
