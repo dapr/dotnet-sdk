@@ -184,7 +184,7 @@ public sealed class MetaConsumerSmokeTests
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "all.sln")))
+            if (File.Exists(Path.Combine(directory.FullName, "all.slnx")))
             {
                 return directory.FullName;
             }
