@@ -95,4 +95,4 @@ dotnet test
 dotnet pack
 ```
 
-Each project can also be built individually directly through the CLI or your editor/IDE. You can open the solution file all.sln in repo root to load all sdk, samples and test projects.
+Each project can also be built individually directly through the CLI or your editor/IDE. You can open the solution file all.slnx in repo root to load all sdk, samples and test projects.

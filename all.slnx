@@ -1,0 +1,297 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/Dapr.Actors.Benchmarks/Dapr.Actors.Benchmarks.csproj" />
+    <Project Path="benchmarks/Dapr.Actors.Next.AotBenchmarks/Dapr.Actors.Next.AotBenchmarks.csproj" />
+    <Project Path="benchmarks/Dapr.Workflow.Benchmarks/Dapr.Workflow.Benchmarks.csproj" />
+  </Folder>
+  <Folder Name="/examples/">
+    <Project Path="examples/Vector/VectorExample/VectorExample.csproj" />
+  </Folder>
+  <Folder Name="/examples/Actor.Next/" />
+  <Folder Name="/examples/Actor.Next/01-Cart/">
+    <Project Path="examples/Actor.Next/01-Cart/Cart.Next.Example01.csproj" />
+    <Project Path="examples/Actor.Next/01-Cart/Cart.Next.Example01.Tests/Cart.Next.Example01.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Actor.Next/02-Migration/">
+    <Project Path="examples/Actor.Next/02-Migration/Cart.Next.Example02.csproj" />
+    <Project Path="examples/Actor.Next/02-Migration/Cart.Next.Example02.Tests/Cart.Next.Example02.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Actor.Next/03-PubSub/">
+    <Project Path="examples/Actor.Next/03-PubSub/Cart.Next.Example03.csproj" />
+    <Project Path="examples/Actor.Next/03-PubSub/Cart.Next.Example03.Tests/Cart.Next.Example03.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Actor.Next/04-Auction/">
+    <Project Path="examples/Actor.Next/04-Auction/Auction.Next.Example04.csproj" />
+    <Project Path="examples/Actor.Next/04-Auction/Auction.Next.Example04.Tests/Auction.Next.Example04.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Actor.Next/05-Interpreted/">
+    <Project Path="examples/Actor.Next/05-Interpreted/Device.Next.Example05.csproj" />
+    <Project Path="examples/Actor.Next/05-Interpreted/Device.Next.Example05.Tests/Device.Next.Example05.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Actor.Next/06-Approvals/">
+    <Project Path="examples/Actor.Next/06-Approvals/Approvals.Next.Example06.csproj" />
+    <Project Path="examples/Actor.Next/06-Approvals/Approvals.Next.Example06.Tests/Approvals.Next.Example06.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Actor.Next/07-PerTypeOptions/">
+    <Project Path="examples/Actor.Next/07-PerTypeOptions/Store.Next.Example07.AppHost/Store.Next.Example07.AppHost.csproj" />
+    <Project Path="examples/Actor.Next/07-PerTypeOptions/Store.Next.Example07.csproj" />
+    <Project Path="examples/Actor.Next/07-PerTypeOptions/Store.Next.Example07.Tests/Store.Next.Example07.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Actor.Next/08-Timers/">
+    <Project Path="examples/Actor.Next/08-Timers/Timers.Next.Example08.AppHost/Timers.Next.Example08.AppHost.csproj" />
+    <Project Path="examples/Actor.Next/08-Timers/Timers.Next.Example08.csproj" />
+    <Project Path="examples/Actor.Next/08-Timers/Timers.Next.Example08.Tests/Timers.Next.Example08.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Actor/">
+    <Project Path="examples/Actor/ActorClient/ActorClient.csproj" />
+    <Project Path="examples/Actor/DemoActor.Interfaces/DemoActor.Interfaces.csproj" />
+    <Project Path="examples/Actor/DemoActor/DemoActor.csproj" />
+  </Folder>
+  <Folder Name="/examples/AI/">
+    <Project Path="examples/AI/ConversationalAI/ConversationalAI.csproj" />
+    <Project Path="examples/AI/MicrosoftAiExtensionsDemo/MicrosoftAiExtensionsDemo.csproj" />
+  </Folder>
+  <Folder Name="/examples/AspNetCore/">
+    <Project Path="examples/AspNetCore/ControllerSample/ControllerSample.csproj" />
+    <Project Path="examples/AspNetCore/GrpcServiceSample/GrpcServiceSample.csproj" />
+    <Project Path="examples/AspNetCore/RoutingSample/RoutingSample.csproj" />
+    <Project Path="examples/AspNetCore/SecretStoreConfigurationProviderSample/SecretStoreConfigurationProviderSample.csproj" />
+  </Folder>
+  <Folder Name="/examples/BinaryStore/">
+    <Project Path="examples/BinaryStore/BinaryStoreExample/BinaryStoreExample.csproj" />
+  </Folder>
+  <Folder Name="/examples/Client/">
+    <Project Path="examples/Client/ConfigurationApi/ConfigurationApi.csproj" />
+    <Project Path="examples/Client/DistributedLock/DistributedLock.csproj" />
+    <Project Path="examples/Client/GrpcProxy.Tests/GrpcProxy.Tests.csproj" />
+    <Project Path="examples/Client/GrpcProxy/GrpcProxy.csproj" />
+    <Project Path="examples/Client/StateManagement/StateManagement.csproj" />
+  </Folder>
+  <Folder Name="/examples/Client/PublishSubscribe/">
+    <Project Path="examples/Client/PublishSubscribe/BulkPublishEventExample/BulkPublishEventExample.csproj" />
+    <Project Path="examples/Client/PublishSubscribe/PublishEventExample/PublishEventExample.csproj" />
+  </Folder>
+  <Folder Name="/examples/Cryptography/">
+    <Project Path="examples/Cryptography/Cryptography.csproj" />
+  </Folder>
+  <Folder Name="/examples/DistributedLock/">
+    <Project Path="examples/DistributedLock/DistributedLock/DistributedLock.csproj" />
+  </Folder>
+  <Folder Name="/examples/GeneratedActor/">
+    <Project Path="examples/GeneratedActor/ActorClient/ActorClient.csproj" />
+    <Project Path="examples/GeneratedActor/ActorCommon/ActorCommon.csproj" />
+    <Project Path="examples/GeneratedActor/ActorService/ActorService.csproj" />
+  </Folder>
+  <Folder Name="/examples/Hosting/" />
+  <Folder Name="/examples/Hosting/Aspire/">
+    <Project Path="examples/Hosting/Aspire/ServiceInvocationDemo/BackendApp/BackendApp.csproj" />
+    <Project Path="examples/Hosting/Aspire/ServiceInvocationDemo/Common/Common.csproj" />
+    <Project Path="examples/Hosting/Aspire/ServiceInvocationDemo/FrontendApp/FrontendApp.csproj" />
+    <Project Path="examples/Hosting/Aspire/ServiceInvocationDemo/ServiceInvocationDemo.AppHost/ServiceInvocationDemo.AppHost.csproj" />
+    <Project Path="examples/Hosting/Aspire/ServiceInvocationDemo/ServiceInvocationDemo.ServiceDefaults/ServiceInvocationDemo.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/examples/Jobs/">
+    <Project Path="examples/Jobs/JobsSample/JobsSample.csproj" />
+  </Folder>
+  <Folder Name="/examples/Messaging/" />
+  <Folder Name="/examples/Messaging/01-Publishing/">
+    <Project Path="examples/Messaging/01-Publishing/Publishing.Example01.csproj" />
+    <Project Path="examples/Messaging/01-Publishing/Publishing.Example01.Tests/Publishing.Example01.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Messaging/02-Streaming/">
+    <Project Path="examples/Messaging/02-Streaming/Streaming.Example02.csproj" />
+    <Project Path="examples/Messaging/02-Streaming/Streaming.Example02.Tests/Streaming.Example02.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Messaging/03-RoutingAndDeadLetter/">
+    <Project Path="examples/Messaging/03-RoutingAndDeadLetter/Routing.Example03.csproj" />
+    <Project Path="examples/Messaging/03-RoutingAndDeadLetter/Routing.Example03.Tests/Routing.Example03.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Messaging/04-BulkSubscribe/">
+    <Project Path="examples/Messaging/04-BulkSubscribe/BulkSubscribe.Example04.csproj" />
+    <Project Path="examples/Messaging/04-BulkSubscribe/BulkSubscribe.Example04.Tests/BulkSubscribe.Example04.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Messaging/05-AppCallbackPush/">
+    <Project Path="examples/Messaging/05-AppCallbackPush/AppCallback.Example05.csproj" />
+    <Project Path="examples/Messaging/05-AppCallbackPush/AppCallback.Example05.Tests/AppCallback.Example05.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Messaging/06-HttpSubscription/">
+    <Project Path="examples/Messaging/06-HttpSubscription/HttpSubscription.Example06.csproj" />
+    <Project Path="examples/Messaging/06-HttpSubscription/HttpSubscription.Example06.Tests/HttpSubscription.Example06.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Messaging/07-DynamicStreaming/">
+    <Project Path="examples/Messaging/07-DynamicStreaming/DynamicStreaming.Example07.csproj" />
+    <Project Path="examples/Messaging/07-DynamicStreaming/DynamicStreaming.Example07.Tests/DynamicStreaming.Example07.Tests.csproj" />
+  </Folder>
+  <Folder Name="/examples/Search/">
+    <Project Path="examples/Search/SearchExample/SearchExample.csproj" />
+  </Folder>
+  <Folder Name="/examples/SecretManagement/">
+    <Project Path="examples/SecretManagement/SecretManagementSample/SecretManagementSample.csproj" />
+  </Folder>
+  <Folder Name="/examples/StateManagement/">
+    <Project Path="examples/StateManagement/StateManagementExample/StateManagementExample.csproj" />
+  </Folder>
+  <Folder Name="/examples/Workflow/">
+    <File Path="examples/Workflow/README.md" />
+    <Project Path="examples/Workflow/WorkflowAsyncOperations/WorkflowAsyncOperations.csproj" />
+    <Project Path="examples/Workflow/WorkflowConsoleApp/WorkflowConsoleApp.csproj" />
+    <Project Path="examples/Workflow/WorkflowDataReferences/WorkflowDataReferences.csproj" />
+    <Project Path="examples/Workflow/WorkflowExternalInteraction/WorkflowExternalInteraction.csproj" />
+    <Project Path="examples/Workflow/WorkflowFanOutFanIn/WorkflowFanOutFanIn.csproj" />
+    <Project Path="examples/Workflow/WorkflowMapReduceDemo/WorkflowMapReduceDemo.csproj" />
+    <Project Path="examples/Workflow/WorkflowMonitor/WorkflowMonitor.csproj" />
+    <Project Path="examples/Workflow/WorkflowParallelFanOut/WorkflowParallelFanOut.csproj" />
+    <Project Path="examples/Workflow/WorkflowRetryPolicy/WorkflowRetryPolicy.csproj" />
+    <Project Path="examples/Workflow/WorkflowSubworkflow/WorkflowSubworkflow.csproj" />
+    <Project Path="examples/Workflow/WorkflowTaskChaining/WorkflowTaskChaining.csproj" />
+    <Project Path="examples/Workflow/WorkflowUnitTest/WorkflowUnitTest.csproj" />
+    <Project Path="examples/Workflow/WorkflowVersioning/WorkflowVersioning.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Dapr.Actors.Analyzers/Dapr.Actors.Analyzers/Dapr.Actors.Analyzers.csproj" />
+    <Project Path="src/Dapr.Actors.AspNetCore/Dapr.Actors.AspNetCore.csproj" />
+    <Project Path="src/Dapr.Actors.Generators/Dapr.Actors.Generators.csproj" />
+    <Project Path="src/Dapr.Actors/Dapr.Actors.csproj" />
+    <Project Path="src/Dapr.AI.A2A/Dapr.AI.A2A.csproj" />
+    <Project Path="src/Dapr.AI.Microsoft.Extensions/Dapr.AI.Microsoft.Extensions.csproj" />
+    <Project Path="src/Dapr.AI/Dapr.AI.csproj" />
+    <Project Path="src/Dapr.AspNetCore/Dapr.AspNetCore.csproj" />
+    <Project Path="src/Dapr.BinaryStore.Abstractions/Dapr.BinaryStore.Abstractions.csproj" />
+    <Project Path="src/Dapr.BinaryStore.Generators/Dapr.BinaryStore.Generators.csproj" />
+    <Project Path="src/Dapr.BinaryStore.Runtime/Dapr.BinaryStore.Runtime.csproj" />
+    <Project Path="src/Dapr.BinaryStore/Dapr.BinaryStore.csproj" />
+    <Project Path="src/Dapr.Client/Dapr.Client.csproj" />
+    <Project Path="src/Dapr.Common.Generators/Dapr.Common.Generators.csproj" />
+    <Project Path="src/Dapr.Common/Dapr.Common.csproj" />
+    <Project Path="src/Dapr.Cryptography/Dapr.Cryptography.csproj" />
+    <Project Path="src/Dapr.DistributedLock/Dapr.DistributedLock.csproj" />
+    <Project Path="src/Dapr.Extensions.Configuration/Dapr.Extensions.Configuration.csproj" />
+    <Project Path="src/Dapr.Jobs.Analyzers/Dapr.Jobs.Analyzers.csproj" />
+    <Project Path="src/Dapr.Jobs/Dapr.Jobs.csproj" />
+    <Project Path="src/Dapr.Messaging.Abstractions/Dapr.Messaging.Abstractions.csproj" />
+    <Project Path="src/Dapr.Messaging.Analyzers/Dapr.Messaging.Analyzers.csproj" />
+    <Project Path="src/Dapr.Messaging.Generators/Dapr.Messaging.Generators.csproj" />
+    <Project Path="src/Dapr.Messaging.Runtime/Dapr.Messaging.Runtime.csproj" />
+    <Project Path="src/Dapr.Messaging/Dapr.Messaging.csproj" />
+    <Project Path="src/Dapr.Metadata.Abstractions/Dapr.Metadata.Abstractions.csproj" />
+    <Project Path="src/Dapr.Metadata.Runtime/Dapr.Metadata.Runtime.csproj" />
+    <Project Path="src/Dapr.Metadata/Dapr.Metadata.csproj" />
+    <Project Path="src/Dapr.Protos/Dapr.Protos.csproj" />
+    <Project Path="src/Dapr.Search.Abstractions/Dapr.Search.Abstractions.csproj" />
+    <Project Path="src/Dapr.Search.Generators/Dapr.Search.Generators.csproj" />
+    <Project Path="src/Dapr.Search.Runtime/Dapr.Search.Runtime.csproj" />
+    <Project Path="src/Dapr.Search/Dapr.Search.csproj" />
+    <Project Path="src/Dapr.SecretsManagement.Abstractions/Dapr.SecretsManagement.Abstractions.csproj" />
+    <Project Path="src/Dapr.SecretsManagement.Generators/Dapr.SecretsManagement.Generators.csproj" />
+    <Project Path="src/Dapr.SecretsManagement.Runtime/Dapr.SecretsManagement.Runtime.csproj" />
+    <Project Path="src/Dapr.SecretsManagement/Dapr.SecretsManagement.csproj" />
+    <Project Path="src/Dapr.StateManagement.Abstractions/Dapr.StateManagement.Abstractions.csproj" />
+    <Project Path="src/Dapr.StateManagement.Generators/Dapr.StateManagement.Generators.csproj" />
+    <Project Path="src/Dapr.StateManagement.Runtime/Dapr.StateManagement.Runtime.csproj" />
+    <Project Path="src/Dapr.StateManagement/Dapr.StateManagement.csproj" />
+    <Project Path="src/Dapr.Testcontainers.Xunit/Dapr.Testcontainers.Xunit.csproj" />
+    <Project Path="src/Dapr.Testcontainers/Dapr.Testcontainers.csproj" />
+    <Project Path="src/Dapr.Vector.Abstractions/Dapr.Vector.Abstractions.csproj" />
+    <Project Path="src/Dapr.Vector.Generators/Dapr.Vector.Generators.csproj" />
+    <Project Path="src/Dapr.Vector.Runtime/Dapr.Vector.Runtime.csproj" />
+    <Project Path="src/Dapr.Vector/Dapr.Vector.csproj" />
+    <Project Path="src/Dapr.Workflow.Abstractions/Dapr.Workflow.Abstractions.csproj" />
+    <Project Path="src/Dapr.Workflow.Analyzers/Dapr.Workflow.Analyzers.csproj" />
+    <Project Path="src/Dapr.Workflow.Grpc/Dapr.Workflow.Grpc.csproj" />
+    <Project Path="src/Dapr.Workflow.Versioning.Abstractions/Dapr.Workflow.Versioning.Abstractions.csproj" />
+    <Project Path="src/Dapr.Workflow.Versioning.Generators/Dapr.Workflow.Versioning.Generators.csproj" />
+    <Project Path="src/Dapr.Workflow.Versioning.Runtime/Dapr.Workflow.Versioning.Runtime.csproj" />
+    <Project Path="src/Dapr.Workflow.Versioning/Dapr.Workflow.Versioning.csproj" />
+    <Project Path="src/Dapr.Workflow/Dapr.Workflow.csproj" />
+  </Folder>
+  <Folder Name="/src/Actors/">
+    <Project Path="src/Dapr.Actors.Next.Abstractions/Dapr.Actors.Next.Abstractions.csproj" />
+    <Project Path="src/Dapr.Actors.Next.Analyzers/Dapr.Actors.Next.Analyzers.csproj" />
+    <Project Path="src/Dapr.Actors.Next.Core/Dapr.Actors.Next.Core.csproj" />
+    <Project Path="src/Dapr.Actors.Next.Interpreted/Dapr.Actors.Next.Interpreted.csproj" />
+    <Project Path="src/Dapr.Actors.Next.SourceGenerators/Dapr.Actors.Next.SourceGenerators.csproj" />
+    <Project Path="src/Dapr.Actors.Next.StateMachine/Dapr.Actors.Next.StateMachine.csproj" />
+    <Project Path="src/Dapr.Actors.Next.Streams/Dapr.Actors.Next.Streams.csproj" />
+    <Project Path="src/Dapr.Actors.Next.Testing/Dapr.Actors.Next.Testing.csproj" />
+    <Project Path="src/Dapr.Actors.Next/Dapr.Actors.Next.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Dapr.IntegrationTest.DaprClient.ServiceInvocation/Dapr.IntegrationTest.DaprClient.ServiceInvocation.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Search/Dapr.IntegrationTest.Search.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Vector/Dapr.IntegrationTest.Vector.csproj" />
+    <Project Path="test/Dapr.Search.Test/Dapr.Search.Test.csproj" />
+    <Project Path="test/Dapr.Vector.Test/Dapr.Vector.Test.csproj" />
+  </Folder>
+  <Folder Name="/test/integration/" />
+  <Folder Name="/test/integration/new/">
+    <Project Path="test/Dapr.IntegrationTest.Actors.Generators/Dapr.IntegrationTest.Actors.Generators.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Actors.Next/Dapr.IntegrationTest.Actors.Next.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Actors/Dapr.IntegrationTest.Actors.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.AI/Dapr.IntegrationTest.AI.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.BinaryStore/Dapr.IntegrationTest.BinaryStore.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Configuration/Dapr.IntegrationTest.Configuration.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Cryptography/Dapr.IntegrationTest.Cryptography.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.DaprClient/Dapr.IntegrationTest.DaprClient.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.DistributedLock/Dapr.IntegrationTest.DistributedLock.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Examples/Dapr.IntegrationTest.Examples.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Jobs/Dapr.IntegrationTest.Jobs.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Messaging/Dapr.IntegrationTest.Messaging.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Workflow.BinaryStore/Dapr.IntegrationTest.Workflow.BinaryStore.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Workflow.Versioning.ReferenceWorkflows/Dapr.IntegrationTest.Workflow.Versioning.ReferenceWorkflows.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Workflow.Versioning/Dapr.IntegrationTest.Workflow.Versioning.csproj" />
+    <Project Path="test/Dapr.IntegrationTest.Workflow/Dapr.IntegrationTest.Workflow.csproj" />
+    <Project Path="test/Dapr.IntegrationTests.Metadata/Dapr.IntegrationTests.Metadata.csproj" />
+  </Folder>
+  <Folder Name="/test/unit/">
+    <Project Path="test/Dapr.Actors.Analyzers.Test/Dapr.Actors.Analyzers.Test.csproj" />
+    <Project Path="test/Dapr.Actors.AspNetCore.Test/Dapr.Actors.AspNetCore.Test.csproj" />
+    <Project Path="test/Dapr.Actors.Generators.Test/Dapr.Actors.Generators.Test.csproj" />
+    <Project Path="test/Dapr.Actors.Next.Abstractions.Test/Dapr.Actors.Next.Abstractions.Test.csproj" />
+    <Project Path="test/Dapr.Actors.Next.Analyzers.Test/Dapr.Actors.Next.Analyzers.Test.csproj" />
+    <Project Path="test/Dapr.Actors.Next.Core.Test/Dapr.Actors.Next.Core.Test.csproj" />
+    <Project Path="test/Dapr.Actors.Next.Interpreted.Test/Dapr.Actors.Next.Interpreted.Test.csproj" />
+    <Project Path="test/Dapr.Actors.Next.MetaConsumerSmoke.Test/Dapr.Actors.Next.MetaConsumerSmoke.Test.csproj" />
+    <Project Path="test/Dapr.Actors.Next.SourceGenerators.OtherSample/Dapr.Actors.Next.SourceGenerators.OtherSample.csproj" />
+    <Project Path="test/Dapr.Actors.Next.SourceGenerators.Sample/Dapr.Actors.Next.SourceGenerators.Sample.csproj" />
+    <Project Path="test/Dapr.Actors.Next.SourceGenerators.Test/Dapr.Actors.Next.SourceGenerators.Test.csproj" />
+    <Project Path="test/Dapr.Actors.Next.StateMachine.Test/Dapr.Actors.Next.StateMachine.Test.csproj" />
+    <Project Path="test/Dapr.Actors.Next.Streams.Test/Dapr.Actors.Next.Streams.Test.csproj" />
+    <Project Path="test/Dapr.Actors.Next.Testing.Test/Dapr.Actors.Next.Testing.Test.csproj" />
+    <Project Path="test/Dapr.Actors.Test/Dapr.Actors.Test.csproj" />
+    <Project Path="test/Dapr.AI.Microsoft.Extensions.Test/Dapr.AI.Microsoft.Extensions.Test.csproj" />
+    <Project Path="test/Dapr.AI.Test/Dapr.AI.Test.csproj" />
+    <Project Path="test/Dapr.Analyzers.Common/Dapr.Analyzers.Common.csproj" />
+    <Project Path="test/Dapr.AspNetCore.Test/Dapr.AspNetCore.Test.csproj" />
+    <Project Path="test/Dapr.BinaryStore.Test/Dapr.BinaryStore.Test.csproj" />
+    <Project Path="test/Dapr.Client.Test/Dapr.Client.Test.csproj" />
+    <Project Path="test/Dapr.Common.Generators.Tests/Dapr.Common.Generators.Tests.csproj" />
+    <Project Path="test/Dapr.Common.Test/Dapr.Common.Test.csproj" />
+    <Project Path="test/Dapr.Cryptography.Test/Dapr.Cryptography.Test.csproj" />
+    <Project Path="test/Dapr.DistributedLock.Test/Dapr.DistributedLock.Test.csproj" />
+    <Project Path="test/Dapr.Extensions.Configuration.Test/Dapr.Extensions.Configuration.Test.csproj" />
+    <Project Path="test/Dapr.Jobs.Analyzer.Test/Dapr.Jobs.Analyzers.Test.csproj" />
+    <Project Path="test/Dapr.Jobs.Test/Dapr.Jobs.Test.csproj" />
+    <Project Path="test/Dapr.Messaging.Analyzers.Test/Dapr.Messaging.Analyzers.Test.csproj" />
+    <Project Path="test/Dapr.Messaging.Generators.Test/Dapr.Messaging.Generators.Test.csproj" />
+    <Project Path="test/Dapr.Messaging.Test/Dapr.Messaging.Test.csproj" />
+    <Project Path="test/Dapr.Metadata.Test/Dapr.Metadata.Test.csproj" />
+    <Project Path="test/Dapr.Packaging.Test/Dapr.Packaging.Test.csproj" />
+    <Project Path="test/Dapr.SecretsManagement.Runtime.Test/Dapr.SecretsManagement.Runtime.Test.csproj" />
+    <Project Path="test/Dapr.StateManagement.Test/Dapr.StateManagement.Test.csproj" />
+    <Project Path="test/Dapr.Testcontainers.Test/Dapr.Testcontainers.Test.csproj" />
+    <Project Path="test/Dapr.Workflow.Abstractions.Test/Dapr.Workflow.Abstractions.Test.csproj" />
+    <Project Path="test/Dapr.Workflow.Analyzers.Test/Dapr.Workflow.Analyzers.Test.csproj" />
+    <Project Path="test/Dapr.Workflow.Test/Dapr.Workflow.Test.csproj" />
+    <Project Path="test/Dapr.Workflow.Versioning.Generators.Test/Dapr.Workflow.Versioning.Generators.Test.csproj" />
+    <Project Path="test/Dapr.Workflow.Versioning.Runtime.Test/Dapr.Workflow.Versioning.Runtime.Test.csproj" />
+  </Folder>
+</Solution>
