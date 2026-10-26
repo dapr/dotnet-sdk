@@ -3,6 +3,7 @@
     <PropertyGroup>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <IncludeGoogleApiCommonProtos>true</IncludeGoogleApiCommonProtos>
         <Description>This package contains the reference protos used by develop services using Dapr.</Description>
     </PropertyGroup>
     
@@ -10,6 +11,7 @@
         <Protobuf Include="Protos\dapr\proto\common\v1\common.proto" ProtoRoot="Protos" GrpcServices="Client,Server" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\actors.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\ai.proto" ProtoRoot="Protos" GrpcServices="Client" />
+        <Protobuf Include="Protos\dapr\proto\runtime\v1\binarystore.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\binding.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\configuration.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\crypto.proto" ProtoRoot="Protos" GrpcServices="Client" />
@@ -20,6 +22,8 @@
         <Protobuf Include="Protos\dapr\proto\runtime\v1\metadata.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\pubsub.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\secret.proto" ProtoRoot="Protos" GrpcServices="Client" />
+        <Protobuf Include="Protos\dapr\proto\runtime\v1\search.proto" ProtoRoot="Protos" GrpcServices="Client" />
+        <Protobuf Include="Protos\dapr\proto\runtime\v1\vector.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\state.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\workflow.proto" ProtoRoot="Protos" GrpcServices="Client" />
         <Protobuf Include="Protos\dapr\proto\runtime\v1\appcallback.proto" ProtoRoot="Protos" GrpcServices="Server" />

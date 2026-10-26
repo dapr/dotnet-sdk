@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,12 +44,89 @@ public sealed class ActorRuntime(
     IEnumerable<IActorTurnFilter> filters,
     IOptions<DaprActorsOptions> options,
     ILogger<ActorRuntime> logger,
-    IActorStateMigrator? stateMigrator = null) : IActorRuntime
+    IActorStateMigrator? stateMigrator = null) : IActorRuntime, IAsyncDisposable, IDisposable
 {
     private static readonly ActivitySource ActivitySource = new("Dapr.Actors.Next.Core");
     private readonly ConcurrentDictionary<ActorKey, ActorActivation> activations = [];
     private readonly ConcurrentDictionary<ActorKey, RuntimeActorMailbox> mailboxes = [];
     private readonly IReadOnlyList<IActorTurnFilter> _filters = filters.ToArray();
+    private readonly object lifecycleLock = new();
+    private readonly Dictionary<RuntimeActorMailbox, int> admissions = [];
+    private bool stopping;
+    private Task? disposal;
+    private TaskCompletionSource lifecycleChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    internal event Action<string, ActorId>? ActivationEnded;
+
+    private void SignalLifecycleChange()
+    {
+        lock (lifecycleLock)
+        {
+            if (!stopping) return;
+            lifecycleChanged.TrySetResult();
+            lifecycleChanged = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+    }
+
+    /// <summary>Drains admitted turns and disposes every activation and its service scope.</summary>
+    public ValueTask DisposeAsync()
+    {
+        lock (lifecycleLock)
+        {
+            stopping = true;
+            return new ValueTask(disposal ??= ShutdownAsync());
+        }
+    }
+
+    /// <inheritdoc />
+    public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+    private async Task ShutdownAsync()
+    {
+        // Yield before invoking user lifecycle code while holding the admission lock.
+        await Task.Yield();
+        while (true)
+        {
+            RuntimeActorMailbox[] pending;
+            Task changed;
+            lock (lifecycleLock)
+            {
+                // Caller cancellation can complete DispatchAsync before its queued turn exits.
+                // Keep those mailboxes alive until actual execution and queued work finish.
+                pending = mailboxes.Values
+                    .Where(mailbox => admissions.ContainsKey(mailbox) || mailbox.IsExecuting || mailbox.PendingCount > 0)
+                    .ToArray();
+                if (pending.Length == 0) break;
+                changed = lifecycleChanged.Task;
+            }
+            // Also drain controlled/testing schedulers that have no background pump.
+            foreach (var mailbox in pending)
+            {
+                if (!mailbox.IsExecuting && mailbox.PendingCount > 0)
+                    _ = mailbox.ExecuteNextAsync();
+            }
+            await changed.ConfigureAwait(false);
+        }
+        List<Exception> failures = [];
+        foreach (var key in activations.Keys)
+        {
+            try { await DeactivateCoreAsync(key.ActorType, ActorId.Create(key.ActorId), CancellationToken.None).ConfigureAwait(false); }
+            catch (Exception ex) { failures.Add(ex); }
+        }
+        mailboxes.Clear();
+        if (failures.Count > 0) throw new AggregateException(failures);
+    }
+
+    internal void TryRetireMailbox(RuntimeActorMailbox mailbox)
+    {
+        lock (lifecycleLock)
+        {
+            SignalLifecycleChange();
+            var key = new ActorKey(mailbox.ActorType, mailbox.ActorId.Value);
+            if (!admissions.ContainsKey(mailbox) && !mailbox.IsExecuting && mailbox.PendingCount == 0
+                && !activations.ContainsKey(key))
+                ((ICollection<KeyValuePair<ActorKey, RuntimeActorMailbox>>)mailboxes).Remove(new(key, mailbox));
+        }
+    }
 
     /// <inheritdoc />
     public Task<byte[]?> InvokeAsync(string actorType, string actorId, string methodName, ReadOnlyMemory<byte> payload, IReadOnlyDictionary<string, string> headers, CancellationToken cancellationToken = default)
@@ -61,51 +138,107 @@ public sealed class ActorRuntime(
     /// <inheritdoc />
     public async Task<byte[]?> DispatchAsync(ActorRuntimeRequest request, CancellationToken cancellationToken = default)
     {
-        request = request with { Headers = ActorHeaders.WithCurrentReentrancy(request.Headers) };
-        var key = new ActorKey(request.ActorType, request.ActorId.Value);
-        var current = ActorTurnExecution.Current;
-        if (current is not null && current.Key.Equals(key) && IsSameCallChain(current.Headers, request.Headers))
+        cancellationToken.ThrowIfCancellationRequested();
+        request = request with
         {
-            current.ReentrantDepth++;
-            try
+            Headers = ActorHeaders.EnsureReentrancy(request.Kind == ActorTurnKind.Invoke
+                ? ActorHeaders.WithCurrentReentrancy(request.Headers)
+                : request.Headers),
+        };
+        var key = new ActorKey(request.ActorType, request.ActorId.Value);
+        RuntimeActorMailbox mailbox;
+        lock (lifecycleLock)
+        {
+            ObjectDisposedException.ThrowIf(stopping && ActorTurnExecution.Current is null
+                && !mailboxes.Values.Any(active => active.HasActiveCallChain(request.Headers)), this);
+            mailbox = mailboxes.GetOrAdd(key, static (actorKey, runtime) => new RuntimeActorMailbox(actorKey.ActorType, ActorId.Create(actorKey.ActorId), runtime), this);
+            admissions[mailbox] = admissions.GetValueOrDefault(mailbox) + 1;
+            SignalLifecycleChange();
+        }
+        try
+        {
+            return await DispatchAdmittedAsync(request, cancellationToken, mailbox).ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (lifecycleLock)
             {
-                return await ExecuteTurnAsync(request, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                current.ReentrantDepth--;
+                if (--admissions[mailbox] == 0) admissions.Remove(mailbox);
+                TryRetireMailbox(mailbox);
             }
         }
+    }
 
-        var mailbox = mailboxes.GetOrAdd(key, static (actorKey, runtime) => new RuntimeActorMailbox(actorKey.ActorType, ActorId.Create(actorKey.ActorId), runtime), this);
+    private async Task<byte[]?> DispatchAdmittedAsync(ActorRuntimeRequest request, CancellationToken cancellationToken, RuntimeActorMailbox mailbox)
+    {
+        if (request.Kind == ActorTurnKind.Invoke)
+        {
+            var registration = registry.GetByActorType(request.ActorType);
+            var configured = registration.Options ?? options.Value;
+            if (mailbox.TryClaimReentrantTurn(request,
+                    registration.TypeOptions?.EnableReentrancy ?? configured.EnableReentrancy ?? true,
+                    registration.TypeOptions?.MaxReentrantDepth ?? configured.MaxReentrantDepth ?? 32))
+            {
+                try
+                {
+                    return await ExecuteTurnCoreAsync(request, cancellationToken, mailbox, rootTurn: false).ConfigureAwait(false);
+                }
+                finally
+                {
+                    mailbox.ReleaseReentrantTurn();
+                }
+            }
+        }
 
         // Fast path: when the scheduler permits inline execution and the mailbox is idle, run the turn directly
         // on the caller. This preserves one-turn-at-a-time semantics via the mailbox execution slot while
         // avoiding the thread-pool hop, the TaskCompletionSource, and the per-call cancellation registration
         // that the queued path below incurs. Any turns enqueued while this one ran are drained afterward.
-        if (scheduler.AllowsInlineExecution && mailbox.TryClaimInlineTurn())
+        if (scheduler.AllowsInlineExecution && mailbox.TryClaimInlineTurn(request))
         {
             try
             {
-                return await ExecuteTurnAsync(request, cancellationToken).ConfigureAwait(false);
+                return await ExecuteTurnAsync(request, cancellationToken, mailbox).ConfigureAwait(false);
             }
             finally
             {
                 if (mailbox.ReleaseInlineTurn())
                 {
-                    await scheduler.ScheduleAsync(mailbox, cancellationToken).ConfigureAwait(false);
+                    // Queued turns must progress even when the completed inline caller cancelled.
+                    await scheduler.ScheduleAsync(mailbox, CancellationToken.None).ConfigureAwait(false);
                 }
             }
         }
 
         var work = new ActorTurnWork(request, cancellationToken);
         await mailbox.EnqueueWorkAsync(work, cancellationToken).ConfigureAwait(false);
-        await scheduler.ScheduleAsync(mailbox, cancellationToken).ConfigureAwait(false);
+        SignalLifecycleChange();
+        // Once accepted, scheduling belongs to the mailbox, not to an individual caller.
+        await scheduler.ScheduleAsync(mailbox, CancellationToken.None).ConfigureAwait(false);
         return await work.Task.ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async Task DeactivateAsync(string actorType, ActorId actorId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var key = new ActorKey(actorType, actorId.Value);
+        if (!mailboxes.TryGetValue(key, out var mailbox))
+        {
+            return;
+        }
+
+        if (ActorTurnExecution.Current is { } current && mailbox.TryDeferDeactivation(current.Headers))
+        {
+            return;
+        }
+
+        await DispatchAsync(new ActorRuntimeRequest(actorType, actorId, "Deactivate", ActorTurnKind.Deactivate,
+            ReadOnlyMemory<byte>.Empty, ActorHeaders.Empty,
+            new ActorRequestContext(null, null, ActorHeaders.Empty)), cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task DeactivateCoreAsync(string actorType, ActorId actorId, CancellationToken cancellationToken)
     {
         var key = new ActorKey(actorType, actorId.Value);
         if (activations.TryRemove(key, out var activation))
@@ -114,7 +247,7 @@ public sealed class ActorRuntime(
         }
     }
 
-    private static async Task DeactivateCoreAsync(ActorActivation activation, CancellationToken cancellationToken)
+    private async Task DeactivateCoreAsync(ActorActivation activation, CancellationToken cancellationToken)
     {
         try
         {
@@ -122,21 +255,50 @@ public sealed class ActorRuntime(
         }
         finally
         {
-            await activation.DisposeAsync().ConfigureAwait(false);
+            await DisposeActivationAsync(activation).ConfigureAwait(false);
         }
     }
 
-    internal async Task<byte[]?> ExecuteTurnAsync(ActorRuntimeRequest request, CancellationToken cancellationToken)
+    private async ValueTask DisposeActivationAsync(ActorActivation activation)
+    {
+        try
+        {
+            await activation.DisposeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            ActivationEnded?.Invoke(activation.ActorType, activation.ActorId);
+        }
+    }
+
+    internal async Task<byte[]?> ExecuteTurnAsync(ActorRuntimeRequest request, CancellationToken cancellationToken, RuntimeActorMailbox mailbox)
+    {
+        try
+        {
+            return await ExecuteTurnCoreAsync(request, cancellationToken, mailbox).ConfigureAwait(false);
+        }
+        finally
+        {
+            await mailbox.CloseTurnAsync().ConfigureAwait(false);
+            if (mailbox.TakeDeferredDeactivation())
+            {
+                await DeactivateCoreAsync(request.ActorType, request.ActorId, CancellationToken.None).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task<byte[]?> ExecuteTurnCoreAsync(ActorRuntimeRequest request, CancellationToken cancellationToken, RuntimeActorMailbox mailbox, bool rootTurn = true)
     {
         request = request with { Headers = ActorHeaders.EnsureReentrancy(request.Headers) };
         if (request.Kind == ActorTurnKind.Deactivate)
         {
-            await DeactivateAsync(request.ActorType, request.ActorId, cancellationToken).ConfigureAwait(false);
+            await DeactivateCoreAsync(request.ActorType, request.ActorId, cancellationToken).ConfigureAwait(false);
             return null;
         }
 
         var registration = registry.GetByActorType(request.ActorType);
         var activation = await GetOrActivateAsync(registration, request.ActorId, ActorHeaders.GetActivationId(request.Headers), cancellationToken).ConfigureAwait(false);
+        mailbox.MarkActivated();
         var dispatchRequest = new ActorDispatchRequest(request.ActorType, request.ActorId, request.OperationName, request.Payload, request.Headers, request.RequestContext);
         var methodContext = ToMethodContext(dispatchRequest);
         Activity? activity = null;
@@ -179,12 +341,29 @@ public sealed class ActorRuntime(
                 })(turnContext).ConfigureAwait(false);
             }
 
+            if (rootTurn)
+            {
+                await mailbox.WaitForReentrantTurnsAsync().ConfigureAwait(false);
+            }
+
             await activation.OnPostActorMethodAsync(methodContext, null, cancellationToken).ConfigureAwait(false);
+            if (rootTurn)
+            {
+                await mailbox.CloseTurnAsync().ConfigureAwait(false);
+            }
+
             await activation.StateUnitOfWork.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             exception = ex;
+            if (rootTurn)
+            {
+                await mailbox.WaitForReentrantTurnsAsync().ConfigureAwait(false);
+                // A failed flush may have closed admission, but the error lifecycle hook can invoke actors.
+                mailbox.ResumeAfterFailedCompletion();
+            }
+
             await activation.OnPostActorMethodAsync(methodContext, exception, cancellationToken).ConfigureAwait(false);
             logger.LogError(ex, "Actor turn failed for {ActorType}/{ActorId}/{OperationName}.", request.ActorType, request.ActorId, request.OperationName);
             throw;
@@ -239,18 +418,46 @@ public sealed class ActorRuntime(
         // The provider owns the scope's lifetime and is disposed with the activation, preserving disposal of
         // any scoped or transient services it resolves.
         var provider = new ActorActivationServiceProvider(scopeFactory, activationContext);
-        var actor = registration.Factory(provider, actorId);
-        var activation = new ActorActivation(registration.ActorType, actorId, actor, state, state, provider, registration.Lifecycle)
+        ActorActivation activation;
+        try
         {
-            ActivationId = activationId,
-        };
+            var actor = registration.Factory(provider, actorId);
+            activation = new ActorActivation(registration.ActorType, actorId, actor, state, state, provider, registration.Lifecycle)
+            {
+                ActivationId = activationId,
+            };
+        }
+        catch
+        {
+            try
+            {
+                await provider.DisposeAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                ActivationEnded?.Invoke(registration.ActorType, actorId);
+            }
+            throw;
+        }
+
+        try
+        {
+            await activation.OnActivateAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            await DisposeActivationAsync(activation).ConfigureAwait(false);
+            throw;
+        }
+
+        // Mailbox admission serializes activation. Publish only after initialization succeeds,
+        // so a failed or cancelled activation can never be reused by a later turn.
         if (!activations.TryAdd(key, activation))
         {
             await activation.DisposeAsync().ConfigureAwait(false);
             return activations[key];
         }
 
-        await activation.OnActivateAsync(cancellationToken).ConfigureAwait(false);
         return activation;
     }
 
@@ -277,11 +484,6 @@ public sealed class ActorRuntime(
 
     private static ActorMethodContext ToMethodContext(ActorDispatchRequest request) =>
         new(request.ActorType, request.ActorId, request.MethodName, Array.Empty<object?>(), request.Headers);
-
-    private static bool IsSameCallChain(IReadOnlyDictionary<string, string> currentHeaders, IReadOnlyDictionary<string, string> nextHeaders) =>
-        ActorHeaders.TryGetReentrancy(currentHeaders, out _, out var current)
-        && ActorHeaders.TryGetReentrancy(nextHeaders, out _, out var next)
-        && string.Equals(current, next, StringComparison.Ordinal);
 
     private static IEnumerable<ActivityLink>? CreateLinks(ActorRuntimeRequest request)
     {

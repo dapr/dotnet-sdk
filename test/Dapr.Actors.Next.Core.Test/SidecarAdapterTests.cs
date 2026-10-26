@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,25 @@ namespace Dapr.Actors.Next.Core.Test;
 
 public sealed class SidecarAdapterTests
 {
+    [Fact]
+    public async Task State_batch_uses_one_transaction_with_upserts_and_deletes()
+    {
+        var client = new RecordingDaprClient();
+        var store = new DaprSidecarActorStateStore(client, "actors", "token");
+        using var cancellation = new CancellationTokenSource();
+        await store.ApplyAsync("Counter Type", "id/1",
+            [new("first", ByteString.CopyFromUtf8("42").Memory), new("second", null)], cancellation.Token);
+        var request = Assert.IsType<P.ExecuteStateTransactionRequest>(client.TransactionRequest);
+        Assert.Equal("actors", request.StoreName);
+        Assert.Equal(["upsert", "delete"], request.Operations.Select(operation => operation.OperationType));
+        Assert.Equal("actors-next:Counter%20Type:id%2F1:first", request.Operations[0].Request.Key);
+        Assert.Equal("42", request.Operations[0].Request.Value.ToStringUtf8());
+        Assert.Equal("actors-next:Counter%20Type:id%2F1:second", request.Operations[1].Request.Key);
+        Assert.Equal(cancellation.Token, client.TransactionOptions.CancellationToken);
+        Assert.Equal("token", client.TransactionOptions.Headers!.GetValue("dapr-api-token"));
+        Assert.Null(client.SaveStateRequest);
+        Assert.Null(client.DeleteStateRequest);
+    }
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Invocation_client_maps_actor_invoke_request_and_response()
     {
@@ -59,6 +78,7 @@ public sealed class SidecarAdapterTests
         {
             InvokeActorResponse = new P.InvokeActorResponse(),
             GetActorReminderResponse = new P.GetActorReminderResponse { ActorType = "Counter", ActorId = "one" },
+            GetActorTimerResponse = new P.GetActorTimerResponse { ActorType = "Counter", ActorId = "one" },
         };
         var invocation = new DaprActorInvocationClient(client, "test-token");
         var store = new DaprSidecarActorStateStore(client, "actors", "test-token");
@@ -69,6 +89,8 @@ public sealed class SidecarAdapterTests
         await invocation.InvokeAsync("Counter", actorId.Value, "Ping", ReadOnlyMemory<byte>.Empty, new Dictionary<string, string>());
         await store.ReadAsync("Counter", actorId.Value, "state");
         await scheduler.ScheduleAsync("Counter", actorId, "tick", TimeSpan.Zero, "Tick", "0");
+        await scheduler.GetAsync("Counter", actorId, "tick");
+        await scheduler.ListAsync("Counter", actorId);
         await reminders.ScheduleAsync("Counter", actorId, "wake", TimeSpan.Zero, TimeSpan.FromSeconds(1), "0");
         await reminders.GetAsync("Counter", actorId, "wake");
         await reminders.ListAsync("Counter", actorId);
@@ -77,6 +99,8 @@ public sealed class SidecarAdapterTests
         AssertToken(client.InvokeActorOptions);
         AssertToken(client.GetStateOptions);
         AssertToken(client.RegisterActorTimerOptions);
+        AssertToken(client.GetActorTimerOptions);
+        AssertToken(client.ListActorTimersOptions);
         AssertToken(client.RegisterActorReminderOptions);
         AssertToken(client.GetActorReminderOptions);
         AssertToken(client.ListActorRemindersOptions);
@@ -156,6 +180,111 @@ public sealed class SidecarAdapterTests
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await scheduler.ScheduleAsync("Counter", actorId, "bad-ttl", TimeSpan.FromSeconds(2), "Tick", "0", ttl: TimeSpan.FromSeconds(1)));
     }
 
+    [MinimumDaprRuntimeFact("1.19")]
+    public async Task Timer_scheduler_maps_sidecar_get_and_list_requests()
+    {
+        // The sidecar reports "ttl" as the absolute RFC 3339 expiration (Go's RFC3339Nano, up to nine fractional
+        // digits), "period" as "@every <Go duration>" (microseconds as "µs"), and echoes "dueTime" as registered,
+        // which over HTTP may be an RFC 3339 timestamp.
+        var client = new RecordingDaprClient
+        {
+            GetActorTimerResponse = new P.GetActorTimerResponse
+            {
+                ActorType = "Counter",
+                ActorId = "timer",
+                DueTime = "250ms",
+                Period = "@every 5s",
+                Ttl = "2026-10-21T10:15:30.123456789Z",
+                Callback = "Tick",
+                Data = new Any { Value = ByteString.CopyFromUtf8("""{"x":2}""") },
+            },
+            ListActorTimersResponse = new P.ListActorTimersResponse
+            {
+                Timers =
+                {
+                    new P.NamedActorTimer
+                    {
+                        Name = "tick",
+                        Timer = new P.ActorTimer
+                        {
+                            ActorType = "Counter",
+                            ActorId = "timer",
+                            DueTime = "250ms",
+                            Callback = "Tick",
+                            Data = Any.Pack(new BytesValue { Value = ByteString.CopyFromUtf8("\"eyJ4IjozfQ==\"") }),
+                        },
+                    },
+                    new P.NamedActorTimer
+                    {
+                        Name = "expiring",
+                        Timer = new P.ActorTimer
+                        {
+                            ActorType = "Counter",
+                            ActorId = "timer",
+                            DueTime = "2026-10-21T10:00:00Z",
+                            Period = "@every 500\u00B5s",
+                            Ttl = "2026-10-21T12:15:30+02:00",
+                            Callback = "Tick",
+                        },
+                    },
+                    new P.NamedActorTimer
+                    {
+                        Name = "once",
+                        Timer = new P.ActorTimer
+                        {
+                            ActorType = "Counter",
+                            ActorId = "timer",
+                            DueTime = "+1.s",
+                            Period = "@every 0s",
+                            Callback = "Tick",
+                        },
+                    },
+                },
+            },
+        };
+        var scheduler = new DaprSidecarActorTimerScheduler(client, new ActorWireSerializer(new JsonDaprSerializer()));
+        var actorId = ActorId.Create("timer");
+
+        var fetched = await scheduler.GetAsync("Counter", actorId, "tick");
+        var listed = await scheduler.ListAsync("Counter", actorId);
+
+        Assert.Equal("Counter", client.GetActorTimerRequest!.ActorType);
+        Assert.Equal("timer", client.GetActorTimerRequest.ActorId);
+        Assert.Equal("tick", client.GetActorTimerRequest.Name);
+        Assert.Equal("Counter", fetched!.ActorType);
+        Assert.Equal(actorId, fetched.ActorId);
+        Assert.Equal(TimeSpan.FromMilliseconds(250), fetched.DueTime);
+        Assert.Null(fetched.DueAt);
+        Assert.Equal(TimeSpan.FromSeconds(5), fetched.Period);
+        // Nanoseconds beyond .NET's 100ns tick resolution are rounded.
+        Assert.Equal(new DateTimeOffset(2026, 10, 21, 10, 15, 30, TimeSpan.Zero).AddTicks(1234568), fetched.ExpiresAt);
+        Assert.Equal("Tick", fetched.OperationName);
+        Assert.Equal("""{"x":2}""", fetched.ArgumentsJson);
+        Assert.Equal("Counter", client.ListActorTimersRequest!.ActorType);
+        Assert.Equal("timer", client.ListActorTimersRequest.ActorId);
+        Assert.Equal(3, listed.Count);
+        Assert.Equal("tick", listed[0].Name);
+        Assert.Equal("Tick", listed[0].Timer.OperationName);
+        Assert.Null(listed[0].Timer.Period);
+        Assert.Null(listed[0].Timer.ExpiresAt);
+        Assert.Equal("""{"x":3}""", listed[0].Timer.ArgumentsJson);
+        Assert.Equal("expiring", listed[1].Name);
+        Assert.Null(listed[1].Timer.DueTime);
+        Assert.Equal(new DateTimeOffset(2026, 10, 21, 10, 0, 0, TimeSpan.Zero), listed[1].Timer.DueAt);
+        Assert.Equal(TimeSpan.FromMilliseconds(0.5), listed[1].Timer.Period);
+        Assert.Equal(new DateTimeOffset(2026, 10, 21, 10, 15, 30, TimeSpan.Zero), listed[1].Timer.ExpiresAt);
+        Assert.Null(listed[1].Timer.ArgumentsJson);
+        Assert.Equal("once", listed[2].Name);
+        Assert.Equal(TimeSpan.FromSeconds(1), listed[2].Timer.DueTime);
+        Assert.Null(listed[2].Timer.Period);
+
+        client.GetActorTimerNotFound = true;
+        Assert.Null(await scheduler.GetAsync("Counter", actorId, "missing"));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.GetAsync("", actorId, "tick"));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.GetAsync("Counter", actorId, ""));
+        await Assert.ThrowsAsync<ArgumentException>(async () => await scheduler.ListAsync("", actorId));
+    }
+
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Timer_scheduler_accepts_typed_and_byte_payloads()
     {
@@ -211,7 +340,7 @@ public sealed class SidecarAdapterTests
                             ActorId = "reminder",
                             DueTime = "250ms",
                             Period = "@every 5s",
-                            Data = new Any { Value = new BytesValue { Value = ByteString.CopyFromUtf8("\"eyJ4IjozfQ==\"") }.ToByteString() },
+                            Data = Any.Pack(new BytesValue { Value = ByteString.CopyFromUtf8("\"eyJ4IjozfQ==\"") }),
                             Ttl = "60000ms",
                         },
                     },
@@ -331,6 +460,14 @@ public sealed class SidecarAdapterTests
 
     private sealed class RecordingDaprClient : P.Dapr.DaprClient
     {
+        public P.ExecuteStateTransactionRequest? TransactionRequest { get; private set; }
+        public CallOptions TransactionOptions { get; private set; }
+        public override AsyncUnaryCall<Empty> ExecuteStateTransactionAsync(P.ExecuteStateTransactionRequest request, CallOptions options)
+        {
+            TransactionRequest = request;
+            TransactionOptions = options;
+            return Unary(new Empty());
+        }
         public P.InvokeActorRequest? InvokeActorRequest { get; private set; }
 
         public CallOptions InvokeActorOptions { get; private set; }
@@ -360,6 +497,20 @@ public sealed class SidecarAdapterTests
         public P.UnregisterActorTimerRequest? UnregisterActorTimerRequest { get; private set; }
 
         public CallOptions UnregisterActorTimerOptions { get; private set; }
+
+        public P.GetActorTimerRequest? GetActorTimerRequest { get; private set; }
+
+        public CallOptions GetActorTimerOptions { get; private set; }
+
+        public P.GetActorTimerResponse GetActorTimerResponse { get; set; } = new();
+
+        public bool GetActorTimerNotFound { get; set; }
+
+        public P.ListActorTimersRequest? ListActorTimersRequest { get; private set; }
+
+        public CallOptions ListActorTimersOptions { get; private set; }
+
+        public P.ListActorTimersResponse ListActorTimersResponse { get; set; } = new();
 
         public P.RegisterActorReminderRequest? RegisterActorReminderRequest { get; private set; }
 
@@ -431,6 +582,22 @@ public sealed class SidecarAdapterTests
             UnregisterActorTimerRequest = request;
             UnregisterActorTimerOptions = options;
             return Unary(new Empty());
+        }
+
+        public override AsyncUnaryCall<P.GetActorTimerResponse> GetActorTimerAsync(P.GetActorTimerRequest request, CallOptions options)
+        {
+            GetActorTimerRequest = request;
+            GetActorTimerOptions = options;
+            return GetActorTimerNotFound
+                ? UnaryFailed<P.GetActorTimerResponse>(new RpcException(new Status(StatusCode.NotFound, "missing")))
+                : Unary(GetActorTimerResponse);
+        }
+
+        public override AsyncUnaryCall<P.ListActorTimersResponse> ListActorTimersAsync(P.ListActorTimersRequest request, CallOptions options)
+        {
+            ListActorTimersRequest = request;
+            ListActorTimersOptions = options;
+            return Unary(ListActorTimersResponse);
         }
 
         public override AsyncUnaryCall<Empty> RegisterActorReminderAsync(P.RegisterActorReminderRequest request, CallOptions options)

@@ -96,8 +96,8 @@ public class ActorsEndpointRouteBuilderExtensionsTests
             "/actors/DoesNotExist/id1/method/Foo");
 
         // The TestServer propagates the unhandled exception from the route handler.
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => httpClient.SendAsync(request, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            httpClient.SendAsync(request, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -203,10 +203,12 @@ public class ActorsEndpointRouteBuilderExtensionsTests
         var gate = ActivationActor.Gate(actorId);
         var held = SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/{nameof(IActivationActor.HoldAsync)}", null, "Dapr-Actor-Activation-Id", "a1");
         await gate.Held.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        var second = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a2");
+        var replacing = InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a2");
+        await gate.Deactivated.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         gate.Release.SetResult();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+        var second = await replacing;
         Assert.NotEqual(first, second);
         Assert.Equal(second, await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a2"));
     }
@@ -235,7 +237,37 @@ public class ActorsEndpointRouteBuilderExtensionsTests
         return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
     }
 
-    private static IHost CreateHost<TStartup>(Action<ActorRuntimeOptions> configure) where TStartup : class
+    [Theory]
+    [InlineData("Reminder")]
+    [InlineData("Timer")]
+    public async Task MapActorsHandlers_CallbacksPropagateReentrancyContext(string callback)
+    {
+        var probe = new CallbackContextProbe();
+        using var host = CreateHost<ActorsStartup>(
+            options => options.Actors.RegisterActor<CallbackContextActor>(),
+            services => services.AddSingleton(probe));
+        using var client = host.GetTestServer().CreateClient();
+        var path = callback == "Timer"
+            ? "/actors/CallbackContextActor/id/method/timer/test"
+            : "/actors/CallbackContextActor/id/method/remind/test";
+        var body = callback == "Timer"
+            ? "{\"callback\":\"TimerCallback\"}"
+            : "{\"data\":\"\",\"dueTime\":\"0h0m0s0ms\",\"period\":\"0h0m1s0ms\"}";
+
+        using var request = new HttpRequestMessage(HttpMethod.Put, path);
+        request.Headers.Add("Dapr-Reentrancy-Id", "callback-chain");
+        request.Content = new StringContent(body);
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("callback-chain", probe.Context);
+
+        using var next = await client.PutAsync(path, new StringContent(body), TestContext.Current.CancellationToken);
+        next.EnsureSuccessStatusCode();
+        Assert.Null(probe.Context);
+    }
+
+    private static IHost CreateHost<TStartup>(Action<ActorRuntimeOptions> configure,
+        Action<IServiceCollection> configureServices = null) where TStartup : class
     {
         var builder = Host
             .CreateDefaultBuilder()
@@ -252,6 +284,7 @@ public class ActorsEndpointRouteBuilderExtensionsTests
             .ConfigureServices(services =>
             {
                 services.AddActors(configure);
+                configureServices?.Invoke(services);
             });
         var host = builder.Build();
         try
@@ -359,6 +392,7 @@ public class ActorsEndpointRouteBuilderExtensionsTests
         protected override Task OnDeactivateAsync()
         {
             Record("deactivate");
+            Gate(Id.GetId()).Deactivated.TrySetResult();
             return Task.CompletedTask;
         }
 
@@ -370,5 +404,30 @@ public class ActorsEndpointRouteBuilderExtensionsTests
         public TaskCompletionSource Held { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Deactivated { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    public sealed class CallbackContextProbe
+    {
+        public string Context { get; set; }
+    }
+
+    public sealed class CallbackContextActor(ActorHost host, CallbackContextProbe probe)
+        : Actor(host), IRealMethodActor, IRemindable
+    {
+        public Task PingAsync() => Task.CompletedTask;
+
+        public Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
+        {
+            probe.Context = ActorReentrancyContextAccessor.ReentrancyContext;
+            return Task.CompletedTask;
+        }
+
+        public Task TimerCallback()
+        {
+            probe.Context = ActorReentrancyContextAccessor.ReentrancyContext;
+            return Task.CompletedTask;
+        }
     }
 }

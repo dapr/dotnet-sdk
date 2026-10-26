@@ -1,0 +1,42 @@
+@host = http://localhost:5008
+@actorId = demo
+
+### Schedule a one-shot timer (fires once after 30s)
+POST {{host}}/actors/{{actorId}}/timers
+Content-Type: application/json
+
+{
+  "name": "one-shot",
+  "dueSeconds": 30,
+  "message": "hello once"
+}
+
+### Schedule a periodic timer with a TTL (every 5s, stops after 60s)
+POST {{host}}/actors/{{actorId}}/timers
+Content-Type: application/json
+
+{
+  "name": "heartbeat",
+  "dueSeconds": 5,
+  "periodSeconds": 5,
+  "ttlSeconds": 60,
+  "message": "beat"
+}
+
+### List timers (new in Dapr 1.19)
+GET {{host}}/actors/{{actorId}}/timers
+
+### Get one timer (new in Dapr 1.19)
+GET {{host}}/actors/{{actorId}}/timers/heartbeat
+
+### Get a missing timer -> 404
+GET {{host}}/actors/{{actorId}}/timers/missing
+
+### Cancel the one-shot timer
+DELETE {{host}}/actors/{{actorId}}/timers/one-shot
+
+### List timers after cancel
+GET {{host}}/actors/{{actorId}}/timers
+
+### Messages delivered by fired timers
+GET {{host}}/actors/{{actorId}}/fired

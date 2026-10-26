@@ -206,11 +206,7 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
         CancellationToken cancellation = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        var metadata = await _innerClient.WaitForWorkflowCompletionAsync(instanceId, false, cancellation);
-        if (getInputsAndOutputs)
-        {
-            metadata = await _innerClient.GetWorkflowMetadataAsync(instanceId, true, cancellation) ?? metadata;
-        }
+        var metadata = await _innerClient.WaitForWorkflowCompletionAsync(instanceId, getInputsAndOutputs, cancellation);
         return new WorkflowState(metadata);
     }
     

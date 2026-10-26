@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +38,49 @@ namespace Dapr.Actors.Next.Core.Test;
 
 public sealed class CoreRuntimeTests
 {
+    [Theory]
+    [InlineData(ActorTurnKind.Reminder, false)]
+    [InlineData(ActorTurnKind.Reminder, true)]
+    [InlineData(ActorTurnKind.Timer, false)]
+    [InlineData(ActorTurnKind.Timer, true)]
+    public async Task Methods_and_callbacks_observe_latest_saved_state(ActorTurnKind callbackKind, bool reentrancyHeader)
+    {
+        await using var provider = CreateProvider(null, out var created);
+        var runtime = provider.GetRequiredService<IActorRuntime>();
+        var store = provider.GetRequiredService<IActorStateStore>();
+        var serializer = provider.GetRequiredService<IActorWireSerializer>();
+        var id = ActorId.Create("state-consistency");
+        var token = TestContext.Current.CancellationToken;
+
+        async Task<int> DispatchAsync(ActorTurnKind kind, string method, string payload = "")
+        {
+            var headers = new Dictionary<string, string>();
+            if (kind == ActorTurnKind.Invoke && reentrancyHeader)
+                headers["dapr-reentrant-id"] = Guid.NewGuid().ToString();
+            var result = await runtime.DispatchAsync(new ActorRuntimeRequest(
+                "Counter", id, method, kind, System.Text.Encoding.UTF8.GetBytes(payload), headers,
+                ActorRequestContextSnapshot.Capture()), token);
+            return int.Parse(System.Text.Encoding.UTF8.GetString(result!));
+        }
+
+        async Task AssertPersistedAsync(int expected)
+        {
+            var freshCache = new ActorStateUnitOfWork("Counter", id, store, serializer);
+            Assert.Equal(expected, (await freshCache.TryGetAsync<CounterState>("state", token))!.Value.Value);
+        }
+
+        Assert.Equal(1, await DispatchAsync(ActorTurnKind.Invoke, "Increment", "1"));
+        await AssertPersistedAsync(1);
+        Assert.Equal(11, await DispatchAsync(callbackKind, "Increment", "10"));
+        await AssertPersistedAsync(11);
+        Assert.Equal(11, await DispatchAsync(ActorTurnKind.Invoke, "Read"));
+        Assert.Equal(20, await DispatchAsync(ActorTurnKind.Invoke, "Increment", "9"));
+        await AssertPersistedAsync(20);
+        Assert.Equal(20, await DispatchAsync(callbackKind, "Read"));
+        Assert.Equal(20, await DispatchAsync(ActorTurnKind.Invoke, "Read"));
+        Assert.Single(created);
+    }
+
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Stream_advertises_registered_actors_and_reconnects()
     {
@@ -275,15 +318,20 @@ public sealed class CoreRuntimeTests
         await releaser;
     }
 
-    [MinimumDaprRuntimeFact("1.18")]
-    public async Task Activation_deactivation_disposes_actor_scope_and_instance()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Activation_deactivation_disposes_actor_scope_and_instance(bool disposeProvider)
     {
         await using var provider = CreateProvider(null, out var created);
         var runtime = provider.GetRequiredService<IActorRuntime>();
 
         await runtime.InvokeAsync("Counter", "dispose", "Increment", System.Text.Encoding.UTF8.GetBytes("1"), new Dictionary<string, string>());
         var actor = Assert.Single(created);
-        await runtime.DeactivateAsync("Counter", ActorId.Create("dispose"));
+        if (disposeProvider)
+            await provider.DisposeAsync();
+        else
+            await runtime.DeactivateAsync("Counter", ActorId.Create("dispose"));
 
         Assert.True(actor.Disposed);
         Assert.True(actor.Probe.Disposed);

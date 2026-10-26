@@ -64,3 +64,19 @@ public sealed class ConcreteCrossAppGenericWorkflow : GenericBaseWorkflow<string
         return Task.FromResult($"generic:{input}");
     }
 }
+
+// These internal types cannot be discovered by the consuming assembly's reference
+// scanner. Their own generated module must contribute them to the combined catalog.
+[WorkflowVersion(CanonicalName = "SharedAcrossAssemblies", Version = "1")]
+internal sealed class SharedProcess : Workflow<string, string>
+{
+    public override Task<string> RunAsync(WorkflowContext context, string input) =>
+        Task.FromResult($"reference:{input}");
+}
+
+[WorkflowVersion(CanonicalName = "ReferenceOnlyFamily", Version = "1")]
+internal sealed class ReferenceOnlyV1 : Workflow<string, string>
+{
+    public override Task<string> RunAsync(WorkflowContext context, string input) =>
+        Task.FromResult($"other:{input}");
+}

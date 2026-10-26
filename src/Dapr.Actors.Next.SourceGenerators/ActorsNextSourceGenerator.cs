@@ -20,6 +20,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Dapr.Actors.Next.Roslyn;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
@@ -28,6 +29,10 @@ namespace Dapr.Actors.Next.SourceGenerators;
 /// <summary>
 /// Generates reflection-free actor proxies, dispatchers, factories, registration, registry manifest, and JSON context hints.
 /// </summary>
+/// <remarks>
+/// State discovery retains identities until a migration edge needs member inspection. Shape hashes are
+/// computed only for emitted families, using the shared h1 format also consumed by the analyzer.
+/// </remarks>
 [Generator(LanguageNames.CSharp)]
 public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 {
@@ -37,14 +42,13 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
     private const string UpcasterMetadataName = "Dapr.Actors.Next.Abstractions.State.IActorStateUpcaster`2";
     private const string CancellationTokenMetadataName = "System.Threading.CancellationToken";
     private const string ScanReferencesPropertyName = "build_property.DaprActorsScanReferences";
-    private static readonly DiagnosticDescriptor NonUniqueFoldPathDiagnostic = new(
-        "DAPR1421",
-        "Actor state migration family has more than one fold path",
-        "Actor state migration family '{0}' has more than one fold path; generated migration metadata was skipped for this family",
+    private static readonly DiagnosticDescriptor AmbiguousOperationDiagnostic = new(
+        "DAPRGEN001",
+        "Ambiguous actor operation",
+        "Actor contract '{0}' has incompatible declarations for wire operation '{1}'. Actor operations cannot be overloaded.",
         "Dapr.Actors.Next.SourceGenerators",
-        DiagnosticSeverity.Warning,
+        DiagnosticSeverity.Error,
         isEnabledByDefault: true);
-
     private static readonly DiagnosticDescriptor NonAppendOnlyChainDiagnostic = new(
         "DAPR1422",
         "Actor state migration family is not append-only",
@@ -67,15 +71,15 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             compilation.GetTypeByMetadataName(UpcasterMetadataName),
             compilation.GetTypeByMetadataName(CancellationTokenMetadataName)));
 
-        var interfaceCandidates = context.SyntaxProvider.CreateSyntaxProvider(
-                static (node, _) => node is InterfaceDeclarationSyntax { AttributeLists.Count: > 0 },
-                static (ctx, _) => (INamedTypeSymbol?)ctx.SemanticModel.GetDeclaredSymbol((InterfaceDeclarationSyntax)ctx.Node))
-            .Where(static symbol => symbol is not null);
+        var interfaceCandidates = context.SyntaxProvider.ForAttributeWithMetadataName(
+            GenerateActorClientAttributeMetadataName,
+            static (node, _) => node is InterfaceDeclarationSyntax,
+            static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol);
 
-        var actorCandidates = context.SyntaxProvider.CreateSyntaxProvider(
-                static (node, _) => node is ClassDeclarationSyntax { AttributeLists.Count: > 0 },
-                static (ctx, _) => (INamedTypeSymbol?)ctx.SemanticModel.GetDeclaredSymbol((ClassDeclarationSyntax)ctx.Node))
-            .Where(static symbol => symbol is not null);
+        var actorCandidates = context.SyntaxProvider.ForAttributeWithMetadataName(
+            DaprActorAttributeMetadataName,
+            static (node, _) => node is ClassDeclarationSyntax,
+            static (ctx, _) => (INamedTypeSymbol)ctx.TargetSymbol);
 
         var upcasterCandidates = context.SyntaxProvider.CreateSyntaxProvider(
                 static (node, _) => node is ClassDeclarationSyntax { BaseList: not null },
@@ -119,26 +123,34 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
                 var interfaces = new List<INamedTypeSymbol>();
                 var actors = new List<INamedTypeSymbol>();
                 var upcasters = new List<INamedTypeSymbol>();
-                var states = new List<INamedTypeSymbol>();
                 foreach (var assembly in compilation.SourceModule.ReferencedAssemblySymbols)
                 {
                     foreach (var type in EnumerateTypes(assembly.GlobalNamespace))
                     {
-                        if (type.TypeKind == TypeKind.Interface)
+                        if (type.TypeKind == TypeKind.Interface
+                            && HasAttribute(type, known.GenerateActorClientAttribute, GenerateActorClientAttributeMetadataName)
+                            && IsActorInterface(type, known))
                         {
                             interfaces.Add(type);
                         }
-                        else if (type.TypeKind == TypeKind.Class)
+                        else if (type.TypeKind == TypeKind.Class && !type.IsAbstract)
                         {
-                            actors.Add(type);
-                            upcasters.Add(type);
+                            if (HasAttribute(type, known.DaprActorAttribute, DaprActorAttributeMetadataName))
+                            {
+                                actors.Add(type);
+                            }
+
+                            if (ImplementsUpcaster(type, known))
+                            {
+                                upcasters.Add(type);
+                            }
                         }
                     }
                 }
 
                 try
                 {
-                    return BuildManifest(interfaces.ToImmutableArray(), actors.ToImmutableArray(), upcasters.ToImmutableArray(), states.ToImmutableArray(), known);
+                    return BuildManifest(interfaces.ToImmutableArray(), actors.ToImmutableArray(), upcasters.ToImmutableArray(), ImmutableArray<INamedTypeSymbol>.Empty, known);
                 }
                 catch (Exception ex)
                 {
@@ -146,7 +158,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
                 }
             });
 
-        var manifest = sourceManifest.Combine(referencedManifest).Select((input, _) => input.Left.Merge(input.Right));
+        var manifest = sourceManifest.Combine(referencedManifest).Select((input, _) => WithUniqueGeneratedNames(input.Left.Merge(input.Right)));
 
         context.RegisterSourceOutput(manifest, (sourceProductionContext, discovered) =>
         {
@@ -200,9 +212,11 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         ImmutableArray<INamedTypeSymbol> stateCandidates,
         KnownSymbols known)
     {
+        var methodDiagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
         var interfaces = interfaceCandidates
+            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
             .Where(symbol => IsActorInterface(symbol, known) && HasAttribute(symbol, known.GenerateActorClientAttribute, GenerateActorClientAttributeMetadataName))
-            .Select(symbol => BuildInterface(symbol, known))
+            .Select(symbol => BuildInterface(symbol, known, methodDiagnostics))
             .Where(item => item is not null)
             .Cast<ActorInterfaceModel>()
             .Distinct(ActorInterfaceModelComparer.Instance)
@@ -211,8 +225,9 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
         var interfaceBySymbol = interfaces.ToDictionary(item => item.MetadataName, StringComparer.Ordinal);
         var actors = actorCandidates
+            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
             .Where(symbol => !symbol.IsAbstract && HasAttribute(symbol, known.DaprActorAttribute, DaprActorAttributeMetadataName))
-            .Select(symbol => BuildActor(symbol, known, interfaceBySymbol))
+            .Select(symbol => BuildActor(symbol, known, interfaceBySymbol, methodDiagnostics))
             .Where(item => item is not null)
             .Cast<ActorModel>()
             .Distinct(ActorModelComparer.Instance)
@@ -220,6 +235,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             .ToImmutableArray();
 
         var upcasters = upcasterCandidates
+            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
             .Where(symbol => !symbol.IsAbstract)
             .SelectMany(symbol => BuildUpcasters(symbol, known))
             .Distinct(UpcasterModelComparer.Instance)
@@ -228,6 +244,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
         var states = stateCandidates
             .Concat(upcasters.SelectMany(static upcaster => new[] { upcaster.From, upcaster.To }))
+            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
             .Where(symbol => symbol.TypeParameters.Length == 0 && !symbol.IsAbstract && !IsActorInterface(symbol, known) && !ImplementsUpcaster(symbol, known))
             .Select(BuildStateType)
             .Where(static state => state is not null)
@@ -237,17 +254,29 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             .ToImmutableArray();
 
         var (families, diagnostics) = BuildFamilies(states, upcasters);
-        return new Manifest(interfaces, actors, upcasters, families, diagnostics);
+        return new Manifest(interfaces, actors, upcasters, families, diagnostics.AddRange(methodDiagnostics));
     }
 
-    private static ActorInterfaceModel? BuildInterface(INamedTypeSymbol symbol, KnownSymbols known)
+    private static ActorInterfaceModel? BuildInterface(INamedTypeSymbol symbol, KnownSymbols known, ImmutableArray<Diagnostic>.Builder diagnostics)
     {
         if (symbol.TypeParameters.Length > 0)
         {
             return null;
         }
 
-        var methods = GetActorMethods(symbol)
+        var declarations = GetActorMethods(symbol).ToArray();
+        var collisions = declarations.GroupBy(method => method.Name, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1).ToArray();
+        if (collisions.Length > 0)
+        {
+            foreach (var collision in collisions)
+                diagnostics.Add(Diagnostic.Create(
+                    AmbiguousOperationDiagnostic,
+                    symbol.Locations.FirstOrDefault(), symbol.ToDisplayString(), collision.Key));
+            return null;
+        }
+
+        var methods = declarations
             .Select(method => BuildMethod(method, known))
             .Where(method => method is not null)
             .Cast<ActorMethodModel>()
@@ -281,8 +310,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
                 TypeName(parameter.Type),
                 index,
                 IsCancellationToken(parameter.Type, known),
-                parameter.HasExplicitDefaultValue,
-                GetDefaultValue(parameter)))
+                parameter.HasExplicitDefaultValue))
             .ToImmutableArray();
 
         var payloadParameters = parameters.Where(parameter => !parameter.IsCancellationToken).ToImmutableArray();
@@ -297,12 +325,13 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             TypeName(method.ReturnType),
             returnKind,
             returnType,
+            returnKind is MethodReturnKind.TaskOfT or MethodReturnKind.ValueTaskOfT ? TypeName(namedReturnType.TypeArguments[0]) : null,
             parameters,
             payloadParameters,
             "__" + method.Name + "Args");
     }
 
-    private static ActorModel? BuildActor(INamedTypeSymbol symbol, KnownSymbols known, Dictionary<string, ActorInterfaceModel> interfaces)
+    private static ActorModel? BuildActor(INamedTypeSymbol symbol, KnownSymbols known, Dictionary<string, ActorInterfaceModel> interfaces, ImmutableArray<Diagnostic>.Builder diagnostics)
     {
         var actorInterfaces = symbol.AllInterfaces
             .Where(candidate => IsActorInterface(candidate, known))
@@ -315,6 +344,17 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
         if (actorInterfaces.IsEmpty)
         {
+            return null;
+        }
+
+        var collisions = actorInterfaces.SelectMany(contract => contract.Methods)
+            .GroupBy(method => method.WireName, StringComparer.Ordinal)
+            .Where(group => group.Skip(1).Any(method => !EquivalentActorMethod(group.First(), method))).ToArray();
+        if (collisions.Length > 0)
+        {
+            foreach (var collision in collisions)
+                diagnostics.Add(Diagnostic.Create(AmbiguousOperationDiagnostic,
+                    symbol.Locations.FirstOrDefault(), symbol.ToDisplayString(), collision.Key));
             return null;
         }
 
@@ -347,7 +387,22 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             symbol.Name,
             actorInterfaces,
             symbol.Name + "Dispatcher",
-            constructorParameters);
+            constructorParameters,
+            IsStateMachine(symbol));
+    }
+
+    private static bool IsStateMachine(INamedTypeSymbol symbol)
+    {
+        for (var current = symbol.BaseType; current is not null; current = current.BaseType)
+        {
+            if (current.OriginalDefinition.MetadataName == "StateMachineActor`2"
+                && current.ContainingNamespace.ToDisplayString() == "Dapr.Actors.Next.StateMachine")
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static IEnumerable<UpcasterModel> BuildUpcasters(INamedTypeSymbol symbol, KnownSymbols known)
@@ -378,20 +433,12 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         var canonicalName = symbol.ContainingNamespace.IsGlobalNamespace
             ? simpleCanonicalName
             : symbol.ContainingNamespace.ToDisplayString() + "." + simpleCanonicalName;
-        var members = GetSerializableMembers(symbol)
-            .Select(BuildStateMember)
-            .OrderBy(static member => member.Name, StringComparer.Ordinal)
-            .ToImmutableArray();
-
         return new StateTypeModel(
             TypeName(symbol),
             symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
-            symbol.Name,
             canonicalName,
             version,
-            ActorStateMigrationShared.ComputeShapeHash(symbol),
-            ActorStateMigrationShared.HasPublicParameterlessConstructor(symbol),
-            members);
+            symbol);
     }
 
     private static (ImmutableArray<StateFamilyModel> Families, ImmutableArray<Diagnostic> Diagnostics) BuildFamilies(
@@ -400,6 +447,18 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
     {
         var diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
         var parent = states.ToDictionary(static state => state.TypeName, static state => state.TypeName, StringComparer.Ordinal);
+        var membersByType = new Dictionary<string, ImmutableArray<StateMemberModel>>(StringComparer.Ordinal);
+
+        ImmutableArray<StateMemberModel> GetMembers(StateTypeModel state)
+        {
+            if (!membersByType.TryGetValue(state.TypeName, out var members))
+            {
+                members = GetSerializableMembers(state.Symbol).Select(BuildStateMember).ToImmutableArray();
+                membersByType.Add(state.TypeName, members);
+            }
+
+            return members;
+        }
 
         string Find(string value)
         {
@@ -440,7 +499,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
         foreach (var upcaster in upcasters)
         {
-            Union(TypeName(upcaster.From), TypeName(upcaster.To));
+            Union(upcaster.FromType, upcaster.ToType);
         }
 
         var families = ImmutableArray.CreateBuilder<StateFamilyModel>();
@@ -461,12 +520,12 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
                 .ToImmutableArray();
             var indexByType = nodes.ToDictionary(static node => node.State.TypeName, static node => node.Index, StringComparer.Ordinal);
             var explicitEdges = upcasters
-                .Where(upcaster => indexByType.ContainsKey(TypeName(upcaster.From)) && indexByType.ContainsKey(TypeName(upcaster.To)))
+                .Where(upcaster => indexByType.ContainsKey(upcaster.FromType) && indexByType.ContainsKey(upcaster.ToType))
                 .Select(upcaster => new StateEdgeModel(
-                    indexByType[TypeName(upcaster.From)],
-                    indexByType[TypeName(upcaster.To)],
-                    TypeName(upcaster.From),
-                    TypeName(upcaster.To),
+                    indexByType[upcaster.FromType],
+                    indexByType[upcaster.ToType],
+                    upcaster.FromType,
+                    upcaster.ToType,
                     upcaster.ImplementationType,
                     IsGenerated: false,
                     ImmutableArray<StateMemberModel>.Empty))
@@ -482,7 +541,8 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
                 var from = nodes[i].State;
                 var to = nodes[i + 1].State;
-                if (TryBuildAdditiveHop(from, to, out var copiedMembers))
+                if (ActorStateMigrationShared.HasPublicParameterlessConstructor(to.Symbol)
+                    && TryBuildAdditiveHop(GetMembers(from), GetMembers(to), out var copiedMembers))
                 {
                     edges.Add(new StateEdgeModel(i, i + 1, from.TypeName, to.TypeName, null, IsGenerated: true, copiedMembers));
                 }
@@ -501,17 +561,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
                 continue;
             }
 
-            if (HasNonUniquePath(nodes, orderedEdges))
-            {
-                diagnostics.Add(Diagnostic.Create(NonUniqueFoldPathDiagnostic, Location.None, canonicalName));
-                continue;
-            }
-
-            if (!HasContiguousPath(nodes, orderedEdges))
-            {
-                continue;
-            }
-
+            // IsAppendOnly guarantees a single contiguous path through every node.
             families.Add(new StateFamilyModel(canonicalName, nodes, orderedEdges));
         }
 
@@ -520,17 +570,15 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             diagnostics.ToImmutable());
     }
 
-    private static bool TryBuildAdditiveHop(StateTypeModel from, StateTypeModel to, out ImmutableArray<StateMemberModel> copiedMembers)
+    private static bool TryBuildAdditiveHop(
+        ImmutableArray<StateMemberModel> from,
+        ImmutableArray<StateMemberModel> to,
+        out ImmutableArray<StateMemberModel> copiedMembers)
     {
         copiedMembers = ImmutableArray<StateMemberModel>.Empty;
-        if (!to.HasPublicParameterlessConstructor)
-        {
-            return false;
-        }
-
-        var fromMembers = from.Members.ToDictionary(static member => member.Name, StringComparer.Ordinal);
+        var fromMembers = from.ToDictionary(static member => member.Name, StringComparer.Ordinal);
         var copied = ImmutableArray.CreateBuilder<StateMemberModel>();
-        foreach (var toMember in to.Members)
+        foreach (var toMember in to)
         {
             if (!fromMembers.TryGetValue(toMember.Name, out var fromMember))
             {
@@ -550,15 +598,15 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             copied.Add(toMember);
         }
 
-        foreach (var fromMember in from.Members)
+        foreach (var fromMember in from)
         {
-            if (!to.Members.Any(member => StringComparer.Ordinal.Equals(member.Name, fromMember.Name)))
+            if (!to.Any(member => StringComparer.Ordinal.Equals(member.Name, fromMember.Name)))
             {
                 return false;
             }
         }
 
-        copiedMembers = copied.OrderBy(static member => member.Name, StringComparer.Ordinal).ToImmutableArray();
+        copiedMembers = copied.ToImmutable();
         return true;
     }
 
@@ -568,62 +616,6 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         && edges.Select(static edge => edge.ToIndex).Distinct().Count() == edges.Length
         && edges.Length == nodes.Length - 1;
 
-    private static bool HasContiguousPath(ImmutableArray<StateNodeModel> nodes, ImmutableArray<StateEdgeModel> edges)
-    {
-        for (var i = 0; i < nodes.Length - 1; i++)
-        {
-            if (!edges.Any(edge => edge.FromIndex == i && edge.ToIndex == i + 1))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool HasNonUniquePath(ImmutableArray<StateNodeModel> nodes, ImmutableArray<StateEdgeModel> edges)
-    {
-        foreach (var source in nodes)
-        {
-            foreach (var target in nodes)
-            {
-                if (source.Index >= target.Index)
-                {
-                    continue;
-                }
-
-                var count = CountPaths(source.Index, target.Index, edges, new HashSet<int>());
-                if (count > 1)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static int CountPaths(int current, int target, ImmutableArray<StateEdgeModel> edges, HashSet<int> seen)
-    {
-        if (!seen.Add(current))
-        {
-            return 0;
-        }
-
-        var count = 0;
-        foreach (var edge in edges.Where(edge => edge.FromIndex == current))
-        {
-            count += edge.ToIndex == target ? 1 : CountPaths(edge.ToIndex, target, edges, seen);
-            if (count > 1)
-            {
-                break;
-            }
-        }
-
-        seen.Remove(current);
-        return count;
-    }
-
     private static StateMemberModel BuildStateMember(ISymbol symbol)
     {
         if (symbol is IPropertySymbol property)
@@ -631,7 +623,6 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             return new StateMemberModel(
                 property.Name,
                 TypeName(property.Type),
-                property.Type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
                 property.SetMethod is { DeclaredAccessibility: Accessibility.Public },
                 property.IsRequired);
         }
@@ -640,29 +631,12 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         return new StateMemberModel(
             field.Name,
             TypeName(field.Type),
-            field.Type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
             !field.IsReadOnly,
             field.IsRequired);
     }
 
-    private static IEnumerable<ISymbol> GetSerializableMembers(INamedTypeSymbol type)
-    {
-        foreach (var property in type.GetMembers()
-                     .OfType<IPropertySymbol>()
-                     .Where(static property => !property.IsStatic && property.DeclaredAccessibility == Accessibility.Public && property.GetMethod is not null && property.Parameters.Length == 0)
-                     .OrderBy(static property => property.Name, StringComparer.Ordinal))
-        {
-            yield return property;
-        }
-
-        foreach (var field in type.GetMembers()
-                     .OfType<IFieldSymbol>()
-                     .Where(static field => !field.IsStatic && field.DeclaredAccessibility == Accessibility.Public)
-                     .OrderBy(static field => field.Name, StringComparer.Ordinal))
-        {
-            yield return field;
-        }
-    }
+    private static IEnumerable<ISymbol> GetSerializableMembers(INamedTypeSymbol type) =>
+        ActorStateMigrationShared.GetSerializableMemberSymbols(type);
 
     private static bool HasPublicParameterlessConstructor(INamedTypeSymbol type)
     {
@@ -866,26 +840,28 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
     private static void EmitProxyMethod(StringBuilder sb, ActorMethodModel method)
     {
         var signature = string.Join(", ", method.Parameters.Select(FormatParameter));
-        sb.AppendLine($"        public {method.ReturnType} {method.Name}({signature})");
+        sb.AppendLine($"        public {method.ReturnType} {Identifier(method.Name)}({signature})");
         sb.AppendLine("        {");
-        var cancellationToken = method.Parameters.FirstOrDefault(parameter => parameter.IsCancellationToken)?.Name ?? "default";
+        var cancellationParameter = method.Parameters.FirstOrDefault(parameter => parameter.IsCancellationToken);
+        var cancellationToken = cancellationParameter is null ? "default" : Identifier(cancellationParameter.Name);
+        var payloadName = UniqueIdentifier("payload", new HashSet<string>(method.Parameters.Select(parameter => parameter.Name), StringComparer.Ordinal));
         if (method.PayloadParameters.Length == 0)
         {
-            sb.AppendLine("            var payload = global::System.ReadOnlyMemory<byte>.Empty;");
+            sb.AppendLine($"            var {payloadName} = global::System.ReadOnlyMemory<byte>.Empty;");
         }
         else if (method.PayloadParameters.Length == 1)
         {
             var parameter = method.PayloadParameters[0];
-            sb.AppendLine($"            var payload = wireSerializer.SerializeToBytes<{parameter.TypeName}>({parameter.Name});");
+            sb.AppendLine($"            var {payloadName} = this.wireSerializer.SerializeToBytes<{parameter.TypeName}>({Identifier(parameter.Name)});");
         }
         else
         {
-            sb.AppendLine($"            var payload = wireSerializer.SerializeToBytes(new {method.ArgsTypeName}({string.Join(", ", method.PayloadParameters.Select(parameter => parameter.Name))}));");
+            sb.AppendLine($"            var {payloadName} = this.wireSerializer.SerializeToBytes(new {method.ArgsTypeName}({string.Join(", ", method.PayloadParameters.Select(parameter => Identifier(parameter.Name)))}));");
         }
 
         if (method.ReturnKind is MethodReturnKind.Task or MethodReturnKind.ValueTask)
         {
-            var invocation = $"InvokeVoidAsync({Literal(method.WireName)}, payload, {cancellationToken})";
+            var invocation = $"this.InvokeVoidAsync({Literal(method.WireName)}, {payloadName}, {cancellationToken})";
             if (method.ReturnKind is MethodReturnKind.Task)
             {
                 sb.AppendLine($"            return {invocation};");
@@ -899,8 +875,8 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             return;
         }
 
-        var resultType = method.ReturnType.Substring(method.ReturnType.IndexOf('<') + 1).TrimEnd('>');
-        var resultInvocation = $"InvokeResultAsync<{resultType}>({Literal(method.WireName)}, payload, {cancellationToken})";
+        var resultType = method.ResultType;
+        var resultInvocation = $"this.InvokeResultAsync<{resultType}>({Literal(method.WireName)}, {payloadName}, {cancellationToken})";
         if (method.ReturnKind is MethodReturnKind.TaskOfT)
         {
             sb.AppendLine($"            return {resultInvocation};");
@@ -943,6 +919,11 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         sb.AppendLine($"            var typed = ({actor.ImplementationType})actor;");
         sb.AppendLine("            switch (request.MethodName)");
         sb.AppendLine("            {");
+        if (actor.IsStateMachine && !actor.DispatchMethods.Any(method => method.WireName == "__stateMachineTimer"))
+        {
+            sb.AppendLine("                case \"__stateMachineTimer\":");
+            sb.AppendLine("                    return CompleteVoidAsync(typed.DispatchStateMachineTimerAsync(global::System.Text.Encoding.UTF8.GetString(request.Payload.Span), cancellationToken));");
+        }
         foreach (var method in actor.DispatchMethods)
         {
             sb.AppendLine($"                case {Literal(method.WireName)}:");
@@ -962,29 +943,23 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
     private static void EmitDispatcherCase(StringBuilder sb, ActorMethodModel method)
     {
-        if (method.PayloadParameters.Length == 1)
-        {
-            var parameter = method.PayloadParameters[0];
-            sb.AppendLine($"                    var {parameter.Name} = wireSerializer.DeserializeFromBytes<{parameter.TypeName}>(request.Payload)!;");
-        }
-        else if (method.PayloadParameters.Length > 1)
+        if (method.PayloadParameters.Length > 1)
         {
             sb.AppendLine($"                    var args = wireSerializer.DeserializeFromBytes<{method.ArgsTypeName}>(request.Payload);");
-            foreach (var parameter in method.PayloadParameters)
-            {
-                sb.AppendLine($"                    var {parameter.Name} = args.{parameter.Name};");
-            }
         }
 
-        var arguments = string.Join(", ", method.Parameters.Select(parameter => parameter.IsCancellationToken ? "cancellationToken" : parameter.Name));
+        var arguments = string.Join(", ", method.Parameters.Select(parameter => parameter.IsCancellationToken
+            ? "cancellationToken"
+            : method.PayloadParameters.Length == 1
+                ? $"wireSerializer.DeserializeFromBytes<{parameter.TypeName}>(request.Payload)!"
+                : $"args.{Identifier(parameter.Name)}"));
         if (method.ReturnKind is MethodReturnKind.Task or MethodReturnKind.ValueTask)
         {
-            sb.AppendLine($"                    return CompleteVoidAsync(typed.{method.Name}({arguments}));");
+            sb.AppendLine($"                    return CompleteVoidAsync(typed.{Identifier(method.Name)}({arguments}));");
         }
         else
         {
-            var resultType = method.ReturnType.Substring(method.ReturnType.IndexOf('<') + 1).TrimEnd('>');
-            sb.AppendLine($"                    return CompleteResultAsync<{resultType}>(typed.{method.Name}({arguments}));");
+            sb.AppendLine($"                    return CompleteResultAsync<{method.ResultType}>(typed.{Identifier(method.Name)}({arguments}));");
         }
     }
 
@@ -1070,7 +1045,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
     {
         var actorPayloadTypes = manifest.Actors
             .SelectMany(actor => actor.DispatchMethods)
-            .SelectMany(method => method.PayloadParameters.Select(parameter => parameter.TypeName).Concat(method.ReturnKind is MethodReturnKind.TaskOfT or MethodReturnKind.ValueTaskOfT ? new[] { method.ReturnType.Substring(method.ReturnType.IndexOf('<') + 1).TrimEnd('>') } : Enumerable.Empty<string>()))
+            .SelectMany(method => method.PayloadParameters.Select(parameter => parameter.TypeName).Concat(method.ResultType is not null ? new[] { method.ResultType } : Enumerable.Empty<string>()))
             .Where(type => type != "void");
         var statePayloadTypes = manifest.Families
             .SelectMany(static family => family.Nodes)
@@ -1111,8 +1086,9 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         sb.AppendLine("        private static void RegisterServices(global::Microsoft.Extensions.DependencyInjection.IServiceCollection services, global::Dapr.Actors.Next.Abstractions.Options.DaprActorsOptions options)");
         sb.AppendLine("        {");
         sb.AppendLine("            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<GeneratedActorProxyFactory>(services);");
-        sb.AppendLine("            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<global::Dapr.Actors.Next.Core.Client.IActorProxyFactory>(services, sp => global::Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GeneratedActorProxyFactory>(sp));");
-        sb.AppendLine("            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<global::Dapr.Actors.Next.Abstractions.Registry.IActorRegistry>(services, new GeneratedActorRegistry(options));");
+        sb.AppendLine("            global::Dapr.Actors.Next.Core.DependencyInjection.GeneratedActorServiceCollectionExtensions.AddGeneratedActorModule(services,");
+        sb.AppendLine($"                new global::System.Type[] {{ {string.Join(", ", manifest.Interfaces.Select(actorInterface => $"typeof({actorInterface.FullName})"))} }},");
+        sb.AppendLine("                sp => global::Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GeneratedActorProxyFactory>(sp), new GeneratedActorRegistry(options));");
         foreach (var actor in manifest.Actors)
         {
             sb.AppendLine($"            global::Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<{actor.DispatcherName}>(services);");
@@ -1129,7 +1105,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
             if (manifest.Families.Length > 0)
             {
-                sb.AppendLine("                    global::Microsoft.Extensions.DependencyInjection.Extensions.ServiceCollectionDescriptorExtensions.TryAddSingleton<global::Dapr.Actors.Next.Abstractions.State.Versioning.IActorStateMigrator>(services, sp => new global::Dapr.Actors.Next.Core.State.Versioning.ActorStateMigrationRegistry(BuildStateMigrationFamilies(sp)));");
+                sb.AppendLine("                global::Dapr.Actors.Next.Core.DependencyInjection.DaprActorsCoreServiceCollectionExtensions.AddDaprActorStateMigration(services, BuildStateMigrationFamilies);");
             }
 
             sb.AppendLine("            }");
@@ -1184,7 +1160,9 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             sb.AppendLine("                        {");
             foreach (var node in family.Nodes)
             {
-                sb.AppendLine($"                            new global::Dapr.Actors.Next.Abstractions.State.Versioning.ActorStateMigrationNode({node.Index}, typeof({node.State.TypeName}), {Literal(node.State.ShapeHash)}),");
+                // Hash only emitted families; unrelated candidates can expose enormous member graphs.
+                var shapeHash = ActorStateMigrationShared.ComputeShapeHash(node.State.Symbol);
+                sb.AppendLine($"                            new global::Dapr.Actors.Next.Abstractions.State.Versioning.ActorStateMigrationNode({node.Index}, typeof({node.State.TypeName}), {Literal(shapeHash)}),");
             }
 
             sb.AppendLine("                        },");
@@ -1243,7 +1221,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
                     sb.AppendLine("            {");
                     foreach (var member in edge.CopiedMembers)
                     {
-                        sb.AppendLine($"                {member.Name} = source.{member.Name},");
+                        sb.AppendLine($"                {Identifier(member.Name)} = source.{Identifier(member.Name)},");
                     }
 
                     sb.AppendLine("            });");
@@ -1263,24 +1241,40 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
     private static void EmitArgsRecord(StringBuilder sb, ActorMethodModel method)
     {
-        sb.AppendLine($"        private readonly record struct {method.ArgsTypeName}({string.Join(", ", method.PayloadParameters.Select(parameter => parameter.TypeName + " " + parameter.Name))});");
+        sb.AppendLine($"        private readonly record struct {method.ArgsTypeName}({string.Join(", ", method.PayloadParameters.Select(parameter => parameter.TypeName + " " + Identifier(parameter.Name)))});");
     }
 
     private static IEnumerable<IMethodSymbol> GetActorMethods(INamedTypeSymbol symbol)
     {
-        foreach (var inherited in symbol.AllInterfaces)
+        var methods = new List<IMethodSymbol>();
+        foreach (var contract in new[] { symbol }.Concat(symbol.AllInterfaces))
         {
-            foreach (var method in inherited.GetMembers().OfType<IMethodSymbol>())
+            foreach (var method in contract.GetMembers().OfType<IMethodSymbol>().Where(method => method.MethodKind == MethodKind.Ordinary))
             {
-                yield return method;
+                if (!methods.Any(existing => EquivalentActorMethod(existing, method)))
+                    methods.Add(method);
             }
         }
 
-        foreach (var method in symbol.GetMembers().OfType<IMethodSymbol>())
-        {
-            yield return method;
-        }
+        return methods;
     }
+
+    private static bool EquivalentActorMethod(IMethodSymbol left, IMethodSymbol right) =>
+        left.Name == right.Name && left.Arity == right.Arity
+        && SymbolEqualityComparer.Default.Equals(left.ReturnType, right.ReturnType)
+        && left.RefKind == right.RefKind && left.IsStatic == right.IsStatic
+        && left.Parameters.Length == right.Parameters.Length
+        && left.Parameters.Zip(right.Parameters, (a, b) =>
+            a.RefKind == b.RefKind && SymbolEqualityComparer.Default.Equals(a.Type, b.Type)
+            && (left.Parameters.Count(parameter => parameter.Type.ToDisplayString() != CancellationTokenMetadataName) < 2
+                || a.Type.ToDisplayString() == CancellationTokenMetadataName || a.Name == b.Name)).All(equal => equal);
+
+    private static bool EquivalentActorMethod(ActorMethodModel left, ActorMethodModel right) =>
+        left.Name == right.Name && left.ReturnType == right.ReturnType
+        && left.Parameters.Length == right.Parameters.Length
+        && left.Parameters.Zip(right.Parameters, (a, b) =>
+            a.TypeName == b.TypeName
+            && (left.PayloadParameters.Length < 2 || a.IsCancellationToken || a.Name == b.Name)).All(equal => equal);
 
     private static bool IsActorInterface(INamedTypeSymbol symbol, KnownSymbols known) =>
         (known.IActor is not null && SymbolEqualityComparer.Default.Equals(symbol, known.IActor))
@@ -1373,24 +1367,43 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
 
     private static string FormatParameter(ActorParameterModel parameter) =>
         parameter.HasDefaultValue && parameter.IsCancellationToken
-            ? $"{parameter.TypeName} {parameter.Name} = default"
-            : $"{parameter.TypeName} {parameter.Name}";
+            ? $"{parameter.TypeName} {Identifier(parameter.Name)} = default"
+            : $"{parameter.TypeName} {Identifier(parameter.Name)}";
 
-    private static object? GetDefaultValue(IParameterSymbol parameter)
+    private static string Identifier(string name) =>
+        SyntaxFacts.GetKeywordKind(name) != SyntaxKind.None || SyntaxFacts.GetContextualKeywordKind(name) != SyntaxKind.None ? "@" + name : name;
+
+    private static string UniqueIdentifier(string name, HashSet<string> used)
     {
-        if (!parameter.HasExplicitDefaultValue)
+        var candidate = name;
+        for (var suffix = 1; !used.Add(candidate); suffix++)
         {
-            return null;
+            candidate = name + suffix.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
-        try
+        return candidate;
+    }
+
+    private static Manifest WithUniqueGeneratedNames(Manifest manifest)
+    {
+        var proxyNames = new HashSet<string>(manifest.Interfaces.Select(item => item.ProxyName), StringComparer.Ordinal);
+        var duplicateProxies = new HashSet<string>(manifest.Interfaces.GroupBy(item => item.ProxyName)
+            .Where(group => group.Count() > 1).Select(group => group.Key), StringComparer.Ordinal);
+        var interfaces = manifest.Interfaces.Select(item => duplicateProxies.Contains(item.ProxyName)
+            ? item with { ProxyName = UniqueIdentifier(item.ProxyName + "_" + SanitizeIdentifier(item.MetadataName), proxyNames) }
+            : item).ToImmutableArray();
+        var byName = interfaces.ToDictionary(item => item.FullName, StringComparer.Ordinal);
+        var dispatcherNames = new HashSet<string>(manifest.Actors.Select(item => item.DispatcherName), StringComparer.Ordinal);
+        var duplicateDispatchers = new HashSet<string>(manifest.Actors.GroupBy(item => item.DispatcherName)
+            .Where(group => group.Count() > 1).Select(group => group.Key), StringComparer.Ordinal);
+        var actors = manifest.Actors.Select(item => item with
         {
-            return parameter.ExplicitDefaultValue;
-        }
-        catch (InvalidOperationException)
-        {
-            return null;
-        }
+            Interfaces = item.Interfaces.Select(actorInterface => byName[actorInterface.FullName]).ToImmutableArray(),
+            DispatcherName = duplicateDispatchers.Contains(item.DispatcherName)
+                ? UniqueIdentifier(item.DispatcherName + "_" + SanitizeIdentifier(item.ImplementationType), dispatcherNames)
+                : item.DispatcherName,
+        }).ToImmutableArray();
+        return manifest with { Interfaces = interfaces, Actors = actors };
     }
 
     private static string Literal(string value) => "@\"" + value.Replace("\"", "\"\"") + "\"";
@@ -1442,13 +1455,16 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
             ImmutableArray<Diagnostic>.Empty,
             error);
 
-        public Manifest Merge(Manifest other) => new(
+        public Manifest Merge(Manifest other) => other.IsEmpty ? this : IsEmpty ? other : new(
             Interfaces.Concat(other.Interfaces).Distinct(ActorInterfaceModelComparer.Instance).OrderBy(item => item.FullName, StringComparer.Ordinal).ToImmutableArray(),
             Actors.Concat(other.Actors).Distinct(ActorModelComparer.Instance).OrderBy(item => item.ActorType, StringComparer.Ordinal).ToImmutableArray(),
             Upcasters.Concat(other.Upcasters).Distinct(UpcasterModelComparer.Instance).OrderBy(item => item.ImplementationType, StringComparer.Ordinal).ToImmutableArray(),
             Families.Concat(other.Families).Distinct(StateFamilyModelComparer.Instance).OrderBy(item => item.CanonicalName, StringComparer.Ordinal).ToImmutableArray(),
             Diagnostics.Concat(other.Diagnostics).ToImmutableArray(),
             Error ?? other.Error);
+
+        private bool IsEmpty => Interfaces.IsEmpty && Actors.IsEmpty && Upcasters.IsEmpty && Families.IsEmpty
+            && Diagnostics.IsEmpty && Error is null;
     }
 
     [ExcludeFromCodeCoverage]
@@ -1468,7 +1484,8 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         string Name,
         ImmutableArray<ActorInterfaceModel> Interfaces,
         string DispatcherName,
-        ImmutableArray<ConstructorParameterModel> ConstructorParameters)
+        ImmutableArray<ConstructorParameterModel> ConstructorParameters,
+        bool IsStateMachine)
     {
         /// <summary>
         /// The representative interface for the actor, used where a single interface type is recorded
@@ -1481,7 +1498,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         /// routes an invocation to a single dispatcher per actor type, so the dispatcher's method switch and the
         /// registry method metadata must cover all interfaces the actor implements.
         /// </summary>
-        public ImmutableArray<ActorMethodModel> DispatchMethods => Interfaces
+        public ImmutableArray<ActorMethodModel> DispatchMethods { get; } = Interfaces
             .SelectMany(actorInterface => actorInterface.Methods)
             .GroupBy(method => method.WireName, StringComparer.Ordinal)
             .Select(group => group.First())
@@ -1496,6 +1513,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         string ReturnType,
         MethodReturnKind ReturnKind,
         string ReturnTypeExpression,
+        string? ResultType,
         ImmutableArray<ActorParameterModel> Parameters,
         ImmutableArray<ActorParameterModel> PayloadParameters,
         string ArgsTypeName);
@@ -1506,8 +1524,7 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
         string TypeName,
         int Position,
         bool IsCancellationToken,
-        bool HasDefaultValue,
-        object? DefaultValue);
+        bool HasDefaultValue);
 
     [ExcludeFromCodeCoverage]
     private sealed record ConstructorParameterModel(string Name, string TypeName, bool IsActorId);
@@ -1515,24 +1532,21 @@ public sealed class ActorsNextSourceGenerator : IIncrementalGenerator
     [ExcludeFromCodeCoverage]
     private sealed record UpcasterModel(string ImplementationType, INamedTypeSymbol From, INamedTypeSymbol To)
     {
-        public string FromType => TypeName(From);
+        public string FromType { get; } = TypeName(From);
 
-        public string ToType => TypeName(To);
+        public string ToType { get; } = TypeName(To);
     }
 
     [ExcludeFromCodeCoverage]
     private sealed record StateTypeModel(
         string TypeName,
         string MetadataName,
-        string SimpleName,
         string CanonicalName,
         string Version,
-        string ShapeHash,
-        bool HasPublicParameterlessConstructor,
-        ImmutableArray<StateMemberModel> Members);
+        INamedTypeSymbol Symbol);
 
     [ExcludeFromCodeCoverage]
-    private sealed record StateMemberModel(string Name, string TypeName, string MetadataName, bool CanWrite, bool IsRequired);
+    private sealed record StateMemberModel(string Name, string TypeName, bool CanWrite, bool IsRequired);
 
     [ExcludeFromCodeCoverage]
     private sealed record StateNodeModel(int Index, StateTypeModel State)

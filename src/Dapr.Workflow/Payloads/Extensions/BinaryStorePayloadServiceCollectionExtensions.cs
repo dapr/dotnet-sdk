@@ -1,0 +1,98 @@
+﻿// ------------------------------------------------------------------------
+// Copyright 2026 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
+
+using System;
+using Dapr.BinaryStore;
+using Dapr.BinaryStore.Extensions;
+using Dapr.Workflow.Payloads;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Dapr.Workflow;
+
+/// <summary>
+/// Registers binary-store-backed payload offloading for Dapr Workflows.
+/// </summary>
+public static class BinaryStorePayloadServiceCollectionExtensions
+{
+    /// <summary>
+    /// Registers SDK-based workflow payload storage using the runtime's binary store API.
+    /// Registers an internal payload codec, a payload feature provider, and the resolver and
+    /// <see cref="WorkflowPayloadCleaner"/> for injection into activities and clients.
+    /// </summary>
+    /// <param name="builder">The builder returned by <c>AddDaprWorkflow</c> or <c>AddDaprWorkflowBuilder</c>.</param>
+    /// <param name="configure">Configures the offloading options. <see cref="BinaryStorePayloadOptions.StoreName"/> is required.</param>
+    /// <remarks>
+    /// Included in Dapr.Workflow; no separate workflow binary store package is required.
+    /// Payload storage is opt-in and does not change the workflow runtime protocol.
+    /// Register on each participating client and worker. Offloading applies after the configured
+    /// serializer runs; historical references remain readable even when new offloading is disabled.
+    /// The default <see cref="PayloadWritePreference.Preserve"/> performs no automatic conversion.
+    /// Set <see cref="BinaryStorePayloadOptions.WritePreference"/> to
+    /// <see cref="PayloadWritePreference.PreferReference"/> to enable automatic offloading.
+    /// </remarks>
+    /// <returns>The workflow builder, for chaining.</returns>
+    public static WorkflowServiceCollectionExtensions.DaprWorkflowBuilder WithBinaryStorePayloads(
+        this WorkflowServiceCollectionExtensions.DaprWorkflowBuilder builder,
+        Action<BinaryStorePayloadOptions> configure)
+    {
+        var services = builder.Services;
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        services.AddDaprBinaryStoreClient((serviceProvider, clientBuilder) =>
+        {
+            var grpcEndpoint = serviceProvider.GetRequiredService<IConfiguration>()["DAPR_GRPC_ENDPOINT"];
+            if (!string.IsNullOrEmpty(grpcEndpoint))
+            {
+                clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+            }
+        });
+
+        services.AddOptions<BinaryStorePayloadOptions>()
+            .Configure(configure)
+            .Validate(o =>
+            {
+                o.Validate();
+                return true;
+            });
+
+        services.TryAddSingleton<IWorkflowPayloadManifest>(NullWorkflowPayloadManifest.Instance);
+        services.AddSingleton<BinaryStorePayloadConverter>();
+        services.Replace(ServiceDescriptor.Singleton<IWorkflowPayloadConverter>(sp =>
+            sp.GetRequiredService<BinaryStorePayloadConverter>()));
+        services.TryAddSingleton<IWorkflowPayloadResolver, BinaryStoreWorkflowPayloadResolver>();
+        services.AddSingleton<IWorkflowFeatureProvider, BinaryStorePayloadFeatureProvider>();
+        services.TryAddSingleton(sp => new WorkflowPayloadCleaner(
+            sp.GetRequiredService<DaprBinaryStoreClient>(), sp.GetRequiredService<IWorkflowPayloadManifest>(),
+            sp.GetRequiredService<BinaryStorePayloadConverter>()));
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Registers a durable <see cref="IWorkflowPayloadManifest"/> for explicit cleanup with
+    /// <see cref="WorkflowPayloadCleaner"/>. Call after <see cref="WithBinaryStorePayloads"/>.
+    /// </summary>
+    /// <typeparam name="TManifest">The manifest implementation.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection, for chaining.</returns>
+    public static IServiceCollection WithPayloadManifest<TManifest>(this IServiceCollection services)
+        where TManifest : class, IWorkflowPayloadManifest
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.Replace(ServiceDescriptor.Singleton<IWorkflowPayloadManifest, TManifest>());
+        return services;
+    }
+}

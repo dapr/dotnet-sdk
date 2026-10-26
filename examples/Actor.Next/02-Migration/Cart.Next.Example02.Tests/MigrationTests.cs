@@ -86,6 +86,13 @@ public sealed class MigrationTests
         Assert.Equal(0, current.Age);
         Assert.False(current.Active);
         Assert.Equal("Ada", runtime.StateOf(cart).Get<MyStateV3>("autonomous")!.Name);
+
+        var deactivate = runtime.DeactivateAsync("MigratingCart", id);
+        await runtime.RunToIdle();
+        await deactivate;
+        var restored = cart.GetAutonomousState();
+        await runtime.RunToIdle();
+        Assert.Equal("Ada", (await restored).Name);
     }
 
     [Fact]

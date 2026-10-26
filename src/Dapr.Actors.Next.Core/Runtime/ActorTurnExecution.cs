@@ -17,25 +17,28 @@ internal sealed class ActorTurnExecution(object key, IReadOnlyDictionary<string,
 {
     private static readonly AsyncLocal<ActorTurnExecution?> CurrentExecution = new();
 
-    public static ActorTurnExecution? Current => CurrentExecution.Value;
+    private bool active = true;
+
+    public static ActorTurnExecution? Current => CurrentExecution.Value is { } execution && Volatile.Read(ref execution.active)
+        ? execution
+        : null;
 
     public object Key { get; } = key;
 
     public IReadOnlyDictionary<string, string> Headers { get; } = headers;
 
-    public int ReentrantDepth { get; set; }
-
     public static IDisposable Push(ActorTurnExecution execution)
     {
         var prior = CurrentExecution.Value;
         CurrentExecution.Value = execution;
-        return new PopWhenDisposed(prior);
+        return new PopWhenDisposed(execution, prior);
     }
 
-    private sealed class PopWhenDisposed(ActorTurnExecution? prior) : IDisposable
+    private sealed class PopWhenDisposed(ActorTurnExecution execution, ActorTurnExecution? prior) : IDisposable
     {
         public void Dispose()
         {
+            Volatile.Write(ref execution.active, false);
             CurrentExecution.Value = prior;
         }
     }

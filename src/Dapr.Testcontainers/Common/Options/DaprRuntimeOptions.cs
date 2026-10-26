@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using Dapr.Testcontainers.Containers.Dapr;
 
 namespace Dapr.Testcontainers.Common.Options;
 
@@ -60,6 +61,11 @@ public sealed record DaprRuntimeOptions
     /// The application's port.
     /// </summary>
     public int AppPort { get; set; } = 8080;
+
+    /// <summary>
+    /// The address Dapr uses to reach the application. Defaults to <c>host.docker.internal</c>.
+    /// </summary>
+    public string AppChannelAddress { get; private set; } = DaprdContainer.ContainerHostAlias;
 
     /// <summary>
     /// The protocol Dapr uses for the application channel.
@@ -143,6 +149,20 @@ public sealed record DaprRuntimeOptions
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(appProtocol);
         AppProtocol = appProtocol;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the Dapr application channel address (<c>--app-channel-address</c>).
+    /// </summary>
+    /// <param name="appChannelAddress">
+    /// The application's hostname or IP address, without a scheme or port. For a containerized application,
+    /// use its network alias and connect it to the same Docker network as the Dapr runtime.
+    /// </param>
+    public DaprRuntimeOptions WithAppChannelAddress(string appChannelAddress)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(appChannelAddress);
+        AppChannelAddress = appChannelAddress;
         return this;
     }
 

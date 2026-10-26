@@ -1,27 +1,30 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <ItemGroup>
-    <PackageReference Include="coverlet.msbuild">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="Shouldly"/>
-    <PackageReference Include="xunit.v3" />
-    <PackageReference Include="xunit.runner.visualstudio">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="coverlet.msbuild">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing"/>
+        <PackageReference Include="Microsoft.AspNetCore.TestHost"/>
+        <PackageReference Include="Shouldly"/>
+        <PackageReference Include="xunit.v3"/>
+        <PackageReference Include="xunit.runner.visualstudio">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="..\Shared\GrpcUtils.cs" />
-    <Compile Include="..\Shared\TestClient.cs" />
-  </ItemGroup>
+    <ItemGroup>
+        <Compile Include="..\Shared\GrpcUtils.cs"/>
+        <Compile Include="..\Shared\TestClient.cs"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj" />
-    <ProjectReference Include="..\..\src\Dapr.Protos\Dapr.Protos.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Dapr.AspNetCore\Dapr.AspNetCore.csproj"/>
+        <ProjectReference Include="..\..\src\Dapr.Protos\Dapr.Protos.csproj"/>
+        <ProjectReference Include="..\..\src\Dapr.Common\Dapr.Common.csproj"/>
+    </ItemGroup>
 
 </Project>

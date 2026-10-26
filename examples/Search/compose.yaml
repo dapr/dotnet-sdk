@@ -1,0 +1,36 @@
+services:
+  meilisearch:
+    image: getmeili/meilisearch:v1.15.2
+    environment:
+      MEILI_MASTER_KEY: "${MEILI_MASTER_KEY:?Set MEILI_MASTER_KEY before starting the example}"
+      MEILI_NO_ANALYTICS: "true"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:7700/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  dapr:
+    image: "daprio/daprd:${DAPR_RUNTIME_VERSION:-edge}"
+    command:
+      - ./daprd
+      - --app-id
+      - search-example
+      - --dapr-grpc-port
+      - "50001"
+      - --dapr-http-port
+      - "3500"
+      - --dapr-listen-addresses
+      - 0.0.0.0
+      - --resources-path
+      - /components
+    environment:
+      MEILI_MASTER_KEY: "${MEILI_MASTER_KEY:?Set MEILI_MASTER_KEY before starting the example}"
+    ports:
+      - "127.0.0.1:${SEARCH_GRPC_PORT:-50001}:50001"
+      - "127.0.0.1:${SEARCH_HTTP_PORT:-3500}:3500"
+    volumes:
+      - ./components:/components:ro
+    depends_on:
+      meilisearch:
+        condition: service_healthy

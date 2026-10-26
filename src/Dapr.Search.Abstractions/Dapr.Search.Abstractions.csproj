@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Dapr.Search</RootNamespace>
+        <Description>Abstractions for the Dapr Search SDK.</Description>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+    </ItemGroup>
+</Project>

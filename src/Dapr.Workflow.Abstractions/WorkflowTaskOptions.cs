@@ -22,11 +22,44 @@ namespace Dapr.Workflow;
 /// Determines which ancestor history events are propagated to the scheduled activity or child workflow.
 /// Defaults to <see cref="HistoryPropagationScope.None"/>, meaning no history is propagated.
 /// </param>
+/// <param name="AllowPayloadReferences">
+/// Allows reference payloads at a cross-app input boundary instead of requiring inline data.
+/// Set only when the destination supports the reference format and can access the referenced store.
+/// Does not force offloading or override a preference to inline. Applies only to the top-level input,
+/// not results or propagated history.
+/// </param>
 public record WorkflowTaskOptions(
     WorkflowRetryPolicy? RetryPolicy = null,
     string? TargetAppId = null,
-    HistoryPropagationScope PropagationScope = HistoryPropagationScope.None)
+    HistoryPropagationScope PropagationScope = HistoryPropagationScope.None,
+    bool AllowPayloadReferences = false)
 {
+    /// <summary>
+    /// Initializes options without cross-app reference permission.
+    /// </summary>
+    /// <param name="RetryPolicy">The retry policy.</param>
+    /// <param name="TargetAppId">The destination app ID.</param>
+    /// <param name="PropagationScope">The history propagation scope.</param>
+    public WorkflowTaskOptions(WorkflowRetryPolicy? RetryPolicy, string? TargetAppId,
+        HistoryPropagationScope PropagationScope)
+        : this(RetryPolicy, TargetAppId, PropagationScope, false)
+    {
+    }
+
+    /// <summary>
+    /// Deconstructs options without the cross-app reference permission.
+    /// </summary>
+    /// <param name="RetryPolicy">The retry policy.</param>
+    /// <param name="TargetAppId">The destination app ID.</param>
+    /// <param name="PropagationScope">The history propagation scope.</param>
+    public void Deconstruct(out WorkflowRetryPolicy? RetryPolicy, out string? TargetAppId,
+        out HistoryPropagationScope PropagationScope)
+    {
+        RetryPolicy = this.RetryPolicy;
+        TargetAppId = this.TargetAppId;
+        PropagationScope = this.PropagationScope;
+    }
+
     /// <summary>
     /// Returns a new <see cref="WorkflowTaskOptions"/> with the specified history propagation scope.
     /// </summary>
@@ -46,13 +79,47 @@ public record WorkflowTaskOptions(
 /// Determines which ancestor history events are propagated to the child workflow.
 /// Defaults to <see cref="HistoryPropagationScope.None"/>, meaning no history is propagated.
 /// </param>
+/// <param name="AllowPayloadReferences">
+/// Allows references in a cross-app child input. The destination must support the reference format
+/// and have access to the stored payload. Does not affect results or propagated history.
+/// </param>
 public record ChildWorkflowTaskOptions(
     string? InstanceId = null,
     WorkflowRetryPolicy? RetryPolicy = null,
     string? TargetAppId = null,
-    HistoryPropagationScope PropagationScope = HistoryPropagationScope.None)
-    : WorkflowTaskOptions(RetryPolicy, TargetAppId, PropagationScope)
+    HistoryPropagationScope PropagationScope = HistoryPropagationScope.None,
+    bool AllowPayloadReferences = false)
+    : WorkflowTaskOptions(RetryPolicy, TargetAppId, PropagationScope, AllowPayloadReferences)
 {
+    /// <summary>
+    /// Initializes child options without cross-app reference permission.
+    /// </summary>
+    /// <param name="InstanceId">The child instance ID.</param>
+    /// <param name="RetryPolicy">The retry policy.</param>
+    /// <param name="TargetAppId">The destination app ID.</param>
+    /// <param name="PropagationScope">The history propagation scope.</param>
+    public ChildWorkflowTaskOptions(string? InstanceId, WorkflowRetryPolicy? RetryPolicy, string? TargetAppId,
+        HistoryPropagationScope PropagationScope)
+        : this(InstanceId, RetryPolicy, TargetAppId, PropagationScope, false)
+    {
+    }
+
+    /// <summary>
+    /// Deconstructs child options without the cross-app reference permission.
+    /// </summary>
+    /// <param name="InstanceId">The child instance ID.</param>
+    /// <param name="RetryPolicy">The retry policy.</param>
+    /// <param name="TargetAppId">The destination app ID.</param>
+    /// <param name="PropagationScope">The history propagation scope.</param>
+    public void Deconstruct(out string? InstanceId, out WorkflowRetryPolicy? RetryPolicy, out string? TargetAppId,
+        out HistoryPropagationScope PropagationScope)
+    {
+        InstanceId = this.InstanceId;
+        RetryPolicy = this.RetryPolicy;
+        TargetAppId = this.TargetAppId;
+        PropagationScope = this.PropagationScope;
+    }
+
     /// <summary>
     /// Returns a new <see cref="ChildWorkflowTaskOptions"/> with the specified history propagation scope.
     /// </summary>

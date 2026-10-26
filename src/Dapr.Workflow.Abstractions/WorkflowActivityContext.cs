@@ -31,6 +31,15 @@ public abstract class WorkflowActivityContext
     public abstract string TaskExecutionKey { get; }
 
     /// <summary>
+    /// Gets the ID of the TaskScheduled history event for this activity attempt.
+    /// </summary>
+    /// <remarks>
+    /// Available during activity execution. Use with the source instance ID for workflow reruns.
+    /// </remarks>
+    public virtual int ScheduledEventId => throw new System.NotSupportedException(
+        "This activity context does not expose the scheduling history event ID.");
+
+    /// <summary>
     /// Gets the unique ID of the current workflow instance.
     /// </summary>
     public abstract string InstanceId {  get; }

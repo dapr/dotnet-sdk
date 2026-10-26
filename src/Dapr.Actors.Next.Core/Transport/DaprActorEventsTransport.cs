@@ -137,7 +137,7 @@ public sealed class DaprActorEventsTransport : ISubscribeActorEventsTransport
                 request.ActorType,
                 request.ActorId,
                 request.Name,
-                request.Data?.Value.Memory ?? ReadOnlyMemory<byte>.Empty,
+                DecodeCallbackData(request.Data),
                 headers);
         }
 
@@ -150,9 +150,13 @@ public sealed class DaprActorEventsTransport : ISubscribeActorEventsTransport
                 request.ActorType,
                 request.ActorId,
                 string.IsNullOrWhiteSpace(request.Callback) ? request.Name : request.Callback,
-                request.Data?.Value.Memory ?? ReadOnlyMemory<byte>.Empty,
+                DecodeCallbackData(request.Data),
                 headers);
         }
+
+        // Shared with the timer/reminder get and list mappings so a registration reads back exactly as it fires.
+        private static ReadOnlyMemory<byte> DecodeCallbackData(Any? data) =>
+            Timers.ActorSchedulePayloadDecoder.DecodeCallbackData(data);
 
         private static SubscribeActorEventsRequest ToRuntimeRequest(P.SubscribeActorEventsResponseDeactivateRequestAlpha1 request)
         {

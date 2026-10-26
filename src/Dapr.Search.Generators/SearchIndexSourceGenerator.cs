@@ -1,0 +1,170 @@
+﻿// ------------------------------------------------------------------------
+// Copyright 2026 The Dapr Authors
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+// ------------------------------------------------------------------------
+
+using System;
+using System.Linq;
+using System.Text;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
+
+namespace Dapr.Search.Generators;
+
+/// <summary>Generates typed, index-bound Search clients and their DI registration extensions.</summary>
+[Generator(LanguageNames.CSharp)]
+public sealed class SearchIndexSourceGenerator : IIncrementalGenerator
+{
+    private const string AttributeName = "Dapr.Search.SearchIndexAttribute";
+    private const string IndexInterfaceName = "Dapr.Search.IDaprSearchIndex`1";
+
+    private static readonly DiagnosticDescriptor InvalidDeclaration = new(
+        "DAPR1801", "Unsupported search index declaration",
+        "'{0}' must be a top-level, non-generic, non-file-local partial interface",
+        "Dapr.Search", DiagnosticSeverity.Error, true);
+
+    private static readonly DiagnosticDescriptor InvalidBinding = new(
+        "DAPR1802", "Invalid search index binding",
+        "'{0}' must specify non-empty component and index names",
+        "Dapr.Search", DiagnosticSeverity.Error, true);
+
+    private static readonly DiagnosticDescriptor InvalidContract = new(
+        "DAPR1803", "Invalid search index contract",
+        "'{0}' must extend exactly one IDaprSearchIndex<T> and declare no additional abstract members",
+        "Dapr.Search", DiagnosticSeverity.Error, true);
+
+    /// <inheritdoc />
+    public void Initialize(IncrementalGeneratorInitializationContext context)
+    {
+        var indexes = context.SyntaxProvider.ForAttributeWithMetadataName(AttributeName,
+            static (node, _) => node is InterfaceDeclarationSyntax,
+            static (ctx, _) => ctx);
+        context.RegisterSourceOutput(indexes, static (output, ctx) => Generate(output, ctx));
+    }
+
+    private static void Generate(SourceProductionContext output, GeneratorAttributeSyntaxContext context)
+    {
+        var symbol = (INamedTypeSymbol)context.TargetSymbol;
+        var declaration = (InterfaceDeclarationSyntax)context.TargetNode;
+        if (symbol.ContainingType is not null || symbol.Arity != 0 || symbol.IsFileLocal ||
+            !declaration.Modifiers.Any(SyntaxKind.PartialKeyword))
+        {
+            Report(InvalidDeclaration);
+            return;
+        }
+
+        var arguments = context.Attributes[0].ConstructorArguments;
+        if (arguments.Length != 2 || arguments[0].Value is not string store ||
+            arguments[1].Value is not string index || string.IsNullOrWhiteSpace(store) || string.IsNullOrWhiteSpace(index))
+        {
+            Report(InvalidBinding);
+            return;
+        }
+
+        var contract = context.SemanticModel.Compilation.GetTypeByMetadataName(IndexInterfaceName);
+        var bases = symbol.AllInterfaces.Where(i => SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, contract)).ToArray();
+        if (bases.Length != 1 || symbol.AllInterfaces.Concat(new[] { symbol })
+                .Where(i => !SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, contract))
+                .Any(i => i.GetMembers().Any(member => member.IsAbstract)))
+        {
+            Report(InvalidContract);
+            return;
+        }
+
+        var typeFormat = SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
+            SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions |
+            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+        var type = bases[0].TypeArguments[0].ToDisplayString(typeFormat);
+        var name = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var ns = symbol.ContainingNamespace.IsGlobalNamespace ? null : symbol.ContainingNamespace.ToDisplayString();
+        var implementation = $"__{symbol.Name}SearchIndexClient";
+        var extensions = $"{symbol.Name}SearchIndexExtensions";
+        var baseName = symbol.Name.StartsWith("I", StringComparison.Ordinal) && symbol.Name.Length > 1
+            ? symbol.Name.Substring(1) : symbol.Name;
+        var visibility = symbol.DeclaredAccessibility == Accessibility.Public ? "public" : "internal";
+        var source = new StringBuilder();
+        source.AppendLine("// <auto-generated />");
+        source.AppendLine("#nullable enable");
+        if (ns is not null)
+            source.AppendLine($"namespace {ns} {{");
+        source.AppendLine($$"""
+            internal sealed class {{implementation}} : {{name}}
+            {
+                private const string StoreName = {{SymbolDisplay.FormatLiteral(store, true)}};
+                private const string IndexName = {{SymbolDisplay.FormatLiteral(index, true)}};
+                private readonly global::Dapr.Search.DaprSearchClient client;
+
+                internal {{implementation}}(global::Dapr.Search.DaprSearchClient client)
+                {
+                    this.client = client ?? throw new global::System.ArgumentNullException(nameof(client));
+                }
+            """);
+
+        const string task = "global::System.Threading.Tasks.Task";
+        const string metadata = "global::System.Collections.Generic.IReadOnlyDictionary<string, string>? metadata = null";
+        const string token = "global::System.Threading.CancellationToken cancellationToken = default";
+        const string options = "global::Dapr.Search.IndexingOptions? options = null";
+        const string ids = "global::System.Collections.Generic.IReadOnlyList<string> ids";
+        var documentList = $"global::System.Collections.Generic.IReadOnlyList<global::Dapr.Search.SearchDocument<{type}>>";
+        AppendMethod(task, "CreateIndexAsync", $"{metadata}, {token}", "metadata, cancellationToken");
+        AppendMethod($"{task}<global::Dapr.Search.SearchIndex>", "GetIndexAsync", $"{metadata}, {token}", "metadata, cancellationToken");
+        AppendMethod(task, "DeleteIndexAsync", $"{metadata}, {token}", "metadata, cancellationToken");
+        AppendMethod($"{task}<global::Dapr.Search.IndexDocumentsResult>", "IndexDocumentsAsync",
+            $"{documentList} documents, {options}, {metadata}, {token}", "documents, options, metadata, cancellationToken", type);
+        AppendMethod($"{task}<{documentList}>", "GetDocumentsAsync",
+            $"{ids}, bool? includeContent = null, {metadata}, {token}", "ids, includeContent, metadata, cancellationToken", type);
+        AppendMethod($"{task}<global::Dapr.Search.IndexAck>", "DeleteDocumentsAsync",
+            $"{ids}, {options}, {metadata}, {token}", "ids, options, metadata, cancellationToken");
+        AppendMethod($"{task}<global::Dapr.Search.SearchResult<{type}>>", "SearchAsync",
+            $"global::Dapr.Search.SearchQuery? query = null, {metadata}, {token}", "query, metadata, cancellationToken", type);
+        source.AppendLine("}");
+        source.AppendLine($$"""
+            /// <summary>Registers the generated search index using the underlying client's service lifetime.</summary>
+            {{visibility}} static class {{extensions}}
+            {
+                /// <summary>Registers the typed index without taking ownership of its underlying client.</summary>
+                public static global::Dapr.Search.Extensions.IDaprSearchBuilder Add{{baseName}}(
+                    this global::Dapr.Search.Extensions.IDaprSearchBuilder builder)
+                {
+                    if (builder is null)
+                        throw new global::System.ArgumentNullException(nameof(builder));
+                    var registration = global::System.Linq.Enumerable.LastOrDefault(builder.Services,
+                        descriptor => descriptor.ServiceType == typeof(global::Dapr.Search.DaprSearchClient) && !descriptor.IsKeyedService);
+                    if (registration is null)
+                        throw new global::System.InvalidOperationException("Register DaprSearchClient with AddDaprSearchClient before registering a typed search index.");
+                    builder.Services.Add(new global::Microsoft.Extensions.DependencyInjection.ServiceDescriptor(
+                        typeof({{name}}),
+                        provider => new {{implementation}}(
+                            global::Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<global::Dapr.Search.DaprSearchClient>(provider)),
+                        registration.Lifetime));
+                    return builder;
+                }
+            }
+            """);
+        if (ns is not null)
+            source.AppendLine("}");
+        output.AddSource(name.Replace("global::", "").Replace("@", "") + ".SearchIndex.g.cs",
+            SourceText.From(source.ToString(), Encoding.UTF8));
+
+        void Report(DiagnosticDescriptor descriptor) =>
+            output.ReportDiagnostic(Diagnostic.Create(descriptor, declaration.Identifier.GetLocation(), symbol.Name));
+
+        void AppendMethod(string returnType, string method, string parameters, string forwarded, string? genericType = null)
+        {
+            var generic = genericType is null ? "" : $"<{genericType}>";
+            source.AppendLine($"    /// <inheritdoc />");
+            source.AppendLine($"    public {returnType} {method}({parameters}) =>");
+            source.AppendLine($"        client.{method}{generic}(StoreName, IndexName, {forwarded});");
+        }
+    }
+}

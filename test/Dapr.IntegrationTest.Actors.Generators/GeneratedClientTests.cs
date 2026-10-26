@@ -28,8 +28,7 @@ namespace Dapr.IntegrationTest.Actors.Generators;
 /// <summary>
 /// Integration tests that verify the source-generated actor client (<c>ClientActorClient</c>)
 /// can correctly invoke actor methods on a real Dapr sidecar and actor runtime.
-/// These tests replicate and extend the coverage of the E2E test suite in
-/// <c>Dapr.E2E.Test.Actors.Generators</c>.
+/// These tests cover generated clients against a real Dapr sidecar and actor runtime.
 /// </summary>
 public sealed class GeneratedClientTests
 {

@@ -21,9 +21,12 @@ namespace Dapr.Actors.Next.Core;
 /// </summary>
 public static class ActorHeaders
 {
-    private const string ReentrancyHeaderName = "dapr-reentrant-id";
+    private const string ReentrancyHeaderName = "Dapr-Reentrancy-Id";
+    private const string LegacyReentrancyHeaderName = "dapr-reentrant-id";
     private const string AlternateReentrancyHeaderName = "x-dapr-reentrant-id";
     internal const string ActivationIdHeaderName = "Dapr-Actor-Activation-Id";
+    private static readonly string[] ReentrancyHeaderNames =
+        [ReentrancyHeaderName, LegacyReentrancyHeaderName, AlternateReentrancyHeaderName];
 
     /// <summary>
     /// Gets an immutable empty header dictionary.
@@ -31,48 +34,36 @@ public static class ActorHeaders
     public static IReadOnlyDictionary<string, string> Empty { get; } =
         new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal));
 
-    internal static IReadOnlyDictionary<string, string> WithCurrentReentrancy(IReadOnlyDictionary<string, string> headers)
+    /// <summary>
+    /// Captures the current actor call chain in the canonical Dapr header without changing the input collection.
+    /// Explicit call-chain headers take precedence over the current execution context.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> WithCurrentReentrancy(IReadOnlyDictionary<string, string> headers)
     {
         ArgumentNullException.ThrowIfNull(headers);
-        if (TryGetReentrancy(headers, out _, out _))
+        if (TryGetReentrancy(headers, out _, out var explicitValue))
         {
-            return headers;
+            return WithCanonicalReentrancy(headers, explicitValue);
         }
 
         var current = ActorTurnExecution.Current?.Headers;
-        if (current is null || !TryGetReentrancy(current, out var key, out var value))
+        if (current is null || !TryGetReentrancy(current, out _, out var value))
         {
             return headers;
         }
 
-        if (headers.Count == 0)
-        {
-            return new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                [key] = value,
-            });
-        }
-
-        var merged = new Dictionary<string, string>(headers, StringComparer.Ordinal)
-        {
-            [key] = value,
-        };
-        return merged;
+        return WithCanonicalReentrancy(headers, value);
     }
 
     internal static IReadOnlyDictionary<string, string> EnsureReentrancy(IReadOnlyDictionary<string, string> headers)
     {
         ArgumentNullException.ThrowIfNull(headers);
-        if (TryGetReentrancy(headers, out _, out _))
+        if (TryGetReentrancy(headers, out _, out var value))
         {
-            return headers;
+            return WithCanonicalReentrancy(headers, value);
         }
 
-        var copy = headers.Count == 0
-            ? new Dictionary<string, string>(StringComparer.Ordinal)
-            : new Dictionary<string, string>(headers, StringComparer.Ordinal);
-        copy[ReentrancyHeaderName] = Guid.NewGuid().ToString("N");
-        return copy;
+        return WithCanonicalReentrancy(headers, Guid.NewGuid().ToString("N"));
     }
 
     internal static string GetActivationId(IReadOnlyDictionary<string, string> headers)
@@ -96,20 +87,35 @@ public static class ActorHeaders
 
     internal static bool TryGetReentrancy(IReadOnlyDictionary<string, string> headers, out string key, out string value)
     {
-        if (headers.TryGetValue(ReentrancyHeaderName, out value!) && !string.IsNullOrWhiteSpace(value))
+        foreach (var name in ReentrancyHeaderNames)
         {
-            key = ReentrancyHeaderName;
-            return true;
-        }
-
-        if (headers.TryGetValue(AlternateReentrancyHeaderName, out value!) && !string.IsNullOrWhiteSpace(value))
-        {
-            key = AlternateReentrancyHeaderName;
-            return true;
+            foreach (var pair in headers)
+            {
+                if (string.Equals(pair.Key, name, StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrWhiteSpace(pair.Value))
+                {
+                    key = pair.Key;
+                    value = pair.Value;
+                    return true;
+                }
+            }
         }
 
         key = string.Empty;
         value = string.Empty;
         return false;
+    }
+
+    private static IReadOnlyDictionary<string, string> WithCanonicalReentrancy(IReadOnlyDictionary<string, string> headers, string value)
+    {
+        if (headers.TryGetValue(ReentrancyHeaderName, out var existing) && existing == value)
+        {
+            return headers;
+        }
+
+        return new Dictionary<string, string>(headers, StringComparer.Ordinal)
+        {
+            [ReentrancyHeaderName] = value,
+        };
     }
 }

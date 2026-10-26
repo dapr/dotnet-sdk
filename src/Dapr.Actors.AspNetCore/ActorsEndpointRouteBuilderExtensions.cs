@@ -93,11 +93,7 @@ public static class ActorsEndpointRouteBuilderExtensions
             var methodName = (string)routeValues["methodName"];
             var activationId = GetActivationId(context.Request);
 
-            if (context.Request.Headers.ContainsKey(Constants.ReentrancyRequestHeaderName))
-            {
-                var daprReentrancyHeader = context.Request.Headers[Constants.ReentrancyRequestHeaderName];
-                ActorReentrancyContextAccessor.ReentrancyContext = daprReentrancyHeader;
-            }
+            SetReentrancyContext(context);
 
             // If Header is present, call is made using Remoting, use Remoting dispatcher.
             if (context.Request.Headers.ContainsKey(Constants.RequestHeaderName))
@@ -153,8 +149,16 @@ public static class ActorsEndpointRouteBuilderExtensions
             var actorId = (string)routeValues["actorId"];
             var reminderName = (string)routeValues["reminderName"];
 
-            // read dueTime, period and data from Request Body.
-            await runtime.FireReminderAsync(actorTypeName, actorId, reminderName, context.Request.Body, GetActivationId(context.Request));
+            SetReentrancyContext(context);
+            try
+            {
+                // read dueTime, period and data from Request Body.
+                await runtime.FireReminderAsync(actorTypeName, actorId, reminderName, context.Request.Body, GetActivationId(context.Request), context.RequestAborted);
+            }
+            finally
+            {
+                ActorReentrancyContextAccessor.ReentrancyContext = null;
+            }
         }).WithDisplayName(b => "Dapr Actors Reminder");
     }
 
@@ -168,14 +172,30 @@ public static class ActorsEndpointRouteBuilderExtensions
             var actorId = (string)routeValues["actorId"];
             var timerName = (string)routeValues["timerName"];
 
-            // read dueTime, period and data from Request Body.
-            var timerResult = await runtime.FireTimerAsync(actorTypeName, actorId, timerName, context.Request.Body, GetActivationId(context.Request));
-            
-            context.Response.StatusCode = StatusCodes.Status200OK;
-            context.Response.ContentType = "application/json";
-            
-            await JsonSerializer.SerializeAsync(context.Response.Body, timerResult);
+            SetReentrancyContext(context);
+            try
+            {
+                // read dueTime, period and data from Request Body.
+                var timerResult = await runtime.FireTimerAsync(actorTypeName, actorId, timerName, context.Request.Body, GetActivationId(context.Request), context.RequestAborted);
+
+                context.Response.StatusCode = StatusCodes.Status200OK;
+                context.Response.ContentType = "application/json";
+
+                await JsonSerializer.SerializeAsync(context.Response.Body, timerResult);
+            }
+            finally
+            {
+                ActorReentrancyContextAccessor.ReentrancyContext = null;
+            }
         }).WithDisplayName(b => "Dapr Actors Timer");
+    }
+
+    private static void SetReentrancyContext(HttpContext context)
+    {
+        ActorReentrancyContextAccessor.ReentrancyContext =
+            context.Request.Headers.TryGetValue(Constants.ReentrancyRequestHeaderName, out var reentrancyId)
+                ? reentrancyId.ToString()
+                : null;
     }
 
     private static IEndpointConventionBuilder MapActorHealthChecks(this IEndpointRouteBuilder endpoints)

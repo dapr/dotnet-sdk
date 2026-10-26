@@ -158,9 +158,8 @@ internal sealed class BaselineEntry
     }
 
     internal static IEnumerable<IPropertySymbol> SerializableProperties(INamedTypeSymbol type) =>
-        type.GetMembers()
-            .OfType<IPropertySymbol>()
-            .Where(static p => !p.IsStatic && p.DeclaredAccessibility == Accessibility.Public && p.GetMethod is not null);
+        Dapr.Actors.Next.Roslyn.ActorStateMigrationShared.GetSerializableMemberSymbols(type)
+            .OfType<IPropertySymbol>();
 
     private static string MethodKey(IMethodSymbol method)
     {

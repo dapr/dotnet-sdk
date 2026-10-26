@@ -27,6 +27,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\..\src\Dapr.Testcontainers\Dapr.Testcontainers.csproj" />
+        <ProjectReference Include="..\..\src\Dapr.Testcontainers.Xunit\Dapr.Testcontainers.Xunit.csproj" />
     </ItemGroup>
 
     <ItemGroup>

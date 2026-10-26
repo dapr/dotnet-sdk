@@ -447,6 +447,23 @@ public sealed class ActorActivationIdTests
 
         public int Reads { get; set; }
 
+        public ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default)
+        {
+            foreach (var operation in operations)
+            {
+                if (operation.Value is { } value)
+                {
+                    values[Key(actorType, actorId, operation.Name)] = value.ToArray();
+                }
+                else
+                {
+                    values.TryRemove(Key(actorType, actorId, operation.Name), out _);
+                }
+            }
+
+            return ValueTask.CompletedTask;
+        }
+
         public ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default)
         {
             Reads++;

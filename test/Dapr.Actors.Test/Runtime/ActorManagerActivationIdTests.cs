@@ -258,15 +258,16 @@ public sealed class ActorManagerActivationIdTests
         var first = GetActor();
 
         var held = HoldAsync("a1");
-        await first.Held.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        Assert.Equal(6, await IncrementAsync("a2"));
-        var second = GetActor();
+        await WaitAsync(first.Held);
+        var replacing = IncrementAsync("a2");
+        await WaitAsync(first.Deactivated);
         first.Release.SetResult();
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => held);
         Assert.Contains("replaced", ex.Message);
+        Assert.Equal(6, await replacing);
+        var second = GetActor();
         Assert.NotSame(first, second);
-        Assert.Same(second, GetActor());
         Assert.Equal(2, store.Saves.Count);
         Assert.DoesNotContain(store.Saves, s => s.Contains("100"));
         Assert.Equal(7, await IncrementAsync("a2"));
@@ -279,12 +280,16 @@ public sealed class ActorManagerActivationIdTests
         var first = GetActor();
 
         var held = HoldAsync("a1");
-        await first.Held.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        await manager.DeactivateActorAsync(id);
+        await WaitAsync(first.Held);
+        var deactivating = manager.DeactivateActorAsync(id);
+        Assert.False(manager.TryGetActorAsync(id, out _));
+        Assert.False(first.IsDeactivated);
         first.Release.SetResult();
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => held);
         Assert.Contains("deactivated", ex.Message);
+        await deactivating;
+        Assert.True(first.IsDeactivated);
         Assert.False(manager.TryGetActorAsync(id, out _));
         Assert.Single(store.Saves);
         Assert.DoesNotContain(store.Saves, s => s.Contains("100"));
@@ -297,11 +302,13 @@ public sealed class ActorManagerActivationIdTests
         var first = GetActor();
 
         var held = FireReminderAsync("a1", "hold");
-        await first.Held.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        Assert.Equal(6, await IncrementAsync("a2"));
+        await WaitAsync(first.Held);
+        var replacing = IncrementAsync("a2");
+        await WaitAsync(first.Deactivated);
         first.Release.SetResult();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+        Assert.Equal(6, await replacing);
         Assert.Equal(2, store.Saves.Count);
         Assert.DoesNotContain(store.Saves, s => s.Contains("100"));
     }
@@ -313,11 +320,13 @@ public sealed class ActorManagerActivationIdTests
         var first = GetActor();
 
         var held = FireTimerAsync("a1", nameof(CountingActor.HoldTimerAsync));
-        await first.Held.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        Assert.Equal(6, await IncrementAsync("a2"));
+        await WaitAsync(first.Held);
+        var replacing = IncrementAsync("a2");
+        await WaitAsync(first.Deactivated);
         first.Release.SetResult();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+        Assert.Equal(6, await replacing);
         Assert.Equal(2, store.Saves.Count);
         Assert.DoesNotContain(store.Saves, s => s.Contains("100"));
     }
@@ -331,14 +340,18 @@ public sealed class ActorManagerActivationIdTests
         var first = GetActor();
 
         var held = HoldAsync("a1");
-        await first.Held.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        Assert.Equal(7, await IncrementAsync(otherActivationId));
+        await WaitAsync(first.Held);
+        var other = IncrementAsync(otherActivationId);
+        Assert.False(other.IsCompleted);
         first.Release.SetResult();
 
         Assert.Equal(100, await held);
+        Assert.Equal(101, await other);
         Assert.Same(first, GetActor());
+        Assert.False(first.IsDeactivated);
         Assert.Equal(3, store.Saves.Count);
-        Assert.Contains("100", store.Saves.Last());
+        Assert.Contains("100", store.Saves.ElementAt(1));
+        Assert.Contains("101", store.Saves.Last());
     }
 
     [Fact]
@@ -349,14 +362,45 @@ public sealed class ActorManagerActivationIdTests
         first.HoldInPostHook = true;
 
         var held = IncrementAsync("a1");
-        await first.PostHeld.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        Assert.Equal(6, await IncrementAsync("a2"));
+        await WaitAsync(first.PostHeld);
+        var replacing = IncrementAsync("a2");
+        await WaitAsync(first.Deactivated);
         first.PostRelease.SetResult();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+        Assert.Equal(6, await replacing);
         Assert.NotSame(first, GetActor());
         Assert.Equal(2, store.Saves.Count);
         Assert.DoesNotContain(store.Saves, s => s.Contains("100"));
+    }
+
+    [Fact]
+    public async Task ReentrantCallInSameChain_DifferentActivationId_DoesNotReset()
+    {
+        var registration = new ActorRegistration(ActorTypeInformation.Get(typeof(CountingActor), actorTypeName: null));
+        var reentrant = new ActorManager(registration, new DefaultActorActivator(), JsonSerializerDefaults.Web, false, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, store, new ActorReentrancyConfig { Enabled = true });
+        ActorReentrancyContextAccessor.ReentrancyContext = "chain";
+        try
+        {
+            Assert.Equal(6, await DispatchAsync(reentrant, nameof(ICountingActor.IncrementAsync), "a1"));
+            Assert.True(reentrant.TryGetActorAsync(id, out var actor));
+            var first = Assert.IsType<CountingActor>(actor);
+
+            var held = DispatchAsync(reentrant, nameof(ICountingActor.HoldAsync), "a1");
+            await WaitAsync(first.Held);
+            var nested = DispatchAsync(reentrant, nameof(ICountingActor.IncrementAsync), "a2");
+
+            await nested.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            first.Release.SetResult();
+            Assert.Equal(100, await held);
+            Assert.False(first.IsDeactivated);
+            Assert.True(reentrant.TryGetActorAsync(id, out var registered));
+            Assert.Same(first, registered);
+        }
+        finally
+        {
+            ActorReentrancyContextAccessor.ReentrancyContext = null;
+        }
     }
 
     [Fact]
@@ -390,79 +434,89 @@ public sealed class ActorManagerActivationIdTests
     }
 
     [Fact]
-    public async Task ConcurrentFirstActivation_LateDifferentId_FailsAndKeepsNewer()
+    public async Task ConcurrentFirstActivation_LateDifferentId_FailsAndNewerActivatesFresh()
     {
         var race = await StartActivationRaceAsync("a1", "a2");
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => race.Late);
+        Assert.Equal(6, await race.Newer);
 
         Assert.True(race.Manager.TryGetActorAsync(id, out var registered));
-        Assert.Same(race.Newer, registered);
-        Assert.Equal(race.Acknowledged, race.Store.Saves.Count);
+        Assert.NotSame(race.Gate.Actor, registered);
+        Assert.True(race.Gate.Actor.IsDeactivated);
+        Assert.Equal(2, race.Store.Saves.Count);
         Assert.Equal(7, await DispatchAsync(race.Manager, nameof(ICountingActor.IncrementAsync), "a2"));
         Assert.Contains("\"value\":7}", race.Store.Saves.Last());
     }
 
     [Theory]
-    [InlineData("a2")]
     [InlineData(null)]
     [InlineData("")]
-    public async Task ConcurrentFirstActivation_LateSameOrMissingId_ReusesNewer(string lateId)
+    public async Task ConcurrentFirstActivation_LateMissingId_FailsAndNewerActivatesFresh(string lateId)
     {
         var race = await StartActivationRaceAsync(lateId, "a2");
 
-        Assert.Equal(7, await race.Late);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => race.Late);
+        Assert.Equal(6, await race.Newer);
 
         Assert.True(race.Manager.TryGetActorAsync(id, out var registered));
-        Assert.Same(race.Newer, registered);
-        Assert.DoesNotContain(race.Store.Saves.Skip(race.Acknowledged), s => s.Contains("\"value\":5}"));
+        Assert.NotSame(race.Gate.Actor, registered);
+        Assert.Equal(2, race.Store.Saves.Count);
+    }
+
+    [Fact]
+    public async Task ConcurrentFirstActivation_LateSameId_NewerReusesIt()
+    {
+        var race = await StartActivationRaceAsync("a2", "a2");
+
+        Assert.Equal(6, await race.Late);
+        Assert.Equal(7, await race.Newer);
+
+        Assert.True(race.Manager.TryGetActorAsync(id, out var registered));
+        Assert.Same(race.Gate.Actor, registered);
+        Assert.False(race.Gate.Actor.IsDeactivated);
         Assert.Contains("\"value\":7}", race.Store.Saves.Last());
     }
 
     [Theory]
-    [InlineData("a2")]
     [InlineData("a1")]
+    [InlineData(null)]
     public async Task ConcurrentFirstActivation_DiscardedOnDeactivateThrows_IsLogged(string lateId)
     {
         var logs = new CapturingLoggerFactory();
         var race = await StartActivationRaceAsync(lateId, "a2", discardedThrowsOnDeactivate: true, logs);
 
-        if (lateId == "a2")
-        {
-            Assert.Equal(7, await race.Late);
-        }
-        else
-        {
-            await Assert.ThrowsAsync<InvalidOperationException>(() => race.Late);
-        }
+        await Assert.ThrowsAsync<InvalidOperationException>(() => race.Late);
+        Assert.Equal(6, await race.Newer);
 
         Assert.True(race.Manager.TryGetActorAsync(id, out var registered));
-        Assert.Same(race.Newer, registered);
+        Assert.NotSame(race.Gate.Actor, registered);
 
         var error = Assert.Single(logs.Entries, e => e.Level == LogLevel.Error);
         Assert.IsType<InvalidTimeZoneException>(error.Exception);
         Assert.StartsWith("Deactivating discarded activation", error.Message);
     }
 
-    private async Task<(ActorManager Manager, StateStore Store, Task<int> Late, Actor Newer, int Acknowledged)> StartActivationRaceAsync(string lateId, string newerId, bool discardedThrowsOnDeactivate = false, ILoggerFactory loggerFactory = null)
+    private async Task<(ActorManager Manager, StateStore Store, Task<int> Late, Task<int> Newer, ActivationGate Gate)> StartActivationRaceAsync(string lateId, string newerId, bool discardedThrowsOnDeactivate = false, ILoggerFactory loggerFactory = null)
     {
         var raceStore = new StateStore();
         var registration = new ActorRegistration(ActorTypeInformation.Get(typeof(GatedActivateActor), actorTypeName: null));
         var raceManager = new ActorManager(registration, new DefaultActorActivator(), JsonSerializerDefaults.Web, false, loggerFactory ?? NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, raceStore);
-        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        GatedActivateActor.Gate = (started, release, discardedThrowsOnDeactivate);
+        var gate = new ActivationGate { ThrowOnDeactivate = discardedThrowsOnDeactivate };
+        GatedActivateActor.Gate = gate;
 
         var late = DispatchAsync(raceManager, nameof(ICountingActor.IncrementAsync), lateId);
-        await started.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        await WaitAsync(gate.Started);
 
-        Assert.Equal(6, await DispatchAsync(raceManager, nameof(ICountingActor.IncrementAsync), newerId));
-        Assert.True(raceManager.TryGetActorAsync(id, out var newer));
-        var acknowledged = raceStore.Saves.Count;
+        var newer = DispatchAsync(raceManager, nameof(ICountingActor.IncrementAsync), newerId);
+        Assert.False(newer.IsCompleted);
 
-        release.SetResult();
-        return (raceManager, raceStore, late, newer, acknowledged);
+        gate.Release.SetResult();
+        return (raceManager, raceStore, late, newer, gate);
     }
+
+    private static Task WaitAsync(TaskCompletionSource signal) =>
+        signal.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
     private Task<int> HoldAsync(string activationId) => DispatchAsync(nameof(ICountingActor.HoldAsync), activationId);
 
@@ -524,6 +578,8 @@ public sealed class ActorManagerActivationIdTests
 
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        public TaskCompletionSource Deactivated { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public bool HoldInPostHook { get; set; }
 
         public TaskCompletionSource PostHeld { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -579,6 +635,7 @@ public sealed class ActorManagerActivationIdTests
         protected override Task OnDeactivateAsync()
         {
             IsDeactivated = true;
+            Deactivated.TrySetResult();
             return ThrowOnDeactivate ? throw new InvalidOperationException("deactivate failed") : Task.CompletedTask;
         }
 
@@ -600,9 +657,11 @@ public sealed class ActorManagerActivationIdTests
         {
         }
 
-        public static (TaskCompletionSource Started, TaskCompletionSource Release, bool ThrowOnDeactivate)? Gate { get; set; }
+        public static ActivationGate Gate { get; set; }
 
         private bool throwOnDeactivate;
+
+        public bool IsDeactivated { get; private set; }
 
         public async Task<int> IncrementAsync()
         {
@@ -618,16 +677,31 @@ public sealed class ActorManagerActivationIdTests
             await StateManager.SetStateAsync("count", await StateManager.GetStateAsync<int>("count"));
             var gate = Gate;
             Gate = null;
-            if (gate is { } g)
+            if (gate is not null)
             {
-                throwOnDeactivate = g.ThrowOnDeactivate;
-                g.Started.SetResult();
-                await g.Release.Task;
+                gate.Actor = this;
+                throwOnDeactivate = gate.ThrowOnDeactivate;
+                gate.Started.SetResult();
+                await gate.Release.Task;
             }
         }
 
-        protected override Task OnDeactivateAsync() =>
-            throwOnDeactivate ? throw new InvalidTimeZoneException("deactivate failed") : Task.CompletedTask;
+        protected override Task OnDeactivateAsync()
+        {
+            IsDeactivated = true;
+            return throwOnDeactivate ? throw new InvalidTimeZoneException("deactivate failed") : Task.CompletedTask;
+        }
+    }
+
+    private sealed class ActivationGate
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public bool ThrowOnDeactivate { get; init; }
+
+        public GatedActivateActor Actor { get; set; }
     }
 
     private sealed class CapturingLoggerFactory : ILoggerFactory, ILogger

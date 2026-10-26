@@ -1,7 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Dapr.Actors.AspNetCore\Dapr.Actors.AspNetCore.csproj" />
-  </ItemGroup>
-
-</Project>

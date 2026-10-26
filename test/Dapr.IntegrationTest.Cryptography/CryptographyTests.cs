@@ -22,6 +22,7 @@ using Dapr.Cryptography.Encryption.Models;
 using Dapr.Testcontainers;
 using Dapr.Testcontainers.Common;
 using Dapr.Testcontainers.Harnesses;
+using Grpc.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -131,6 +132,176 @@ public sealed class CryptographyTests
         }
 
         Assert.Equal(fileContent, Encoding.UTF8.GetString(decryptedBuffer.WrittenSpan));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldHandleConcurrentMultiChunkOperations(bool streaming)
+    {
+        await RunWithClientAsync(async (client, cancellationToken) =>
+        {
+            var start = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var plaintexts = Enumerable.Range(0, 4).Select(operation =>
+            {
+                var plaintext = new byte[1024 * 1024 + operation * 137];
+                for (var index = 0; index < plaintext.Length; index++)
+                    plaintext[index] = (byte)((index * 31 + operation * 67) % 256);
+
+                return plaintext;
+            }).ToArray();
+
+            if (!streaming)
+            {
+                var bufferedEncryptions = plaintexts.Select(async plaintext =>
+                {
+                    await start.Task.WaitAsync(cancellationToken);
+
+                    var encrypted = await client.EncryptAsync(ComponentName, plaintext.AsMemory(), KeyName,
+                        new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken);
+                    Assert.False(encrypted.IsEmpty);
+                    return encrypted;
+                }).ToArray();
+
+                start.SetResult(true);
+                var bufferedPayloads = await Task.WhenAll(bufferedEncryptions);
+
+                // Dapr 1.17.14 can reuse its pooled header buffer before concurrent decryptions
+                // finish signature verification. Keep decryption sequential in this stress test.
+                for (var index = 0; index < bufferedPayloads.Length; index++)
+                {
+                    var decrypted = await client.DecryptAsync(ComponentName, bufferedPayloads[index], KeyName,
+                        cancellationToken: cancellationToken);
+                    Assert.Equal(plaintexts[index], decrypted.ToArray());
+                }
+
+                return;
+            }
+
+            const int streamingBlockSizeInBytes = 64 * 1024;
+            var encryptions = plaintexts.Select(async plaintext =>
+            {
+                await start.Task.WaitAsync(cancellationToken);
+
+                using var inputStream = new MemoryStream(plaintext);
+                var encryptedBuffer = new ArrayBufferWriter<byte>();
+                await foreach (var chunk in client.EncryptAsync(ComponentName, inputStream, KeyName,
+                                   new EncryptionOptions(KeyWrapAlgorithm.Rsa)
+                                   {
+                                       StreamingBlockSizeInBytes = streamingBlockSizeInBytes
+                                   }, cancellationToken))
+                {
+                    encryptedBuffer.Write(chunk.Span);
+                }
+
+                Assert.True(encryptedBuffer.WrittenCount > 0);
+                return encryptedBuffer.WrittenMemory.ToArray();
+            }).ToArray();
+
+            start.SetResult(true);
+            var encryptedPayloads = await Task.WhenAll(encryptions);
+
+            // Dapr 1.17.14 can reuse its pooled header buffer before concurrent decryptions
+            // finish signature verification. Keep decryption sequential in this stress test.
+            for (var index = 0; index < encryptedPayloads.Length; index++)
+            {
+                using var encryptedStream = new MemoryStream(encryptedPayloads[index]);
+                var decryptedBuffer = new ArrayBufferWriter<byte>();
+                await foreach (var chunk in client.DecryptAsync(ComponentName, encryptedStream, KeyName,
+                                   new DecryptionOptions
+                                   {
+                                       StreamingBlockSizeInBytes = streamingBlockSizeInBytes
+                                   }, cancellationToken))
+                {
+                    decryptedBuffer.Write(chunk.Span);
+                }
+
+                Assert.Equal(plaintexts[index], decryptedBuffer.WrittenMemory.ToArray());
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldSurfaceRpcExceptionForInvalidEncryptionKey(bool streaming)
+    {
+        await RunWithClientAsync(async (client, cancellationToken) =>
+        {
+            var plaintext = new byte[1024 * 1024];
+            await Assert.ThrowsAsync<RpcException>(async () =>
+            {
+                if (!streaming)
+                {
+                    await client.EncryptAsync(ComponentName, plaintext.AsMemory(), "missing-key.pem",
+                        new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken);
+                    return;
+                }
+
+                using var inputStream = new MemoryStream(plaintext);
+                await foreach (var chunk in client.EncryptAsync(ComponentName, inputStream, "missing-key.pem",
+                                   new EncryptionOptions(KeyWrapAlgorithm.Rsa), cancellationToken))
+                {
+                    _ = chunk.Length;
+                }
+            });
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldSurfaceRpcExceptionForInvalidCiphertext(bool streaming)
+    {
+        await RunWithClientAsync(async (client, cancellationToken) =>
+        {
+            var invalidCiphertext = Encoding.UTF8.GetBytes("This is not a Dapr encrypted message.");
+            await Assert.ThrowsAsync<RpcException>(async () =>
+            {
+                if (!streaming)
+                {
+                    await client.DecryptAsync(ComponentName, invalidCiphertext.AsMemory(), KeyName,
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+
+                using var inputStream = new MemoryStream(invalidCiphertext);
+                await foreach (var chunk in client.DecryptAsync(ComponentName, inputStream, KeyName,
+                                   cancellationToken: cancellationToken))
+                {
+                    _ = chunk.Length;
+                }
+            });
+        });
+    }
+
+    private static async Task RunWithClientAsync(Func<DaprEncryptionClient, CancellationToken, Task> test)
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("crypto-components");
+        var containerKeyPath = PrepareKeys(componentsDir);
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir).BuildCryptography(containerKeyPath);
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprEncryptionClient((sp, clientBuilder) =>
+                {
+                    var config = sp.GetRequiredService<IConfiguration>();
+                    var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                    if (!string.IsNullOrEmpty(grpcEndpoint))
+                        clientBuilder.UseGrpcEndpoint(grpcEndpoint);
+                });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<DaprEncryptionClient>();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(30));
+        await test(client, timeout.Token).WaitAsync(timeout.Token);
     }
 
     [Fact]

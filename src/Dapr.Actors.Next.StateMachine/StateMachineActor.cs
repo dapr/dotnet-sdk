@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,15 @@ namespace Dapr.Actors.Next.StateMachine;
 /// <summary>
 /// Base type for actor implementations authored as state machines.
 /// </summary>
+/// <remarks>
+/// A new machine enters its initial state from the outermost parent inward and processes
+/// events raised by entry actions before accepting its first command. Restoring a persisted
+/// machine does not replay entry actions. Failed initialization can be retried, so entry
+/// actions that perform external side effects should be idempotent.
+/// Timeouts belong to the state declaring them and remain active across sibling transitions.
+/// Each registration has its own identity, so queued callbacks from canceled or replaced
+/// timeouts cannot expire a later entry into the same state.
+/// </remarks>
 public abstract class StateMachineActor<TState, TData> : Actor
     where TState : struct, Enum
 {
@@ -32,6 +41,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
     private readonly string actorType;
     private readonly TData initialData;
     private readonly Queue<object> raisedEvents = [];
+    private readonly Dictionary<TState, Guid> timeouts = [];
     private TransitionTable<TState, TData>? table;
     private object? unhandled;
     private List<DeferredEventEnvelope> deferredEvents = [];
@@ -115,6 +125,11 @@ public abstract class StateMachineActor<TState, TData> : Actor
 
             await PersistAsync(cancellationToken).ConfigureAwait(false);
         }
+        catch
+        {
+            raisedEvents.Clear();
+            throw;
+        }
         finally
         {
             processing = false;
@@ -134,12 +149,16 @@ public abstract class StateMachineActor<TState, TData> : Actor
 
         if (string.Equals(payload.Name, StateMachineConstants.StateTimeoutTimerName, StringComparison.Ordinal))
         {
-            if (!string.Equals(payload.State, currentState.ToString(), StringComparison.Ordinal))
+            if (!Enum.TryParse<TState>(payload.State, out var owner)
+                || !payload.Generation.HasValue
+                || !timeouts.TryGetValue(owner, out var generation)
+                || generation != payload.Generation.Value
+                || !AncestorsFromChild(currentState).Contains(owner))
             {
                 return;
             }
 
-            await RaiseAsync<object?>(new StateTimeout<TState>(currentState), cancellationToken).ConfigureAwait(false);
+            await RaiseAsync<object?>(new StateTimeout<TState>(owner), cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -181,23 +200,49 @@ public abstract class StateMachineActor<TState, TData> : Actor
         }
 
         EnsureConfigured();
-        var envelope = await State.TryGetAsync<StateMachineEnvelope<TState, TData>>(StateMachineConstants.EnvelopeStateName, cancellationToken).ConfigureAwait(false);
-        if (envelope is null)
-        {
-            currentState = table!.InitialState ?? throw new StateMachineDefinitionException(
-                "State machine initial state was not configured.",
-                GetType());
-            data = initialData;
-            deferredEvents = [];
-        }
-        else
+        var envelope = await State
+            .TryGetAsync<StateMachineEnvelope<TState, TData>>(StateMachineConstants.EnvelopeStateName,
+                cancellationToken).ConfigureAwait(false);
+        if (envelope is not null)
         {
             currentState = envelope.Value.CurrentState;
             data = envelope.Value.Data;
             deferredEvents = envelope.Value.DeferredEvents.ToList();
+            restored = true;
+            return;
         }
 
+        currentState = table!.InitialState ?? throw new StateMachineDefinitionException(
+            "State machine initial state was not configured.",
+            GetType());
+        data = initialData;
+        deferredEvents = [];
+
+        // Reentrant Raise calls from entry actions must enqueue rather than initialize again.
         restored = true;
+        processing = true;
+        try
+        {
+            await EnterStatesAsync(AncestorsFromChild(currentState).Reverse(), new object(), cancellationToken)
+                .ConfigureAwait(false);
+            while (raisedEvents.Count > 0)
+            {
+                await ProcessEventAsync(raisedEvents.Dequeue(), allowDefer: true, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            await PersistAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            restored = false;
+            raisedEvents.Clear();
+            throw;
+        }
+        finally
+        {
+            processing = false;
+        }
     }
 
     private void EnsureConfigured()
@@ -226,7 +271,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
             return new EventProcessResult(true, DeferredEventAck.Accepted);
         }
 
-        var handler = FindHandler(currentState, evt.GetType());
+        var handler = FindHandler(currentState, evt.GetType(), out var handlerState);
         if (handler is null)
         {
             return await HandleUnhandledAsync(evt, cancellationToken).ConfigureAwait(false);
@@ -242,7 +287,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
         var context = CreateRuntimeContext(sourceState, evt);
         if (!branch.IsInternal && branch.Target.HasValue)
         {
-            await ExitToAsync(branch.Target.Value, evt, cancellationToken).ConfigureAwait(false);
+            await ExitToAsync(handlerState, branch.Target.Value, evt, cancellationToken).ConfigureAwait(false);
         }
 
         foreach (var effect in branch.Effects)
@@ -258,7 +303,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
         if (!branch.IsInternal && branch.Target.HasValue)
         {
             currentState = branch.Target.Value;
-            await EnterFromAsync(sourceState, currentState, evt, cancellationToken).ConfigureAwait(false);
+            await EnterFromAsync(handlerState, currentState, evt, cancellationToken).ConfigureAwait(false);
         }
 
         await ReplayDeferredEventsAsync(cancellationToken).ConfigureAwait(false);
@@ -312,13 +357,15 @@ public abstract class StateMachineActor<TState, TData> : Actor
         return null;
     }
 
-    private RuntimeHandler<TState, TData>? FindHandler(TState state, Type eventType)
+    private RuntimeHandler<TState, TData>? FindHandler(TState state, Type eventType, out TState handlerState)
     {
+        handlerState = state;
         var current = state;
         while (table!.RuntimeStates.TryGetValue(current, out var configuration))
         {
             if (configuration.Handlers.TryGetValue(eventType, out var handler))
             {
+                handlerState = current;
                 return handler;
             }
 
@@ -348,6 +395,11 @@ public abstract class StateMachineActor<TState, TData> : Actor
                 return EventDisposition.Deferred;
             }
 
+            if (configuration.Handlers.ContainsKey(eventType))
+            {
+                return EventDisposition.None;
+            }
+
             if (!configuration.Parent.HasValue)
             {
                 return EventDisposition.None;
@@ -359,17 +411,14 @@ public abstract class StateMachineActor<TState, TData> : Actor
         return EventDisposition.None;
     }
 
-    private async ValueTask ExitToAsync(TState target, object evt, CancellationToken cancellationToken)
+    private async ValueTask ExitToAsync(TState source, TState target, object evt, CancellationToken cancellationToken)
     {
-        var lca = FindLeastCommonAncestor(currentState, target);
+        var lca = FindLeastCommonAncestor(source, target);
         foreach (var state in AncestorsFromChild(currentState).TakeWhile(state => !lca.HasValue || !EqualityComparer<TState>.Default.Equals(state, lca.Value)))
         {
             if (table!.RuntimeStates.TryGetValue(state, out var configuration))
             {
-                if (configuration.Timeout.HasValue)
-                {
-                    await timerScheduler.CancelAsync(actorType, Id, StateMachineConstants.StateTimeoutTimerName, cancellationToken).ConfigureAwait(false);
-                }
+                await CancelTimeoutAsync(state, cancellationToken).ConfigureAwait(false);
 
                 foreach (var action in configuration.ExitActions)
                 {
@@ -382,7 +431,15 @@ public abstract class StateMachineActor<TState, TData> : Actor
     private async ValueTask EnterFromAsync(TState source, TState target, object evt, CancellationToken cancellationToken)
     {
         var lca = FindLeastCommonAncestor(source, target);
-        foreach (var state in AncestorsFromChild(target).TakeWhile(state => !lca.HasValue || !EqualityComparer<TState>.Default.Equals(state, lca.Value)).Reverse())
+        var states = AncestorsFromChild(target)
+            .TakeWhile(state => !lca.HasValue || !EqualityComparer<TState>.Default.Equals(state, lca.Value)).Reverse();
+        await EnterStatesAsync(states, evt, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async ValueTask EnterStatesAsync(IEnumerable<TState> states, object evt,
+        CancellationToken cancellationToken)
+    {
+        foreach (var state in states)
         {
             if (table!.RuntimeStates.TryGetValue(state, out var configuration))
             {
@@ -393,8 +450,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
 
                 if (configuration.Timeout.HasValue)
                 {
-                    new ActorTimerEffects<TState>(timerScheduler, actorType, Id, () => currentState)
-                        .Reschedule(StateMachineConstants.StateTimeoutTimerName, configuration.Timeout.Value);
+                    ScheduleTimeout(state, configuration.Timeout.Value, reschedule: true);
                 }
             }
         }
@@ -402,11 +458,18 @@ public abstract class StateMachineActor<TState, TData> : Actor
 
     private TState? FindLeastCommonAncestor(TState source, TState target)
     {
+        // External transitions must exit and re-enter an endpoint that is also the
+        // common ancestor (including self transitions); Internal() never gets here.
         var sourceAncestors = AncestorsFromChild(source).ToHashSet();
         foreach (var ancestor in AncestorsFromChild(target))
         {
             if (sourceAncestors.Contains(ancestor))
             {
+                if (EqualityComparer<TState>.Default.Equals(ancestor, source)
+                    || EqualityComparer<TState>.Default.Equals(ancestor, target))
+                {
+                    return table!.RuntimeStates[ancestor].Parent;
+                }
                 return ancestor;
             }
         }
@@ -430,7 +493,35 @@ public abstract class StateMachineActor<TState, TData> : Actor
     }
 
     private EffectContext<TState, TData, object> CreateContext(TState state, object evt) =>
-        new(state, () => data, value => data = value, evt, new ActorTimerEffects<TState>(timerScheduler, actorType, Id, () => currentState), raisedEvents);
+        new(state, () => data, value => data = value, evt, CreateTimerEffects(state), raisedEvents);
+
+    private ActorTimerEffects CreateTimerEffects(TState state) =>
+        new(timerScheduler, actorType, Id,
+            (dueTime, reschedule) => ScheduleTimeout(state, dueTime, reschedule),
+            () => CancelTimeoutAsync(state, CancellationToken.None).AsTask().GetAwaiter().GetResult());
+
+    private static string TimeoutName(TState state) => $"{StateMachineConstants.StateTimeoutTimerName}:{state}";
+
+    private void ScheduleTimeout(TState owner, TimeSpan dueTime, bool reschedule)
+    {
+        var generation = Guid.NewGuid();
+        var payload = JsonSerializer.Serialize(new StateMachineTimerPayload(
+            StateMachineConstants.StateTimeoutTimerName, owner.ToString(), generation));
+        if (reschedule)
+            timerScheduler.RescheduleAsync(actorType, Id, TimeoutName(owner), dueTime,
+                StateMachineConstants.TimerOperationName, payload).AsTask().GetAwaiter().GetResult();
+        else
+            timerScheduler.ScheduleAsync(actorType, Id, TimeoutName(owner), dueTime,
+                StateMachineConstants.TimerOperationName, payload).AsTask().GetAwaiter().GetResult();
+        timeouts[owner] = generation;
+    }
+
+    private async ValueTask CancelTimeoutAsync(TState owner, CancellationToken cancellationToken)
+    {
+        if (!timeouts.ContainsKey(owner)) return;
+        await timerScheduler.CancelAsync(actorType, Id, TimeoutName(owner), cancellationToken).ConfigureAwait(false);
+        timeouts.Remove(owner);
+    }
 
     private IRuntimeEffectContext CreateRuntimeContext(TState state, object evt)
     {
@@ -441,7 +532,7 @@ public abstract class StateMachineActor<TState, TData> : Actor
             new Func<TData>(() => data),
             new Action<TData>(value => data = value),
             evt,
-            new ActorTimerEffects<TState>(timerScheduler, actorType, Id, () => currentState),
+            CreateTimerEffects(state),
             raisedEvents)!;
     }
 

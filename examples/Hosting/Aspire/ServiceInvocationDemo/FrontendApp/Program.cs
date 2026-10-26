@@ -18,7 +18,9 @@ var app = builder.Build();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+#if NET9_0_OR_GREATER
 app.MapStaticAssets();
+#endif
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

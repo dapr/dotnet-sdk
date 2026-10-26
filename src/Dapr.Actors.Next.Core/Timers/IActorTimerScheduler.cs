@@ -111,6 +111,25 @@ public interface IActorTimerScheduler
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets a named actor timer registration, or <see langword="null"/> when it does not exist.
+    /// Timers are host-local: the call must reach the sidecar that currently hosts the actor.
+    /// </summary>
+    ValueTask<ActorTimerInfo?> GetAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists the timers registered for one actor.
+    /// Timers are host-local: the call must reach the sidecar that currently hosts the actor.
+    /// </summary>
+    ValueTask<IReadOnlyList<NamedActorTimerInfo>> ListAsync(
+        string actorType,
+        ActorId actorId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Cancels a named actor timer.
     /// </summary>
     ValueTask CancelAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default);

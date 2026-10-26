@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Dapr.Search</RootNamespace>
+        <Description>gRPC runtime implementation for the Dapr Search SDK.</Description>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Google.Protobuf" />
+        <PackageReference Include="Grpc.Net.Client" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+        <PackageReference Include="Microsoft.Extensions.Http" />
+        <ProjectReference Include="..\Dapr.Common\Dapr.Common.csproj" />
+        <ProjectReference Include="..\Dapr.Protos\Dapr.Protos.csproj" />
+        <ProjectReference Include="..\Dapr.Search.Abstractions\Dapr.Search.Abstractions.csproj" />
+    </ItemGroup>
+</Project>

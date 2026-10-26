@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,27 @@ public sealed class DaprSidecarActorStateStore : IActorStateStore
     private readonly Lazy<P.Dapr.DaprClient> client;
     private readonly string storeName;
     private readonly string? daprApiToken;
+
+    /// <inheritdoc />
+    public async ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default)
+    {
+        if (operations.Count == 0) return;
+        var request = new P.ExecuteStateTransactionRequest { StoreName = storeName };
+        foreach (var operation in operations)
+        {
+            request.Operations.Add(new P.TransactionalStateOperation
+            {
+                OperationType = operation.Value.HasValue ? "upsert" : "delete",
+                Request = new P.StateItem
+                {
+                    Key = CreateKey(actorType, actorId, operation.Name),
+                    Value = operation.Value.HasValue ? ByteString.CopyFrom(operation.Value.Value.Span) : ByteString.Empty,
+                },
+            });
+        }
+        await client.Value.ExecuteStateTransactionAsync(request,
+            DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DaprSidecarActorStateStore"/> class.

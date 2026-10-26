@@ -11,6 +11,7 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System.Diagnostics;
 using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Exceptions;
 using Dapr.Actors.Next.Abstractions.Scheduling;
@@ -25,12 +26,16 @@ namespace Dapr.Actors.Next.Testing;
 /// </summary>
 public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerScheduler, IActorReminderScheduler
 {
+    private static readonly Lazy<ExecutionContext> EmptyExecutionContext = new(CaptureEmptyExecutionContext);
     private readonly List<ScheduledCallback> callbacks = [];
+    private readonly List<VirtualTimer> timers = [];
     private readonly object syncRoot = new();
     private DateTimeOffset utcNow;
     private IActorRuntime? runtime;
     private IActorWireSerializer? serializer;
     private long nextSequence;
+    private bool advancing;
+    private bool hasCreatedTimer;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="VirtualActorTimeProvider"/> class.
@@ -41,11 +46,40 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
     }
 
     /// <inheritdoc />
-    public override DateTimeOffset GetUtcNow() => utcNow;
+    public override DateTimeOffset GetUtcNow()
+    {
+        lock (syncRoot)
+        {
+            return utcNow;
+        }
+    }
+
+    /// <inheritdoc />
+    public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+    {
+        ArgumentNullException.ThrowIfNull(callback);
+        ValidateTimerTimeout(dueTime, nameof(dueTime));
+        ValidateTimerTimeout(period, nameof(period));
+        var context = ExecutionContext.Capture() ?? EmptyExecutionContext.Value;
+        lock (syncRoot)
+        {
+            var timer = new VirtualTimer(this, callback, state, context, nextSequence++);
+            timer.Change(dueTime, period);
+            timers.Add(timer);
+            hasCreatedTimer = true;
+            return timer;
+        }
+    }
 
     /// <summary>
     /// Advances virtual time and enqueues due timer/reminder turns.
     /// </summary>
+    /// <remarks>
+    /// Callbacks run synchronously, outside the registration lock, in due-time and registration order.
+    /// The clock visits each due time before reaching the target; callbacks may change or cancel timers.
+    /// Concurrent or recursive advances are rejected. Cancellation prevents future admissions, but an
+    /// already admitted callback may finish. A callback exception stops advancement at its due time.
+    /// </remarks>
     public void Advance(TimeSpan duration)
     {
         if (duration < TimeSpan.Zero)
@@ -53,60 +87,108 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
             throw new ArgumentOutOfRangeException(nameof(duration), "Virtual time cannot move backwards.");
         }
 
-        IActorRuntime activeRuntime;
-        List<ScheduledCallback> due;
+        DateTimeOffset target;
         lock (syncRoot)
         {
-            utcNow += duration;
-            activeRuntime = runtime ?? throw new InvalidOperationException("Virtual time is not attached to an ActorTestRuntime.");
-            _ = serializer ?? throw new InvalidOperationException("Virtual time is not attached to an ActorTestRuntime.");
-            due = callbacks
-                .Where(callback => !callback.Canceled && callback.DueAt <= utcNow)
-                .OrderBy(callback => callback.DueAt)
-                .ThenBy(callback => callback.Sequence)
-                .ToList();
-
-            foreach (var callback in due)
+            if (advancing)
             {
-                while (!callback.Canceled && callback.DueAt <= utcNow)
+                throw new InvalidOperationException("Virtual time is already being advanced.");
+            }
+
+            // Raw TimeProvider timers can run without an actor runtime, even after disposal.
+            // Legacy actor-only use still requires attachment before its first advance.
+            if (runtime is null && (!hasCreatedTimer || callbacks.Any(callback => !callback.Canceled)))
+            {
+                throw new InvalidOperationException("Virtual time is not attached to an ActorTestRuntime.");
+            }
+
+            target = utcNow + duration;
+            advancing = true;
+        }
+
+        try
+        {
+            while (true)
+            {
+                VirtualTimer? timer;
+                ScheduledCallback? callback;
+                IActorRuntime? activeRuntime;
+                lock (syncRoot)
                 {
-                    if (callback.ExpiresAt.HasValue && callback.DueAt > callback.ExpiresAt.Value)
+                    callbacks.RemoveAll(item => item.Canceled || ReminderExpired(item));
+                    callback = callbacks.Where(item => item.DueAt <= target)
+                        .OrderBy(static item => item.DueAt).ThenBy(static item => item.Sequence).FirstOrDefault();
+                    timer = timers.Where(item => item.DueAt.HasValue && item.DueAt.Value <= target)
+                        .OrderBy(static item => item.DueAt).ThenBy(static item => item.Sequence).FirstOrDefault();
+                    if (timer is not null && (callback is null || timer.DueAt < callback.DueAt
+                            || (timer.DueAt == callback.DueAt && timer.Sequence < callback.Sequence)))
                     {
-                        callback.Canceled = true;
-                        break;
+                        callback = null;
+                        utcNow = timer.DueAt!.Value;
+                        timer.Admit();
+                    }
+                    else if (callback is not null)
+                    {
+                        timer = null;
+                        utcNow = callback.DueAt;
+                        if (callback.ExpiresAt.HasValue && (callback.DueAt > callback.ExpiresAt.Value
+                            || (callback.Kind == ActorTurnKind.Reminder && callback.DueAt == callback.ExpiresAt.Value)))
+                        {
+                            callback.Canceled = true;
+                            continue;
+                        }
+
+                        if (callback.Period <= TimeSpan.Zero)
+                        {
+                            callback.Canceled = true;
+                        }
+                        else
+                        {
+                            callback.DueAt += callback.Period;
+                        }
+                    }
+                    else
+                    {
+                        utcNow = target;
+                        callbacks.RemoveAll(ReminderExpired);
+                        return;
                     }
 
-                    _ = activeRuntime.DispatchAsync(
-                        new ActorRuntimeRequest(
-                            callback.ActorType,
-                            callback.ActorId,
-                            callback.OperationName,
-                            callback.Kind,
-                            callback.Arguments,
-                            callback.Headers,
-                            new ActorRequestContext(null, null, new Dictionary<string, string>(StringComparer.Ordinal))),
-                        CancellationToken.None);
-
-                    if (callback.Period <= TimeSpan.Zero)
-                    {
-                        callback.Canceled = true;
-                        break;
-                    }
-
-                    callback.DueAt += callback.Period;
+                    activeRuntime = runtime;
                 }
+
+                if (timer is not null)
+                {
+                    timer.Invoke();
+                }
+                else
+                {
+                    var state = (Provider: this, Runtime: activeRuntime!, Callback: callback!);
+                    ExecutionContext.Run(EmptyExecutionContext.Value, static value =>
+                    {
+                        var invocation = ((VirtualActorTimeProvider Provider, IActorRuntime Runtime, ScheduledCallback Callback))value!;
+                        _ = invocation.Provider.DispatchActorCallbackAsync(invocation.Runtime, invocation.Callback);
+                    }, state);
+                }
+            }
+        }
+        finally
+        {
+            lock (syncRoot)
+            {
+                advancing = false;
             }
         }
     }
 
     /// <summary>
-    /// Schedules an actor timer turn.
+    /// Schedules an actor timer turn, replacing a timer with the same actor and operation name.
     /// </summary>
     public void ScheduleTimer(string actorType, ActorId actorId, string operationName, TimeSpan dueTime, string argumentsJson = "", IReadOnlyDictionary<string, string>? headers = null) =>
         Schedule(actorType, actorId, operationName, operationName, ActorTurnKind.Timer, dueTime, ToJsonBytes(argumentsJson), argumentsJson, headers, period: null, ttl: null);
 
     /// <summary>
-    /// Schedules an actor reminder turn.
+    /// Schedules an actor reminder turn, replacing a reminder with the same actor and operation name.
     /// </summary>
     public void ScheduleReminder(string actorType, ActorId actorId, string operationName, TimeSpan dueTime, string argumentsJson = "", IReadOnlyDictionary<string, string>? headers = null) =>
         Schedule(actorType, actorId, operationName, operationName, ActorTurnKind.Reminder, dueTime, ToJsonBytes(argumentsJson), argumentsJson, headers, period: null, ttl: null);
@@ -124,9 +206,10 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ValidateTimerPeriod(period);
         ValidateTimerTtl(dueTime, ttl);
-        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, ToJsonBytes(argumentsJson), argumentsJson, headers, period, ttl);
+        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, ToJsonBytes(argumentsJson), argumentsJson, headers, period, ttl, cancellationToken: cancellationToken);
         return ValueTask.CompletedTask;
     }
 
@@ -143,11 +226,12 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(arguments);
         ValidateTimerPeriod(period);
         ValidateTimerTtl(dueTime, ttl);
         var payload = arguments.ToArray();
-        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, payload, ToJsonText(payload), headers, period, ttl);
+        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, payload, ToJsonText(payload), headers, period, ttl, cancellationToken: cancellationToken);
         return ValueTask.CompletedTask;
     }
 
@@ -164,10 +248,11 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var payload = Serialize(arguments);
         ValidateTimerPeriod(period);
         ValidateTimerTtl(dueTime, ttl);
-        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, payload, ToJsonText(payload), headers, period, ttl);
+        Schedule(actorType, actorId, name, operationName, ActorTurnKind.Timer, dueTime, payload, ToJsonText(payload), headers, period, ttl, cancellationToken: cancellationToken);
         return ValueTask.CompletedTask;
     }
 
@@ -184,7 +269,6 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
-        await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
         await ScheduleAsync(actorType, actorId, name, dueTime, operationName, argumentsJson, period, ttl, headers, cancellationToken).ConfigureAwait(false);
     }
 
@@ -201,7 +285,6 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
-        await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
         await ScheduleAsync(actorType, actorId, name, dueTime, operationName, arguments, period, ttl, headers, cancellationToken).ConfigureAwait(false);
     }
 
@@ -218,15 +301,57 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         IReadOnlyDictionary<string, string>? headers = null,
         CancellationToken cancellationToken = default)
     {
-        await CancelAsync(actorType, actorId, name, cancellationToken).ConfigureAwait(false);
         await ScheduleAsync(actorType, actorId, name, dueTime, operationName, arguments, period, ttl, headers, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public ValueTask CancelAsync(string actorType, ActorId actorId, string name, CancellationToken cancellationToken = default)
     {
-        Cancel(actorType, actorId, name, ActorTurnKind.Timer);
+        Cancel(actorType, actorId, name, ActorTurnKind.Timer, cancellationToken);
         return ValueTask.CompletedTask;
+    }
+
+    /// <inheritdoc />
+    ValueTask<ActorTimerInfo?> IActorTimerScheduler.GetAsync(
+        string actorType,
+        ActorId actorId,
+        string name,
+        CancellationToken cancellationToken)
+    {
+        lock (syncRoot)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var callback = callbacks.LastOrDefault(callback =>
+                !callback.Canceled && !Expired(callback)
+                && callback.Kind == ActorTurnKind.Timer
+                && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
+                && callback.ActorId.Equals(actorId)
+                && string.Equals(callback.Name, name, StringComparison.Ordinal));
+
+            return ValueTask.FromResult(callback?.ToTimerInfo());
+        }
+    }
+
+    /// <inheritdoc />
+    ValueTask<IReadOnlyList<NamedActorTimerInfo>> IActorTimerScheduler.ListAsync(
+        string actorType,
+        ActorId actorId,
+        CancellationToken cancellationToken)
+    {
+        lock (syncRoot)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var timers = callbacks
+                .Where(callback =>
+                    !callback.Canceled && !Expired(callback)
+                    && callback.Kind == ActorTurnKind.Timer
+                    && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
+                    && callback.ActorId.Equals(actorId))
+                .Select(static callback => new NamedActorTimerInfo(callback.Name, callback.ToTimerInfo()))
+                .ToArray();
+
+            return ValueTask.FromResult<IReadOnlyList<NamedActorTimerInfo>>(timers);
+        }
     }
 
     /// <inheritdoc />
@@ -238,8 +363,9 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
     {
         lock (syncRoot)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var callback = callbacks.LastOrDefault(callback =>
-                !callback.Canceled
+                !callback.Canceled && !Expired(callback)
                 && callback.Kind == ActorTurnKind.Reminder
                 && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
                 && callback.ActorId.Equals(actorId)
@@ -257,9 +383,10 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
     {
         lock (syncRoot)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var reminders = callbacks
                 .Where(callback =>
-                    !callback.Canceled
+                    !callback.Canceled && !Expired(callback)
                     && callback.Kind == ActorTurnKind.Reminder
                     && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
                     && (!actorId.HasValue || callback.ActorId.Equals(actorId.Value)))
@@ -270,6 +397,14 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         }
     }
 
+    private bool ReminderExpired(ScheduledCallback callback) =>
+        callback.Kind == ActorTurnKind.Reminder && callback.ExpiresAt.HasValue && utcNow >= callback.ExpiresAt.Value;
+
+    // Same rule the advance loop applies: reminders expire at the deadline, timers only after it.
+    private bool Expired(ScheduledCallback callback) =>
+        ReminderExpired(callback)
+        || (callback.Kind == ActorTurnKind.Timer && callback.ExpiresAt.HasValue && utcNow > callback.ExpiresAt.Value);
+
     /// <inheritdoc />
     ValueTask IActorReminderScheduler.CancelAsync(
         string actorType,
@@ -277,7 +412,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         string name,
         CancellationToken cancellationToken)
     {
-        Cancel(actorType, actorId, name, ActorTurnKind.Reminder);
+        Cancel(actorType, actorId, name, ActorTurnKind.Reminder, cancellationToken);
         return ValueTask.CompletedTask;
     }
 
@@ -289,6 +424,7 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
     {
         lock (syncRoot)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             foreach (var callback in callbacks.Where(callback =>
                 !callback.Canceled
                 && callback.Kind == ActorTurnKind.Reminder
@@ -297,15 +433,18 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
             {
                 callback.Canceled = true;
             }
+
+            callbacks.RemoveAll(static callback => callback.Canceled);
         }
 
         return ValueTask.CompletedTask;
     }
 
-    private void Cancel(string actorType, ActorId actorId, string name, ActorTurnKind kind)
+    private void Cancel(string actorType, ActorId actorId, string name, ActorTurnKind kind, CancellationToken cancellationToken)
     {
         lock (syncRoot)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             foreach (var callback in callbacks.Where(callback =>
                 !callback.Canceled
                 && callback.Kind == kind
@@ -315,6 +454,8 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
             {
                 callback.Canceled = true;
             }
+
+            callbacks.RemoveAll(static callback => callback.Canceled);
         }
     }
 
@@ -331,42 +472,9 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         ActorReminderFailurePolicy? failurePolicy,
         CancellationToken cancellationToken)
     {
-        if (period < TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(period), "Period cannot be negative.");
-        }
-
-        if (ttl.HasValue && ttl.Value < TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(ttl), "TTL cannot be negative.");
-        }
-
-        ValidateFailurePolicy(failurePolicy);
-
-        lock (syncRoot)
-        {
-            var existing = callbacks
-                .Where(callback =>
-                    !callback.Canceled
-                    && callback.Kind == ActorTurnKind.Reminder
-                    && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
-                    && callback.ActorId.Equals(actorId)
-                    && string.Equals(callback.Name, name, StringComparison.Ordinal))
-                .ToArray();
-
-            if (existing.Length > 0 && overwrite == false)
-            {
-                throw new ActorReminderAlreadyExistsException(actorType, actorId.Value, name);
-            }
-
-            foreach (var callback in existing)
-            {
-                callback.Canceled = true;
-            }
-        }
-
-        Schedule(actorType, actorId, name, name, ActorTurnKind.Reminder, dueTime, ToJsonBytes(argumentsJson), argumentsJson, null, period, ttl, failurePolicy);
-        return ValueTask.CompletedTask;
+        cancellationToken.ThrowIfCancellationRequested();
+        return ScheduleReminderCoreAsync(actorType, actorId, name, dueTime, period, ToJsonBytes(argumentsJson),
+            argumentsJson, ttl, overwrite, failurePolicy, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -382,9 +490,10 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         ActorReminderFailurePolicy? failurePolicy,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(arguments);
         var payload = arguments.ToArray();
-        return ScheduleReminderCoreAsync(actorType, actorId, name, dueTime, period, payload, ToJsonText(payload), ttl, overwrite, failurePolicy);
+        return ScheduleReminderCoreAsync(actorType, actorId, name, dueTime, period, payload, ToJsonText(payload), ttl, overwrite, failurePolicy, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -400,8 +509,9 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         ActorReminderFailurePolicy? failurePolicy,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var payload = Serialize(arguments);
-        return ScheduleReminderCoreAsync(actorType, actorId, name, dueTime, period, payload, ToJsonText(payload), ttl, overwrite, failurePolicy);
+        return ScheduleReminderCoreAsync(actorType, actorId, name, dueTime, period, payload, ToJsonText(payload), ttl, overwrite, failurePolicy, cancellationToken);
     }
 
     internal void Attach(IActorRuntime actorRuntime, IActorWireSerializer wireSerializer)
@@ -425,8 +535,13 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         IReadOnlyDictionary<string, string>? headers,
         TimeSpan? period,
         TimeSpan? ttl,
-        ActorReminderFailurePolicy? failurePolicy = null)
+        ActorReminderFailurePolicy? failurePolicy = null,
+        bool? overwrite = null,
+        CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actorType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationName);
         if (dueTime < TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(dueTime), "Due time cannot be negative.");
@@ -434,7 +549,18 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
 
         lock (syncRoot)
         {
-            callbacks.Add(new ScheduledCallback(
+            cancellationToken.ThrowIfCancellationRequested();
+            var existing = callbacks.Where(callback => !callback.Canceled && !Expired(callback)
+                && callback.Kind == kind
+                && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
+                && callback.ActorId.Equals(actorId)
+                && string.Equals(callback.Name, name, StringComparison.Ordinal)).ToArray();
+            if (existing.Length > 0 && overwrite == false)
+            {
+                throw new ActorReminderAlreadyExistsException(actorType, actorId.Value, name);
+            }
+
+            var registration = new ScheduledCallback(
                 actorType,
                 actorId,
                 name,
@@ -449,8 +575,15 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
                 nextSequence++,
                 arguments,
                 argumentsJson,
-                headers ?? new Dictionary<string, string>(StringComparer.Ordinal),
-                failurePolicy));
+                headers is null ? new Dictionary<string, string>(StringComparer.Ordinal) : new Dictionary<string, string>(headers),
+                failurePolicy);
+            foreach (var callback in existing)
+            {
+                callback.Canceled = true;
+            }
+
+            callbacks.RemoveAll(static callback => callback.Canceled);
+            callbacks.Add(registration);
         }
     }
 
@@ -464,7 +597,8 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         string? argumentsJson,
         TimeSpan? ttl,
         bool? overwrite,
-        ActorReminderFailurePolicy? failurePolicy)
+        ActorReminderFailurePolicy? failurePolicy,
+        CancellationToken cancellationToken)
     {
         if (period < TimeSpan.Zero)
         {
@@ -478,45 +612,63 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
 
         ValidateFailurePolicy(failurePolicy);
 
-        lock (syncRoot)
-        {
-            var existing = callbacks
-                .Where(callback =>
-                    !callback.Canceled
-                    && callback.Kind == ActorTurnKind.Reminder
-                    && string.Equals(callback.ActorType, actorType, StringComparison.Ordinal)
-                    && callback.ActorId.Equals(actorId)
-                    && string.Equals(callback.Name, name, StringComparison.Ordinal))
-                .ToArray();
-
-            if (existing.Length > 0 && overwrite == false)
-            {
-                throw new ActorReminderAlreadyExistsException(actorType, actorId.Value, name);
-            }
-
-            foreach (var callback in existing)
-            {
-                callback.Canceled = true;
-            }
-        }
-
-        Schedule(actorType, actorId, name, name, ActorTurnKind.Reminder, dueTime, arguments, argumentsJson, null, period, ttl, failurePolicy);
+        Schedule(actorType, actorId, name, name, ActorTurnKind.Reminder, dueTime, arguments, argumentsJson,
+            null, period, ttl, failurePolicy, overwrite, cancellationToken);
         return ValueTask.CompletedTask;
     }
 
     private byte[] Serialize<TArguments>(TArguments arguments)
     {
+        IActorWireSerializer activeSerializer;
         lock (syncRoot)
         {
-            return (serializer ?? throw new InvalidOperationException("Virtual time is not attached to an ActorTestRuntime.")).SerializeToBytes(arguments);
+            activeSerializer = serializer ?? throw new InvalidOperationException("Virtual time is not attached to an ActorTestRuntime.");
         }
+
+        return activeSerializer.SerializeToBytes(arguments);
     }
 
     private string? ToJsonText(byte[] arguments)
     {
+        IActorWireSerializer? activeSerializer;
         lock (syncRoot)
         {
-            return serializer?.BytesToJson(arguments) ?? global::System.Text.Encoding.UTF8.GetString(arguments);
+            activeSerializer = serializer;
+        }
+
+        return activeSerializer?.BytesToJson(arguments) ?? global::System.Text.Encoding.UTF8.GetString(arguments);
+    }
+
+    private async Task DispatchActorCallbackAsync(IActorRuntime activeRuntime, ScheduledCallback callback)
+    {
+        try
+        {
+            await activeRuntime.DispatchAsync(
+                new ActorRuntimeRequest(callback.ActorType, callback.ActorId, callback.OperationName, callback.Kind,
+                    callback.Arguments, callback.Headers,
+                    new ActorRequestContext(null, null, new Dictionary<string, string>(StringComparer.Ordinal))),
+                CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            Trace.TraceError("Virtual actor callback failed for {0}/{1}/{2}: {3}",
+                callback.ActorType, callback.ActorId, callback.OperationName, exception);
+        }
+    }
+
+    private static ExecutionContext CaptureEmptyExecutionContext()
+    {
+        var completion = new TaskCompletionSource<ExecutionContext>(TaskCreationOptions.RunContinuationsAsynchronously);
+        ThreadPool.UnsafeQueueUserWorkItem(static state =>
+            state.SetResult(ExecutionContext.Capture()!), completion, preferLocal: false);
+        return completion.Task.GetAwaiter().GetResult();
+    }
+
+    private static void ValidateTimerTimeout(TimeSpan timeout, string parameterName)
+    {
+        if (timeout != Timeout.InfiniteTimeSpan && (timeout < TimeSpan.Zero || timeout.TotalMilliseconds > uint.MaxValue - 1))
+        {
+            throw new ArgumentOutOfRangeException(parameterName, "Timer timeout must be nonnegative, at most 4294967294 milliseconds, or infinite.");
         }
     }
 
@@ -544,6 +696,90 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         if (failurePolicy is ActorReminderFailurePolicy.Constant constantPolicy && constantPolicy.Interval < TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(failurePolicy), "Failure policy interval cannot be negative.");
+        }
+    }
+
+    private sealed class VirtualTimer(
+        VirtualActorTimeProvider owner,
+        TimerCallback callback,
+        object? state,
+        ExecutionContext context,
+        long sequence) : ITimer
+    {
+        private bool disposed;
+        private int activeCallbacks;
+        private TimeSpan period;
+        private TaskCompletionSource? disposal;
+
+        public DateTimeOffset? DueAt { get; private set; }
+
+        public long Sequence { get; } = sequence;
+
+        public bool Change(TimeSpan dueTime, TimeSpan newPeriod)
+        {
+            ValidateTimerTimeout(dueTime, nameof(dueTime));
+            ValidateTimerTimeout(newPeriod, nameof(newPeriod));
+            lock (owner.syncRoot)
+            {
+                if (disposed)
+                {
+                    return false;
+                }
+
+                DueAt = dueTime == Timeout.InfiniteTimeSpan ? null : owner.utcNow + dueTime;
+                period = newPeriod;
+                return true;
+            }
+        }
+
+        public void Admit()
+        {
+            DueAt = period > TimeSpan.Zero ? DueAt + period : null;
+            activeCallbacks++;
+        }
+
+        public void Invoke()
+        {
+            try
+            {
+                ExecutionContext.Run(context, _ => callback(state), null);
+            }
+            finally
+            {
+                lock (owner.syncRoot)
+                {
+                    activeCallbacks--;
+                    if (activeCallbacks == 0)
+                    {
+                        disposal?.TrySetResult();
+                    }
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (owner.syncRoot)
+            {
+                disposed = true;
+                DueAt = null;
+                owner.timers.Remove(this);
+            }
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            lock (owner.syncRoot)
+            {
+                Dispose();
+                if (activeCallbacks == 0)
+                {
+                    return ValueTask.CompletedTask;
+                }
+
+                disposal ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                return new ValueTask(disposal.Task);
+            }
         }
     }
 
@@ -598,6 +834,9 @@ public sealed class VirtualActorTimeProvider : TimeProvider, IActorTimerSchedule
         public ActorReminderFailurePolicy? FailurePolicy { get; } = failurePolicy;
 
         public bool Canceled { get; set; }
+
+        public ActorTimerInfo ToTimerInfo() =>
+            new(ActorType, ActorId, OriginalDueTime, DueAt: null, ActorTimerInfo.NormalizePeriod(OriginalPeriod), ArgumentsJson, ExpiresAt, OperationName);
 
         public ActorReminderInfo ToReminderInfo() =>
             new(ActorType, ActorId, OriginalDueTime, OriginalPeriod, ArgumentsJson, OriginalTtl, FailurePolicy);

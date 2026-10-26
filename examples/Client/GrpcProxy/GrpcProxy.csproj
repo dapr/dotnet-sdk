@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Protobuf Include="..\..\AspNetCore\GrpcServiceSample\Protos\helloworld.proto"
+              ProtoRoot="..\..\AspNetCore\GrpcServiceSample\Protos"
+              GrpcServices="Client" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Net.Client" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="All" />
+    <ProjectReference Include="..\..\..\src\Dapr.Client\Dapr.Client.csproj" />
+  </ItemGroup>
+</Project>

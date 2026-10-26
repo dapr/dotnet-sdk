@@ -1,4 +1,4 @@
-// ------------------------------------------------------------------------
+﻿// ------------------------------------------------------------------------
 // Copyright 2026 The Dapr Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ using Dapr.Actors.Next.Abstractions;
 using Dapr.Actors.Next.Abstractions.Filters;
 using Dapr.Actors.Next.Interpreted;
 using Dapr.Actors.Next.Testing;
+using Dapr.Actors.Next.Core.State;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Actors.Next.Interpreted.Test;
@@ -25,6 +26,60 @@ namespace Dapr.Actors.Next.Interpreted.Test;
 public sealed class InterpretedTests
 {
     private static readonly ActorId Id = ActorId.Create("machine-1");
+
+    [Fact]
+    public async Task Verification_failure_is_repeated_until_definition_is_repaired()
+    {
+        var registry = new TestCapabilityRegistry();
+        var store = new InMemoryInterpretedMachineStore();
+        await store.SetAsync("Machine", Id, Definition(includeClosedState: false));
+        await using var runtime = Runtime(store, registry);
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var error = await Assert.ThrowsAsync<InvalidOperationException>(() => Raise(runtime, new("bid", Json(1))));
+            Assert.Contains("verification failed", error.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        await store.SetAsync("Machine", Id, Definition());
+        using var result = await Raise(runtime, new("bid", Json(1)));
+        Assert.Equal("Open", result.RootElement.GetProperty("State").GetString());
+    }
+
+    [Fact]
+    public async Task Transient_state_read_failure_retries_initialization_without_reset()
+    {
+        var registry = new TestCapabilityRegistry();
+        var definitions = new InMemoryInterpretedMachineStore();
+        await Deploy(definitions, registry, Definition());
+        var state = new FailFirstReadStore();
+        await using var runtime = new ActorTestRuntime(services =>
+        {
+            services.AddSingleton<IInterpretedMachineStore>(definitions);
+            services.AddSingleton<ICapabilityRegistry>(registry);
+            services.AddSingleton<IActorStateStore>(state);
+            services.AddDaprInterpretedActors("Machine");
+        });
+        await Assert.ThrowsAsync<IOException>(() => Raise(runtime, new("bid", Json(1))));
+        using var result = await Raise(runtime, new("bid", Json(1)));
+        Assert.Equal("Open", result.RootElement.GetProperty("State").GetString());
+        Assert.Equal(2, state.Reads);
+    }
+
+    private sealed class FailFirstReadStore : IActorStateStore
+    {
+        private readonly InMemoryActorStateStore inner = new();
+        public int Reads { get; private set; }
+        public ValueTask<ReadOnlyMemory<byte>?> ReadAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default)
+        {
+            if (++Reads == 1) throw new IOException("transient read");
+            return inner.ReadAsync(actorType, actorId, name, cancellationToken);
+        }
+        public ValueTask ApplyAsync(string actorType, string actorId, IReadOnlyList<ActorStateOperation> operations, CancellationToken cancellationToken = default) =>
+            inner.ApplyAsync(actorType, actorId, operations, cancellationToken);
+        public ValueTask WriteAsync(string actorType, string actorId, string name, ReadOnlyMemory<byte> value, CancellationToken cancellationToken = default) =>
+            inner.WriteAsync(actorType, actorId, name, value, cancellationToken);
+        public ValueTask DeleteAsync(string actorType, string actorId, string name, CancellationToken cancellationToken = default) =>
+            inner.DeleteAsync(actorType, actorId, name, cancellationToken);
+    }
 
     [MinimumDaprRuntimeFact("1.18")]
     public async Task Table_execution_matches_compiled_equivalent()
