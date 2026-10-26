@@ -130,7 +130,7 @@ public sealed class DaprActorEventsTransport : ISubscribeActorEventsTransport
 
         private static SubscribeActorEventsRequest ToRuntimeRequest(P.SubscribeActorEventsResponseReminderRequestAlpha1 request)
         {
-            var headers = CreateTimerHeaders(request.DueTime, request.Period, request.Data);
+            var headers = CreateTimerHeaders(request.DueTime, request.Period, request.Data, request.Metadata);
             return new SubscribeActorEventsRequest(
                 request.Id,
                 SubscribeActorEventsFrameKind.Reminder,
@@ -143,7 +143,7 @@ public sealed class DaprActorEventsTransport : ISubscribeActorEventsTransport
 
         private static SubscribeActorEventsRequest ToRuntimeRequest(P.SubscribeActorEventsResponseTimerRequestAlpha1 request)
         {
-            var headers = CreateTimerHeaders(request.DueTime, request.Period, request.Data);
+            var headers = CreateTimerHeaders(request.DueTime, request.Period, request.Data, request.Metadata);
             return new SubscribeActorEventsRequest(
                 request.Id,
                 SubscribeActorEventsFrameKind.Timer,
@@ -294,9 +294,15 @@ public sealed class DaprActorEventsTransport : ISubscribeActorEventsTransport
             return new P.SubscribeActorEventsRequestAlpha1 { InvokeResponse = invokeResponse };
         }
 
-        private static IReadOnlyDictionary<string, string> CreateTimerHeaders(string dueTime, string period, Any? data)
+        private static IReadOnlyDictionary<string, string> CreateTimerHeaders(string dueTime, string period, Any? data, IReadOnlyDictionary<string, string> metadata)
         {
             var headers = new Dictionary<string, string>(StringComparer.Ordinal);
+            var activationId = ActorHeaders.GetActivationId(metadata);
+            if (activationId.Length > 0)
+            {
+                headers[ActorHeaders.ActivationIdHeaderName] = activationId;
+            }
+
             if (!string.IsNullOrWhiteSpace(dueTime))
             {
                 headers["dapr-due-time"] = dueTime;

@@ -23,6 +23,7 @@ public static class ActorHeaders
 {
     private const string ReentrancyHeaderName = "dapr-reentrant-id";
     private const string AlternateReentrancyHeaderName = "x-dapr-reentrant-id";
+    internal const string ActivationIdHeaderName = "Dapr-Actor-Activation-Id";
 
     /// <summary>
     /// Gets an immutable empty header dictionary.
@@ -72,6 +73,25 @@ public static class ActorHeaders
             : new Dictionary<string, string>(headers, StringComparer.Ordinal);
         copy[ReentrancyHeaderName] = Guid.NewGuid().ToString("N");
         return copy;
+    }
+
+    internal static string GetActivationId(IReadOnlyDictionary<string, string> headers)
+    {
+        ArgumentNullException.ThrowIfNull(headers);
+        if (headers.TryGetValue(ActivationIdHeaderName, out var value) && !string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        foreach (var (key, candidate) in headers)
+        {
+            if (!string.IsNullOrEmpty(candidate) && string.Equals(key, ActivationIdHeaderName, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidate;
+            }
+        }
+
+        return string.Empty;
     }
 
     internal static bool TryGetReentrancy(IReadOnlyDictionary<string, string> headers, out string key, out string value)

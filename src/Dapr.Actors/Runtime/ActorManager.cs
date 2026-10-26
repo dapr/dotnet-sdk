@@ -15,6 +15,7 @@ namespace Dapr.Actors.Runtime;
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -36,7 +37,7 @@ internal sealed class ActorManager
     private readonly ILoggerFactory loggerFactory;
     private readonly IActorProxyFactory proxyFactory;
     private readonly ActorTimerManager timerManager;
-    private readonly ConcurrentDictionary<ActorId, ActorActivatorState> activeActors;
+    private readonly ConcurrentDictionary<ActorId, ActiveActor> activeActors;
     private readonly ActorMethodContext reminderMethodContext;
     private readonly ActorMethodContext timerMethodContext;
     private readonly ActorMessageSerializersManager serializersManager;
@@ -76,7 +77,7 @@ internal sealed class ActorManager
 
         // map for non-remoting calls.
         this.actorMethodInfoMap = new ActorMethodInfoMap(this.registration.Type.InterfaceTypes);
-        this.activeActors = new ConcurrentDictionary<ActorId, ActorActivatorState>();
+        this.activeActors = new ConcurrentDictionary<ActorId, ActiveActor>();
         this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
         this.timerMethodContext = ActorMethodContext.CreateForTimer(TimerMethodName);
 
@@ -95,7 +96,7 @@ internal sealed class ActorManager
 
     internal ActorTypeInformation ActorTypeInfo => this.registration.Type;
 
-    internal async Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken)
+    internal async Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string daprActorheader, Stream data, string activationId, CancellationToken cancellationToken)
     {
         var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 
@@ -133,10 +134,10 @@ internal sealed class ActorManager
             return this.CreateResponseMessage(responseMsgBody, interfaceId, actorMethodContext.MethodName);
         }
 
-        return await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
+        return await this.DispatchInternalAsync(actorId, activationId, actorMethodContext, RequestFunc, cancellationToken);
     }
 
-    internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
+    internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, string activationId, CancellationToken cancellationToken)
     {
         var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 
@@ -180,7 +181,7 @@ internal sealed class ActorManager
             }
         }
 
-        var result = await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
+        var result = await this.DispatchInternalAsync(actorId, activationId, actorMethodContext, RequestFunc, cancellationToken);
 
         // Write Response back if method's return type is other than Task.
         // Serialize result if it has result (return type was not just Task.)
@@ -196,7 +197,7 @@ internal sealed class ActorManager
         }
     }
 
-    internal async Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
+    internal async Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, string activationId = null, CancellationToken cancellationToken = default)
     {
         // Only FireReminder if its IRemindable, else ignore it.
         if (this.ActorTypeInfo.IsRemindable)
@@ -216,11 +217,11 @@ internal sealed class ActorManager
                 return null;
             }
 
-            await this.DispatchInternalAsync(actorId, this.reminderMethodContext, RequestFunc, cancellationToken);
+            await this.DispatchInternalAsync(actorId, activationId, this.reminderMethodContext, RequestFunc, cancellationToken);
         }
     }
 
-    internal async Task<bool> FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
+    internal async Task<bool> FireTimerAsync(ActorId actorId, Stream requestBodyStream, string activationId = null, CancellationToken cancellationToken = default)
     {
         #pragma warning disable 0618
         var timerData = await DeserializeAsync(requestBodyStream);
@@ -249,7 +250,7 @@ internal sealed class ActorManager
             }
         }
         
-        return await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
+        return await this.DispatchInternalAsync(actorId, activationId, this.timerMethodContext, RequestFunc, cancellationToken);
     }
 
 #pragma warning disable 0618
@@ -308,14 +309,20 @@ internal sealed class ActorManager
     }
 #pragma warning restore 0618
 
-    internal async Task ActivateActorAsync(ActorId actorId)
+    internal async Task ActivateActorAsync(ActorId actorId, string activationId = null)
+    {
+        await this.ActivateCoreAsync(actorId, activationId);
+    }
+
+    private async Task<ActiveActor> ActivateCoreAsync(ActorId actorId, string activationId)
     {
         // An actor is activated by "Dapr" runtime when a call is to be made for an actor.
         var state = await this.CreateActorAsync(actorId);
+        var active = new ActiveActor(state, activationId ?? string.Empty);
 
         try
         {
-            await state.Actor.OnActivateInternalAsync();
+            await state.Actor.OnActivateInternalAsync(() => !this.activeActors.ContainsKey(actorId));
         }
         catch
         {
@@ -332,15 +339,46 @@ internal sealed class ActorManager
         //
         // The policy we have chosen is to always keep the registered instance if we hit a double-activation
         // so that means we have to destroy the 'new' instance.
-        var current = this.activeActors.AddOrUpdate(actorId, state, (key, oldValue) => oldValue);
-        if (object.ReferenceEquals(state, current))
+        var current = this.activeActors.AddOrUpdate(actorId, active, (key, oldValue) => oldValue);
+        if (object.ReferenceEquals(active, current))
         {
             // On this code path it was an *Add*. Nothing left to do.
-            return;
+            return active;
         }
 
         // On this code path it was an *Update*. We need to destroy the new instance and clean up.
-        await DeactivateActorCore(state);
+        try
+        {
+            await DeactivateActorCore(state);
+        }
+        catch (Exception ex)
+        {
+            this.logger.LogError(ex, "Deactivating discarded activation of Actor of type {ActorType} with ActorId {ActorId} failed", this.ActorTypeInfo.ImplementationType, actorId);
+        }
+
+        return this.Settle(actorId, activationId, current);
+    }
+
+    private async Task<ActiveActor> GetOrActivateAsync(ActorId actorId, string activationId)
+    {
+        await this.ResetStaleActivationAsync(actorId, activationId);
+
+        if (this.activeActors.TryGetValue(actorId, out var existing))
+        {
+            return this.Settle(actorId, activationId, existing);
+        }
+
+        return await this.ActivateCoreAsync(actorId, activationId);
+    }
+
+    private ActiveActor Settle(ActorId actorId, string activationId, ActiveActor registered)
+    {
+        if (string.IsNullOrEmpty(activationId) || string.Equals(registered.ActivationId, activationId, StringComparison.Ordinal))
+        {
+            return registered;
+        }
+
+        throw new InvalidOperationException($"Actor {actorId} was activated by another activation during this call, the call was not run.");
     }
 
     private async Task<ActorActivatorState> CreateActorAsync(ActorId actorId)
@@ -359,7 +397,44 @@ internal sealed class ActorManager
     {
         if (this.activeActors.TryRemove(actorId, out var deactivatedActor))
         {
-            await DeactivateActorCore(deactivatedActor);
+            await DeactivateActorCore(deactivatedActor.State);
+        }
+    }
+
+    private async Task ResetStaleActivationAsync(ActorId actorId, string activationId)
+    {
+        if (string.IsNullOrEmpty(activationId)
+            || !this.activeActors.TryGetValue(actorId, out var existing)
+            || string.Equals(existing.ActivationId, activationId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (this.activeActors.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, existing)))
+        {
+            this.logger.LogDebug("Activation id changed for Actor of type {ActorType} with ActorId {ActorId}, deactivating stale activation", this.ActorTypeInfo.ImplementationType, actorId);
+            try
+            {
+                await DeactivateActorCore(existing.State);
+            }
+            catch (Exception ex)
+            {
+                this.logger.LogError(ex, "Deactivating stale activation of Actor of type {ActorType} with ActorId {ActorId} failed", this.ActorTypeInfo.ImplementationType, actorId);
+            }
+        }
+    }
+
+    private void EnsureLive(ActorId actorId, ActiveActor active)
+    {
+        // A newer activation or a DELETE replaced this actor while the call ran, so its cached state is stale.
+        if (!this.activeActors.TryGetValue(actorId, out var current))
+        {
+            throw new InvalidOperationException($"Actor {actorId} was deactivated during the call, state was not saved.");
+        }
+
+        if (!ReferenceEquals(current, active))
+        {
+            throw new InvalidOperationException($"Actor {actorId} was replaced by a newer activation during the call, state was not saved.");
         }
     }
 
@@ -386,8 +461,8 @@ internal sealed class ActorManager
     // Used for testing - do not leak the actor instances outside of this method in library code.
     public bool TryGetActorAsync(ActorId id, out Actor actor)
     {
-        var found = this.activeActors.TryGetValue(id, out var state);
-        actor = found ? state.Actor : default;
+        var found = this.activeActors.TryGetValue(id, out var active);
+        actor = found ? active.State.Actor : default;
         return found;
     } 
 
@@ -400,19 +475,10 @@ internal sealed class ActorManager
             new ActorMessageHeaderSerializer());
     }
 
-    private async Task<T> DispatchInternalAsync<T>(ActorId actorId, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
+    private async Task<T> DispatchInternalAsync<T>(ActorId actorId, string activationId, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
     {
-        if (!this.activeActors.ContainsKey(actorId))
-        {
-            await this.ActivateActorAsync(actorId);
-        }
-
-        if (!this.activeActors.TryGetValue(actorId, out var state))
-        {             
-            var errorMsg = $"Actor {actorId} is not yet activated.";
-            throw new InvalidOperationException(errorMsg);
-        }
-
+        var active = await this.GetOrActivateAsync(actorId, activationId);
+        var state = active.State;
         var actor = state.Actor;
 
         T retval;
@@ -432,7 +498,7 @@ internal sealed class ActorManager
             retval = await actorFunc.Invoke(actor, cancellationToken);
 
             // PostActivate will save the state, its not invoked when actorFunc invocation throws.
-            await actor.OnPostActorMethodAsyncInternal(actorMethodContext);
+            await actor.OnPostActorMethodAsyncInternal(actorMethodContext, () => this.EnsureLive(actorId, active));
         }
         catch (Exception e)
         {
@@ -462,4 +528,6 @@ internal sealed class ActorManager
 
         return new Tuple<string, byte[]>(string.Empty, responseMsgBodyBytes);
     }
+
+    private sealed record ActiveActor(ActorActivatorState State, string ActivationId);
 }

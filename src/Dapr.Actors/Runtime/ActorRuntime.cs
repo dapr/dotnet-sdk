@@ -158,35 +158,35 @@ public sealed class ActorRuntime
     }
 
     // Invokes the specified method for the actor when used with Remoting from CSharp client.
-    internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken = default)
+    internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string daprActorheader, Stream data, string activationId = null, CancellationToken cancellationToken = default)
     {
         using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, MethodName: {Reminder}", actorTypeName, actorId, actorMethodName))
         {
-            return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, cancellationToken);
+            return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, activationId, cancellationToken);
         }
     }
 
     // Invokes the specified method for the actor when used without remoting, this is mainly used for cross language invocation.
-    internal Task DispatchWithoutRemotingAsync(string actorTypeName, string actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken = default)
+    internal Task DispatchWithoutRemotingAsync(string actorTypeName, string actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, string activationId = null, CancellationToken cancellationToken = default)
     {
-        return GetActorManager(actorTypeName).DispatchWithoutRemotingAsync(new ActorId(actorId), actorMethodName, requestBodyStream, responseBodyStream, cancellationToken);
+        return GetActorManager(actorTypeName).DispatchWithoutRemotingAsync(new ActorId(actorId), actorMethodName, requestBodyStream, responseBodyStream, activationId, cancellationToken);
     }
 
     // Fires a reminder for the Actor.
-    internal Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
+    internal Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, Stream requestBodyStream, string activationId = null, CancellationToken cancellationToken = default)
     {
         using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, ReminderName: {Reminder}", actorTypeName, actorId, reminderName))
         {
-            return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
+            return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, activationId, cancellationToken);
         }
     }
 
     // Fires a timer for the Actor.
-    internal Task<bool> FireTimerAsync(string actorTypeName, string actorId, string timerName, Stream requestBodyStream, CancellationToken cancellationToken = default)
+    internal Task<bool> FireTimerAsync(string actorTypeName, string actorId, string timerName, Stream requestBodyStream, string activationId = null, CancellationToken cancellationToken = default)
     {
         using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, TimerName: {Timer}", actorTypeName, actorId, timerName))
         {
-            return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), requestBodyStream, cancellationToken);
+            return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), requestBodyStream, activationId, cancellationToken);
         }
     }
 

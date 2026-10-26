@@ -110,7 +110,18 @@ public sealed class ActorRuntime(
         var key = new ActorKey(actorType, actorId.Value);
         if (activations.TryRemove(key, out var activation))
         {
+            await DeactivateCoreAsync(activation, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task DeactivateCoreAsync(ActorActivation activation, CancellationToken cancellationToken)
+    {
+        try
+        {
             await activation.OnDeactivateAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
             await activation.DisposeAsync().ConfigureAwait(false);
         }
     }
@@ -125,7 +136,7 @@ public sealed class ActorRuntime(
         }
 
         var registration = registry.GetByActorType(request.ActorType);
-        var activation = await GetOrActivateAsync(registration, request.ActorId, cancellationToken).ConfigureAwait(false);
+        var activation = await GetOrActivateAsync(registration, request.ActorId, ActorHeaders.GetActivationId(request.Headers), cancellationToken).ConfigureAwait(false);
         var dispatchRequest = new ActorDispatchRequest(request.ActorType, request.ActorId, request.OperationName, request.Payload, request.Headers, request.RequestContext);
         var methodContext = ToMethodContext(dispatchRequest);
         Activity? activity = null;
@@ -188,12 +199,28 @@ public sealed class ActorRuntime(
         return response is null ? null : response.Value.Result ?? Array.Empty<byte>();
     }
 
-    private async Task<ActorActivation> GetOrActivateAsync(ActorRuntimeRegistration registration, ActorId actorId, CancellationToken cancellationToken)
+    private async Task<ActorActivation> GetOrActivateAsync(ActorRuntimeRegistration registration, ActorId actorId, string activationId, CancellationToken cancellationToken)
     {
         var key = new ActorKey(registration.ActorType, actorId.Value);
         if (activations.TryGetValue(key, out var existing))
         {
-            return existing;
+            if (activationId.Length == 0 || string.Equals(existing.ActivationId, activationId, StringComparison.Ordinal))
+            {
+                return existing;
+            }
+
+            if (activations.TryRemove(KeyValuePair.Create(key, existing)))
+            {
+                logger.LogDebug("Activation id changed for {ActorType}/{ActorId}, deactivating stale activation.", registration.ActorType, actorId);
+                try
+                {
+                    await DeactivateCoreAsync(existing, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Deactivating stale activation for {ActorType}/{ActorId} failed.", registration.ActorType, actorId);
+                }
+            }
         }
 
         var state = new ActorStateUnitOfWork(
@@ -213,7 +240,10 @@ public sealed class ActorRuntime(
         // any scoped or transient services it resolves.
         var provider = new ActorActivationServiceProvider(scopeFactory, activationContext);
         var actor = registration.Factory(provider, actorId);
-        var activation = new ActorActivation(registration.ActorType, actorId, actor, state, state, provider, registration.Lifecycle);
+        var activation = new ActorActivation(registration.ActorType, actorId, actor, state, state, provider, registration.Lifecycle)
+        {
+            ActivationId = activationId,
+        };
         if (!activations.TryAdd(key, activation))
         {
             await activation.DisposeAsync().ConfigureAwait(false);

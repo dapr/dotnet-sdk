@@ -71,7 +71,7 @@ public abstract class Actor
     /// </summary>
     public IActorStateManager StateManager { get; protected set; }
 
-    internal async Task OnActivateInternalAsync()
+    internal async Task OnActivateInternalAsync(Func<bool> canSave)
     {
         await this.ResetStateAsync();
         await this.OnActivateAsync();
@@ -79,7 +79,10 @@ public abstract class Actor
         this.Logger.LogDebug("Activated");
 
         // Save any state modifications done in user overridden Activate method.
-        await this.SaveStateAsync();
+        if (canSave())
+        {
+            await this.SaveStateAsync();
+        }
     }
 
     internal async Task OnDeactivateInternalAsync()
@@ -95,9 +98,10 @@ public abstract class Actor
         return this.OnPreActorMethodAsync(actorMethodContext);
     }
 
-    internal async Task OnPostActorMethodAsyncInternal(ActorMethodContext actorMethodContext)
+    internal async Task OnPostActorMethodAsyncInternal(ActorMethodContext actorMethodContext, Action ensureCanSave)
     {
         await this.OnPostActorMethodAsync(actorMethodContext);
+        ensureCanSave();
         await this.SaveStateAsync();
     }
 

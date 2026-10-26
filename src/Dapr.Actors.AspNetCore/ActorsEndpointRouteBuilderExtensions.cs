@@ -91,6 +91,7 @@ public static class ActorsEndpointRouteBuilderExtensions
             var actorTypeName = (string)routeValues["actorTypeName"];
             var actorId = (string)routeValues["actorId"];
             var methodName = (string)routeValues["methodName"];
+            var activationId = GetActivationId(context.Request);
 
             if (context.Request.Headers.ContainsKey(Constants.ReentrancyRequestHeaderName))
             {
@@ -105,7 +106,7 @@ public static class ActorsEndpointRouteBuilderExtensions
 
                 try
                 {
-                    var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body, context.RequestAborted);
+                    var (header, body) = await runtime.DispatchWithRemotingAsync(actorTypeName, actorId, methodName, daprActorheader, context.Request.Body, activationId, context.RequestAborted);
 
                     // Item 1 is header , Item 2 is body
                     if (header != string.Empty)
@@ -132,7 +133,7 @@ public static class ActorsEndpointRouteBuilderExtensions
             {
                 try
                 {
-                    await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body, context.RequestAborted);
+                    await runtime.DispatchWithoutRemotingAsync(actorTypeName, actorId, methodName, context.Request.Body, context.Response.Body, activationId, context.RequestAborted);
                 }
                 finally
                 {
@@ -153,7 +154,7 @@ public static class ActorsEndpointRouteBuilderExtensions
             var reminderName = (string)routeValues["reminderName"];
 
             // read dueTime, period and data from Request Body.
-            await runtime.FireReminderAsync(actorTypeName, actorId, reminderName, context.Request.Body);
+            await runtime.FireReminderAsync(actorTypeName, actorId, reminderName, context.Request.Body, GetActivationId(context.Request));
         }).WithDisplayName(b => "Dapr Actors Reminder");
     }
 
@@ -168,7 +169,7 @@ public static class ActorsEndpointRouteBuilderExtensions
             var timerName = (string)routeValues["timerName"];
 
             // read dueTime, period and data from Request Body.
-            var timerResult = await runtime.FireTimerAsync(actorTypeName, actorId, timerName, context.Request.Body);
+            var timerResult = await runtime.FireTimerAsync(actorTypeName, actorId, timerName, context.Request.Body, GetActivationId(context.Request));
             
             context.Response.StatusCode = StatusCodes.Status200OK;
             context.Response.ContentType = "application/json";
@@ -192,6 +193,9 @@ public static class ActorsEndpointRouteBuilderExtensions
         });
         return builder.WithDisplayName(b => "Dapr Actors Health Check");
     }
+
+    private static string GetActivationId(HttpRequest request) =>
+        request.Headers.TryGetValue(Constants.ActivationIdRequestHeaderName, out var value) ? value.ToString() : null;
 
     private static Tuple<string, byte[]> CreateExceptionResponseMessage(Exception ex)
     {

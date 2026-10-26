@@ -252,6 +252,80 @@ public sealed class GeneratedActorEventsTransportTests
     }
 
     [MinimumDaprRuntimeFact("1.18")]
+    public async Task Transport_maps_activation_id_metadata_on_invoke_reminder_and_timer()
+    {
+        var harness = new GeneratedActorEventsHarness();
+        var transport = new DaprActorEventsTransport(harness.Client);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        await using var stream = await transport.OpenStreamAsync(cts.Token);
+        await harness.SendAsync(new P.SubscribeActorEventsResponseAlpha1
+        {
+            InvokeRequest = new P.SubscribeActorEventsResponseInvokeRequestAlpha1
+            {
+                Id = "invoke-1",
+                ActorType = "Counter",
+                ActorId = "one",
+                Method = "Increment",
+                Metadata = { ["Dapr-Actor-Activation-Id"] = "act-1", ["Dapr-Reentrancy-Id"] = "chain" },
+            },
+        }, cts.Token);
+        await harness.SendAsync(new P.SubscribeActorEventsResponseAlpha1
+        {
+            ReminderRequest = new P.SubscribeActorEventsResponseReminderRequestAlpha1
+            {
+                Id = "reminder-1",
+                ActorType = "Counter",
+                ActorId = "one",
+                Name = "Wake",
+                Period = "2s",
+                Metadata = { ["dapr-actor-activation-id"] = "act-2", ["other"] = "ignored" },
+            },
+        }, cts.Token);
+        await harness.SendAsync(new P.SubscribeActorEventsResponseAlpha1
+        {
+            TimerRequest = new P.SubscribeActorEventsResponseTimerRequestAlpha1
+            {
+                Id = "timer-1",
+                ActorType = "Counter",
+                ActorId = "one",
+                Name = "timer",
+                Callback = "Tick",
+                Metadata = { ["DAPR-ACTOR-ACTIVATION-ID"] = "act-3" },
+            },
+        }, cts.Token);
+        await harness.SendAsync(new P.SubscribeActorEventsResponseAlpha1
+        {
+            TimerRequest = new P.SubscribeActorEventsResponseTimerRequestAlpha1
+            {
+                Id = "timer-2",
+                ActorType = "Counter",
+                ActorId = "one",
+                Name = "NoMetadata",
+            },
+        }, cts.Token);
+
+        await using var reader = stream.ReadAllAsync(cts.Token).GetAsyncEnumerator(cts.Token);
+        Assert.True(await reader.MoveNextAsync());
+        var invoke = reader.Current;
+        Assert.True(await reader.MoveNextAsync());
+        var reminder = reader.Current;
+        Assert.True(await reader.MoveNextAsync());
+        var timer = reader.Current;
+        Assert.True(await reader.MoveNextAsync());
+        var bareTimer = reader.Current;
+
+        Assert.Equal("act-1", invoke.Headers["Dapr-Actor-Activation-Id"]);
+        Assert.Equal("chain", invoke.Headers["Dapr-Reentrancy-Id"]);
+        Assert.Equal("act-2", reminder.Headers["Dapr-Actor-Activation-Id"]);
+        Assert.Equal("2s", reminder.Headers["dapr-period"]);
+        Assert.False(reminder.Headers.ContainsKey("other"));
+        Assert.Equal("act-3", timer.Headers["Dapr-Actor-Activation-Id"]);
+        Assert.Equal("Tick", timer.MethodName);
+        Assert.False(bareTimer.Headers.ContainsKey("Dapr-Actor-Activation-Id"));
+    }
+
+    [MinimumDaprRuntimeFact("1.18")]
     public async Task Transport_adds_dapr_api_token_to_stream_call_options()
     {
         var harness = new GeneratedActorEventsHarness();
