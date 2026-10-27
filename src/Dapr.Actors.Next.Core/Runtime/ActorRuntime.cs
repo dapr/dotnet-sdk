@@ -391,6 +391,7 @@ public sealed class ActorRuntime(
             if (activations.TryRemove(KeyValuePair.Create(key, existing)))
             {
                 logger.LogDebug("Activation id changed for {ActorType}/{ActorId}, deactivating stale activation.", registration.ActorType, actorId);
+                existing.StateUnitOfWork.Discard();
                 try
                 {
                     await DeactivateCoreAsync(existing, cancellationToken).ConfigureAwait(false);

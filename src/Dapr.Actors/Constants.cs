@@ -35,6 +35,7 @@ internal static class Constants
     public const string Method = "method";
     public const string Reminders = "reminders";
     public const string Timers = "timers";
+    public const string MetadataRelativeUrl = $"{DaprVersion}/metadata";
 
     /// <summary>
     /// Gets string format for Actors state management relative url.

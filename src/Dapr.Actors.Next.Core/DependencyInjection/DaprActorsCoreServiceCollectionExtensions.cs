@@ -23,11 +23,13 @@ using Dapr.Actors.Next.Core.State;
 using Dapr.Actors.Next.Core.State.Versioning;
 using Dapr.Actors.Next.Core.Timers;
 using Dapr.Actors.Next.Core.Transport;
+using Dapr.Common;
 using Dapr.Common.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using P = Dapr.Client.Autogen.Grpc.v1;
 
@@ -109,7 +111,18 @@ public static class DaprActorsCoreServiceCollectionExtensions
         }
 
         services.AddSingleton(static sp => sp.GetRequiredService<ActorRuntimeRegistrationBuilder>().Build(sp));
-        services.TryAddSingleton<SubscribeActorEventsStreamManager>();
+        services.TryAddSingleton(sp =>
+            ShouldUseSidecar(sp)
+                ? CreateActivationIdGate(CreateDaprClientAccessor(sp), GetDaprApiToken(sp))
+                : new ActorActivationIdGate(static _ => Task.FromResult<string?>(null)));
+        services.TryAddSingleton(static sp => new SubscribeActorEventsStreamManager(
+            sp.GetRequiredService<ISubscribeActorEventsTransport>(),
+            sp.GetRequiredService<ActorRuntimeRegistry>(),
+            sp.GetRequiredService<IActorRuntime>(),
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<IOptions<DaprActorsOptions>>(),
+            sp.GetRequiredService<ILogger<SubscribeActorEventsStreamManager>>(),
+            sp.GetRequiredService<ActorActivationIdGate>()));
         // Register the stream manager behind a dedicated hosted-service wrapper with TryAddEnumerable,
         // NOT TryAddSingleton<IHostedService>: TryAdd deduplicates by service type alone, so any hosted
         // service the application registered before the first AddDaprActorsCore call (OpenTelemetry,
@@ -210,6 +223,13 @@ public static class DaprActorsCoreServiceCollectionExtensions
                 httpClient.Timeout = Timeout.InfiniteTimeSpan;
             });
     }
+
+    private static ActorActivationIdGate CreateActivationIdGate(Lazy<P.Dapr.DaprClient> client, string? daprApiToken) =>
+        new(async cancellationToken =>
+        {
+            var response = await client.Value.GetMetadataAsync(new P.GetMetadataRequest(), DaprActorGrpcCallOptions.Create(daprApiToken, cancellationToken)).ConfigureAwait(false);
+            return response.RuntimeVersion;
+        });
 
     private static string? GetDaprApiToken(IServiceProvider serviceProvider)
     {

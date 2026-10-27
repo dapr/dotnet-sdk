@@ -33,6 +33,7 @@ using Microsoft.Extensions.Logging;
 public abstract class Actor
 {
     private readonly string actorTypeName;
+    private volatile bool discarded;
 
     /// <summary>
     /// The Logger
@@ -73,6 +74,11 @@ public abstract class Actor
     /// Gets the StateManager for the actor.
     /// </summary>
     public IActorStateManager StateManager { get; protected set; }
+
+    // Set once a newer activation replaced this instance, so it can't overwrite newer state.
+    internal bool Discarded => this.discarded;
+
+    internal void Discard() => this.discarded = true;
 
     internal async Task OnActivateInternalAsync(Func<bool> canSave)
     {

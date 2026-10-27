@@ -85,6 +85,21 @@ public static class ActorHeaders
         return string.Empty;
     }
 
+    internal static IReadOnlyDictionary<string, string> WithoutActivationId(IReadOnlyDictionary<string, string> headers)
+    {
+        ArgumentNullException.ThrowIfNull(headers);
+        var copy = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, value) in headers)
+        {
+            if (!string.Equals(key, ActivationIdHeaderName, StringComparison.OrdinalIgnoreCase))
+            {
+                copy[key] = value;
+            }
+        }
+
+        return copy;
+    }
+
     internal static bool TryGetReentrancy(IReadOnlyDictionary<string, string> headers, out string key, out string value)
     {
         foreach (var name in ReentrancyHeaderNames)

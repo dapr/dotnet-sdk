@@ -17,6 +17,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -204,13 +205,59 @@ public class ActorsEndpointRouteBuilderExtensionsTests
         var held = SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/{nameof(IActivationActor.HoldAsync)}", null, "Dapr-Actor-Activation-Id", "a1");
         await gate.Held.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         var replacing = InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a2");
-        await gate.Deactivated.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (!gate.Holder.Discarded)
+        {
+            await Task.Delay(10, timeout.Token);
+        }
+
+        Assert.False(gate.Deactivated.Task.IsCompleted);
         gate.Release.SetResult();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+        await gate.Deactivated.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         var second = await replacing;
         Assert.NotEqual(first, second);
         Assert.Equal(second, await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a2"));
+    }
+
+    [Theory]
+    [InlineData("1.19.0")]
+    [InlineData("edge")]
+    public async Task MapActorsHandlers_OlderSidecar_IgnoresActivationId(string runtimeVersion)
+    {
+        using var host = CreateHost<ActorsStartup>(options => options.Actors.RegisterActor<ActivationActor>(),
+            getRuntimeVersion: _ => Task.FromResult(runtimeVersion));
+        var httpClient = host.GetTestServer().CreateClient();
+        var actorId = Guid.NewGuid().ToString("N");
+
+        var first = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        await SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/remind/r1", "{\"dueTime\":\"0h0m1s0ms\"}", "Dapr-Actor-Activation-Id", "a2");
+        await SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/timer/t1", "{\"callback\":\"OnTimerAsync\"}", "Dapr-Actor-Activation-Id", "a3");
+        var second = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a4");
+
+        Assert.Equal(first, second);
+        Assert.DoesNotContain(ActivationActor.Events(actorId), e => e.StartsWith("deactivate:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_FailedVersionLookup_IgnoresActivationIdThenRetries()
+    {
+        var lookups = 0;
+        using var host = CreateHost<ActorsStartup>(options => options.Actors.RegisterActor<ActivationActor>(),
+            getRuntimeVersion: _ => Interlocked.Increment(ref lookups) == 1
+                ? Task.FromException<string>(new HttpRequestException("sidecar down"))
+                : Task.FromResult("1.19.1"));
+        var httpClient = host.GetTestServer().CreateClient();
+        var actorId = Guid.NewGuid().ToString("N");
+
+        var ignored = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        var trusted = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        var same = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+
+        Assert.NotEqual(ignored, trusted);
+        Assert.Equal(trusted, same);
+        Assert.Equal(2, lookups);
     }
 
     private static async Task<int> InvokeWhoAmIAsync(HttpClient httpClient, string actorId, string headerName, string activationId)
@@ -267,8 +314,10 @@ public class ActorsEndpointRouteBuilderExtensionsTests
     }
 
     private static IHost CreateHost<TStartup>(Action<ActorRuntimeOptions> configure,
-        Action<IServiceCollection> configureServices = null) where TStartup : class
+        Action<IServiceCollection> configureServices = null,
+        Func<CancellationToken, Task<string>> getRuntimeVersion = null) where TStartup : class
     {
+        getRuntimeVersion ??= _ => Task.FromResult("1.19.1");
         var builder = Host
             .CreateDefaultBuilder()
             .ConfigureLogging(b =>
@@ -284,6 +333,7 @@ public class ActorsEndpointRouteBuilderExtensionsTests
             .ConfigureServices(services =>
             {
                 services.AddActors(configure);
+                services.AddSingleton(new ActorActivationIdGate(getRuntimeVersion));
                 configureServices?.Invoke(services);
             });
         var host = builder.Build();
@@ -361,6 +411,7 @@ public class ActorsEndpointRouteBuilderExtensionsTests
         public async Task HoldAsync()
         {
             var gate = Gate(Id.GetId());
+            gate.Holder = this;
             gate.Held.SetResult();
             await gate.Release.Task;
         }
@@ -406,6 +457,8 @@ public class ActorsEndpointRouteBuilderExtensionsTests
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public TaskCompletionSource Deactivated { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Actor Holder { get; set; }
     }
 
     public sealed class CallbackContextProbe

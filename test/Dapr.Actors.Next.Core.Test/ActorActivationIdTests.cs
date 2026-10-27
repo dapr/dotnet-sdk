@@ -22,6 +22,7 @@ using Dapr.Actors.Next.Core.DependencyInjection;
 using Dapr.Actors.Next.Core.Runtime;
 using Dapr.Actors.Next.Core.State;
 using Dapr.Actors.Next.Core.Transport;
+using Dapr.Common;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dapr.Actors.Next.Core.Test;
@@ -65,6 +66,23 @@ public sealed class ActorActivationIdTests
 
         Assert.Equal(12, await fixture.IncrementAsync("one", 1, "a2"));
         Assert.Equal(2, fixture.Created.Count);
+    }
+
+    [Fact]
+    public async Task Replaced_activation_cannot_save_from_deactivate()
+    {
+        await using var fixture = new Fixture();
+
+        Assert.Equal(1, await fixture.IncrementAsync("one", 1, "a1"));
+        fixture.Created[0].SaveOnDeactivate = true;
+        await fixture.OverwriteFromAnotherHostAsync("one", 10);
+        Assert.Equal(11, await fixture.IncrementAsync("one", 1, "a2"));
+        Assert.Contains("save refused", fixture.Created[0].Events);
+
+        fixture.Created[1].SaveOnDeactivate = true;
+        await fixture.DispatchAsync("one", ActorTurnKind.Deactivate, string.Empty, string.Empty, ActorHeaders.Empty);
+        Assert.DoesNotContain("save refused", fixture.Created[1].Events);
+        Assert.Equal(111, await fixture.IncrementAsync("one", 0, "a3"));
     }
 
     [Theory]
@@ -311,11 +329,55 @@ public sealed class ActorActivationIdTests
         Assert.Equal(["activate", "Tick", "Increment"], fixture.Created[1].Events);
     }
 
+    [Theory]
+    [InlineData("1.19.0")]
+    [InlineData("edge")]
+    public async Task Stream_callbacks_from_older_sidecar_ignore_activation_id(string runtimeVersion)
+    {
+        var harness = new InMemoryTransportHarness();
+        await using var fixture = new Fixture(harness, runtimeVersion);
+        var service = fixture.Provider.GetRequiredService<SubscribeActorEventsStreamManager>();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        await service.StartAsync(cts.Token);
+        var stream = await harness.WaitForStreamAsync(cts.Token);
+        await stream.ReceiveAsync(cts.Token);
+
+        async Task<SubscribeActorEventsResponse> SendAsync(string id, SubscribeActorEventsFrameKind kind, string method, string payload, IReadOnlyDictionary<string, string> headers)
+        {
+            await stream.SendAsync(new SubscribeActorEventsRequest(id, kind, ActorType, "one", method, Encoding.UTF8.GetBytes(payload), headers), cts.Token);
+            return await stream.ReceiveAsync(cts.Token);
+        }
+
+        await SendAsync("1", SubscribeActorEventsFrameKind.Invoke, "Increment", "1", Headers("a1"));
+        await SendAsync("2", SubscribeActorEventsFrameKind.Invoke, "Increment", "1", new Dictionary<string, string> { [HeaderName] = string.Empty, ["dapr-actor-activation-id"] = "a2" });
+        await SendAsync("3", SubscribeActorEventsFrameKind.Reminder, "Wake", string.Empty, Headers("a3"));
+        var last = await SendAsync("4", SubscribeActorEventsFrameKind.Invoke, "Increment", "1", Headers("a4"));
+        await service.StopAsync(cts.Token);
+
+        Assert.Equal("3", Encoding.UTF8.GetString(last.Payload.Span));
+        Assert.Single(fixture.Created);
+        Assert.Equal(["activate", "Increment", "Increment", "Wake", "Increment"], fixture.Created[0].Events);
+    }
+
+    [Fact]
+    public void Without_activation_id_removes_every_casing()
+    {
+        var headers = ActorHeaders.WithoutActivationId(new Dictionary<string, string>
+        {
+            [HeaderName] = "a1",
+            ["dapr-actor-activation-id"] = "a2",
+            ["Dapr-Reentrancy-Id"] = "chain",
+        });
+
+        Assert.Equal(["Dapr-Reentrancy-Id"], headers.Keys);
+    }
+
     private static Dictionary<string, string> Headers(string activationId) => new() { [HeaderName] = activationId };
 
     private sealed class Fixture : IAsyncDisposable
     {
-        public Fixture(InMemoryTransportHarness? harness = null)
+        public Fixture(InMemoryTransportHarness? harness = null, string runtimeVersion = "1.19.1")
         {
             var services = new ServiceCollection();
             services.AddLogging();
@@ -324,6 +386,7 @@ public sealed class ActorActivationIdTests
             if (harness is not null)
             {
                 services.AddSingleton<ISubscribeActorEventsTransport>(harness);
+                services.AddSingleton(new ActorActivationIdGate(_ => Task.FromResult<string?>(runtimeVersion)));
             }
 
             services.AddDaprActorsCore(registrations =>
@@ -408,10 +471,30 @@ public sealed class ActorActivationIdTests
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask DeactivateAsync()
+        public bool SaveOnDeactivate { get; set; }
+
+        public async ValueTask DeactivateAsync()
         {
             Events.Add("deactivate");
-            return ThrowOnDeactivate ? throw new InvalidOperationException("deactivate failed") : ValueTask.CompletedTask;
+            if (ThrowOnDeactivate)
+            {
+                throw new InvalidOperationException("deactivate failed");
+            }
+
+            if (SaveOnDeactivate)
+            {
+                var state = await State.GetOrCreateAsync("state", () => new CounterState());
+                state.Value.Value += 100;
+                try
+                {
+                    await State.SaveStateAsync();
+                }
+                catch (InvalidOperationException)
+                {
+                    Events.Add("save refused");
+                    throw;
+                }
+            }
         }
 
         public async Task<int> IncrementAsync(int amount, CancellationToken cancellationToken)

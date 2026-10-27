@@ -364,6 +364,7 @@ internal sealed class ActorManager
 
     private async Task DiscardAsync(ActorId actorId, ActorActivatorState state)
     {
+        state.Actor.Discard();
         try
         {
             await DeactivateActorCore(state);
@@ -376,7 +377,11 @@ internal sealed class ActorManager
 
     private async Task<ActiveActor> GetOrActivateAsync(ActorId actorId, string activationId)
     {
-        await this.ResetStaleActivationAsync(actorId, activationId);
+        var stale = this.DetachStale(actorId, activationId);
+        if (stale != null)
+        {
+            await this.DeactivateStaleAsync(actorId, stale);
+        }
 
         if (this.activeActors.TryGetValue(actorId, out var existing))
         {
@@ -419,38 +424,46 @@ internal sealed class ActorManager
         }
     }
 
-    private async Task ResetStaleActivationAsync(ActorId actorId, string activationId)
+    private ActiveActor DetachStale(ActorId actorId, string activationId)
     {
         if (string.IsNullOrEmpty(activationId))
         {
-            return;
+            return null;
         }
 
         if (this.activating.TryGetValue(actorId, out var pending)
             && !string.Equals(pending.ActivationId, activationId, StringComparison.Ordinal))
         {
-            pending.Replaced = true;
+            pending.Replace();
         }
 
         if (!this.activeActors.TryGetValue(actorId, out var existing)
             || string.Equals(existing.ActivationId, activationId, StringComparison.Ordinal))
         {
-            return;
+            return null;
         }
 
-        existing.Replaced = true;
-        if (this.activeActors.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, existing)))
+        existing.Replace();
+        return this.activeActors.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, existing)) ? existing : null;
+    }
+
+    private async Task DeactivateStaleAsync(ActorId actorId, ActiveActor stale)
+    {
+        this.logger.LogDebug("Activation id changed for Actor of type {ActorType} with ActorId {ActorId}, deactivating stale activation", this.ActorTypeInfo.ImplementationType, actorId);
+        try
         {
-            this.logger.LogDebug("Activation id changed for Actor of type {ActorType} with ActorId {ActorId}, deactivating stale activation", this.ActorTypeInfo.ImplementationType, actorId);
-            try
-            {
-                await DeactivateActorCore(existing.State);
-            }
-            catch (Exception ex)
-            {
-                this.logger.LogError(ex, "Deactivating stale activation of Actor of type {ActorType} with ActorId {ActorId} failed", this.ActorTypeInfo.ImplementationType, actorId);
-            }
+            await DeactivateActorCore(stale.State);
         }
+        catch (Exception ex)
+        {
+            this.logger.LogError(ex, "Deactivating stale activation of Actor of type {ActorType} with ActorId {ActorId} failed", this.ActorTypeInfo.ImplementationType, actorId);
+        }
+    }
+
+    private async Task DeactivateStaleInTurnAsync(ActorId actorId, ActiveActor stale)
+    {
+        using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
+        await this.DeactivateStaleAsync(actorId, stale);
     }
 
     private void EnsureLive(ActorId actorId, ActiveActor active)
@@ -517,12 +530,31 @@ internal sealed class ActorManager
             reentrancyId = null;
         }
         // A new activation id drops the stale activation before waiting for the turn, so a call still running on it skips its save.
-        if (!this.turnLock.IsInChain(actorId, reentrancyId))
+        // Its deactivation waits for the turn so OnDeactivateAsync never overlaps that call.
+        var stale = this.turnLock.IsInChain(actorId, reentrancyId) ? null : this.DetachStale(actorId, activationId);
+        ActorTurnLock.Lease lease;
+        try
         {
-            await this.ResetStaleActivationAsync(actorId, activationId);
+            lease = await this.turnLock.AcquireAsync(actorId, reentrancyId, cancellationToken);
+        }
+        catch when (stale != null)
+        {
+            _ = this.DeactivateStaleInTurnAsync(actorId, stale);
+            throw;
         }
 
-        using var turn = await this.turnLock.AcquireAsync(actorId, reentrancyId, cancellationToken);
+        using var turn = lease;
+        if (stale != null)
+        {
+            if (turn.Reentered)
+            {
+                _ = this.DeactivateStaleInTurnAsync(actorId, stale);
+            }
+            else
+            {
+                await this.DeactivateStaleAsync(actorId, stale);
+            }
+        }
 
         var active = await this.GetOrActivateAsync(actorId, turn.Reentered ? null : activationId);
         if (active.Replaced)
@@ -595,10 +627,12 @@ internal sealed class ActorManager
 
         public string ActivationId { get; } = activationId;
 
-        public bool Replaced
+        public bool Replaced => this.replaced;
+
+        public void Replace()
         {
-            get => this.replaced;
-            set => this.replaced = value;
+            this.replaced = true;
+            this.State.Actor.Discard();
         }
     }
 }

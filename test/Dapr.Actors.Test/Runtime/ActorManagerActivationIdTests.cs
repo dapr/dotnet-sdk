@@ -260,17 +260,41 @@ public sealed class ActorManagerActivationIdTests
         var held = HoldAsync("a1");
         await WaitAsync(first.Held);
         var replacing = IncrementAsync("a2");
-        await WaitAsync(first.Deactivated);
+        Assert.False(manager.TryGetActorAsync(id, out _));
+        Assert.False(first.IsDeactivated);
         first.Release.SetResult();
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => held);
         Assert.Contains("replaced", ex.Message);
         Assert.Equal(6, await replacing);
+        Assert.True(first.IsDeactivated);
+        Assert.True(first.IsDisposed);
         var second = GetActor();
         Assert.NotSame(first, second);
         Assert.Equal(2, store.Saves.Count);
         Assert.DoesNotContain(store.Saves, s => s.Contains("100"));
         Assert.Equal(7, await IncrementAsync("a2"));
+    }
+
+    [Fact]
+    public async Task Method_ReplacingCallCancelledWhileWaiting_StaleDeactivatedAfterTurn()
+    {
+        await IncrementAsync("a1");
+        var first = GetActor();
+
+        var held = HoldAsync("a1");
+        await WaitAsync(first.Held);
+        using var cts = new CancellationTokenSource();
+        var replacing = manager.DispatchWithoutRemotingAsync(id, nameof(ICountingActor.IncrementAsync), new MemoryStream(), new MemoryStream(), "a2", cts.Token);
+        await cts.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => replacing);
+        Assert.False(first.IsDeactivated);
+
+        first.Release.SetResult();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+        await WaitAsync(first.Deactivated);
+        await IncrementAsync("a2");
+        Assert.NotSame(first, GetActor());
     }
 
     [Fact]
@@ -304,7 +328,8 @@ public sealed class ActorManagerActivationIdTests
         var held = FireReminderAsync("a1", "hold");
         await WaitAsync(first.Held);
         var replacing = IncrementAsync("a2");
-        await WaitAsync(first.Deactivated);
+        Assert.False(manager.TryGetActorAsync(id, out _));
+        Assert.False(first.IsDeactivated);
         first.Release.SetResult();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => held);
@@ -322,7 +347,8 @@ public sealed class ActorManagerActivationIdTests
         var held = FireTimerAsync("a1", nameof(CountingActor.HoldTimerAsync));
         await WaitAsync(first.Held);
         var replacing = IncrementAsync("a2");
-        await WaitAsync(first.Deactivated);
+        Assert.False(manager.TryGetActorAsync(id, out _));
+        Assert.False(first.IsDeactivated);
         first.Release.SetResult();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => held);
@@ -364,7 +390,8 @@ public sealed class ActorManagerActivationIdTests
         var held = IncrementAsync("a1");
         await WaitAsync(first.PostHeld);
         var replacing = IncrementAsync("a2");
-        await WaitAsync(first.Deactivated);
+        Assert.False(manager.TryGetActorAsync(id, out _));
+        Assert.False(first.IsDeactivated);
         first.PostRelease.SetResult();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => held);
@@ -418,6 +445,44 @@ public sealed class ActorManagerActivationIdTests
         Assert.True(first.IsDisposed);
         Assert.True(second.IsActivated);
         Assert.Equal(7, await IncrementAsync("a2"));
+    }
+
+    [Fact]
+    public async Task Reset_OnDeactivateSave_IsRefused()
+    {
+        Assert.Equal(6, await IncrementAsync("a1"));
+        var first = GetActor();
+        first.SaveOnDeactivate = true;
+
+        Assert.Equal(6, await IncrementAsync("a2"));
+        Assert.True(first.SaveRefused);
+        Assert.DoesNotContain(store.Saves, s => s.Contains("200"));
+
+        var second = GetActor();
+        second.SaveOnDeactivate = true;
+        await manager.DeactivateActorAsync(id);
+        Assert.False(second.SaveRefused);
+        Assert.Contains(store.Saves, s => s.Contains("200"));
+    }
+
+    [Fact]
+    public async Task Method_ReplacedWhileRunning_ExplicitSaveIsRefused()
+    {
+        Assert.Equal(6, await IncrementAsync("a1"));
+        var first = GetActor();
+        first.SaveInHold = true;
+
+        var held = HoldAsync("a1");
+        await WaitAsync(first.Held);
+        var replacing = IncrementAsync("a2");
+        Assert.False(manager.TryGetActorAsync(id, out _));
+        Assert.False(first.IsDeactivated);
+        first.Release.SetResult();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+        Assert.True(first.SaveRefused);
+        Assert.Equal(6, await replacing);
+        Assert.DoesNotContain(store.Saves, s => s.Contains("100"));
     }
 
     [Fact]
@@ -588,6 +653,12 @@ public sealed class ActorManagerActivationIdTests
 
         public bool ThrowOnDeactivate { get; set; }
 
+        public bool SaveOnDeactivate { get; set; }
+
+        public bool SaveInHold { get; set; }
+
+        public bool SaveRefused { get; private set; }
+
         public async Task<int> IncrementAsync()
         {
             var current = await StateManager.TryGetStateAsync<int>("count");
@@ -601,7 +672,25 @@ public sealed class ActorManagerActivationIdTests
             Held.SetResult();
             await Release.Task;
             await StateManager.SetStateAsync("count", 100);
+            if (SaveInHold)
+            {
+                await SaveRefusingAsync();
+            }
+
             return 100;
+        }
+
+        private async Task SaveRefusingAsync()
+        {
+            try
+            {
+                await StateManager.SaveStateAsync();
+            }
+            catch (InvalidOperationException)
+            {
+                SaveRefused = true;
+                throw;
+            }
         }
 
         public Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
@@ -632,11 +721,20 @@ public sealed class ActorManagerActivationIdTests
             return Task.CompletedTask;
         }
 
-        protected override Task OnDeactivateAsync()
+        protected override async Task OnDeactivateAsync()
         {
             IsDeactivated = true;
             Deactivated.TrySetResult();
-            return ThrowOnDeactivate ? throw new InvalidOperationException("deactivate failed") : Task.CompletedTask;
+            if (ThrowOnDeactivate)
+            {
+                throw new InvalidOperationException("deactivate failed");
+            }
+
+            if (SaveOnDeactivate)
+            {
+                await StateManager.SetStateAsync("count", 200);
+                await SaveRefusingAsync();
+            }
         }
 
         protected override async Task OnPostActorMethodAsync(ActorMethodContext actorMethodContext)
