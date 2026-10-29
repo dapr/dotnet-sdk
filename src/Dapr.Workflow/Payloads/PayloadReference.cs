@@ -28,7 +28,7 @@ namespace Dapr.Workflow.Payloads;
 /// <remarks>
 /// <para>
 /// The JSON form of this type is a versioned wire format intended for cross-SDK interoperability.
-/// Currently only the .NET SDK supports it. It is a single-property object whose
+/// The .NET and JavaScript SDKs support this format. It is a single-property object whose
 /// property name is <see cref="SentinelProperty"/>, which allows a converter to distinguish a
 /// reference from any user payload without a wrapper type. The format is versioned via
 /// <see cref="Version"/>; readers must reject versions they do not understand.
