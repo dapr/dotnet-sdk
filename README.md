@@ -32,7 +32,7 @@ Then read:
 
 ## Packages
 
-We publish these [NuGet packages](https://www.nuget.org/profiles/dapr.io) to nuget.org for each release. Each package supports .NET 8, .NET 9 and .NET 10.
+We publish these [NuGet packages](https://www.nuget.org/profiles/dapr.io) to nuget.org for each release. The library packages support .NET 8, .NET 9 and .NET 10. The analyzer and generator packages run inside the compiler at build time.
 
 | Package | Use it to |
 |---------|-----------|
@@ -42,11 +42,13 @@ We publish these [NuGet packages](https://www.nuget.org/profiles/dapr.io) to nug
 | [Dapr.Actors](https://www.nuget.org/packages/Dapr.Actors) | Implement and call virtual actors |
 | [Dapr.Actors.AspNetCore](https://www.nuget.org/packages/Dapr.Actors.AspNetCore) | Host actors in ASP.NET Core |
 | [Dapr.Actors.Generators](https://www.nuget.org/packages/Dapr.Actors.Generators) | Generate strongly typed actor clients |
+| [Dapr.Actors.Analyzers](https://www.nuget.org/packages/Dapr.Actors.Analyzers) | Catch common actor registration and usage mistakes at build time |
 | [Dapr.Actors.Next](https://www.nuget.org/packages/Dapr.Actors.Next) | Develop actors with the newer actors SDK |
 | [Dapr.AI](https://www.nuget.org/packages/Dapr.AI) | Call large language models through the Dapr Conversation API |
 | [Dapr.AI.A2A](https://www.nuget.org/packages/Dapr.AI.A2A) | Connect agents with the Agent2Agent (A2A) protocol |
 | [Dapr.AI.Microsoft.Extensions](https://www.nuget.org/packages/Dapr.AI.Microsoft.Extensions) | Use Dapr AI through Microsoft.Extensions.AI |
 | [Dapr.Jobs](https://www.nuget.org/packages/Dapr.Jobs) | Schedule jobs |
+| [Dapr.Jobs.Analyzers](https://www.nuget.org/packages/Dapr.Jobs.Analyzers) | Catch common jobs registration mistakes at build time |
 | [Dapr.Messaging](https://www.nuget.org/packages/Dapr.Messaging) | Publish and subscribe through Dapr pub/sub components |
 | [Dapr.StateManagement](https://www.nuget.org/packages/Dapr.StateManagement) | Use typed state management clients |
 | [Dapr.SecretsManagement](https://www.nuget.org/packages/Dapr.SecretsManagement) | Use typed secret store clients |
@@ -74,7 +76,7 @@ The [examples folder](https://github.com/dapr/dotnet-sdk/tree/master/examples) h
 
 ## Contributing
 
-Also make sure to read the [.NET SDK contribution guide](https://docs.dapr.io/contributing/sdk-contrib/dotnet-contributing/) and [CONTRIBUTING.md](https://github.com/dapr/dotnet-sdk/blob/master/CONTRIBUTING.md).
+Before you open a pull request, read the [.NET SDK contribution guide](https://docs.dapr.io/contributing/sdk-contrib/dotnet-contributing/) and [CONTRIBUTING.md](https://github.com/dapr/dotnet-sdk/blob/master/CONTRIBUTING.md).
 
 ### Prerequisites
 
