@@ -28,6 +28,7 @@ public sealed record SearchQuery
     /// Portable filter JSON object supporting $eq, $ne, $gt, $gte, $lt, $lte, $in, $nin,
     /// $exists, $and, $or and $not. Nested field paths use dotted notation.
     /// </summary>
+    /// <remarks>Use <see cref="SearchFilter"/> to compose filters without writing JSON manually.</remarks>
     public JsonElement? Filter { get; init; }
 
     /// <summary>Maximum hits in this page. Null or zero uses the provider default.</summary>
