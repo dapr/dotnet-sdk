@@ -31,6 +31,7 @@ public sealed class ActorActivationIdTests
 {
     private const string ActorType = "Probe";
     private const string HeaderName = "Dapr-Actor-Activation-Id";
+    private const string ReentrancyHeaderName = "Dapr-Reentrancy-Id";
 
     [Fact]
     public async Task Same_activation_id_reuses_activation_and_cached_state()
@@ -330,7 +331,8 @@ public sealed class ActorActivationIdTests
     }
 
     [Theory]
-    [InlineData("1.19.0")]
+    [InlineData("1.18.9")]
+    [InlineData("1.19.0-rc.7")]
     [InlineData("edge")]
     public async Task Stream_callbacks_from_older_sidecar_ignore_activation_id(string runtimeVersion)
     {
@@ -358,6 +360,54 @@ public sealed class ActorActivationIdTests
         Assert.Equal("3", Encoding.UTF8.GetString(last.Payload.Span));
         Assert.Single(fixture.Created);
         Assert.Equal(["activate", "Increment", "Increment", "Wake", "Increment"], fixture.Created[0].Events);
+    }
+
+    [Fact]
+    public async Task New_activation_id_admitted_mid_turn_stops_that_turn_saving()
+    {
+        await using var fixture = new Fixture();
+
+        Assert.Equal(1, await fixture.IncrementAsync("one", 1, "a1"));
+        var first = fixture.Created[0];
+        var held = fixture.DispatchAsync("one", ActorTurnKind.Invoke, "Hold", "", Headers("a1"));
+        await first.Held.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        var replacing = fixture.IncrementAsync("one", 1, "a2");
+        Assert.False(replacing.IsCompleted);
+        first.Release.SetResult();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+        Assert.Equal(2, await replacing);
+        Assert.Equal(2, fixture.Created.Count);
+        Assert.Equal(["activate", "Increment", "Hold", "deactivate"], first.Events);
+    }
+
+    [Fact]
+    public async Task Reentrant_call_with_other_activation_id_keeps_parent_activation()
+    {
+        await using var fixture = new Fixture();
+
+        Assert.Equal(1, await fixture.IncrementAsync("one", 1, "a1"));
+        var first = fixture.Created[0];
+        var held = fixture.DispatchAsync("one", ActorTurnKind.Invoke, "Hold", "", new Dictionary<string, string> { [HeaderName] = "a1", [ReentrancyHeaderName] = "chain" });
+        await first.Held.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        try
+        {
+            var nested = await fixture.DispatchAsync("one", ActorTurnKind.Invoke, "Increment", "1", new Dictionary<string, string> { [HeaderName] = "a2", [ReentrancyHeaderName] = "chain" })
+                .WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            Assert.Equal("1002", Encoding.UTF8.GetString(nested!));
+        }
+        finally
+        {
+            first.Release.TrySetResult();
+        }
+
+        await held;
+
+        Assert.Same(first, Assert.Single(fixture.Created));
+        Assert.Equal(["activate", "Increment", "Hold", "Increment"], first.Events);
+        Assert.Equal(1003, await fixture.IncrementAsync("one", 1, "a1"));
     }
 
     [Fact]
@@ -497,6 +547,19 @@ public sealed class ActorActivationIdTests
             }
         }
 
+        public TaskCompletionSource Held { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task HoldAsync(CancellationToken cancellationToken)
+        {
+            Events.Add("Hold");
+            var state = await State.GetOrCreateAsync("state", () => new CounterState(), cancellationToken);
+            state.Value.Value += 1000;
+            Held.SetResult();
+            await Release.Task;
+        }
+
         public async Task<int> IncrementAsync(int amount, CancellationToken cancellationToken)
         {
             Events.Add("Increment");
@@ -517,6 +580,12 @@ public sealed class ActorActivationIdTests
             {
                 var value = await probe.IncrementAsync(int.Parse(Encoding.UTF8.GetString(request.Payload.Span)), cancellationToken);
                 return new ActorDispatchResponse(Encoding.UTF8.GetBytes(value.ToString()));
+            }
+
+            if (request.MethodName == "Hold")
+            {
+                await probe.HoldAsync(cancellationToken);
+                return new ActorDispatchResponse(Array.Empty<byte>());
             }
 
             await probe.Record(request.MethodName);

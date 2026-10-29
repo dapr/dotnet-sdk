@@ -21,7 +21,7 @@ namespace Dapr.Common;
 internal sealed class ActorActivationIdGate
 {
     private static readonly TimeSpan DefaultLookupTimeout = TimeSpan.FromSeconds(5);
-    private static readonly Version MinimumRuntimeVersion = new(1, 19, 1);
+    private static readonly Version MinimumRuntimeVersion = new(1, 19, 0);
 
     private readonly Func<CancellationToken, Task<string?>> getRuntimeVersion;
     private readonly TimeSpan lookupTimeout;
@@ -59,10 +59,17 @@ internal sealed class ActorActivationIdGate
         }
 
         var core = runtimeVersion.Trim();
-        var suffix = core.IndexOfAny(['-', '+']);
-        if (suffix >= 0)
+        var build = core.IndexOf('+');
+        if (build >= 0)
         {
-            core = core[..suffix];
+            core = core[..build];
+        }
+
+        var prerelease = core.IndexOf('-');
+        var isPrerelease = prerelease >= 0;
+        if (isPrerelease)
+        {
+            core = core[..prerelease];
         }
 
         var parts = core.Split('.');
@@ -74,7 +81,9 @@ internal sealed class ActorActivationIdGate
             return false;
         }
 
-        return new Version(major, minor, patch) >= MinimumRuntimeVersion;
+        // Release candidates of the minimum version came before the activation id shipped.
+        var version = new Version(major, minor, patch);
+        return version > MinimumRuntimeVersion || (version == MinimumRuntimeVersion && !isPrerelease);
     }
 
     private async Task<bool> IsTrustedAsync(CancellationToken cancellationToken)

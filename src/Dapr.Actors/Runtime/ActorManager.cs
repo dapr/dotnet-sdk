@@ -17,6 +17,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -45,6 +46,8 @@ internal sealed class ActorManager
     private readonly JsonSerializerOptions jsonSerializerOptions;
     private readonly ActorTurnLock turnLock = new ActorTurnLock();
     private readonly ConcurrentDictionary<ActorId, ActiveActor> activating = new ConcurrentDictionary<ActorId, ActiveActor>();
+    private readonly Dictionary<ActorId, List<ActiveActor>> detached = new Dictionary<ActorId, List<ActiveActor>>();
+    private long installs;
     private readonly bool reentrancyEnabled;
 
     // method dispatchermap used by remoting calls.
@@ -317,6 +320,7 @@ internal sealed class ActorManager
     internal async Task ActivateActorAsync(ActorId actorId, string activationId = null)
     {
         using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
+        await this.CleanupDetachedAsync(actorId);
         await this.ActivateActorCoreAsync(actorId, activationId);
     }
 
@@ -324,7 +328,7 @@ internal sealed class ActorManager
     {
         // An actor is activated by "Dapr" runtime when a call is to be made for an actor.
         var state = await this.CreateActorAsync(actorId);
-        var active = new ActiveActor(state, activationId ?? string.Empty);
+        var active = new ActiveActor(state, activationId ?? string.Empty, Interlocked.Increment(ref this.installs));
         this.activating[actorId] = active;
 
         try
@@ -375,12 +379,20 @@ internal sealed class ActorManager
         }
     }
 
-    private async Task<ActiveActor> GetOrActivateAsync(ActorId actorId, string activationId)
+    private async Task<ActiveActor> GetOrActivateAsync(ActorId actorId, string activationId, long admitted)
     {
-        var stale = this.DetachStale(actorId, activationId);
-        if (stale != null)
+        // Activation ids aren't ordered, so one installed after this call arrived is the newer one.
+        if (!string.IsNullOrEmpty(activationId)
+            && this.activeActors.TryGetValue(actorId, out var newer)
+            && newer.Generation > admitted
+            && !string.Equals(newer.ActivationId, activationId, StringComparison.Ordinal))
         {
-            await this.DeactivateStaleAsync(actorId, stale);
+            throw new InvalidOperationException($"Actor {actorId} was activated by a newer activation while this call waited, the call was not run.");
+        }
+
+        if (this.DetachStale(actorId, activationId))
+        {
+            await this.CleanupDetachedAsync(actorId);
         }
 
         if (this.activeActors.TryGetValue(actorId, out var existing))
@@ -415,20 +427,28 @@ internal sealed class ActorManager
 
     internal async Task DeactivateActorAsync(ActorId actorId)
     {
-        // Unregister before waiting for the turn so a call still running skips its save.
-        var removed = this.activeActors.TryRemove(actorId, out var deactivatedActor);
-        using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
-        if (removed || this.activeActors.TryRemove(actorId, out deactivatedActor))
+        // Unregister before waiting for the turn so a call still running can't save.
+        ActiveActor removed = null;
+        if (this.activeActors.TryRemove(actorId, out var active))
         {
-            await DeactivateActorCore(deactivatedActor.State);
+            active.State.Actor.Detach(true);
+            removed = active;
+            this.AddDetached(actorId, active);
+        }
+
+        using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
+        await this.CleanupDetachedAsync(actorId, removed);
+        if (removed == null && this.activeActors.TryRemove(actorId, out active))
+        {
+            await DeactivateActorCore(active.State);
         }
     }
 
-    private ActiveActor DetachStale(ActorId actorId, string activationId)
+    private bool DetachStale(ActorId actorId, string activationId)
     {
         if (string.IsNullOrEmpty(activationId))
         {
-            return null;
+            return false;
         }
 
         if (this.activating.TryGetValue(actorId, out var pending)
@@ -440,11 +460,70 @@ internal sealed class ActorManager
         if (!this.activeActors.TryGetValue(actorId, out var existing)
             || string.Equals(existing.ActivationId, activationId, StringComparison.Ordinal))
         {
-            return null;
+            return false;
         }
 
         existing.Replace();
-        return this.activeActors.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, existing)) ? existing : null;
+        if (!this.activeActors.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, existing)))
+        {
+            return false;
+        }
+
+        this.AddDetached(actorId, existing);
+        return true;
+    }
+
+    private void AddDetached(ActorId actorId, ActiveActor active)
+    {
+        lock (this.detached)
+        {
+            if (!this.detached.TryGetValue(actorId, out var list))
+            {
+                list = new List<ActiveActor>();
+                this.detached.Add(actorId, list);
+            }
+
+            list.Add(active);
+        }
+    }
+
+    // Runs in a root turn, so a detached activation is always deactivated before the next one activates.
+    private async Task CleanupDetachedAsync(ActorId actorId, ActiveActor owned = null)
+    {
+        List<ActiveActor> list;
+        lock (this.detached)
+        {
+            if (!this.detached.Remove(actorId, out list))
+            {
+                return;
+            }
+        }
+
+        ExceptionDispatchInfo ownedError = null;
+        foreach (var active in list)
+        {
+            if (active.Replaced)
+            {
+                await this.DeactivateStaleAsync(actorId, active);
+                continue;
+            }
+
+            active.State.Actor.Detach(false);
+            try
+            {
+                await DeactivateActorCore(active.State);
+            }
+            catch (Exception ex) when (!ReferenceEquals(active, owned))
+            {
+                this.logger.LogError(ex, "Deactivating Actor of type {ActorType} with ActorId {ActorId} failed", this.ActorTypeInfo.ImplementationType, actorId);
+            }
+            catch (Exception ex)
+            {
+                ownedError = ExceptionDispatchInfo.Capture(ex);
+            }
+        }
+
+        ownedError?.Throw();
     }
 
     private async Task DeactivateStaleAsync(ActorId actorId, ActiveActor stale)
@@ -460,10 +539,10 @@ internal sealed class ActorManager
         }
     }
 
-    private async Task DeactivateStaleInTurnAsync(ActorId actorId, ActiveActor stale)
+    private async Task CleanupDetachedInTurnAsync(ActorId actorId)
     {
         using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
-        await this.DeactivateStaleAsync(actorId, stale);
+        await this.CleanupDetachedAsync(actorId);
     }
 
     private void EnsureLive(ActorId actorId, ActiveActor active)
@@ -530,33 +609,41 @@ internal sealed class ActorManager
             reentrancyId = null;
         }
         // A new activation id drops the stale activation before waiting for the turn, so a call still running on it skips its save.
-        // Its deactivation waits for the turn so OnDeactivateAsync never overlaps that call.
-        var stale = this.turnLock.IsInChain(actorId, reentrancyId) ? null : this.DetachStale(actorId, activationId);
+        // Its deactivation waits for a root turn so OnDeactivateAsync never overlaps that call.
+        var admitted = Interlocked.Read(ref this.installs);
+        var detachedStale = !this.turnLock.IsInChain(actorId, reentrancyId) && this.DetachStale(actorId, activationId);
         ActorTurnLock.Lease lease;
         try
         {
             lease = await this.turnLock.AcquireAsync(actorId, reentrancyId, cancellationToken);
         }
-        catch when (stale != null)
+        catch when (detachedStale)
         {
-            _ = this.DeactivateStaleInTurnAsync(actorId, stale);
+            _ = this.CleanupDetachedInTurnAsync(actorId);
             throw;
         }
 
         using var turn = lease;
-        if (stale != null)
+        ActiveActor active;
+        if (turn.Reentered)
         {
-            if (turn.Reentered)
+            if (detachedStale)
             {
-                _ = this.DeactivateStaleInTurnAsync(actorId, stale);
+                _ = this.CleanupDetachedInTurnAsync(actorId);
             }
-            else
+
+            // A reentrant call runs inside its chain's turn, so it never starts a second activation.
+            if (!this.activeActors.TryGetValue(actorId, out active))
             {
-                await this.DeactivateStaleAsync(actorId, stale);
+                throw new InvalidOperationException($"Actor {actorId} was deactivated during this call chain, the call was not run.");
             }
         }
+        else
+        {
+            await this.CleanupDetachedAsync(actorId);
+            active = await this.GetOrActivateAsync(actorId, activationId, admitted);
+        }
 
-        var active = await this.GetOrActivateAsync(actorId, turn.Reentered ? null : activationId);
         if (active.Replaced)
         {
             if (this.activeActors.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, active)))
@@ -619,13 +706,15 @@ internal sealed class ActorManager
         return new Tuple<string, byte[]>(string.Empty, responseMsgBodyBytes);
     }
 
-    private sealed class ActiveActor(ActorActivatorState state, string activationId)
+    private sealed class ActiveActor(ActorActivatorState state, string activationId, long generation)
     {
         private volatile bool replaced;
 
         public ActorActivatorState State { get; } = state;
 
         public string ActivationId { get; } = activationId;
+
+        public long Generation { get; } = generation;
 
         public bool Replaced => this.replaced;
 

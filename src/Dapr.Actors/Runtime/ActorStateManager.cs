@@ -496,7 +496,7 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
     {
         if (this.actor.Discarded)
         {
-            throw new InvalidOperationException($"Actor {this.actor.Id} of type {this.actorTypeName} was replaced by a newer activation, state not saved.");
+            throw new InvalidOperationException($"Actor {this.actor.Id} of type {this.actorTypeName} was replaced or deactivated, state not saved.");
         }
 
         EnsureStateProviderInitialized();

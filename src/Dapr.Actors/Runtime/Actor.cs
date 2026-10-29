@@ -34,6 +34,7 @@ public abstract class Actor
 {
     private readonly string actorTypeName;
     private volatile bool discarded;
+    private volatile bool detached;
 
     /// <summary>
     /// The Logger
@@ -75,10 +76,12 @@ public abstract class Actor
     /// </summary>
     public IActorStateManager StateManager { get; protected set; }
 
-    // Set once a newer activation replaced this instance, so it can't overwrite newer state.
-    internal bool Discarded => this.discarded;
+    // Set once this instance was replaced or is being deactivated, so it can't overwrite newer state.
+    internal bool Discarded => this.discarded || this.detached;
 
     internal void Discard() => this.discarded = true;
+
+    internal void Detach(bool detached) => this.detached = detached;
 
     internal async Task OnActivateInternalAsync(Func<bool> canSave)
     {

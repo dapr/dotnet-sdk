@@ -222,7 +222,8 @@ public class ActorsEndpointRouteBuilderExtensionsTests
     }
 
     [Theory]
-    [InlineData("1.19.0")]
+    [InlineData("1.18.9")]
+    [InlineData("1.19.0-rc.7")]
     [InlineData("edge")]
     public async Task MapActorsHandlers_OlderSidecar_IgnoresActivationId(string runtimeVersion)
     {

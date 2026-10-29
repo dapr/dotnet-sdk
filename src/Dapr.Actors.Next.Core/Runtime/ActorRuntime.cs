@@ -48,6 +48,7 @@ public sealed class ActorRuntime(
 {
     private static readonly ActivitySource ActivitySource = new("Dapr.Actors.Next.Core");
     private readonly ConcurrentDictionary<ActorKey, ActorActivation> activations = [];
+    private readonly ConcurrentDictionary<ActorKey, ActorActivation> activating = [];
     private readonly ConcurrentDictionary<ActorKey, RuntimeActorMailbox> mailboxes = [];
     private readonly IReadOnlyList<IActorTurnFilter> _filters = filters.ToArray();
     private readonly object lifecycleLock = new();
@@ -190,6 +191,8 @@ public sealed class ActorRuntime(
             }
         }
 
+        DiscardStale(request, mailbox);
+
         // Fast path: when the scheduler permits inline execution and the mailbox is idle, run the turn directly
         // on the caller. This preserves one-turn-at-a-time semantics via the mailbox execution slot while
         // avoiding the thread-pool hop, the TaskCompletionSource, and the per-call cancellation registration
@@ -216,6 +219,34 @@ public sealed class ActorRuntime(
         // Once accepted, scheduling belongs to the mailbox, not to an individual caller.
         await scheduler.ScheduleAsync(mailbox, CancellationToken.None).ConfigureAwait(false);
         return await work.Task.ConfigureAwait(false);
+    }
+
+    // A new activation id stops the running activation from saving now, its deactivation still waits for the turn.
+    private void DiscardStale(ActorRuntimeRequest request, RuntimeActorMailbox mailbox)
+    {
+        if (request.Kind == ActorTurnKind.Deactivate || mailbox.HasActiveCallChain(request.Headers))
+        {
+            return;
+        }
+
+        var activationId = ActorHeaders.GetActivationId(request.Headers);
+        if (activationId.Length == 0)
+        {
+            return;
+        }
+
+        var key = new ActorKey(request.ActorType, request.ActorId.Value);
+        // An activation is published before it leaves activating, so checking in this order can't miss it.
+        DiscardIfOther(activating, key, activationId);
+        DiscardIfOther(activations, key, activationId);
+
+        static void DiscardIfOther(ConcurrentDictionary<ActorKey, ActorActivation> map, ActorKey key, string activationId)
+        {
+            if (map.TryGetValue(key, out var current) && !string.Equals(current.ActivationId, activationId, StringComparison.Ordinal))
+            {
+                current.StateUnitOfWork.Discard();
+            }
+        }
     }
 
     /// <inheritdoc />
@@ -297,7 +328,9 @@ public sealed class ActorRuntime(
         }
 
         var registration = registry.GetByActorType(request.ActorType);
-        var activation = await GetOrActivateAsync(registration, request.ActorId, ActorHeaders.GetActivationId(request.Headers), cancellationToken).ConfigureAwait(false);
+        // A reentrant call runs inside its parent's turn, so it keeps the parent's activation.
+        var activationId = rootTurn ? ActorHeaders.GetActivationId(request.Headers) : string.Empty;
+        var activation = await GetOrActivateAsync(registration, request.ActorId, activationId, cancellationToken).ConfigureAwait(false);
         mailbox.MarkActivated();
         var dispatchRequest = new ActorDispatchRequest(request.ActorType, request.ActorId, request.OperationName, request.Payload, request.Headers, request.RequestContext);
         var methodContext = ToMethodContext(dispatchRequest);
@@ -441,25 +474,32 @@ public sealed class ActorRuntime(
             throw;
         }
 
+        activating[key] = activation;
         try
         {
-            await activation.OnActivateAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch
-        {
-            await DisposeActivationAsync(activation).ConfigureAwait(false);
-            throw;
-        }
+            try
+            {
+                await activation.OnActivateAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                await DisposeActivationAsync(activation).ConfigureAwait(false);
+                throw;
+            }
 
-        // Mailbox admission serializes activation. Publish only after initialization succeeds,
-        // so a failed or cancelled activation can never be reused by a later turn.
-        if (!activations.TryAdd(key, activation))
-        {
-            await activation.DisposeAsync().ConfigureAwait(false);
-            return activations[key];
-        }
+            // Published only after initialization succeeds, so a failed activation is never reused.
+            if (!activations.TryAdd(key, activation))
+            {
+                await activation.DisposeAsync().ConfigureAwait(false);
+                return activations[key];
+            }
 
-        return activation;
+            return activation;
+        }
+        finally
+        {
+            activating.TryRemove(KeyValuePair.Create(key, activation));
+        }
     }
 
     private ActorTurnDelegate BuildPipeline(

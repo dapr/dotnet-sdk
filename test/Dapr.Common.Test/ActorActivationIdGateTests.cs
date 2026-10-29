@@ -24,14 +24,16 @@ namespace Dapr.Common.Test;
 public sealed class ActorActivationIdGateTests
 {
     [Theory]
+    [InlineData("1.19.0", true)]
+    [InlineData("1.19.0+build.1", true)]
     [InlineData("1.19.1", true)]
     [InlineData("1.19.1-rc.1", true)]
     [InlineData("1.19.2+build.5", true)]
     [InlineData("1.20.0", true)]
     [InlineData("2.0.0", true)]
     [InlineData(" 1.19.1 ", true)]
-    [InlineData("1.19.0", false)]
     [InlineData("1.19.0-rc.2", false)]
+    [InlineData("1.19.0-rc.7+build.1", false)]
     [InlineData("1.18.9", false)]
     [InlineData("0.99.99", false)]
     [InlineData("edge", false)]
@@ -75,7 +77,7 @@ public sealed class ActorActivationIdGateTests
         var gate = new ActorActivationIdGate(_ =>
         {
             Interlocked.Increment(ref lookups);
-            return Task.FromResult<string?>("1.19.0");
+            return Task.FromResult<string?>("1.18.9");
         });
 
         Assert.Null(await gate.FilterAsync("a1", TestContext.Current.CancellationToken));

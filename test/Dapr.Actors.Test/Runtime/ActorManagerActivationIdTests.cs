@@ -431,6 +431,134 @@ public sealed class ActorManagerActivationIdTests
     }
 
     [Fact]
+    public async Task SupersededWaiter_DoesNotEvictNewerActivation()
+    {
+        await IncrementAsync("a0");
+        var first = GetActor();
+        var held = HoldAsync("a0");
+        await WaitAsync(first.Held);
+
+        var context = new ManualSynchronizationContext();
+        var older = context.Run(() => IncrementAsync("a1"));
+        first.Release.SetResult();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+
+        Assert.Equal(6, await IncrementAsync("a2"));
+        var newer = GetActor();
+        await context.DrainAsync(older);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => older);
+        Assert.Contains("newer activation", ex.Message);
+        Assert.Same(newer, GetActor());
+        Assert.False(newer.IsDeactivated);
+        Assert.Equal(7, await IncrementAsync("a2"));
+    }
+
+    [Fact]
+    public async Task Method_DeactivatedWhileRunning_ExplicitSaveIsRefused_DeactivateStillSaves()
+    {
+        await IncrementAsync("a1");
+        var first = GetActor();
+        first.SaveInHold = true;
+
+        var held = HoldAsync("a1");
+        await WaitAsync(first.Held);
+        var deactivating = manager.DeactivateActorAsync(id);
+        first.SaveOnDeactivate = true;
+        first.Release.SetResult();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+        Assert.True(first.SaveRefused);
+        await deactivating;
+        Assert.DoesNotContain(store.Saves, s => s.Contains("100"));
+        Assert.Contains(store.Saves, s => s.Contains("200"));
+    }
+
+    [Fact]
+    public async Task Deactivate_LosesTurnToNewCall_OldIsDeactivatedBeforeNewActivates()
+    {
+        await IncrementAsync("a1");
+        var first = GetActor();
+        var held = HoldAsync("a1");
+        await WaitAsync(first.Held);
+
+        var context = new ManualSynchronizationContext();
+        var deactivating = context.Run(() => manager.DeactivateActorAsync(id));
+        first.Release.SetResult();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+
+        Assert.Equal(6, await IncrementAsync("a1"));
+        var second = GetActor();
+        Assert.True(first.IsDeactivated);
+        Assert.True(first.DeactivatedBefore(second));
+
+        await context.DrainAsync(deactivating);
+        await deactivating;
+        Assert.Same(second, GetActor());
+        Assert.False(second.IsDeactivated);
+    }
+
+    [Fact]
+    public async Task Replacement_LosesTurnToNewCall_StaleIsDeactivatedBeforeNewActivates()
+    {
+        await IncrementAsync("a1");
+        var first = GetActor();
+        var held = HoldAsync("a1");
+        await WaitAsync(first.Held);
+
+        var context = new ManualSynchronizationContext();
+        var replacing = context.Run(() => IncrementAsync("a2"));
+        first.Release.SetResult();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+
+        Assert.Equal(6, await IncrementAsync("a2"));
+        var second = GetActor();
+        Assert.True(first.IsDeactivated);
+        Assert.True(first.DeactivatedBefore(second));
+
+        await context.DrainAsync(replacing);
+        Assert.Equal(7, await replacing);
+        Assert.Same(second, GetActor());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ReentrantCall_AfterActorDetached_IsRejected(bool delete)
+    {
+        var registration = new ActorRegistration(ActorTypeInformation.Get(typeof(CountingActor), actorTypeName: null));
+        var reentrant = new ActorManager(registration, new DefaultActorActivator(), JsonSerializerDefaults.Web, false, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, store, new ActorReentrancyConfig { Enabled = true });
+        ActorReentrancyContextAccessor.ReentrancyContext = "chain";
+        try
+        {
+            await DispatchAsync(reentrant, nameof(ICountingActor.IncrementAsync), "a1");
+            Assert.True(reentrant.TryGetActorAsync(id, out var actor));
+            var first = Assert.IsType<CountingActor>(actor);
+            var held = DispatchAsync(reentrant, nameof(ICountingActor.HoldAsync), "a1");
+            await WaitAsync(first.Held);
+
+            ActorReentrancyContextAccessor.ReentrancyContext = "other";
+            var detaching = delete ? reentrant.DeactivateActorAsync(id) : DispatchAsync(reentrant, nameof(ICountingActor.IncrementAsync), "a2");
+            ActorReentrancyContextAccessor.ReentrancyContext = "chain";
+            Assert.False(reentrant.TryGetActorAsync(id, out _));
+
+            var nested = DispatchAsync(reentrant, nameof(ICountingActor.IncrementAsync), "a1");
+            await Assert.ThrowsAsync<InvalidOperationException>(() => nested.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+            Assert.False(reentrant.TryGetActorAsync(id, out _));
+            Assert.False(first.IsDeactivated);
+
+            first.Release.SetResult();
+            await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+            await detaching;
+            Assert.True(first.IsDeactivated);
+        }
+        finally
+        {
+            ActorReentrancyContextAccessor.ReentrancyContext = null;
+        }
+    }
+
+    [Fact]
     public async Task Reset_OnDeactivateThrows_NewCallStillSucceeds()
     {
         Assert.Equal(6, await IncrementAsync("a1"));
@@ -713,17 +841,27 @@ public sealed class ActorManagerActivationIdTests
             return Task.CompletedTask;
         }
 
+        private static long sequence;
+
+        private long activatedAt;
+
+        private long deactivatedAt;
+
+        public bool DeactivatedBefore(CountingActor other) => IsDeactivated && deactivatedAt < other.activatedAt;
+
         public void Dispose() => IsDisposed = true;
 
         protected override Task OnActivateAsync()
         {
             IsActivated = true;
+            activatedAt = Interlocked.Increment(ref sequence);
             return Task.CompletedTask;
         }
 
         protected override async Task OnDeactivateAsync()
         {
             IsDeactivated = true;
+            deactivatedAt = Interlocked.Increment(ref sequence);
             Deactivated.TrySetResult();
             if (ThrowOnDeactivate)
             {
@@ -800,6 +938,48 @@ public sealed class ActorManagerActivationIdTests
         public bool ThrowOnDeactivate { get; init; }
 
         public GatedActivateActor Actor { get; set; }
+    }
+
+    // Holds every continuation posted to it until the test drains it, so a waiter resumes only when the test says.
+    private sealed class ManualSynchronizationContext : SynchronizationContext
+    {
+        private readonly ConcurrentQueue<(SendOrPostCallback Callback, object State)> queue = new();
+
+        public override void Post(SendOrPostCallback d, object state) => queue.Enqueue((d, state));
+
+        public T Run<T>(Func<T> start)
+        {
+            var previous = Current;
+            SetSynchronizationContext(this);
+            try
+            {
+                return start();
+            }
+            finally
+            {
+                SetSynchronizationContext(previous);
+            }
+        }
+
+        public async Task DrainAsync(Task task)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (!task.IsCompleted && DateTime.UtcNow < deadline)
+            {
+                if (queue.TryDequeue(out var item))
+                {
+                    Run(() =>
+                    {
+                        item.Callback(item.State);
+                        return 0;
+                    });
+                }
+                else
+                {
+                    await Task.Delay(1, TestContext.Current.CancellationToken);
+                }
+            }
+        }
     }
 
     private sealed class CapturingLoggerFactory : ILoggerFactory, ILogger
