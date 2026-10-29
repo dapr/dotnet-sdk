@@ -42,8 +42,22 @@ public sealed class JavaScriptCrossAppPayloadTests
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task ShouldResolveReferencesAcrossSdkActivityChildAndDetachedWorkflows(
-        bool javascriptParent, bool explicitReference)
+    public Task ShouldResolveReferencesAcrossSdkActivityChildAndDetachedWorkflows(
+        bool javascriptParent, bool explicitReference) =>
+        RunScenarioAsync(javascriptParent, explicitReference, javascriptPayloadSupport: true);
+
+    [MinimumDaprRuntimeTheory("1.19")]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public Task ShouldInlineAtCrossAppBoundariesForJavaScriptWithoutPayloadSupport(
+        bool explicitReference, bool explicitBoundaryOptOut) =>
+        RunScenarioAsync(javascriptParent: false, explicitReference, javascriptPayloadSupport: false,
+            explicitBoundaryOptOut);
+
+    private static async Task RunScenarioAsync(bool javascriptParent, bool explicitReference,
+        bool javascriptPayloadSupport, bool explicitBoundaryOptOut = false)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(5));
@@ -90,6 +104,7 @@ public sealed class JavaScriptCrossAppPayloadTests
                             configureRuntime: runtime =>
                             {
                                 runtime.RegisterWorkflow<ParentWorkflow>("parent");
+                                runtime.RegisterWorkflow<InlineParentWorkflow>("inline-parent");
                                 runtime.RegisterWorkflow<AutomaticWorkflow>("automatic");
                                 runtime.RegisterWorkflow<ReferenceWorkflow>("reference");
                                 runtime.RegisterActivity<AutomaticActivity>("automatic");
@@ -108,15 +123,21 @@ public sealed class JavaScriptCrossAppPayloadTests
                             .UseGrpcEndpoint($"http://127.0.0.1:{storeSidecar.GrpcPort}").Build());
                 }).BuildAndStartAsync();
 
-            await using var javascript = new ContainerBuilder()
+            var javascriptBuilder = new ContainerBuilder()
                 .WithImage(image).WithNetwork(environment.Network)
                 .WithEnvironment("DAPR_HOST", javascriptSidecar.NetworkAlias)
-                .WithEnvironment("STORE_HOST", storeSidecar.NetworkAlias)
-                .WithEnvironment("STORE_NAME", StoreName)
+                .WithCommand("node", javascriptPayloadSupport ? "worker.cjs" : "inline-worker.cjs")
                 .WithPortBinding(8080, true)
                 .WithWaitStrategy(Wait.ForUnixContainer()
-                    .UntilHttpRequestIsSucceeded(request => request.ForPort(8080).ForPath("/health")))
-                .Build();
+                    .UntilHttpRequestIsSucceeded(request => request.ForPort(8080).ForPath("/health")));
+            if (javascriptPayloadSupport)
+            {
+                javascriptBuilder = javascriptBuilder
+                    .WithEnvironment("STORE_HOST", storeSidecar.NetworkAlias)
+                    .WithEnvironment("STORE_NAME", StoreName);
+            }
+
+            await using var javascript = javascriptBuilder.Build();
             await javascript.StartAsync(token);
 
             using var http = new HttpClient();
@@ -135,7 +156,7 @@ public sealed class JavaScriptCrossAppPayloadTests
                 9_007_199_254_740_991, false, null, ["", "\u00e9", "YWJj"]);
             var reference = await resolver.StoreAsync(document, id, token);
             var request = new Request(javascriptParent ? dotnetId : javascriptId,
-                $"child-{id}", $"detached-{id}", explicitReference, reference);
+                $"child-{id}", $"detached-{id}", explicitReference, reference, explicitBoundaryOptOut);
             var parentPort = javascriptParent ? javascriptSidecar.GrpcPort : dotnetHarness.DaprGrpcPort;
             var remotePort = javascriptParent ? dotnetHarness.DaprGrpcPort : javascriptSidecar.GrpcPort;
             if (javascriptParent)
@@ -160,7 +181,8 @@ public sealed class JavaScriptCrossAppPayloadTests
             else
             {
                 await services.GetRequiredService<DaprWorkflowClient>().ScheduleNewWorkflowAsync(
-                    "parent", id, request, startTime: null, cancellation: token);
+                    javascriptPayloadSupport ? "parent" : "inline-parent", id, request,
+                    startTime: null, cancellation: token);
             }
 
             using var parentChannel = GrpcChannel.ForAddress($"http://127.0.0.1:{parentPort}");
@@ -172,6 +194,7 @@ public sealed class JavaScriptCrossAppPayloadTests
                 Content = document.Content + (javascriptParent ? "|dotnet" : "|javascript")
             };
             var completion = await WaitAsync(parentGrpc, id, token);
+            await AssertReferenceAsync(completion.Input, store, token);
             var outputReference = await AssertReferenceAsync(completion.Output, store, token);
             var result = await resolver.ResolveAsync<Result>(outputReference, token);
             Assert.Equivalent(expected, result.Activity);
@@ -181,28 +204,66 @@ public sealed class JavaScriptCrossAppPayloadTests
                 new WorkflowGrpc.GetInstanceHistoryRequest { InstanceId = id },
                 new CallOptions(cancellationToken: token));
             var scheduled = Assert.Single(history.Events, e => e.TaskScheduled is not null).TaskScheduled;
-            var activityInput = await AssertReferenceAsync(scheduled.Input, store, token);
-            Assert.Equivalent(document, await resolver.ResolveAsync<Document>(activityInput, token));
-            if (explicitReference)
-                Assert.Equal(reference.ToEnvelope(), activityInput.ToEnvelope());
+            if (javascriptPayloadSupport)
+            {
+                var activityInput = await AssertReferenceAsync(scheduled.Input, store, token);
+                Assert.Equivalent(document, await resolver.ResolveAsync<Document>(activityInput, token));
+                if (explicitReference)
+                    Assert.Equal(reference.ToEnvelope(), activityInput.ToEnvelope());
+            }
+            else
+            {
+                AssertInlineDocument(scheduled.Input, document);
+            }
+
             var activityOutput = Assert.Single(history.Events, e => e.TaskCompleted is not null).TaskCompleted.Result;
             var childOutput = Assert.Single(history.Events, e => e.ChildWorkflowInstanceCompleted is not null)
                 .ChildWorkflowInstanceCompleted.Result;
             foreach (var wire in new[] { activityOutput, childOutput })
             {
-                var returned = await AssertReferenceAsync(wire, store, token);
-                Assert.Equivalent(expected, await resolver.ResolveAsync<Document>(returned, token));
+                if (javascriptPayloadSupport)
+                {
+                    var returned = await AssertReferenceAsync(wire, store, token);
+                    Assert.Equivalent(expected, await resolver.ResolveAsync<Document>(returned, token));
+                }
+                else
+                {
+                    AssertInlineDocument(wire, expected);
+                }
             }
 
             foreach (var remoteId in new[] { request.ChildId, request.DetachedId })
             {
                 var remote = await WaitAsync(remoteGrpc, remoteId, token);
-                var inputReference = await AssertReferenceAsync(remote.Input, store, token);
-                Assert.Equivalent(document, await resolver.ResolveAsync<Document>(inputReference, token));
-                var returned = await AssertReferenceAsync(remote.Output, store, token);
-                Assert.Equivalent(expected, await resolver.ResolveAsync<Document>(returned, token));
-                if (explicitReference)
-                    Assert.Equal(reference.ToEnvelope(), inputReference.ToEnvelope());
+                if (javascriptPayloadSupport)
+                {
+                    var inputReference = await AssertReferenceAsync(remote.Input, store, token);
+                    Assert.Equivalent(document, await resolver.ResolveAsync<Document>(inputReference, token));
+                    var returned = await AssertReferenceAsync(remote.Output, store, token);
+                    Assert.Equivalent(expected, await resolver.ResolveAsync<Document>(returned, token));
+                    if (explicitReference)
+                        Assert.Equal(reference.ToEnvelope(), inputReference.ToEnvelope());
+                }
+                else
+                {
+                    AssertInlineDocument(remote.Input, document);
+                    AssertInlineDocument(remote.Output, expected);
+                    var remoteHistory = await remoteGrpc.GetInstanceHistoryAsync(
+                        new WorkflowGrpc.GetInstanceHistoryRequest { InstanceId = remoteId },
+                        new CallOptions(cancellationToken: token));
+                    AssertInlineDocument(Assert.Single(remoteHistory.Events, e => e.TaskScheduled is not null)
+                        .TaskScheduled.Input, document);
+                    AssertInlineDocument(Assert.Single(remoteHistory.Events, e => e.TaskCompleted is not null)
+                        .TaskCompleted.Result, expected);
+                }
+            }
+
+            if (!javascriptPayloadSupport)
+            {
+                var health = await http.GetFromJsonAsync<JsonElement>(
+                    $"http://{javascript.Hostname}:{javascript.GetMappedPublicPort(8080)}/health", token);
+                Assert.Equal(3, health.GetProperty("activityCalls").GetInt32());
+                Assert.Equal(2, health.GetProperty("workflowCalls").GetInt32());
             }
         }
         finally
@@ -238,6 +299,18 @@ public sealed class JavaScriptCrossAppPayloadTests
         return reference;
     }
 
+    private static void AssertInlineDocument(string wire, Document expected)
+    {
+        Assert.False(PayloadReference.TryParse(wire, out _), "Expected inline data at the unconfigured JS boundary.");
+        using var json = JsonDocument.Parse(wire);
+        var document = json.RootElement;
+        Assert.Equal(expected.Content, document.GetProperty("content").GetString());
+        Assert.Equal(expected.Sequence, document.GetProperty("sequence").GetInt64());
+        Assert.Equal(expected.Enabled, document.GetProperty("enabled").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, document.GetProperty("optional").ValueKind);
+        Assert.Equal(expected.Items, document.GetProperty("items").EnumerateArray().Select(item => item.GetString()));
+    }
+
     internal sealed record Document(string Content, long Sequence, bool Enabled, string? Optional, string[] Items);
 
     internal sealed record Request(
@@ -245,7 +318,8 @@ public sealed class JavaScriptCrossAppPayloadTests
         string ChildId,
         string DetachedId,
         bool ExplicitReference,
-        PayloadReference<Document> Reference);
+        PayloadReference<Document> Reference,
+        bool ExplicitBoundaryOptOut = false);
 
     internal sealed record Result(Document Activity, Document Child);
 
@@ -264,6 +338,27 @@ public sealed class JavaScriptCrossAppPayloadTests
                     AllowPayloadReferences: true));
             await context.ScheduleNewDetachedWorkflowAsync(name, input.DetachedId, payload, null, options);
             return new Result(await context.ResolvePayloadAsync(activity), await context.ResolvePayloadAsync(child));
+        }
+    }
+
+    internal sealed class InlineParentWorkflow : Workflow<Request, Result>
+    {
+        public override async Task<Result> RunAsync(WorkflowContext context, Request input)
+        {
+            object payload = input.ExplicitReference
+                ? input.Reference
+                : await context.ResolvePayloadAsync(input.Reference);
+            var options = input.ExplicitBoundaryOptOut
+                ? new WorkflowTaskOptions(TargetAppId: input.TargetAppId, AllowPayloadReferences: false)
+                : new WorkflowTaskOptions(TargetAppId: input.TargetAppId);
+            var childOptions = input.ExplicitBoundaryOptOut
+                ? new ChildWorkflowTaskOptions(InstanceId: input.ChildId, TargetAppId: input.TargetAppId,
+                    AllowPayloadReferences: false)
+                : new ChildWorkflowTaskOptions(InstanceId: input.ChildId, TargetAppId: input.TargetAppId);
+            var activity = await context.CallActivityAsync<Document>("inline", payload, options);
+            var child = await context.CallChildWorkflowAsync<Document>("inline", payload, childOptions);
+            await context.ScheduleNewDetachedWorkflowAsync("inline", input.DetachedId, payload, null, options);
+            return new Result(activity, child);
         }
     }
 
