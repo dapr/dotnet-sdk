@@ -330,7 +330,7 @@ public sealed class ActorRuntime(
         var registration = registry.GetByActorType(request.ActorType);
         // A reentrant call runs inside its parent's turn, so it keeps the parent's activation.
         var activationId = rootTurn ? ActorHeaders.GetActivationId(request.Headers) : string.Empty;
-        var activation = await GetOrActivateAsync(registration, request.ActorId, activationId, cancellationToken).ConfigureAwait(false);
+        var activation = await GetOrActivateAsync(registration, request.ActorId, activationId, rootTurn, cancellationToken).ConfigureAwait(false);
         mailbox.MarkActivated();
         var dispatchRequest = new ActorDispatchRequest(request.ActorType, request.ActorId, request.OperationName, request.Payload, request.Headers, request.RequestContext);
         var methodContext = ToMethodContext(dispatchRequest);
@@ -411,12 +411,13 @@ public sealed class ActorRuntime(
         return response is null ? null : response.Value.Result ?? Array.Empty<byte>();
     }
 
-    private async Task<ActorActivation> GetOrActivateAsync(ActorRuntimeRegistration registration, ActorId actorId, string activationId, CancellationToken cancellationToken)
+    private async Task<ActorActivation> GetOrActivateAsync(ActorRuntimeRegistration registration, ActorId actorId, string activationId, bool rootTurn, CancellationToken cancellationToken)
     {
         var key = new ActorKey(registration.ActorType, actorId.Value);
         if (activations.TryGetValue(key, out var existing))
         {
-            if (activationId.Length == 0 || string.Equals(existing.ActivationId, activationId, StringComparison.Ordinal))
+            // A call that discarded this activation may never run, so a headerless root turn replaces it instead of failing every save.
+            if (activationId.Length == 0 ? !(rootTurn && existing.StateUnitOfWork.Discarded) : string.Equals(existing.ActivationId, activationId, StringComparison.Ordinal))
             {
                 return existing;
             }

@@ -47,7 +47,9 @@ internal sealed class ActorManager
     private readonly ActorTurnLock turnLock = new ActorTurnLock();
     private readonly ConcurrentDictionary<ActorId, ActiveActor> activating = new ConcurrentDictionary<ActorId, ActiveActor>();
     private readonly Dictionary<ActorId, List<ActiveActor>> detached = new Dictionary<ActorId, List<ActiveActor>>();
-    private long installs;
+    private readonly Dictionary<ActorId, Admission> latest = new Dictionary<ActorId, Admission>();
+    private readonly object gate = new object();
+    private long admissions;
     private readonly bool reentrancyEnabled;
 
     // method dispatchermap used by remoting calls.
@@ -319,16 +321,17 @@ internal sealed class ActorManager
 
     internal async Task ActivateActorAsync(ActorId actorId, string activationId = null)
     {
+        var ticket = this.Admit(actorId, null, out _);
         using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
         await this.CleanupDetachedAsync(actorId);
-        await this.ActivateActorCoreAsync(actorId, activationId);
+        await this.ActivateActorCoreAsync(actorId, activationId, ticket);
     }
 
-    private async Task<ActiveActor> ActivateActorCoreAsync(ActorId actorId, string activationId)
+    private async Task<ActiveActor> ActivateActorCoreAsync(ActorId actorId, string activationId, long ticket)
     {
         // An actor is activated by "Dapr" runtime when a call is to be made for an actor.
         var state = await this.CreateActorAsync(actorId);
-        var active = new ActiveActor(state, activationId ?? string.Empty, Interlocked.Increment(ref this.installs));
+        var active = new ActiveActor(state, activationId ?? string.Empty);
         this.activating[actorId] = active;
 
         try
@@ -337,13 +340,10 @@ internal sealed class ActorManager
         }
         catch
         {
+            this.activating.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, active));
             // Ensure we don't leak resources if user-code throws during activation.
             await DeleteActorAsync(state);
             throw;
-        }
-        finally
-        {
-            this.activating.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, active));
         }
 
         // Add actor to activeActors only after OnActivate succeeds (user code can throw error from its override of Activate method.)
@@ -354,7 +354,24 @@ internal sealed class ActorManager
         //
         // The policy we have chosen is to always keep the registered instance if we hit a double-activation
         // so that means we have to destroy the 'new' instance.
-        var current = this.activeActors.AddOrUpdate(actorId, active, (key, oldValue) => oldValue);
+        ActiveActor current = null;
+        bool replaced;
+        lock (this.gate)
+        {
+            this.activating.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, active));
+            replaced = active.Replaced || this.IsSuperseded(actorId, activationId, ticket);
+            if (!replaced)
+            {
+                current = this.activeActors.GetOrAdd(actorId, active);
+            }
+        }
+
+        if (replaced)
+        {
+            await this.DiscardAsync(actorId, state);
+            throw new InvalidOperationException($"Actor {actorId} was replaced by a newer activation during this call, the call was not run.");
+        }
+
         if (object.ReferenceEquals(active, current))
         {
             // On this code path it was an *Add*. Nothing left to do.
@@ -379,20 +396,16 @@ internal sealed class ActorManager
         }
     }
 
-    private async Task<ActiveActor> GetOrActivateAsync(ActorId actorId, string activationId, long admitted)
+    private async Task<ActiveActor> GetOrActivateAsync(ActorId actorId, string activationId, long ticket)
     {
-        // Activation ids aren't ordered, so one installed after this call arrived is the newer one.
-        if (!string.IsNullOrEmpty(activationId)
-            && this.activeActors.TryGetValue(actorId, out var newer)
-            && newer.Generation > admitted
-            && !string.Equals(newer.ActivationId, activationId, StringComparison.Ordinal))
+        lock (this.gate)
         {
-            throw new InvalidOperationException($"Actor {actorId} was activated by a newer activation while this call waited, the call was not run.");
-        }
+            if (this.IsSuperseded(actorId, activationId, ticket))
+            {
+                throw new InvalidOperationException($"Actor {actorId} was activated by a newer activation while this call waited, the call was not run.");
+            }
 
-        if (this.DetachStale(actorId, activationId))
-        {
-            await this.CleanupDetachedAsync(actorId);
+            this.DetachStale(actorId, activationId);
         }
 
         if (this.activeActors.TryGetValue(actorId, out var existing))
@@ -400,7 +413,53 @@ internal sealed class ActorManager
             return this.Settle(actorId, activationId, existing);
         }
 
-        return await this.ActivateActorCoreAsync(actorId, activationId);
+        // A DELETE may have detached it since this turn's first cleanup.
+        await this.CleanupDetachedAsync(actorId);
+        return await this.ActivateActorCoreAsync(actorId, activationId, ticket);
+    }
+
+    private long Admit(ActorId actorId, string activationId, out bool detachedStale)
+    {
+        lock (this.gate)
+        {
+            var ticket = ++this.admissions;
+            detachedStale = false;
+            if (!string.IsNullOrEmpty(activationId))
+            {
+                if (!this.latest.TryGetValue(actorId, out var admission))
+                {
+                    admission = new Admission();
+                    this.latest.Add(actorId, admission);
+                }
+
+                admission.Ticket = ticket;
+                admission.ActivationId = activationId;
+                admission.Waiters++;
+                detachedStale = this.DetachStale(actorId, activationId);
+            }
+
+            return ticket;
+        }
+    }
+
+    private void Release(ActorId actorId)
+    {
+        lock (this.gate)
+        {
+            if (this.latest.TryGetValue(actorId, out var admission) && --admission.Waiters == 0)
+            {
+                this.latest.Remove(actorId);
+            }
+        }
+    }
+
+    // Activation ids aren't ordered, so a different id that arrived after this call is the newer one.
+    private bool IsSuperseded(ActorId actorId, string activationId, long ticket)
+    {
+        return !string.IsNullOrEmpty(activationId)
+            && this.latest.TryGetValue(actorId, out var newer)
+            && newer.Ticket > ticket
+            && !string.Equals(newer.ActivationId, activationId, StringComparison.Ordinal);
     }
 
     private ActiveActor Settle(ActorId actorId, string activationId, ActiveActor registered)
@@ -429,11 +488,15 @@ internal sealed class ActorManager
     {
         // Unregister before waiting for the turn so a call still running can't save.
         ActiveActor removed = null;
-        if (this.activeActors.TryRemove(actorId, out var active))
+        ActiveActor active;
+        lock (this.gate)
         {
-            active.State.Actor.Detach(true);
-            removed = active;
-            this.AddDetached(actorId, active);
+            if (this.activeActors.TryRemove(actorId, out active))
+            {
+                active.State.Actor.Detach(true);
+                removed = active;
+                this.AddDetached(actorId, active);
+            }
         }
 
         using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
@@ -475,7 +538,7 @@ internal sealed class ActorManager
 
     private void AddDetached(ActorId actorId, ActiveActor active)
     {
-        lock (this.detached)
+        lock (this.gate)
         {
             if (!this.detached.TryGetValue(actorId, out var list))
             {
@@ -491,7 +554,7 @@ internal sealed class ActorManager
     private async Task CleanupDetachedAsync(ActorId actorId, ActiveActor owned = null)
     {
         List<ActiveActor> list;
-        lock (this.detached)
+        lock (this.gate)
         {
             if (!this.detached.Remove(actorId, out list))
             {
@@ -610,8 +673,23 @@ internal sealed class ActorManager
         }
         // A new activation id drops the stale activation before waiting for the turn, so a call still running on it skips its save.
         // Its deactivation waits for a root turn so OnDeactivateAsync never overlaps that call.
-        var admitted = Interlocked.Read(ref this.installs);
-        var detachedStale = !this.turnLock.IsInChain(actorId, reentrancyId) && this.DetachStale(actorId, activationId);
+        var admittedId = this.turnLock.IsInChain(actorId, reentrancyId) ? null : activationId;
+        var ticket = this.Admit(actorId, admittedId, out var detachedStale);
+        try
+        {
+            return await this.DispatchTurnAsync(actorId, activationId, reentrancyId, ticket, detachedStale, actorMethodContext, actorFunc, cancellationToken);
+        }
+        finally
+        {
+            if (!string.IsNullOrEmpty(admittedId))
+            {
+                this.Release(actorId);
+            }
+        }
+    }
+
+    private async Task<T> DispatchTurnAsync<T>(ActorId actorId, string activationId, string reentrancyId, long ticket, bool detachedStale, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
+    {
         ActorTurnLock.Lease lease;
         try
         {
@@ -641,7 +719,7 @@ internal sealed class ActorManager
         else
         {
             await this.CleanupDetachedAsync(actorId);
-            active = await this.GetOrActivateAsync(actorId, activationId, admitted);
+            active = await this.GetOrActivateAsync(actorId, activationId, ticket);
         }
 
         if (active.Replaced)
@@ -706,15 +784,22 @@ internal sealed class ActorManager
         return new Tuple<string, byte[]>(string.Empty, responseMsgBodyBytes);
     }
 
-    private sealed class ActiveActor(ActorActivatorState state, string activationId, long generation)
+    private sealed class Admission
+    {
+        public long Ticket { get; set; }
+
+        public string ActivationId { get; set; }
+
+        public int Waiters { get; set; }
+    }
+
+    private sealed class ActiveActor(ActorActivatorState state, string activationId)
     {
         private volatile bool replaced;
 
         public ActorActivatorState State { get; } = state;
 
         public string ActivationId { get; } = activationId;
-
-        public long Generation { get; } = generation;
 
         public bool Replaced => this.replaced;
 

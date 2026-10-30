@@ -455,6 +455,56 @@ public sealed class ActorManagerActivationIdTests
     }
 
     [Fact]
+    public async Task OlderWaiter_RunsFirst_IsRejectedAndLaterIdWins()
+    {
+        await IncrementAsync("a0");
+        var first = GetActor();
+        var held = HoldAsync("a0");
+        await WaitAsync(first.Held);
+
+        var olderContext = new ManualSynchronizationContext();
+        var older = olderContext.Run(() => IncrementAsync("a1"));
+        var newerContext = new ManualSynchronizationContext();
+        var newer = newerContext.Run(() => IncrementAsync("a2"));
+        first.Release.SetResult();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+
+        await olderContext.DrainAsync(older);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => older);
+        Assert.Contains("newer activation", ex.Message);
+
+        await newerContext.DrainAsync(newer);
+        Assert.Equal(6, await newer);
+        Assert.Equal(7, await IncrementAsync("a2"));
+    }
+
+    [Fact]
+    public async Task OlderWaiter_DeleteRunsFirst_IsStillRejected()
+    {
+        await IncrementAsync("a0");
+        var first = GetActor();
+        var held = HoldAsync("a0");
+        await WaitAsync(first.Held);
+
+        var olderContext = new ManualSynchronizationContext();
+        var older = olderContext.Run(() => IncrementAsync("a1"));
+        var newerContext = new ManualSynchronizationContext();
+        var newer = newerContext.Run(() => IncrementAsync("a2"));
+        var deleteContext = new ManualSynchronizationContext();
+        var deleting = deleteContext.Run(() => manager.DeactivateActorAsync(id));
+        first.Release.SetResult();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+
+        await deleteContext.DrainAsync(deleting);
+        await deleting;
+        await olderContext.DrainAsync(older);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => older);
+
+        await newerContext.DrainAsync(newer);
+        Assert.Equal(6, await newer);
+    }
+
+    [Fact]
     public async Task Method_DeactivatedWhileRunning_ExplicitSaveIsRefused_DeactivateStillSaves()
     {
         await IncrementAsync("a1");
