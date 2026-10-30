@@ -48,6 +48,7 @@ public sealed class ActorRuntime(
 {
     private static readonly ActivitySource ActivitySource = new("Dapr.Actors.Next.Core");
     private readonly ConcurrentDictionary<ActorKey, ActorActivation> activations = [];
+    private readonly ConcurrentDictionary<ActorKey, ActorActivation> activating = [];
     private readonly ConcurrentDictionary<ActorKey, RuntimeActorMailbox> mailboxes = [];
     private readonly IReadOnlyList<IActorTurnFilter> _filters = filters.ToArray();
     private readonly object lifecycleLock = new();
@@ -190,6 +191,8 @@ public sealed class ActorRuntime(
             }
         }
 
+        DiscardStale(request, mailbox);
+
         // Fast path: when the scheduler permits inline execution and the mailbox is idle, run the turn directly
         // on the caller. This preserves one-turn-at-a-time semantics via the mailbox execution slot while
         // avoiding the thread-pool hop, the TaskCompletionSource, and the per-call cancellation registration
@@ -218,6 +221,34 @@ public sealed class ActorRuntime(
         return await work.Task.ConfigureAwait(false);
     }
 
+    // A new activation id stops the running activation from saving now, its deactivation still waits for the turn.
+    private void DiscardStale(ActorRuntimeRequest request, RuntimeActorMailbox mailbox)
+    {
+        if (request.Kind == ActorTurnKind.Deactivate || mailbox.HasActiveCallChain(request.Headers))
+        {
+            return;
+        }
+
+        var activationId = ActorHeaders.GetActivationId(request.Headers);
+        if (activationId.Length == 0)
+        {
+            return;
+        }
+
+        var key = new ActorKey(request.ActorType, request.ActorId.Value);
+        // An activation is published before it leaves activating, so checking in this order can't miss it.
+        DiscardIfOther(activating, key, activationId);
+        DiscardIfOther(activations, key, activationId);
+
+        static void DiscardIfOther(ConcurrentDictionary<ActorKey, ActorActivation> map, ActorKey key, string activationId)
+        {
+            if (map.TryGetValue(key, out var current) && !string.Equals(current.ActivationId, activationId, StringComparison.Ordinal))
+            {
+                current.StateUnitOfWork.Discard();
+            }
+        }
+    }
+
     /// <inheritdoc />
     public async Task DeactivateAsync(string actorType, ActorId actorId, CancellationToken cancellationToken = default)
     {
@@ -243,14 +274,19 @@ public sealed class ActorRuntime(
         var key = new ActorKey(actorType, actorId.Value);
         if (activations.TryRemove(key, out var activation))
         {
-            try
-            {
-                await activation.OnDeactivateAsync(cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                await DisposeActivationAsync(activation).ConfigureAwait(false);
-            }
+            await DeactivateCoreAsync(activation, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task DeactivateCoreAsync(ActorActivation activation, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await activation.OnDeactivateAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            await DisposeActivationAsync(activation).ConfigureAwait(false);
         }
     }
 
@@ -292,7 +328,9 @@ public sealed class ActorRuntime(
         }
 
         var registration = registry.GetByActorType(request.ActorType);
-        var activation = await GetOrActivateAsync(registration, request.ActorId, cancellationToken).ConfigureAwait(false);
+        // A reentrant call runs inside its parent's turn, so it keeps the parent's activation.
+        var activationId = rootTurn ? ActorHeaders.GetActivationId(request.Headers) : string.Empty;
+        var activation = await GetOrActivateAsync(registration, request.ActorId, activationId, rootTurn, cancellationToken).ConfigureAwait(false);
         mailbox.MarkActivated();
         var dispatchRequest = new ActorDispatchRequest(request.ActorType, request.ActorId, request.OperationName, request.Payload, request.Headers, request.RequestContext);
         var methodContext = ToMethodContext(dispatchRequest);
@@ -373,12 +411,30 @@ public sealed class ActorRuntime(
         return response is null ? null : response.Value.Result ?? Array.Empty<byte>();
     }
 
-    private async Task<ActorActivation> GetOrActivateAsync(ActorRuntimeRegistration registration, ActorId actorId, CancellationToken cancellationToken)
+    private async Task<ActorActivation> GetOrActivateAsync(ActorRuntimeRegistration registration, ActorId actorId, string activationId, bool rootTurn, CancellationToken cancellationToken)
     {
         var key = new ActorKey(registration.ActorType, actorId.Value);
         if (activations.TryGetValue(key, out var existing))
         {
-            return existing;
+            // A call that discarded this activation may never run, so a headerless root turn replaces it instead of failing every save.
+            if (activationId.Length == 0 ? !(rootTurn && existing.StateUnitOfWork.Discarded) : string.Equals(existing.ActivationId, activationId, StringComparison.Ordinal))
+            {
+                return existing;
+            }
+
+            if (activations.TryRemove(KeyValuePair.Create(key, existing)))
+            {
+                logger.LogDebug("Activation id changed for {ActorType}/{ActorId}, deactivating stale activation.", registration.ActorType, actorId);
+                existing.StateUnitOfWork.Discard();
+                try
+                {
+                    await DeactivateCoreAsync(existing, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Deactivating stale activation for {ActorType}/{ActorId} failed.", registration.ActorType, actorId);
+                }
+            }
         }
 
         var state = new ActorStateUnitOfWork(
@@ -401,7 +457,10 @@ public sealed class ActorRuntime(
         try
         {
             var actor = registration.Factory(provider, actorId);
-            activation = new ActorActivation(registration.ActorType, actorId, actor, state, state, provider, registration.Lifecycle);
+            activation = new ActorActivation(registration.ActorType, actorId, actor, state, state, provider, registration.Lifecycle)
+            {
+                ActivationId = activationId,
+            };
         }
         catch
         {
@@ -416,25 +475,32 @@ public sealed class ActorRuntime(
             throw;
         }
 
+        activating[key] = activation;
         try
         {
-            await activation.OnActivateAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch
-        {
-            await DisposeActivationAsync(activation).ConfigureAwait(false);
-            throw;
-        }
+            try
+            {
+                await activation.OnActivateAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                await DisposeActivationAsync(activation).ConfigureAwait(false);
+                throw;
+            }
 
-        // Mailbox admission serializes activation. Publish only after initialization succeeds,
-        // so a failed or cancelled activation can never be reused by a later turn.
-        if (!activations.TryAdd(key, activation))
-        {
-            await activation.DisposeAsync().ConfigureAwait(false);
-            return activations[key];
-        }
+            // Published only after initialization succeeds, so a failed activation is never reused.
+            if (!activations.TryAdd(key, activation))
+            {
+                await activation.DisposeAsync().ConfigureAwait(false);
+                return activations[key];
+            }
 
-        return activation;
+            return activation;
+        }
+        finally
+        {
+            activating.TryRemove(KeyValuePair.Create(key, activation));
+        }
     }
 
     private ActorTurnDelegate BuildPipeline(

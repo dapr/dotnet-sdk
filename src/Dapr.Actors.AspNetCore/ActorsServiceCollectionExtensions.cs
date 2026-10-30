@@ -17,6 +17,7 @@ using System;
 using Dapr;
 using Dapr.Actors.Client;
 using Dapr.Actors.Runtime;
+using Dapr.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -52,7 +53,7 @@ public static class ActorsServiceCollectionExtensions
             var loggerFactory = s.GetRequiredService<ILoggerFactory>();
             var activatorFactory = s.GetRequiredService<ActorActivatorFactory>();
             var proxyFactory = s.GetRequiredService<IActorProxyFactory>();
-            return new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory);
+            return new ActorRuntime(options, loggerFactory, activatorFactory, proxyFactory, s.GetRequiredService<ActorActivationIdGate>());
         });
         var proxyFactoryRegistration = new Func<IServiceProvider, IActorProxyFactory>(serviceProvider =>
         {
@@ -71,6 +72,13 @@ public static class ActorsServiceCollectionExtensions
             };
 
             return factory;
+        });
+
+        services.TryAddSingleton(s =>
+        {
+            var options = s.GetRequiredService<IOptions<ActorRuntimeOptions>>().Value;
+            ConfigureActorOptions(s, options);
+            return ActorRuntime.CreateActivationIdGate(options);
         });
 
         switch (lifetime)

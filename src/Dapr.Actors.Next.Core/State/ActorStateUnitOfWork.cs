@@ -38,6 +38,21 @@ public sealed class ActorStateUnitOfWork(
     private readonly object cacheLock = new();
     private readonly IActorStateFaultInjector faultInjector = faultInjector ?? new NoopActorStateFaultInjector();
 
+    // Set once a newer activation replaced this one, so it can't overwrite newer state.
+    private volatile bool discarded;
+
+    internal void Discard() => discarded = true;
+
+    internal bool Discarded => discarded;
+
+    private void ThrowIfDiscarded()
+    {
+        if (discarded)
+        {
+            throw new InvalidOperationException($"Actor {actorId.Value} of type {actorType} was replaced by a newer activation, state not saved.");
+        }
+    }
+
     private CacheEntry GetEntry(string name)
     {
         lock (cacheLock)
@@ -192,11 +207,14 @@ public sealed class ActorStateUnitOfWork(
 
     private async ValueTask PersistDirtyEntriesAsync(CancellationToken cancellationToken)
     {
+        ThrowIfDiscarded();
+
         // Serialize commits, not cache access: a reentrant child may be saving while
         // its parent replaces a value needed to release the child's store call.
         await persistGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            ThrowIfDiscarded();
             var batch = new List<(string Name, CacheEntry Entry, byte[]? Snapshot)>();
             lock (cacheLock)
             {

@@ -15,7 +15,9 @@ namespace Dapr.Actors.Runtime;
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -36,13 +38,18 @@ internal sealed class ActorManager
     private readonly ILoggerFactory loggerFactory;
     private readonly IActorProxyFactory proxyFactory;
     private readonly ActorTimerManager timerManager;
-    private readonly ConcurrentDictionary<ActorId, ActorActivatorState> activeActors;
+    private readonly ConcurrentDictionary<ActorId, ActiveActor> activeActors;
     private readonly ActorMethodContext reminderMethodContext;
     private readonly ActorMethodContext timerMethodContext;
     private readonly ActorMessageSerializersManager serializersManager;
     private readonly IActorMessageBodyFactory messageBodyFactory;
     private readonly JsonSerializerOptions jsonSerializerOptions;
     private readonly ActorTurnLock turnLock = new ActorTurnLock();
+    private readonly ConcurrentDictionary<ActorId, ActiveActor> activating = new ConcurrentDictionary<ActorId, ActiveActor>();
+    private readonly Dictionary<ActorId, List<ActiveActor>> detached = new Dictionary<ActorId, List<ActiveActor>>();
+    private readonly Dictionary<ActorId, Admission> latest = new Dictionary<ActorId, Admission>();
+    private readonly object gate = new object();
+    private long admissions;
     private readonly bool reentrancyEnabled;
 
     // method dispatchermap used by remoting calls.
@@ -80,7 +87,7 @@ internal sealed class ActorManager
 
         // map for non-remoting calls.
         this.actorMethodInfoMap = new ActorMethodInfoMap(this.registration.Type.InterfaceTypes);
-        this.activeActors = new ConcurrentDictionary<ActorId, ActorActivatorState>();
+        this.activeActors = new ConcurrentDictionary<ActorId, ActiveActor>();
         this.reminderMethodContext = ActorMethodContext.CreateForReminder(ReceiveReminderMethodName);
         this.timerMethodContext = ActorMethodContext.CreateForTimer(TimerMethodName);
 
@@ -99,7 +106,7 @@ internal sealed class ActorManager
 
     internal ActorTypeInformation ActorTypeInfo => this.registration.Type;
 
-    internal async Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken)
+    internal async Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(ActorId actorId, string actorMethodName, string daprActorheader, Stream data, string activationId, CancellationToken cancellationToken)
     {
         var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 
@@ -137,10 +144,10 @@ internal sealed class ActorManager
             return this.CreateResponseMessage(responseMsgBody, interfaceId, actorMethodContext.MethodName);
         }
 
-        return await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
+        return await this.DispatchInternalAsync(actorId, activationId, actorMethodContext, RequestFunc, cancellationToken);
     }
 
-    internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken)
+    internal async Task DispatchWithoutRemotingAsync(ActorId actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, string activationId, CancellationToken cancellationToken)
     {
         var actorMethodContext = ActorMethodContext.CreateForActor(actorMethodName);
 
@@ -184,7 +191,7 @@ internal sealed class ActorManager
             }
         }
 
-        var result = await this.DispatchInternalAsync(actorId, actorMethodContext, RequestFunc, cancellationToken);
+        var result = await this.DispatchInternalAsync(actorId, activationId, actorMethodContext, RequestFunc, cancellationToken);
 
         // Write Response back if method's return type is other than Task.
         // Serialize result if it has result (return type was not just Task.)
@@ -200,7 +207,7 @@ internal sealed class ActorManager
         }
     }
 
-    internal async Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
+    internal async Task FireReminderAsync(ActorId actorId, string reminderName, Stream requestBodyStream, string activationId = null, CancellationToken cancellationToken = default)
     {
         // Only FireReminder if its IRemindable, else ignore it.
         if (this.ActorTypeInfo.IsRemindable)
@@ -220,11 +227,11 @@ internal sealed class ActorManager
                 return null;
             }
 
-            await this.DispatchInternalAsync(actorId, this.reminderMethodContext, RequestFunc, cancellationToken);
+            await this.DispatchInternalAsync(actorId, activationId, this.reminderMethodContext, RequestFunc, cancellationToken);
         }
     }
 
-    internal async Task<bool> FireTimerAsync(ActorId actorId, Stream requestBodyStream, CancellationToken cancellationToken = default)
+    internal async Task<bool> FireTimerAsync(ActorId actorId, Stream requestBodyStream, string activationId = null, CancellationToken cancellationToken = default)
     {
         #pragma warning disable 0618
         var timerData = await DeserializeAsync(requestBodyStream);
@@ -253,7 +260,7 @@ internal sealed class ActorManager
             }
         }
         
-        return await this.DispatchInternalAsync(actorId, this.timerMethodContext, RequestFunc, cancellationToken);
+        return await this.DispatchInternalAsync(actorId, activationId, this.timerMethodContext, RequestFunc, cancellationToken);
     }
 
 #pragma warning disable 0618
@@ -312,23 +319,28 @@ internal sealed class ActorManager
     }
 #pragma warning restore 0618
 
-    internal async Task ActivateActorAsync(ActorId actorId)
+    internal async Task ActivateActorAsync(ActorId actorId, string activationId = null)
     {
+        var ticket = this.Admit(actorId, null, out _);
         using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
-        await this.ActivateActorCoreAsync(actorId);
+        await this.CleanupDetachedAsync(actorId);
+        await this.ActivateActorCoreAsync(actorId, activationId, ticket);
     }
 
-    private async Task ActivateActorCoreAsync(ActorId actorId)
+    private async Task<ActiveActor> ActivateActorCoreAsync(ActorId actorId, string activationId, long ticket)
     {
         // An actor is activated by "Dapr" runtime when a call is to be made for an actor.
         var state = await this.CreateActorAsync(actorId);
+        var active = new ActiveActor(state, activationId ?? string.Empty);
+        this.activating[actorId] = active;
 
         try
         {
-            await state.Actor.OnActivateInternalAsync();
+            await state.Actor.OnActivateInternalAsync(() => !active.Replaced && !this.activeActors.ContainsKey(actorId));
         }
         catch
         {
+            this.activating.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, active));
             // Ensure we don't leak resources if user-code throws during activation.
             await DeleteActorAsync(state);
             throw;
@@ -342,15 +354,122 @@ internal sealed class ActorManager
         //
         // The policy we have chosen is to always keep the registered instance if we hit a double-activation
         // so that means we have to destroy the 'new' instance.
-        var current = this.activeActors.AddOrUpdate(actorId, state, (key, oldValue) => oldValue);
-        if (object.ReferenceEquals(state, current))
+        ActiveActor current = null;
+        bool replaced;
+        lock (this.gate)
+        {
+            this.activating.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, active));
+            replaced = active.Replaced || this.IsSuperseded(actorId, activationId, ticket);
+            if (!replaced)
+            {
+                current = this.activeActors.GetOrAdd(actorId, active);
+            }
+        }
+
+        if (replaced)
+        {
+            await this.DiscardAsync(actorId, state);
+            throw new InvalidOperationException($"Actor {actorId} was replaced by a newer activation during this call, the call was not run.");
+        }
+
+        if (object.ReferenceEquals(active, current))
         {
             // On this code path it was an *Add*. Nothing left to do.
-            return;
+            return active;
         }
 
         // On this code path it was an *Update*. We need to destroy the new instance and clean up.
-        await DeactivateActorCore(state);
+        await this.DiscardAsync(actorId, state);
+        return this.Settle(actorId, activationId, current);
+    }
+
+    private async Task DiscardAsync(ActorId actorId, ActorActivatorState state)
+    {
+        state.Actor.Discard();
+        try
+        {
+            await DeactivateActorCore(state);
+        }
+        catch (Exception ex)
+        {
+            this.logger.LogError(ex, "Deactivating discarded activation of Actor of type {ActorType} with ActorId {ActorId} failed", this.ActorTypeInfo.ImplementationType, actorId);
+        }
+    }
+
+    private async Task<ActiveActor> GetOrActivateAsync(ActorId actorId, string activationId, long ticket)
+    {
+        lock (this.gate)
+        {
+            if (this.IsSuperseded(actorId, activationId, ticket))
+            {
+                throw new InvalidOperationException($"Actor {actorId} was activated by a newer activation while this call waited, the call was not run.");
+            }
+
+            this.DetachStale(actorId, activationId);
+        }
+
+        if (this.activeActors.TryGetValue(actorId, out var existing))
+        {
+            return this.Settle(actorId, activationId, existing);
+        }
+
+        // A DELETE may have detached it since this turn's first cleanup.
+        await this.CleanupDetachedAsync(actorId);
+        return await this.ActivateActorCoreAsync(actorId, activationId, ticket);
+    }
+
+    private long Admit(ActorId actorId, string activationId, out bool detachedStale)
+    {
+        lock (this.gate)
+        {
+            var ticket = ++this.admissions;
+            detachedStale = false;
+            if (!string.IsNullOrEmpty(activationId))
+            {
+                if (!this.latest.TryGetValue(actorId, out var admission))
+                {
+                    admission = new Admission();
+                    this.latest.Add(actorId, admission);
+                }
+
+                admission.Ticket = ticket;
+                admission.ActivationId = activationId;
+                admission.Waiters++;
+                detachedStale = this.DetachStale(actorId, activationId);
+            }
+
+            return ticket;
+        }
+    }
+
+    private void Release(ActorId actorId)
+    {
+        lock (this.gate)
+        {
+            if (this.latest.TryGetValue(actorId, out var admission) && --admission.Waiters == 0)
+            {
+                this.latest.Remove(actorId);
+            }
+        }
+    }
+
+    // Activation ids aren't ordered, so a different id that arrived after this call is the newer one.
+    private bool IsSuperseded(ActorId actorId, string activationId, long ticket)
+    {
+        return !string.IsNullOrEmpty(activationId)
+            && this.latest.TryGetValue(actorId, out var newer)
+            && newer.Ticket > ticket
+            && !string.Equals(newer.ActivationId, activationId, StringComparison.Ordinal);
+    }
+
+    private ActiveActor Settle(ActorId actorId, string activationId, ActiveActor registered)
+    {
+        if (string.IsNullOrEmpty(activationId) || string.Equals(registered.ActivationId, activationId, StringComparison.Ordinal))
+        {
+            return registered;
+        }
+
+        throw new InvalidOperationException($"Actor {actorId} was activated by another activation during this call, the call was not run.");
     }
 
     private async Task<ActorActivatorState> CreateActorAsync(ActorId actorId)
@@ -367,10 +486,144 @@ internal sealed class ActorManager
 
     internal async Task DeactivateActorAsync(ActorId actorId)
     {
-        using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
-        if (this.activeActors.TryRemove(actorId, out var deactivatedActor))
+        // Unregister before waiting for the turn so a call still running can't save.
+        ActiveActor removed = null;
+        ActiveActor active;
+        lock (this.gate)
         {
-            await DeactivateActorCore(deactivatedActor);
+            if (this.activeActors.TryRemove(actorId, out active))
+            {
+                active.State.Actor.Detach(true);
+                removed = active;
+                this.AddDetached(actorId, active);
+            }
+        }
+
+        using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
+        await this.CleanupDetachedAsync(actorId, removed);
+        if (removed == null && this.activeActors.TryRemove(actorId, out active))
+        {
+            await DeactivateActorCore(active.State);
+        }
+    }
+
+    private bool DetachStale(ActorId actorId, string activationId)
+    {
+        if (string.IsNullOrEmpty(activationId))
+        {
+            return false;
+        }
+
+        if (this.activating.TryGetValue(actorId, out var pending)
+            && !string.Equals(pending.ActivationId, activationId, StringComparison.Ordinal))
+        {
+            pending.Replace();
+        }
+
+        if (!this.activeActors.TryGetValue(actorId, out var existing)
+            || string.Equals(existing.ActivationId, activationId, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        existing.Replace();
+        if (!this.activeActors.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, existing)))
+        {
+            return false;
+        }
+
+        this.AddDetached(actorId, existing);
+        return true;
+    }
+
+    private void AddDetached(ActorId actorId, ActiveActor active)
+    {
+        lock (this.gate)
+        {
+            if (!this.detached.TryGetValue(actorId, out var list))
+            {
+                list = new List<ActiveActor>();
+                this.detached.Add(actorId, list);
+            }
+
+            list.Add(active);
+        }
+    }
+
+    // Runs in a root turn, so a detached activation is always deactivated before the next one activates.
+    private async Task CleanupDetachedAsync(ActorId actorId, ActiveActor owned = null)
+    {
+        List<ActiveActor> list;
+        lock (this.gate)
+        {
+            if (!this.detached.Remove(actorId, out list))
+            {
+                return;
+            }
+        }
+
+        ExceptionDispatchInfo ownedError = null;
+        foreach (var active in list)
+        {
+            if (active.Replaced)
+            {
+                await this.DeactivateStaleAsync(actorId, active);
+                continue;
+            }
+
+            active.State.Actor.Detach(false);
+            try
+            {
+                await DeactivateActorCore(active.State);
+            }
+            catch (Exception ex) when (!ReferenceEquals(active, owned))
+            {
+                this.logger.LogError(ex, "Deactivating Actor of type {ActorType} with ActorId {ActorId} failed", this.ActorTypeInfo.ImplementationType, actorId);
+            }
+            catch (Exception ex)
+            {
+                ownedError = ExceptionDispatchInfo.Capture(ex);
+            }
+        }
+
+        ownedError?.Throw();
+    }
+
+    private async Task DeactivateStaleAsync(ActorId actorId, ActiveActor stale)
+    {
+        this.logger.LogDebug("Activation id changed for Actor of type {ActorType} with ActorId {ActorId}, deactivating stale activation", this.ActorTypeInfo.ImplementationType, actorId);
+        try
+        {
+            await DeactivateActorCore(stale.State);
+        }
+        catch (Exception ex)
+        {
+            this.logger.LogError(ex, "Deactivating stale activation of Actor of type {ActorType} with ActorId {ActorId} failed", this.ActorTypeInfo.ImplementationType, actorId);
+        }
+    }
+
+    private async Task CleanupDetachedInTurnAsync(ActorId actorId)
+    {
+        using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
+        await this.CleanupDetachedAsync(actorId);
+    }
+
+    private void EnsureLive(ActorId actorId, ActiveActor active)
+    {
+        // A newer activation or a DELETE replaced this actor while the call ran, so its cached state is stale.
+        if (active.Replaced)
+        {
+            throw new InvalidOperationException($"Actor {actorId} was replaced by a newer activation during the call, state was not saved.");
+        }
+
+        if (!this.activeActors.TryGetValue(actorId, out var current))
+        {
+            throw new InvalidOperationException($"Actor {actorId} was deactivated during the call, state was not saved.");
+        }
+
+        if (!ReferenceEquals(current, active))
+        {
+            throw new InvalidOperationException($"Actor {actorId} was replaced by a newer activation during the call, state was not saved.");
         }
     }
 
@@ -397,8 +650,8 @@ internal sealed class ActorManager
     // Used for testing - do not leak the actor instances outside of this method in library code.
     public bool TryGetActorAsync(ActorId id, out Actor actor)
     {
-        var found = this.activeActors.TryGetValue(id, out var state);
-        actor = found ? state.Actor : default;
+        var found = this.activeActors.TryGetValue(id, out var active);
+        actor = found ? active.State.Actor : default;
         return found;
     } 
 
@@ -411,26 +664,75 @@ internal sealed class ActorManager
             new ActorMessageHeaderSerializer());
     }
 
-    private async Task<T> DispatchInternalAsync<T>(ActorId actorId, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
+    private async Task<T> DispatchInternalAsync<T>(ActorId actorId, string activationId, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
     {
         var reentrancyId = this.reentrancyEnabled ? ActorReentrancyContextAccessor.ReentrancyContext : null;
         if (string.IsNullOrEmpty(reentrancyId))
         {
             reentrancyId = null;
         }
-        using var turn = await this.turnLock.AcquireAsync(actorId, reentrancyId, cancellationToken);
-
-        if (!this.activeActors.ContainsKey(actorId))
+        // A new activation id drops the stale activation before waiting for the turn, so a call still running on it skips its save.
+        // Its deactivation waits for a root turn so OnDeactivateAsync never overlaps that call.
+        var admittedId = this.turnLock.IsInChain(actorId, reentrancyId) ? null : activationId;
+        var ticket = this.Admit(actorId, admittedId, out var detachedStale);
+        try
         {
-            await this.ActivateActorCoreAsync(actorId);
+            return await this.DispatchTurnAsync(actorId, activationId, reentrancyId, ticket, detachedStale, actorMethodContext, actorFunc, cancellationToken);
+        }
+        finally
+        {
+            if (!string.IsNullOrEmpty(admittedId))
+            {
+                this.Release(actorId);
+            }
+        }
+    }
+
+    private async Task<T> DispatchTurnAsync<T>(ActorId actorId, string activationId, string reentrancyId, long ticket, bool detachedStale, ActorMethodContext actorMethodContext, Func<Actor, CancellationToken, Task<T>> actorFunc, CancellationToken cancellationToken)
+    {
+        ActorTurnLock.Lease lease;
+        try
+        {
+            lease = await this.turnLock.AcquireAsync(actorId, reentrancyId, cancellationToken);
+        }
+        catch when (detachedStale)
+        {
+            _ = this.CleanupDetachedInTurnAsync(actorId);
+            throw;
         }
 
-        if (!this.activeActors.TryGetValue(actorId, out var state))
-        {             
-            var errorMsg = $"Actor {actorId} is not yet activated.";
-            throw new InvalidOperationException(errorMsg);
+        using var turn = lease;
+        ActiveActor active;
+        if (turn.Reentered)
+        {
+            if (detachedStale)
+            {
+                _ = this.CleanupDetachedInTurnAsync(actorId);
+            }
+
+            // A reentrant call runs inside its chain's turn, so it never starts a second activation.
+            if (!this.activeActors.TryGetValue(actorId, out active))
+            {
+                throw new InvalidOperationException($"Actor {actorId} was deactivated during this call chain, the call was not run.");
+            }
+        }
+        else
+        {
+            await this.CleanupDetachedAsync(actorId);
+            active = await this.GetOrActivateAsync(actorId, activationId, ticket);
         }
 
+        if (active.Replaced)
+        {
+            if (this.activeActors.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, active)))
+            {
+                await this.DiscardAsync(actorId, active.State);
+            }
+
+            throw new InvalidOperationException($"Actor {actorId} was replaced by a newer activation during this call, the call was not run.");
+        }
+
+        var state = active.State;
         var actor = state.Actor;
         turn.AllowReentrancy();
 
@@ -451,7 +753,7 @@ internal sealed class ActorManager
             retval = await actorFunc.Invoke(actor, cancellationToken);
 
             // PostActivate will save the state, its not invoked when actorFunc invocation throws.
-            await actor.OnPostActorMethodAsyncInternal(actorMethodContext);
+            await actor.OnPostActorMethodAsyncInternal(actorMethodContext, () => this.EnsureLive(actorId, active));
         }
         catch (Exception e)
         {
@@ -480,5 +782,31 @@ internal sealed class ActorManager
         }
 
         return new Tuple<string, byte[]>(string.Empty, responseMsgBodyBytes);
+    }
+
+    private sealed class Admission
+    {
+        public long Ticket { get; set; }
+
+        public string ActivationId { get; set; }
+
+        public int Waiters { get; set; }
+    }
+
+    private sealed class ActiveActor(ActorActivatorState state, string activationId)
+    {
+        private volatile bool replaced;
+
+        public ActorActivatorState State { get; } = state;
+
+        public string ActivationId { get; } = activationId;
+
+        public bool Replaced => this.replaced;
+
+        public void Replace()
+        {
+            this.replaced = true;
+            this.State.Actor.Discard();
+        }
     }
 }
