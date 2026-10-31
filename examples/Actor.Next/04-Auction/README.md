@@ -1,8 +1,8 @@
 # Auction
 
-A real soft-close race condition is written as a deterministic unit test, with a structural check that catches stranded states at build time.
+> Runtime requirement: Dapr 1.18 or later.
 
-Tutorial: [Part 4 - State machines and deterministic race testing](../../../docs/dotnet-actorsnext/tutorial/part-4.md).
+A real soft-close race condition is written as a deterministic unit test, with a structural check that catches stranded states at build time.
 
 The actor owns the continuously reactive auction state. The entry action for `Sold` stands in for starting a fulfillment workflow; the workflow would own the finite, multi-step fulfillment process after the actor has made the sale decision.
 
