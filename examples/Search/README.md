@@ -97,6 +97,68 @@ It generates index bindings, not JSON serializers. An explicitly declared
 `JsonSerializerContext` can be supplied with `UseJsonSerializationOptions`
 when source-generated JSON serialization is desired.
 
+## Composing portable filters
+
+Keep query options in a `SearchQuery` and use `SearchFilter` to construct its
+portable filter without handwritten JSON:
+
+```csharp
+var priceRange = SearchFilter.And(
+    SearchFilter.GreaterThanOrEqualTo("price", 10),
+    SearchFilter.LessThan("price", 40));
+
+var query = new SearchQuery
+{
+    Text = "Dapr",
+    IncludeContent = true,
+    TopK = 20,
+    Filter = priceRange.Build()
+};
+
+var result = await products.SearchAsync(query);
+```
+
+Filtering requires the provider's index configuration to allow the fields being
+filtered. For example, configure Meilisearch's `filterableAttributes` with `price`
+when creating the index before running this query; the basic walkthrough above
+does not configure filterable fields.
+
+The helpers support `EqualTo`, `NotEqualTo`, `GreaterThan`, `GreaterThanOrEqualTo`,
+`LessThan`, `LessThanOrEqualTo`, `In`, `NotIn`, `Exists`, `And`, `Or`, and `Not`.
+Membership accepts an enumerable, for example
+`SearchFilter.In("price", new[] { 29, 39 })`. `Exists("field", false)` tests
+absence. `And` and `Or` require at least one non-null filter; use an omitted
+`SearchQuery.Filter` when no conditions apply. Empty membership collections are
+preserved as empty JSON arrays; the component determines their semantics.
+
+Filters are immutable snapshots. Reuse them in other filters or conditionally
+compose additional criteria:
+
+```csharp
+var filter = priceRange;
+if (excludeUnavailable)
+    filter = SearchFilter.And(filter, SearchFilter.NotEqualTo("available", false));
+
+var filteredQuery = query with { Filter = filter.Build() };
+```
+
+Field names must match the serialized document content, using dotted paths
+for nested fields (for example, `customer.region`). Helpers do not translate CLR
+member names. Optional `JsonSerializerOptions` on comparison and membership
+helpers control value serialization, not field paths or operator names. When
+using custom value converters, pass the same options used to index documents.
+Values and collections are serialized immediately; failures propagate to the
+caller. Provider-specific field and operand restrictions remain the component's
+responsibility.
+
+`Build()` returns an owned `JsonElement` for `SearchQuery.Filter`.
+`SearchFilter.FromJson(element)` copies a raw JSON object for composition,
+without validating its operators; it remains usable after the source
+`JsonDocument` is disposed. Assigning raw JSON directly to `Filter` or `Native`
+is still supported. These helpers construct portable filters, not
+provider-native queries, and queries are passed to `SearchAsync`, not the
+ID-based `GetDocumentsAsync`.
+
 ## Using NuGet
 
 The example references runtime and generator projects to use this repository's

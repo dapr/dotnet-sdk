@@ -1,0 +1,8 @@
+{
+  "name": "dapr-dotnet-workflow-payload-interop",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@dapr/dapr": "3.19.0"
+  }
+}

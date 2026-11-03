@@ -12,7 +12,6 @@
 // ------------------------------------------------------------------------
 
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Dapr.Vector;
 using Dapr.Vector.Extensions;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,7 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 var services = new ServiceCollection();
 services.AddDaprVectorClient((_, builder) =>
     builder.UseJsonSerializationOptions(ProductJsonContext.Default.Options)).AddProductVectors();
-using var provider = services.BuildServiceProvider();
+await using var provider = services.BuildServiceProvider();
 var vectors = provider.GetRequiredService<IProductVectors>();
 using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
 var ct = timeout.Token;
@@ -60,7 +59,11 @@ try
         Console.WriteLine($"{match.Record.Id}: {match.Record.Payload?.Title}, {result.Metric} score {match.Score}");
 
     var batch = await vectors.BatchQueryVectorsAsync(
-        [query, new() { ById = "dapr", IncludePayload = true }, new() { ById = "missing" }], cancellationToken: ct);
+        [
+            query, 
+            new VectorQuery { ById = "dapr", IncludePayload = true }, 
+            new VectorQuery { ById = "missing" }], 
+        cancellationToken: ct);
     for (var i = 0; i < batch.Count; i++)
     {
         if (batch[i].Error is { } error)
@@ -80,11 +83,3 @@ finally
 using var directClient = new DaprVectorClientBuilder().Build();
 Console.WriteLine(
     $"Remaining collections: {string.Join(", ", await directClient.ListCollectionsAsync("vectorstore", cancellationToken: ct))}");
-
-[VectorCollection("vectorstore", "sdk-vector-example")]
-public partial interface IProductVectors : IDaprVectorCollection<Product>;
-
-public sealed record Product(string Title);
-
-[JsonSerializable(typeof(Product))]
-internal partial class ProductJsonContext : JsonSerializerContext;
