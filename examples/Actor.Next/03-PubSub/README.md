@@ -1,8 +1,8 @@
 # Pub/Sub
 
-One `[Subscribe]` attribute lets a cart react to restock events from the rest of the system.
+> Runtime requirement: Dapr 1.18 or later.
 
-Tutorial: [Part 3 - Dynamic pub/sub with actors](../../../docs/dotnet-actorsnext/tutorial/part-3.md).
+One `[Subscribe]` attribute lets a cart react to restock events from the rest of the system.
 
 The old SDK pattern needed a separate subscriber service plus hand-rolled routing, retry, and idempotency. Here `AddDaprActorStreams` uses the Dapr.Messaging streaming client, while the stream runner forwards each event through the normal actor invocation path and only acknowledges the pub/sub message after the actor turn commits.
 

@@ -1,8 +1,8 @@
 # Approvals + workflows
 
-Document types are defined as state-machine configuration and onboarded at runtime; a single compiled interpreted actor runs every one, and an approved document hands off to a settlement workflow that retries and compensates.
+> Runtime requirement: Dapr 1.18 or later.
 
-Tutorial: [Part 6 - Composing interpreted actors with workflows](../../../docs/dotnet-actorsnext/tutorial/part-6.md).
+Document types are defined as state-machine configuration and onboarded at runtime; a single compiled interpreted actor runs every one, and an approved document hands off to a settlement workflow that retries and compensates.
 
 Each document (an expense report, a contract) is a long-lived, addressable entity, so it belongs in a state-machine actor. Its behavior is an `InterpretedMachineDefinition` document, verified by `InterpretedMachineVerifier` and stored by `InterpretedMachineDeployer` before it goes live, then executed by the single compiled `InterpretedStateMachineActor`. Named guards and effects such as `WithinApprovalLimit` and `StartSettlement` resolve through an `ICapabilityRegistry` of vetted, compiled actions.
 

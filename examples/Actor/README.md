@@ -1,28 +1,34 @@
 # Dapr Actor example
 
-The Actor example shows how to create a virtual actor (`DemoActor`) and invoke its methods on the client application.
+The Actor example shows how to create a virtual actor (`DemoActor`) and invoke
+its methods from a client application. The client demonstrates strongly typed and
+non-remoting calls, actor state TTL, timers, reminders, reminder TTL and
+repetitions, exception propagation, and a simple bank-account actor contract.
 
 ## Prerequisites
 
-- [.NET 8+](https://dotnet.microsoft.com/download) installed
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://github.com/dapr/dotnet-sdk/)
 
 ## Projects in sample
 
-- The **interface project (`\IDemoActor`)** contains the interface definition for the actor. The interface defines the actor contract that is shared by the actor implementation and the clients calling the actor. Because client projects may depend on it, it typically makes sense to define it in an assembly that is separate from the actor implementation.
+- The interface project (`DemoActor.Interfaces`) contains the actor contracts
+  shared by the service and client.
 
-- The **actor service project (`\DemoActor`)** implements ASP.Net Core web service that is going to host the actor. It contains the implementation of the actor. An actor implementation is a class that derives from the base type `Actor` and implements the interfaces defined in the corresponding interfaces project. An actor class must also implement a constructor that accepts an `ActorService` instance and an `ActorId` and passes them to the base `Actor` class.
+- The actor service project (`DemoActor`) hosts the actor implementations in
+  ASP.NET Core and registers them with the actor runtime.
 
-- The **actor client project (`\ActorClient`)** contains the implementation of the actor client which calls `DemoActor`'s methods defined in `IDemoActor`'s Interfaces.
+- The actor client project (`ActorClient`) invokes the contracts through
+  `ActorProxy` and the non-remoting invocation APIs.
 
 ## Running the example
 
 To run the actor service locally run this command in `DemoActor` directory:
 
 ```sh
- dapr run --dapr-http-port 3500 --app-id demo_actor --app-port 5010 dotnet run
+dapr run --dapr-http-port 3500 --app-id demo_actor --app-port 5010 -- dotnet run
 ```
 
 The `DemoActor` service will listen on port `5010` for HTTP.

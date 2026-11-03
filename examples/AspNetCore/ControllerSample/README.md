@@ -2,19 +2,29 @@
 
 > **Note on Pub/Sub Messaging**: While this legacy sample demonstrates subscribing to pub/sub topics using ASP.NET Core controllers (`[Topic]`, `[BulkSubscribe]`), all modern Dapr .NET pub/sub applications should use the dedicated **`Dapr.Messaging`** package. `Dapr.Messaging` provides compile-time source-generated dispatchers, zero runtime reflection, full native AOT support, and streaming gRPC delivery. See the [Dapr.Messaging Examples](../../Messaging) for details.
 
-This sample shows using Dapr with ASP.NET Core controllers. This application is a simple and not-so-secure banking application. The application uses the Dapr state-store for its data storage.
+This sample uses Dapr with ASP.NET Core controllers in a deliberately simple
+banking application. It stores account data in the `statestore` component and
+uses controller attributes to declare pub/sub subscriptions.
 
-It exposes the following endpoints over HTTP:
- - GET `/{account}`: Get the balance for the account specified by `id`
- - POST `/deposit`: Accepts a JSON payload to deposit money to an account
- - POST `/multideposit`: Accepts a JSON payload to deposit money multiple times to a bulk subscribed topic
- - POST `/withdraw`: Accepts a JSON payload to withdraw money from an account
+| Method | Route | Dapr behavior |
+|--------|-------|---------------|
+| `GET` | `/{account}` | Loads an account with `[FromState("statestore")]`. |
+| `POST` | `/deposit` | Subscribes to `deposit` and saves a deposit. |
+| `POST` | `/multideposit` | Bulk-subscribes to `multideposit` and returns per-entry statuses. |
+| `POST` | `/withdraw` | Default `withdraw` subscription and state update. |
+| `POST` | `/withdraw.v2` | Handles `withdraw` events matching `event.type == "withdraw.v2"`. |
+| `POST` | `/rawDeposit` | Handles raw-payload `rawDeposit` events. |
+| `POST` | `/deadLetterTopicRoute` | Handles the `amountDeadLetterTopic` dead-letter topic. |
+| `POST` | `/throwException` | Returns a bad request for service-invocation error handling. |
+| `POST` | `/exampleCustomTopic` | Uses `CUSTOM_PUBSUB` and `CUSTOM_TOPIC` environment variables. |
+| `POST` | `/examplecustomtopicmetadata` | Adds `routingKey=keyA` subscription metadata. |
 
-The application also registers for pub/sub with the `deposit`, `multideposit` and `withdraw` topics.
+The app also maps `/dapr/subscribe` through `MapSubscribeHandler()` so the
+sidecar can discover these declarative subscriptions.
 
-## Prerequisitess
+## Prerequisites
 
-- [.NET 8+](https://dotnet.microsoft.com/download) installed
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
