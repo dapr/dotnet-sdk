@@ -32,7 +32,7 @@ Then read:
 
 ## Packages
 
-We publish these [NuGet packages](https://www.nuget.org/profiles/dapr.io) to nuget.org for each release. The library packages support .NET 8, .NET 9 and .NET 10. The analyzer and generator packages run inside the compiler at build time.
+We publish these [NuGet packages](https://www.nuget.org/profiles/dapr.io) to nuget.org for each release. The library packages target .NET 10 and .NET 11. The analyzer and generator packages run inside the compiler at build time.
 
 | Package | Use it to |
 |---------|-----------|
@@ -80,7 +80,7 @@ Before you open a pull request, read the [.NET SDK contribution guide](https://d
 
 ### Prerequisites
 
-Each project is a normal C# project. The repo's `global.json` pins the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (10.0.100 or a later feature band), which you need to build, test, and generate NuGet packages. The libraries target .NET 8, .NET 9 and .NET 10, so install the [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) and [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0) runtimes too if you want to run the tests on every framework.
+Each project is a normal C# project. The repo's `global.json` pins the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (10.0.100 or a later feature band), which you need to build, test, and generate NuGet packages. The libraries target .NET 10 and .NET 11; to build for .NET 11, install its SDK and set `DaprEnableNet11=true`.
 
 **macOS/Linux:**
 
