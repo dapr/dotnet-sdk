@@ -740,6 +740,68 @@ public sealed class ActorManagerActivationIdTests
         Assert.StartsWith("Deactivating discarded activation", error.Message);
     }
 
+    [Theory]
+    [InlineData("a1")]
+    [InlineData(null)]
+    public async Task ConcurrentFirstActivation_NewerIdAdmittedWhileActivatorRuns_LateNeverActivates(string lateId)
+    {
+        var activator = new DelayedActivator();
+        var delayedStore = new StateStore();
+        var registration = new ActorRegistration(ActorTypeInformation.Get(typeof(CountingActor), actorTypeName: null));
+        var delayed = new ActorManager(registration, activator, JsonSerializerDefaults.Web, false, NullLoggerFactory.Instance, ActorProxy.DefaultProxyFactory, delayedStore);
+
+        var late = DispatchAsync(delayed, nameof(ICountingActor.IncrementAsync), lateId);
+        await WaitAsync(activator.Started);
+        var newer = DispatchAsync(delayed, nameof(ICountingActor.IncrementAsync), "a2");
+        Assert.False(newer.IsCompleted);
+        activator.Release.SetResult();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => late);
+        Assert.Equal(6, await newer);
+        Assert.False(activator.First.IsActivated);
+        Assert.True(activator.First.IsDisposed);
+        Assert.Single(delayedStore.Saves);
+    }
+
+    [Fact]
+    public async Task Delete_NewActivationIdWhileQueuedForCleanup_RefusesOnDeactivateSave()
+    {
+        await IncrementAsync("a1");
+        var first = GetActor();
+        var held = HoldAsync("a1");
+        await WaitAsync(first.Held);
+        var deactivating = manager.DeactivateActorAsync(id);
+        first.SaveOnDeactivate = true;
+        var replacing = IncrementAsync("a2");
+        first.Release.SetResult();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+        await deactivating;
+        Assert.Equal(6, await replacing);
+        Assert.True(first.SaveRefused);
+        Assert.DoesNotContain(store.Saves, s => s.Contains("200"));
+    }
+
+    [Fact]
+    public async Task Delete_NewActivationIdDuringOnDeactivate_RefusesItsSave()
+    {
+        await IncrementAsync("a1");
+        var first = GetActor();
+        first.SaveOnDeactivate = true;
+        first.HoldInDeactivate = true;
+        var deactivating = manager.DeactivateActorAsync(id);
+        await WaitAsync(first.DeactivateHeld);
+
+        var replacing = IncrementAsync("a2");
+        Assert.False(replacing.IsCompleted);
+        first.DeactivateRelease.SetResult();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => deactivating);
+        Assert.True(first.SaveRefused);
+        Assert.Equal(6, await replacing);
+        Assert.DoesNotContain(store.Saves, s => s.Contains("200"));
+    }
+
     private async Task<(ActorManager Manager, StateStore Store, Task<int> Late, Task<int> Newer, ActivationGate Gate)> StartActivationRaceAsync(string lateId, string newerId, bool discardedThrowsOnDeactivate = false, ILoggerFactory loggerFactory = null)
     {
         var raceStore = new StateStore();
@@ -835,6 +897,12 @@ public sealed class ActorManagerActivationIdTests
 
         public bool SaveInHold { get; set; }
 
+        public bool HoldInDeactivate { get; set; }
+
+        public TaskCompletionSource DeactivateHeld { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource DeactivateRelease { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public bool SaveRefused { get; private set; }
 
         public async Task<int> IncrementAsync()
@@ -918,6 +986,12 @@ public sealed class ActorManagerActivationIdTests
                 throw new InvalidOperationException("deactivate failed");
             }
 
+            if (HoldInDeactivate)
+            {
+                DeactivateHeld.SetResult();
+                await DeactivateRelease.Task;
+            }
+
             if (SaveOnDeactivate)
             {
                 await StateManager.SetStateAsync("count", 200);
@@ -977,6 +1051,33 @@ public sealed class ActorManagerActivationIdTests
             IsDeactivated = true;
             return throwOnDeactivate ? throw new InvalidTimeZoneException("deactivate failed") : Task.CompletedTask;
         }
+    }
+
+    private sealed class DelayedActivator : ActorActivator
+    {
+        private readonly DefaultActorActivator inner = new();
+        private int calls;
+
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public CountingActor First { get; private set; }
+
+        public override async Task<ActorActivatorState> CreateAsync(ActorHost host)
+        {
+            var state = await inner.CreateAsync(host);
+            if (Interlocked.Increment(ref calls) == 1)
+            {
+                First = (CountingActor)state.Actor;
+                Started.SetResult();
+                await Release.Task;
+            }
+
+            return state;
+        }
+
+        public override Task DeleteAsync(ActorActivatorState state) => inner.DeleteAsync(state);
     }
 
     private sealed class ActivationGate

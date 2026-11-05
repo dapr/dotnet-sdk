@@ -49,6 +49,7 @@ public sealed class ActorRuntime(
     private static readonly ActivitySource ActivitySource = new("Dapr.Actors.Next.Core");
     private readonly ConcurrentDictionary<ActorKey, ActorActivation> activations = [];
     private readonly ConcurrentDictionary<ActorKey, ActorActivation> activating = [];
+    private readonly ConcurrentDictionary<ActorKey, ActorActivation> deactivating = [];
     private readonly ConcurrentDictionary<ActorKey, RuntimeActorMailbox> mailboxes = [];
     private readonly IReadOnlyList<IActorTurnFilter> _filters = filters.ToArray();
     private readonly object lifecycleLock = new();
@@ -236,9 +237,10 @@ public sealed class ActorRuntime(
         }
 
         var key = new ActorKey(request.ActorType, request.ActorId.Value);
-        // An activation is published before it leaves activating, so checking in this order can't miss it.
+        // An activation is published to the next map before it leaves the previous one, so checking in this order can't miss it.
         DiscardIfOther(activating, key, activationId);
         DiscardIfOther(activations, key, activationId);
+        DiscardIfOther(deactivating, key, activationId);
 
         static void DiscardIfOther(ConcurrentDictionary<ActorKey, ActorActivation> map, ActorKey key, string activationId)
         {
@@ -272,9 +274,26 @@ public sealed class ActorRuntime(
     private async Task DeactivateCoreAsync(string actorType, ActorId actorId, CancellationToken cancellationToken)
     {
         var key = new ActorKey(actorType, actorId.Value);
-        if (activations.TryRemove(key, out var activation))
+        if (activations.TryGetValue(key, out var activation))
         {
-            await DeactivateCoreAsync(activation, cancellationToken).ConfigureAwait(false);
+            await TryDeactivateAsync(key, activation, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    // Kept visible until teardown finishes, so a different activation id can still stop its save.
+    private async Task TryDeactivateAsync(ActorKey key, ActorActivation activation, CancellationToken cancellationToken)
+    {
+        deactivating[key] = activation;
+        try
+        {
+            if (activations.TryRemove(KeyValuePair.Create(key, activation)))
+            {
+                await DeactivateCoreAsync(activation, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            deactivating.TryRemove(KeyValuePair.Create(key, activation));
         }
     }
 
@@ -416,24 +435,22 @@ public sealed class ActorRuntime(
         var key = new ActorKey(registration.ActorType, actorId.Value);
         if (activations.TryGetValue(key, out var existing))
         {
-            // A call that discarded this activation may never run, so a headerless root turn replaces it instead of failing every save.
-            if (activationId.Length == 0 ? !(rootTurn && existing.StateUnitOfWork.Discarded) : string.Equals(existing.ActivationId, activationId, StringComparison.Ordinal))
+            // A call that discarded this activation may never run, so a root turn replaces it instead of failing every save.
+            if (!(rootTurn && existing.StateUnitOfWork.Discarded)
+                && (activationId.Length == 0 || string.Equals(existing.ActivationId, activationId, StringComparison.Ordinal)))
             {
                 return existing;
             }
 
-            if (activations.TryRemove(KeyValuePair.Create(key, existing)))
+            logger.LogDebug("Activation id changed for {ActorType}/{ActorId}, deactivating stale activation.", registration.ActorType, actorId);
+            existing.StateUnitOfWork.Discard();
+            try
             {
-                logger.LogDebug("Activation id changed for {ActorType}/{ActorId}, deactivating stale activation.", registration.ActorType, actorId);
-                existing.StateUnitOfWork.Discard();
-                try
-                {
-                    await DeactivateCoreAsync(existing, cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Deactivating stale activation for {ActorType}/{ActorId} failed.", registration.ActorType, actorId);
-                }
+                await TryDeactivateAsync(key, existing, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Deactivating stale activation for {ActorType}/{ActorId} failed.", registration.ActorType, actorId);
             }
         }
 

@@ -47,6 +47,7 @@ internal sealed class ActorManager
     private readonly ActorTurnLock turnLock = new ActorTurnLock();
     private readonly ConcurrentDictionary<ActorId, ActiveActor> activating = new ConcurrentDictionary<ActorId, ActiveActor>();
     private readonly Dictionary<ActorId, List<ActiveActor>> detached = new Dictionary<ActorId, List<ActiveActor>>();
+    private readonly Dictionary<ActorId, List<ActiveActor>> deactivating = new Dictionary<ActorId, List<ActiveActor>>();
     private readonly Dictionary<ActorId, Admission> latest = new Dictionary<ActorId, Admission>();
     private readonly object gate = new object();
     private long admissions;
@@ -332,7 +333,24 @@ internal sealed class ActorManager
         // An actor is activated by "Dapr" runtime when a call is to be made for an actor.
         var state = await this.CreateActorAsync(actorId);
         var active = new ActiveActor(state, activationId ?? string.Empty);
-        this.activating[actorId] = active;
+        bool superseded;
+        lock (this.gate)
+        {
+            // Checked as it's published, so an id admitted while the activator ran can't miss it.
+            superseded = this.latest.TryGetValue(actorId, out var newer)
+                && newer.Ticket > ticket
+                && !string.Equals(newer.ActivationId, active.ActivationId, StringComparison.Ordinal);
+            if (!superseded)
+            {
+                this.activating[actorId] = active;
+            }
+        }
+
+        if (superseded)
+        {
+            await DeleteActorAsync(state);
+            throw new InvalidOperationException($"Actor {actorId} was activated by a newer activation while this call waited, the call was not run.");
+        }
 
         try
         {
@@ -500,11 +518,19 @@ internal sealed class ActorManager
         }
 
         using var turn = await this.turnLock.AcquireAsync(actorId, null, CancellationToken.None);
-        await this.CleanupDetachedAsync(actorId, removed);
-        if (removed == null && this.activeActors.TryRemove(actorId, out active))
+        if (removed == null)
         {
-            await DeactivateActorCore(active.State);
+            lock (this.gate)
+            {
+                if (this.activeActors.TryRemove(actorId, out active))
+                {
+                    removed = active;
+                    this.AddDetached(actorId, active);
+                }
+            }
         }
+
+        await this.CleanupDetachedAsync(actorId, removed);
     }
 
     private bool DetachStale(ActorId actorId, string activationId)
@@ -520,6 +546,9 @@ internal sealed class ActorManager
             pending.Replace();
         }
 
+        ReplaceOthers(this.detached, actorId, activationId);
+        ReplaceOthers(this.deactivating, actorId, activationId);
+
         if (!this.activeActors.TryGetValue(actorId, out var existing)
             || string.Equals(existing.ActivationId, activationId, StringComparison.Ordinal))
         {
@@ -534,6 +563,22 @@ internal sealed class ActorManager
 
         this.AddDetached(actorId, existing);
         return true;
+    }
+
+    private static void ReplaceOthers(Dictionary<ActorId, List<ActiveActor>> map, ActorId actorId, string activationId)
+    {
+        if (!map.TryGetValue(actorId, out var list))
+        {
+            return;
+        }
+
+        foreach (var active in list)
+        {
+            if (!string.Equals(active.ActivationId, activationId, StringComparison.Ordinal))
+            {
+                active.Replace();
+            }
+        }
     }
 
     private void AddDetached(ActorId actorId, ActiveActor active)
@@ -560,29 +605,59 @@ internal sealed class ActorManager
             {
                 return;
             }
+
+            // Kept visible until teardown finishes, so a different activation id can still stop its save.
+            if (!this.deactivating.TryGetValue(actorId, out var tearingDown))
+            {
+                tearingDown = new List<ActiveActor>();
+                this.deactivating.Add(actorId, tearingDown);
+            }
+
+            tearingDown.AddRange(list);
         }
 
         ExceptionDispatchInfo ownedError = null;
-        foreach (var active in list)
+        try
         {
-            if (active.Replaced)
+            foreach (var active in list)
             {
-                await this.DeactivateStaleAsync(actorId, active);
-                continue;
-            }
+                if (active.Replaced)
+                {
+                    await this.DeactivateStaleAsync(actorId, active);
+                    continue;
+                }
 
-            active.State.Actor.Detach(false);
-            try
-            {
-                await DeactivateActorCore(active.State);
+                active.State.Actor.Detach(false);
+                try
+                {
+                    await DeactivateActorCore(active.State);
+                }
+                catch (Exception ex) when (!ReferenceEquals(active, owned))
+                {
+                    this.logger.LogError(ex, "Deactivating Actor of type {ActorType} with ActorId {ActorId} failed", this.ActorTypeInfo.ImplementationType, actorId);
+                }
+                catch (Exception ex)
+                {
+                    ownedError = ExceptionDispatchInfo.Capture(ex);
+                }
             }
-            catch (Exception ex) when (!ReferenceEquals(active, owned))
+        }
+        finally
+        {
+            lock (this.gate)
             {
-                this.logger.LogError(ex, "Deactivating Actor of type {ActorType} with ActorId {ActorId} failed", this.ActorTypeInfo.ImplementationType, actorId);
-            }
-            catch (Exception ex)
-            {
-                ownedError = ExceptionDispatchInfo.Capture(ex);
+                if (this.deactivating.TryGetValue(actorId, out var tearingDown))
+                {
+                    foreach (var active in list)
+                    {
+                        tearingDown.Remove(active);
+                    }
+
+                    if (tearingDown.Count == 0)
+                    {
+                        this.deactivating.Remove(actorId);
+                    }
+                }
             }
         }
 

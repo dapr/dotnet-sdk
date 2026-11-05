@@ -20,6 +20,7 @@ using Dapr.Actors.Next.Abstractions.State;
 using Dapr.Actors.Next.Core.Activation;
 using Dapr.Actors.Next.Core.DependencyInjection;
 using Dapr.Actors.Next.Core.Runtime;
+using Dapr.Actors.Next.Core.Scheduling;
 using Dapr.Actors.Next.Core.State;
 using Dapr.Actors.Next.Core.Transport;
 using Dapr.Common;
@@ -383,6 +384,52 @@ public sealed class ActorActivationIdTests
     }
 
     [Fact]
+    public async Task New_activation_id_admitted_during_deactivate_stops_its_save()
+    {
+        await using var fixture = new Fixture();
+
+        Assert.Equal(1, await fixture.IncrementAsync("one", 1, "a1"));
+        var first = fixture.Created[0];
+        first.SaveOnDeactivate = true;
+        first.HoldOnDeactivate = true;
+        var deactivating = fixture.DispatchAsync("one", ActorTurnKind.Deactivate, string.Empty, string.Empty, ActorHeaders.Empty);
+        await first.DeactivateHeld.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        await fixture.OverwriteFromAnotherHostAsync("one", 10);
+        var replacing = fixture.IncrementAsync("one", 1, "a2");
+        Assert.False(replacing.IsCompleted);
+        first.DeactivateRelease.SetResult();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => deactivating);
+        Assert.Contains("save refused", first.Events);
+        Assert.Equal(11, await replacing);
+    }
+
+    [Fact]
+    public async Task Matching_activation_id_replaces_activation_discarded_by_a_call_that_never_ran()
+    {
+        var scheduler = new HookedScheduler();
+        await using var fixture = new Fixture(scheduler: scheduler);
+
+        Assert.Equal(1, await fixture.IncrementAsync("one", 1, "a1"));
+        var first = fixture.Created[0];
+        var held = fixture.DispatchAsync("one", ActorTurnKind.Invoke, "Hold", "", Headers("a1"));
+        await first.Held.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        using var cts = new CancellationTokenSource();
+        scheduler.BeforeInlineCheck = cts.Cancel;
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fixture.Runtime.DispatchAsync(
+            new ActorRuntimeRequest(ActorType, ActorId.Create("one"), "Increment", ActorTurnKind.Invoke, Encoding.UTF8.GetBytes("1"), Headers("a2"), new ActorRequestContext(null, null, new Dictionary<string, string>())),
+            cts.Token));
+
+        first.Release.SetResult();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+
+        Assert.Equal(2, await fixture.IncrementAsync("one", 1, "a1"));
+        Assert.Equal(2, fixture.Created.Count);
+    }
+
+    [Fact]
     public async Task Reentrant_call_with_other_activation_id_keeps_parent_activation()
     {
         await using var fixture = new Fixture();
@@ -427,10 +474,15 @@ public sealed class ActorActivationIdTests
 
     private sealed class Fixture : IAsyncDisposable
     {
-        public Fixture(InMemoryTransportHarness? harness = null, string runtimeVersion = "1.19.1")
+        public Fixture(InMemoryTransportHarness? harness = null, string runtimeVersion = "1.19.1", IActorScheduler? scheduler = null)
         {
             var services = new ServiceCollection();
             services.AddLogging();
+            if (scheduler is not null)
+            {
+                services.AddSingleton(scheduler);
+            }
+
             services.AddInMemoryActorAdapters();
             services.AddSingleton<IActorStateStore>(Store);
             if (harness is not null)
@@ -523,12 +575,24 @@ public sealed class ActorActivationIdTests
 
         public bool SaveOnDeactivate { get; set; }
 
+        public bool HoldOnDeactivate { get; set; }
+
+        public TaskCompletionSource DeactivateHeld { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource DeactivateRelease { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public async ValueTask DeactivateAsync()
         {
             Events.Add("deactivate");
             if (ThrowOnDeactivate)
             {
                 throw new InvalidOperationException("deactivate failed");
+            }
+
+            if (HoldOnDeactivate)
+            {
+                DeactivateHeld.SetResult();
+                await DeactivateRelease.Task;
             }
 
             if (SaveOnDeactivate)
@@ -591,6 +655,30 @@ public sealed class ActorActivationIdTests
             await probe.Record(request.MethodName);
             return new ActorDispatchResponse(Array.Empty<byte>());
         }
+    }
+
+    // Runs a hook between the stale check and mailbox admission of the next dispatch.
+    private sealed class HookedScheduler : IActorScheduler
+    {
+        private readonly ProductionActorScheduler inner = new();
+        private Action? beforeInlineCheck;
+
+        public Action? BeforeInlineCheck
+        {
+            set => beforeInlineCheck = value;
+        }
+
+        public bool AllowsInlineExecution
+        {
+            get
+            {
+                Interlocked.Exchange(ref beforeInlineCheck, null)?.Invoke();
+                return inner.AllowsInlineExecution;
+            }
+        }
+
+        public ValueTask ScheduleAsync(IActorMailbox mailbox, CancellationToken cancellationToken = default) =>
+            inner.ScheduleAsync(mailbox, cancellationToken);
     }
 
     private sealed class CountingStateStore : IActorStateStore
