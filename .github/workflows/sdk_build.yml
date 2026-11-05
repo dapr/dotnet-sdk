@@ -224,8 +224,8 @@ jobs:
       matrix: ${{ fromJson(needs.compute-integration-matrix.outputs.net11) }}
     steps:
       - uses: actions/checkout@v6
-      - name: Remove global.json (use .NET 11 preview SDK)
-        run: rm global.json
+      - name: Drop SDK pin from global.json (use .NET 11 preview SDK, keep msbuild-sdks)
+        run: jq 'del(.sdk)' global.json > global.json.tmp && mv global.json.tmp global.json
       - name: Setup ${{ matrix.display-name }}
         uses: actions/setup-dotnet@v5
         with:
@@ -396,8 +396,8 @@ jobs:
         project: ${{ fromJson(needs.discover-unit-test-projects.outputs.matrix) }}
     steps:
     - uses: actions/checkout@v6
-    - name: Remove global.json (use .NET 11 preview SDK)
-      run: rm global.json
+    - name: Drop SDK pin from global.json (use .NET 11 preview SDK, keep msbuild-sdks)
+      run: jq 'del(.sdk)' global.json > global.json.tmp && mv global.json.tmp global.json
     - name: Setup .NET 11.0
       uses: actions/setup-dotnet@v5
       with:
@@ -457,9 +457,9 @@ jobs:
       - uses: actions/checkout@v6
       - name: Parse release version
         run: python ./.github/scripts/get_release_version.py
-      - name: Remove global.json (use .NET 11 preview SDK)
+      - name: Drop SDK pin from global.json (use .NET 11 preview SDK, keep msbuild-sdks)
         if: matrix.framework == 'net11.0'
-        run: rm -f global.json
+        run: jq 'del(.sdk)' global.json > global.json.tmp && mv global.json.tmp global.json
       - name: Setup .NET ${{ matrix.framework }}
         uses: actions/setup-dotnet@v5
         with:
