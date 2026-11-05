@@ -16,6 +16,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -124,7 +125,7 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
         var transferred = false;
         try
         {
-            chunks = _store.GetBinaryFileChunksAsync(reference.StoreName, reference.Key, readCts.Token)
+            chunks = ReadChunksAsync(reference, readCts.Token)
                 .GetAsyncEnumerator(readCts.Token);
             var hasFirstChunk = await chunks.MoveNextAsync().ConfigureAwait(false);
             var stream = new BinaryStorePayloadStream(chunks, reference, hasFirstChunk, readCts);
@@ -145,6 +146,45 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
                         await chunks.DisposeAsync().ConfigureAwait(false);
                 }
                 finally { readCts.Dispose(); }
+            }
+        }
+    }
+
+    internal async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadChunksAsync(PayloadReference reference,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+        cancellationToken.ThrowIfCancellationRequested();
+        IAsyncEnumerator<ReadOnlyMemory<byte>> chunks;
+        try
+        {
+            chunks = _store.GetBinaryFileChunksAsync(reference.StoreName, reference.Key, cancellationToken)
+                .GetAsyncEnumerator(cancellationToken);
+        }
+        catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
+        {
+            throw new PayloadNotFoundException(reference, ex);
+        }
+
+        await using (chunks.ConfigureAwait(false))
+        {
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                bool hasNext;
+                try
+                {
+                    hasNext = await chunks.MoveNextAsync().ConfigureAwait(false);
+                }
+                catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
+                {
+                    throw new PayloadNotFoundException(reference, ex);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!hasNext)
+                    yield break;
+                yield return chunks.Current;
             }
         }
     }

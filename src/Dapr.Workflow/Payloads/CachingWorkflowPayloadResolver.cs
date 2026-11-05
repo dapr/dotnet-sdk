@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -65,6 +66,11 @@ internal sealed class CachingWorkflowPayloadResolver : IWorkflowPayloadResolver
     /// <inheritdoc />
     public Task<Stream> OpenAsync(PayloadReference reference, CancellationToken cancellationToken = default)
         => _inner.OpenAsync(reference, cancellationToken);
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<ReadOnlyMemory<byte>> ReadChunksAsync(PayloadReference reference,
+        CancellationToken cancellationToken = default)
+        => _inner.ReadChunksAsync(reference, cancellationToken);
  
     /// <inheritdoc />
     public Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId, CancellationToken cancellationToken = default)

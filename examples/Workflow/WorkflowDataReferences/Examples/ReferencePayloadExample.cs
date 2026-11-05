@@ -41,8 +41,12 @@ internal sealed class ReferencePayloadExample : PayloadExample
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {
         Console.WriteLine("Registration: binary-store support with the default Preserve write preference.");
-        Console.WriteLine("History: an explicit PayloadReference<DocumentPayload> input and a small inline summary output.");
-        Console.WriteLine("Application code: the client uploads once; the workflow forwards the reference without reading the document.");
+        Console.WriteLine(
+            "History: an explicit PayloadReference<DocumentPayload> input and a small inline summary output.");
+        Console.WriteLine(
+            "Application code: the client uploads once; the workflow forwards the reference without reading the document.");
+        Console.WriteLine(
+            "Reference creation: StoreAsync explicitly uploads regardless of the automatic-offloading threshold.");
 
         var client = services.GetRequiredService<DaprWorkflowClient>();
         var resolver = services.GetRequiredService<IWorkflowPayloadResolver>();
@@ -51,19 +55,11 @@ internal sealed class ReferencePayloadExample : PayloadExample
 
         // Upload from client or activity code, never from a replayed workflow orchestrator.
         var inputReference = await resolver.StoreAsync(document, instanceId, cancellationToken);
-        Console.WriteLine($"Client stored {inputReference.Size} serialized bytes; input reference: {inputReference.ToEnvelope()}");
+        Console.WriteLine(
+            $"Client stored {inputReference.Size} serialized bytes; input reference: {inputReference.ToEnvelope()}");
         await client.ScheduleNewWorkflowAsync(nameof(StreamingPayloadWorkflow), instanceId, inputReference,
             startTime: null, cancellation: cancellationToken);
         var state = await WaitForCompletionAsync(client, instanceId, cancellationToken);
-        var summary = state.ReadOutputAs<PayloadSummary>()
-                      ?? throw new InvalidOperationException("The streaming workflow returned no summary.");
-        if (summary.ByteCount != inputReference.Size || summary.Sha256 != inputReference.ContentHash)
-            throw new InvalidOperationException("The streaming result does not match the stored document.");
-
-        Console.WriteLine($"Result: activity streamed {summary.ByteCount} serialized bytes using a 16 KiB buffer.");
-        Console.WriteLine($"SHA-256 verified: {summary.Sha256}");
-        Console.WriteLine("Serialized bytes include JSON structure, not just the document's characters.");
-        Console.WriteLine("Client inspection: fetching inputs/outputs at completion also resolves the referenced input on the client.");
-        Console.WriteLine("Takeaway: the workflow never reads the document; the activity streams bytes instead of deserializing it.");
+        PrintReferenceResult(state, inputReference);
     }
 }

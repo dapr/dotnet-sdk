@@ -18,12 +18,12 @@ using Dapr.Workflow.Payloads;
 namespace WorkflowDataReferences.Activities;
 
 /// <summary>
-/// Streams a document's stored representation through a bounded buffer using an explicit data reference.
+/// Enumerates a document's stored representation in chunks using an explicit data reference.
 /// </summary>
 /// <param name="resolver">The resolver registered by the host's opt-in <c>WithBinaryStorePayloads</c> call.</param>
 /// <remarks>
-/// <see cref="IWorkflowPayloadResolver.OpenAsync"/> returns raw serialized bytes, not a deserialized
-/// document or just its content field, and the caller owns the stream. Unlike buffered resolution,
+/// <see cref="IWorkflowPayloadResolver.ReadChunksAsync"/> returns raw serialized bytes, not a deserialized
+/// document or just its content field. Enumeration owns and disposes the download. Unlike buffered resolution,
 /// this path leaves integrity verification to the caller. This example stores untransformed JSON,
 /// so hashing the streamed bytes can be compared directly with the reference's content hash.
 /// </remarks>
@@ -33,15 +33,12 @@ internal sealed class MeasurePayloadActivity(IWorkflowPayloadResolver resolver)
     public override async Task<PayloadSummary> RunAsync(
         WorkflowActivityContext context, PayloadReference<DocumentPayload> input)
     {
-        await using var stream = await resolver.OpenAsync(input);
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        var buffer = new byte[16 * 1024];
         long byteCount = 0;
-        int read;
-        while ((read = await stream.ReadAsync(buffer)) != 0)
+        await foreach (var chunk in resolver.ReadChunksAsync(input))
         {
-            byteCount += read;
-            hash.AppendData(buffer, 0, read);
+            byteCount += chunk.Length;
+            hash.AppendData(chunk.Span);
         }
 
         var actualHash = Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();

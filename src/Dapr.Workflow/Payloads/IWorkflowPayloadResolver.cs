@@ -11,7 +11,10 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -50,6 +53,41 @@ public interface IWorkflowPayloadResolver
     /// <returns>A stream positioned at the start of the payload.</returns>
     /// <exception cref="PayloadNotFoundException">The stored payload no longer exists.</exception>
     Task<Stream> OpenAsync(PayloadReference reference, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Enumerates the raw stored bytes identified by <paramref name="reference"/> without buffering
+    /// the entire payload or deserializing it. Storage is opened when enumeration begins and released
+    /// when enumeration completes or the enumerator is disposed.
+    /// </summary>
+    /// <remarks>
+    /// Consume or copy each chunk before advancing the enumerator; its memory may be reused.
+    /// Chunk sizes and boundaries are unspecified. Like <see cref="OpenAsync"/>, this method does not
+    /// reverse payload stages or verify integrity. Each enumeration opens a new read.
+    /// The default implementation reads from <see cref="OpenAsync"/> using a bounded buffer;
+    /// implementations may provide native chunks instead.
+    /// </remarks>
+    /// <param name="reference">The reference to read.</param>
+    /// <param name="cancellationToken">A token used to cancel opening and reading the payload.</param>
+    /// <returns>An asynchronous sequence of payload chunks.</returns>
+    /// <exception cref="PayloadNotFoundException">The stored payload no longer exists.</exception>
+    async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadChunksAsync(PayloadReference reference,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+        cancellationToken.ThrowIfCancellationRequested();
+        // Preserve the execution context when OpenAsync supplies a queued orchestrator stream.
+        await using var stream = await OpenAsync(reference, cancellationToken);
+        var buffer = new byte[64 * 1024];
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var read = await stream.ReadAsync(buffer.AsMemory(), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (read == 0)
+                yield break;
+            yield return buffer.AsMemory(0, read);
+        }
+    }
  
     /// <summary>
     /// Serializes and stores <paramref name="value"/> under a key scoped to <paramref name="instanceId"/>

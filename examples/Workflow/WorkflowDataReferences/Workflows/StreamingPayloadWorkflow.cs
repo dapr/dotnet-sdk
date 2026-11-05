@@ -21,10 +21,12 @@ namespace WorkflowDataReferences.Workflows;
 /// Passes a typed data reference to an activity without materializing the referenced document.
 /// </summary>
 /// <remarks>
-/// The client creates the reference using <c>IWorkflowPayloadResolver.StoreAsync</c> before
-/// scheduling this workflow. Declaring the input as <see cref="PayloadReference{T}"/> opts into
+/// The client either creates the reference using <c>IWorkflowPayloadResolver.StoreAsync</c>
+/// or passes the document with automatic offloading enabled for every workflow input.
+/// Declaring the input as <see cref="PayloadReference{T}"/> opts into
 /// receiving the reference itself instead of automatic deserialization. It identifies immutable
 /// stored data by store, key, size, and hash; its type argument describes the serialized value.
+/// The input type does not trigger an upload: inline documents are rejected.
 /// The activity performs streaming I/O, keeping this orchestration deterministic.
 /// Referenced data must remain available for as long as retained histories or consumers need it.
 /// </remarks>

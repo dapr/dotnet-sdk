@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using Dapr.Workflow;
+using Dapr.Workflow.Payloads;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace WorkflowDataReferences.Examples;
@@ -20,7 +21,9 @@ internal abstract class PayloadExample
 {
     public abstract string Title { get; }
     public abstract void ConfigureServices(IServiceCollection services);
-    public abstract Task RunAsync(IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken);
+
+    public abstract Task RunAsync(IServiceProvider services, DocumentPayload document,
+        CancellationToken cancellationToken);
 
     protected static async Task<WorkflowState> WaitForCompletionAsync(
         DaprWorkflowClient client, string instanceId, CancellationToken cancellationToken)
@@ -39,5 +42,21 @@ internal abstract class PayloadExample
         if (processed != original with { Content = original.Content.ToUpperInvariant() })
             throw new InvalidOperationException("The workflow returned an unexpected document.");
         Console.WriteLine($"Result: {processed.Content.Length} characters, first character '{processed.Content[0]}'.");
+    }
+
+    protected static void PrintReferenceResult(WorkflowState state, PayloadReference<DocumentPayload> inputReference)
+    {
+        var summary = state.ReadOutputAs<PayloadSummary>()
+                      ?? throw new InvalidOperationException("The streaming workflow returned no summary.");
+        if (summary.ByteCount != inputReference.Size || summary.Sha256 != inputReference.ContentHash)
+            throw new InvalidOperationException("The streaming result does not match the stored document.");
+
+        Console.WriteLine($"Result: activity streamed {summary.ByteCount} serialized bytes using async chunks.");
+        Console.WriteLine($"SHA-256 verified: {summary.Sha256}");
+        Console.WriteLine("Serialized bytes include JSON structure, not just the document's characters.");
+        Console.WriteLine(
+            "Client inspection: fetching inputs/outputs at completion also resolves the referenced input on the client.");
+        Console.WriteLine(
+            "Takeaway: the workflow never reads the document; the activity streams bytes instead of deserializing it.");
     }
 }

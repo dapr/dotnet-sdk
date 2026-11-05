@@ -62,8 +62,9 @@ value explicitly before sending it, or use matching input/output contracts.
 
 ### Optional binary-store payloads
 
-For a runnable comparison of inline payloads, automatic offloading, and explicit
-reference streaming, see [WorkflowDataReferences](./WorkflowDataReferences).
+For a runnable comparison of inline payloads, automatic offloading, and streaming
+with either explicitly or automatically created references, see
+[WorkflowDataReferences](./WorkflowDataReferences).
 
 SDK-managed payload storage is included in `Dapr.Workflow`; a separate
 `Dapr.Workflow.BinaryStore` package is not required. It uses the runtime's existing
@@ -172,7 +173,7 @@ cleanup is a no-op and payload retention must be managed separately.
 | [WorkflowSubworkflow](./WorkflowSubworkflow) | Calling and inspecting a child workflow. |
 | [WorkflowTaskChaining](./WorkflowTaskChaining) | Passing results through a three-activity chain. |
 | [WorkflowRetryPolicy](./WorkflowRetryPolicy) | Fixed, exponential, and child-workflow retry policies; includes its own run guide. |
-| [WorkflowDataReferences](./WorkflowDataReferences) | Inline payloads, automatic binary-store offloading, and explicit payload references; includes its own run guide. |
+| [WorkflowDataReferences](./WorkflowDataReferences) | Inline payloads, automatic binary-store offloading, and streaming with explicit or automatic payload references; includes its own run guide. |
 | [WorkflowVersioning](./WorkflowVersioning) | Generated workflow version registration, strategy configuration, and version-routed vacation approval. |
 | [CrossAppVersioning](./CrossAppVersioning) | Combining generated version registrations from referenced assemblies and exposing the resulting registry. |
 
