@@ -44,7 +44,7 @@ files before exiting.
 
 ## Prerequisites
 
-- .NET 8, 9, or 10 SDK.
+- .NET 10 SDK.
 - Dapr CLI and an initialized self-hosted Dapr runtime **1.19 or later**. For
   prerelease runtimes, use `1.19.0-rc.3` or later; earlier release candidates may
   not include the Binary Store API or its in-memory component.
@@ -64,8 +64,8 @@ Set-Location examples\BinaryStore
 dapr run --app-id binarystore-example --dapr-grpc-port 50001 --resources-path .\components -- dotnet run --project .\BinaryStoreExample --framework net10.0
 ```
 
-Use `net8.0` or `net9.0` instead if that is your installed SDK. The application is
-a console client, so no application port or HTTP server is needed. Errors are
+The application is a console client, so no application port or HTTP server is
+needed. Errors are
 allowed to propagate rather than being reported as successful operations.
 
 The output shows the typed client's document operations, followed by the direct

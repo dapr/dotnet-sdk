@@ -32,7 +32,7 @@ generated walkthrough no longer repeats the component name, index name, or
 
 ## Prerequisites
 
-- .NET 8, 9, or 10 SDK.
+- .NET 10 SDK.
 - Docker with Docker Compose.
 - Free local ports 3500 and 50001.
 
@@ -57,8 +57,8 @@ Invoke-WebRequest http://127.0.0.1:3500/v1.0/healthz/outbound
 dotnet run --project .\SearchExample --framework net10.0
 ```
 
-Use `net8.0` or `net9.0` as appropriate. The sidecar is local-only and does not
-require a Dapr API token; unset an inherited `DAPR_API_TOKEN` when using this
+The sidecar is local-only and does not require a Dapr API token; unset an
+inherited `DAPR_API_TOKEN` when using this
 Compose setup. Meilisearch is accessible only within the Compose network and
 receives a random master key shared with the sidecar through an environment
 variable. These settings are for local development, not production deployment.

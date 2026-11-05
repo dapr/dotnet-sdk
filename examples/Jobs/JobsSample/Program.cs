@@ -56,10 +56,10 @@ using var scope = app.Services.CreateScope();
 var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 var daprJobsClient = scope.ServiceProvider.GetRequiredService<DaprJobsClient>();
 
-logger.LogInformation("Scheduling one-time job 'myJob' to execute 10 seconds from now");
+logger.LogInformation("Scheduling job 'myJob' every 2 seconds for 10 repetitions");
 await daprJobsClient.ScheduleJobAsync("myJob", DaprJobSchedule.FromDuration(TimeSpan.FromSeconds(2)),
     Encoding.UTF8.GetBytes("This is a test"), repeats: 10);
-logger.LogInformation("Scheduled one-time job 'myJob'");
+logger.LogInformation("Scheduled job 'myJob'");
 
 // List all jobs currently registered for this app ID and log their names/schedules.
 var registeredJobs = await daprJobsClient.ListJobsAsync();
@@ -78,4 +78,3 @@ foreach (var registered in registeredJobs)
 // logger.LogInformation("Purged all jobs for this app ID");
 
 app.Run();
-

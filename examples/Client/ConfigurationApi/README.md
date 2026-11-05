@@ -2,29 +2,33 @@
 
 This example demonstrates the Configuration APIs in Dapr.
 It demonstrates the following APIs:
-- **configuration**: Get configuration from statestore
-- **configuration**: Subscribe Configuration
-
-> **Note:** Make sure to use the latest proto bindings
+- Directly get a configuration value with `DaprClient.GetConfiguration`.
+- Load initial values into ASP.NET Core configuration with
+  `AddDaprConfigurationStore`.
+- Stream updates into ASP.NET Core configuration with
+  `AddStreamingDaprConfigurationStore`.
 
 ## Prerequisites
 
-- [.NET 8+](https://dotnet.microsoft.com/download) installed
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
 
 ## Overview
-This example shows the usage of two different Configuration APIs. The GetConfiguration call and
-the SubscribeConfiguration call. Both of these calls can be handled in two different ways.
+The sample reads `withdrawVersion` and `source` from the `redisconfig` component.
+It also invokes `ControllerSample` to choose between the `/withdraw` and
+`/withdraw.v2` service endpoints based on the current configuration.
+
+| Method | Route | Behavior |
+|--------|-------|----------|
+| `GET` | `/configuration/get/{configStore}/{queryKey}` | Calls `GetConfiguration` and logs returned values. |
+| `GET` | `/configuration/extension` | Logs `withdrawVersion` and `source` from `IConfiguration`. |
+| `POST` | `/configuration/withdraw` | Invokes `controller/withdraw` or `controller/withdraw.v2` according to `withdrawVersion`. |
 
 ### Dapr Client Call
-Both the Get and Subscribe APIs can be called directly through the DaprClient. The Get response
-can be read directly. The Subscribe API provides an `IAsyncEnumerable` which should be handled using
-the appropriate async procedures such as `await foreach`.
-
-The Subscribe response will also provide an Id after receiving a streamed update. This Id has to be used
-to Unsubscribe and close the streaming connection.
+`ConfigurationController.GetConfiguration` calls the client directly and logs
+the returned items.
 
 #### GetConfiguration Example
 ```csharp
@@ -33,35 +37,6 @@ var configItems = await client.GetConfiguration(configStore, new List<string>() 
 foreach (var item in configItems.Items)
 {
     logger.LogInformation($"Got configuration item:\nKey: {item.Key}\nValue: {item.Value.Value}\nVersion: {item.Value.Version}");
-}
-```
-
-#### SubscribeConfiguration Example
-```csharp
-var subscribeConfigurationResponse = await client.SubscribeConfiguration(configStore, new List<string>() { queryKey });
-
-logger.LogInformation("Watching configuration for 1 minute.");
-var cts = new CancellationTokenSource(TimeSpan.FromMinutes(1));
-var data = new Dictionary<string, string>(Data);
-try
-{
-    // This loop listens for a minute and puts any results into the data dictionary.
-    await foreach (var items in subscribeConfigurationResponse.Source.WithCancellation(cts.Token))
-    {
-        foreach (var item in items)
-        {
-            id = subscribeConfigurationResponse.Id;
-            data[item.Key] = item.Value.Value;
-        }
-    }
-}
-catch (TaskCanceledException)
-{
-    // If the connection didn't close before the Task was cancelled, try and unsubscribe.
-    if (!string.IsNullOrEmpty(subscribeConfigurationResponse.Id))
-    {
-        await client.UnsubscribeConfiguration(configStore, source.Id);
-    }
 }
 ```
 
@@ -112,7 +87,7 @@ public Task SubscribeAndWatchConfiguration()
 
 This example relies on the `ControllerSample`. All functionality won't be available without it running.
 
-### Store the configuration in configurationstore
+### Store configuration in `redisconfig`
 
 > Note: This must be executed before starting the application. `GetConfiguration` treats missing configuration as an exceptional case.
 

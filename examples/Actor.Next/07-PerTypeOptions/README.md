@@ -1,5 +1,7 @@
 # Per-type options
 
+> Runtime requirement: Dapr 1.18 or later.
+
 Two actor types with different lifecycle profiles, configured per type from a single `AddDaprActors` call.
 
 The app hosts:

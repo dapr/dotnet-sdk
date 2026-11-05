@@ -1,10 +1,11 @@
-# Dapr Workflow with ASP.NET Core sample
+# Dapr Workflow examples
 
-This Dapr workflow example shows how to create a Dapr workflow (`Workflow`) and invoke it using the console.
+These examples demonstrate workflow authoring, activities, management operations,
+testing, versioning, payload handling, and common orchestration patterns.
 
 ## Prerequisites
 
-- [.NET 8+](https://dotnet.microsoft.com/download) installed
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://github.com/dapr/dotnet-sdk/)
@@ -156,11 +157,36 @@ retained history, result, or other workflow needs the references. Purging a work
 does not currently invoke this cleaner automatically. Without a durable manifest,
 cleanup is a no-op and payload retention must be managed separately.
 
-## Projects in sample
+## Projects in this directory
 
-The main sample is [WorkflowConsoleApp](./WorkflowConsoleApp).
-It utilizes the workflow SDK as well as the workflow management API for simulating inventory management and sale of goods in a store.
-The main `Program.cs` file contains the main setup of the app, the registration of the workflow and its activities, and interaction with the user. The workflow definition is found in the `Workflows` directory and the workflow activity definitions are found in the `Activities` directory.
+| Project | Demonstrates |
+|---------|--------------|
+| [WorkflowConsoleApp](./WorkflowConsoleApp) | Inventory and order processing, activities, external approval events, state queries, and the workflow management API. |
+| [WorkflowUnitTest](./WorkflowUnitTest) | Testing orchestration logic with xUnit and Moq without a sidecar. |
+| [WorkflowAsyncOperations](./WorkflowAsyncOperations) | Scheduling a workflow and polling runtime and custom status asynchronously. |
+| [WorkflowExternalInteraction](./WorkflowExternalInteraction) | Raising an approval event from the client with a timeout-driven rejection path. |
+| [WorkflowFanOutFanIn](./WorkflowFanOutFanIn) | Scheduling activities in parallel and joining their results. |
+| [WorkflowParallelFanOut](./WorkflowParallelFanOut) | Processing a collection of orders concurrently and aggregating successes and failures. |
+| [WorkflowMapReduceDemo](./WorkflowMapReduceDemo) | A larger map/reduce workload using shard subworkflows and batched worker activities. |
+| [WorkflowMonitor](./WorkflowMonitor) | A long-running monitor workflow that repeatedly checks health. |
+| [WorkflowSubworkflow](./WorkflowSubworkflow) | Calling and inspecting a child workflow. |
+| [WorkflowTaskChaining](./WorkflowTaskChaining) | Passing results through a three-activity chain. |
+| [WorkflowRetryPolicy](./WorkflowRetryPolicy) | Fixed, exponential, and child-workflow retry policies; includes its own run guide. |
+| [WorkflowDataReferences](./WorkflowDataReferences) | Inline payloads, automatic binary-store offloading, and explicit payload references; includes its own run guide. |
+| [WorkflowVersioning](./WorkflowVersioning) | Generated workflow version registration, strategy configuration, and version-routed vacation approval. |
+| [CrossAppVersioning](./CrossAppVersioning) | Combining generated version registrations from referenced assemblies and exposing the resulting registry. |
+
+Most console projects connect to the default Dapr gRPC endpoint and can be run
+with a sidecar using the same two-terminal pattern shown below. Web projects such
+as `WorkflowVersioning` and `CrossAppVersioning` additionally expose their own
+HTTP endpoints; inspect their `Program.cs` files for the current routes.
+
+### WorkflowConsoleApp
+
+The main sample uses the workflow SDK and management API to simulate inventory
+management and the sale of goods. `Program.cs` registers the workflow and its
+activities and provides an interactive console. Workflow definitions are in
+`Workflows`, and activity definitions are in `Activities`.
 
 There are five activities in the directory that could be called by the workflows:
 - `NotifyActivity`:  printing logs as notifications
@@ -171,11 +197,8 @@ There are five activities in the directory that could be called by the workflows
 
 The `OrderProcessingWorkflow.cs` in `Workflows` directory implements the running logic of the workflow. Based on the purchase stage and outcome, it calls different activities and waits for the corresponding events to trigger interaction with the user.
 
-The separate [WorkflowDataReferences](./WorkflowDataReferences) console project demonstrates
-SDK-managed binary-store payloads and includes its own local component definitions
-and run instructions.
-
-This sample also contains a [WorkflowUnitTest](./WorkflowUnitTest) .NET project that utilizes [xUnit](https://xunit.net/) and [Moq](https://github.com/moq/moq) to test the workflow logic.
+The [WorkflowUnitTest](./WorkflowUnitTest) project uses
+[xUnit](https://xunit.net/) and [Moq](https://github.com/moq/moq) to test the workflow logic.
 It works by creating an instance of the `OrderProcessingWorkflow` (defined in the `WorkflowConsoleApp` project), mocking activity calls, and testing the inputs and outputs.
 The tests verify the outputs of the workflow without requiring a Dapr sidecar, since the `WorkflowContext` itself is mocked.
 
