@@ -11,7 +11,7 @@ whichever protocol it is configured for; the other handler stays idle.
 
 ## Prerequisites
 
-- [.NET 8+](https://dotnet.microsoft.com/download)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 
@@ -47,12 +47,16 @@ dapr run --app-id jobs-sample --app-port 5140 --dapr-grpc-port 50001 -- dotnet r
 
 ## Expected output
 
-The application schedules a job that fires every 2 seconds for 10 repetitions.
-Each trigger logs the job name and payload:
+The application schedules `myJob` every two seconds for ten repetitions, lists
+the jobs registered for the app ID, and logs each trigger's name and payload.
+The source also contains a commented `PurgeAllJobsAsync` call that can be enabled
+to demonstrate job cleanup.
 
 ```
-info: Scheduling one-time job 'myJob' to execute 10 seconds from now
-info: Scheduled one-time job 'myJob'
+info: Scheduling job 'myJob' every 2 seconds for 10 repetitions
+info: Scheduled job 'myJob'
+info: Found 1 registered job(s) for this app ID
+info:   - 'myJob' (schedule: <runtime schedule expression>)
 info: Received trigger invocation for job 'myJob'
 info: Received invocation for the job 'myJob' with payload 'This is a test'
 ```

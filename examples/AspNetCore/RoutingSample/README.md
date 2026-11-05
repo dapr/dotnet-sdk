@@ -2,19 +2,24 @@
 
 > **Note on Pub/Sub Messaging**: While this legacy sample demonstrates subscribing to pub/sub topics using ASP.NET Core endpoint routing (`WithTopic`, `WithBulkSubscribe`), all modern Dapr .NET pub/sub applications should use the dedicated **`Dapr.Messaging`** package. `Dapr.Messaging` provides compile-time source-generated dispatchers, zero runtime reflection, full native AOT support, and streaming gRPC delivery. See the [Dapr.Messaging Examples](../../Messaging) for details.
 
-This sample shows using Dapr with ASP.NET Core routing. This application is a simple and not-so-secure banking application. The application uses the Dapr state-store for its data storage.
+This sample uses Dapr with ASP.NET Core endpoint routing in a deliberately simple
+banking application. It stores account data in the `statestore` component and
+uses endpoint conventions rather than MVC attributes to declare subscriptions.
 
-It exposes the following endpoints over HTTP:
-- GET `/{id}`: Get the balance for the account specified by `id`
-- POST `/deposit`: Accepts a JSON payload to deposit money to an account
-- POST `/multideposit`: Accepts a JSON payload to deposit money multiple times to a bulk subscribed topic
-- POST `/withdraw`: Accepts a JSON payload to withdraw money from an account
+| Method | Route | Dapr behavior |
+|--------|-------|---------------|
+| `GET` | `/{id}` | Loads an account through `DaprClient`. |
+| `POST` | `/deposit` | Uses `WithTopic` for `deposit` with `amountDeadLetterTopic`. |
+| `POST` | `/multideposit` | Uses `WithBulkSubscribe` for batches of up to 250 messages or a 1-second wait. |
+| `POST` | `/withdraw` | Uses `WithTopic` for `withdraw` with `amountDeadLetterTopic`. |
+| `POST` | `/deadLetterTopicRoute` | Handles the `amountDeadLetterTopic` topic. |
 
-The application also registers for pub/sub with the `deposit`, `multideposit`, and `withdraw` topics.
+The app also maps `/dapr/subscribe` through `MapSubscribeHandler()` and applies
+`UseCloudEvents()` before routing.
 
 ## Prerequisites
 
-- [.NET 8+](https://dotnet.microsoft.com/download) installed
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)

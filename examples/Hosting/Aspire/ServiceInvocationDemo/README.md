@@ -22,7 +22,7 @@ The demo includes:
 
 ### Prerequisites
 
-- .NET 8.0 or later
+- .NET 10 SDK
 - Docker Desktop (for Dapr components)
 - Dapr CLI installed and initialized
 

@@ -1,10 +1,10 @@
 # Cart
 
+> Runtime requirement: Dapr 1.18 or later.
+
 A cart actor you already know, with registration boilerplate, endpoint mapping, and reflection removed.
 
 The abandon-cart callback uses an activation-local timer, not a reminder; it stops when the actor deactivates.
-
-Tutorial: [Part 1 - Modern actor baseline](../../../docs/dotnet-actorsnext/tutorial/part-1.md).
 
 This example uses `AddDaprActors()` only. There is no `MapActorsHandlers` and no per-actor registration. The actor callback stream is app-initiated: the app dials daprd, advertises its actor types, and exchanges callback frames over that outbound gRPC stream.
 

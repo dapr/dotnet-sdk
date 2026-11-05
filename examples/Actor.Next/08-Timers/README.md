@@ -1,5 +1,8 @@
 # Timers
 
+> Runtime requirement: Dapr 1.19 or later for the full example. Actor.Next
+> requires Dapr 1.18 or later, but timer get and list require Dapr 1.19.
+
 A minimal actor that exposes the whole timer API of `IActorTimerScheduler` over HTTP: schedule (create or replace),
 get, list and cancel. Get and list use the `GetActorTimer` and `ListActorTimers` sidecar RPCs added in **Dapr 1.19**.
 
