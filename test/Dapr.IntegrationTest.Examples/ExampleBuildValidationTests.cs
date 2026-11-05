@@ -143,7 +143,7 @@ public class ExampleBuildValidationTests
 
         while (dir is not null)
         {
-            if (File.Exists(Path.Combine(dir, "all.sln")))
+            if (File.Exists(Path.Combine(dir, "all.slnx")))
                 return dir;
 
             dir = Directory.GetParent(dir)?.FullName;
