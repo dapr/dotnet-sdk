@@ -20,6 +20,7 @@ using Dapr.Actors.Next.Abstractions.Scheduling;
 using Dapr.Actors.Next.Core;
 using Dapr.Actors.Next.Core.Registration;
 using Dapr.Actors.Next.Core.Runtime;
+using Dapr.Common;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -44,10 +45,24 @@ public sealed class SubscribeActorEventsStreamManager(
     ILogger<SubscribeActorEventsStreamManager> logger) : BackgroundService, IAsyncDisposable
 {
     private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
+    private readonly ActorActivationIdGate? activationIdGate;
     private readonly ConcurrentDictionary<string, StreamLease> streams = new(StringComparer.Ordinal);
     private readonly CancellationTokenSource shutdown = new();
     private readonly object disposalLock = new();
     private Task? disposal;
+
+    internal SubscribeActorEventsStreamManager(
+        ISubscribeActorEventsTransport transport,
+        ActorRuntimeRegistry registry,
+        IActorRuntime runtime,
+        TimeProvider timeProvider,
+        IOptions<DaprActorsOptions> options,
+        ILogger<SubscribeActorEventsStreamManager> logger,
+        ActorActivationIdGate activationIdGate)
+        : this(transport, registry, runtime, timeProvider, options, logger)
+    {
+        this.activationIdGate = activationIdGate;
+    }
 
     /// <inheritdoc />
     public ValueTask DisposeAsync()
@@ -302,7 +317,8 @@ public sealed class SubscribeActorEventsStreamManager(
         {
             // Actor callbacks are at-least-once. State is saved inside DispatchAsync before this response
             // is queued, so a dropped stream after commit can re-run the turn against already durable state.
-            var response = await runtime.DispatchAsync(ToRuntimeRequest(request), cancellationToken).ConfigureAwait(false);
+            var gated = await GateActivationIdAsync(request, cancellationToken).ConfigureAwait(false);
+            var response = await runtime.DispatchAsync(ToRuntimeRequest(gated), cancellationToken).ConfigureAwait(false);
             return new SubscribeActorEventsResponse(
                 request.Id,
                 request.Kind,
@@ -332,6 +348,24 @@ public sealed class SubscribeActorEventsStreamManager(
         {
             await stream.WriteAsync(response, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    // Older sidecars forward caller metadata, so the id is only trusted from a sidecar that overwrites it.
+    private async ValueTask<SubscribeActorEventsRequest> GateActivationIdAsync(SubscribeActorEventsRequest request, CancellationToken cancellationToken)
+    {
+        var activationId = ActorHeaders.GetActivationId(request.Headers);
+        if (activationId.Length == 0)
+        {
+            return request;
+        }
+
+        if (activationIdGate is not null
+            && await activationIdGate.FilterAsync(activationId, cancellationToken).ConfigureAwait(false) is not null)
+        {
+            return request;
+        }
+
+        return request with { Headers = ActorHeaders.WithoutActivationId(request.Headers) };
     }
 
     private static ActorRuntimeRequest ToRuntimeRequest(SubscribeActorEventsRequest request)

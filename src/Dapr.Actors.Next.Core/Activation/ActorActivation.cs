@@ -66,6 +66,8 @@ public sealed class ActorActivation : IAsyncDisposable
 
     internal ActorStateUnitOfWork StateUnitOfWork { get; }
 
+    internal string ActivationId { get; init; } = string.Empty;
+
     internal ValueTask OnActivateAsync(CancellationToken cancellationToken) =>
         lifecycle.OnActivateAsync(Instance, cancellationToken);
 

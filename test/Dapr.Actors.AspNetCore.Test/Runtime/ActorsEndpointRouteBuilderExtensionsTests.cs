@@ -12,8 +12,12 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Concurrent;
 using System.Net.Http;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -97,6 +101,190 @@ public class ActorsEndpointRouteBuilderExtensionsTests
             httpClient.SendAsync(request, TestContext.Current.CancellationToken));
     }
 
+    [Fact]
+    public async Task MapActorsHandlers_SameActivationIdHeader_ReusesActivation()
+    {
+        using var host = CreateHost<ActorsStartup>(options => options.Actors.RegisterActor<ActivationActor>());
+        var httpClient = host.GetTestServer().CreateClient();
+        var actorId = Guid.NewGuid().ToString("N");
+
+        var first = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        var second = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+
+        Assert.Equal(first, second);
+        Assert.Equal(new[] { $"activate:{first}", $"call:{first}", $"call:{first}" }, ActivationActor.Events(actorId));
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_NewActivationIdHeader_DeactivatesAndActivatesFresh()
+    {
+        using var host = CreateHost<ActorsStartup>(options => options.Actors.RegisterActor<ActivationActor>());
+        var httpClient = host.GetTestServer().CreateClient();
+        var actorId = Guid.NewGuid().ToString("N");
+
+        var first = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        var second = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a2");
+
+        Assert.NotEqual(first, second);
+        Assert.Equal(new[] { $"activate:{first}", $"call:{first}", $"deactivate:{first}", $"activate:{second}", $"call:{second}" }, ActivationActor.Events(actorId));
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_ActivationIdHeaderName_IsCaseInsensitive()
+    {
+        using var host = CreateHost<ActorsStartup>(options => options.Actors.RegisterActor<ActivationActor>());
+        var httpClient = host.GetTestServer().CreateClient();
+        var actorId = Guid.NewGuid().ToString("N");
+
+        var first = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        var same = await InvokeWhoAmIAsync(httpClient, actorId, "dapr-actor-activation-id", "a1");
+        var reset = await InvokeWhoAmIAsync(httpClient, actorId, "DAPR-ACTOR-ACTIVATION-ID", "a2");
+
+        Assert.Equal(first, same);
+        Assert.NotEqual(first, reset);
+        Assert.Contains($"deactivate:{first}", ActivationActor.Events(actorId));
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_MissingActivationIdHeader_NeverResets()
+    {
+        using var host = CreateHost<ActorsStartup>(options => options.Actors.RegisterActor<ActivationActor>());
+        var httpClient = host.GetTestServer().CreateClient();
+        var actorId = Guid.NewGuid().ToString("N");
+
+        var first = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        var second = await InvokeWhoAmIAsync(httpClient, actorId, null, null);
+        var third = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "");
+
+        Assert.Equal(first, second);
+        Assert.Equal(first, third);
+        Assert.DoesNotContain(ActivationActor.Events(actorId), e => e.StartsWith("deactivate:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_ReminderWithNewActivationIdHeader_ResetsActivation()
+    {
+        using var host = CreateHost<ActorsStartup>(options => options.Actors.RegisterActor<ActivationActor>());
+        var httpClient = host.GetTestServer().CreateClient();
+        var actorId = Guid.NewGuid().ToString("N");
+
+        var first = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        await SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/remind/r1", "{\"dueTime\":\"0h0m1s0ms\"}", "dapr-actor-activation-id", "a1");
+        await SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/remind/r1", "{\"dueTime\":\"0h0m1s0ms\"}", "dapr-actor-activation-id", "a2");
+        var second = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a2");
+
+        Assert.NotEqual(first, second);
+        Assert.Equal(new[] { $"activate:{first}", $"call:{first}", $"reminder:{first}", $"deactivate:{first}", $"activate:{second}", $"reminder:{second}", $"call:{second}" }, ActivationActor.Events(actorId));
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_TimerWithNewActivationIdHeader_ResetsActivation()
+    {
+        using var host = CreateHost<ActorsStartup>(options => options.Actors.RegisterActor<ActivationActor>());
+        var httpClient = host.GetTestServer().CreateClient();
+        var actorId = Guid.NewGuid().ToString("N");
+
+        var first = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        await SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/timer/t1", "{\"callback\":\"OnTimerAsync\"}", "Dapr-Actor-Activation-Id", "a1");
+        await SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/timer/t1", "{\"callback\":\"OnTimerAsync\"}", "Dapr-Actor-Activation-Id", "a2");
+        var second = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a2");
+
+        Assert.NotEqual(first, second);
+        Assert.Equal(new[] { $"activate:{first}", $"call:{first}", $"timer:{first}", $"deactivate:{first}", $"activate:{second}", $"timer:{second}", $"call:{second}" }, ActivationActor.Events(actorId));
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_CallReplacedWhileRunning_Fails()
+    {
+        using var host = CreateHost<ActorsStartup>(options => options.Actors.RegisterActor<ActivationActor>());
+        var httpClient = host.GetTestServer().CreateClient();
+        var actorId = Guid.NewGuid().ToString("N");
+
+        var first = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        var gate = ActivationActor.Gate(actorId);
+        var held = SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/{nameof(IActivationActor.HoldAsync)}", null, "Dapr-Actor-Activation-Id", "a1");
+        await gate.Held.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        var replacing = InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a2");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (!gate.Holder.Discarded)
+        {
+            await Task.Delay(10, timeout.Token);
+        }
+
+        Assert.False(gate.Deactivated.Task.IsCompleted);
+        gate.Release.SetResult();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => held);
+        await gate.Deactivated.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        var second = await replacing;
+        Assert.NotEqual(first, second);
+        Assert.Equal(second, await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a2"));
+    }
+
+    [Theory]
+    [InlineData("1.18.9")]
+    [InlineData("1.19.0-rc.7")]
+    [InlineData("edge")]
+    public async Task MapActorsHandlers_OlderSidecar_IgnoresActivationId(string runtimeVersion)
+    {
+        using var host = CreateHost<ActorsStartup>(options => options.Actors.RegisterActor<ActivationActor>(),
+            getRuntimeVersion: _ => Task.FromResult(runtimeVersion));
+        var httpClient = host.GetTestServer().CreateClient();
+        var actorId = Guid.NewGuid().ToString("N");
+
+        var first = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        await SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/remind/r1", "{\"dueTime\":\"0h0m1s0ms\"}", "Dapr-Actor-Activation-Id", "a2");
+        await SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/timer/t1", "{\"callback\":\"OnTimerAsync\"}", "Dapr-Actor-Activation-Id", "a3");
+        var second = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a4");
+
+        Assert.Equal(first, second);
+        Assert.DoesNotContain(ActivationActor.Events(actorId), e => e.StartsWith("deactivate:", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task MapActorsHandlers_FailedVersionLookup_IgnoresActivationIdThenRetries()
+    {
+        var lookups = 0;
+        using var host = CreateHost<ActorsStartup>(options => options.Actors.RegisterActor<ActivationActor>(),
+            getRuntimeVersion: _ => Interlocked.Increment(ref lookups) == 1
+                ? Task.FromException<string>(new HttpRequestException("sidecar down"))
+                : Task.FromResult("1.19.1"));
+        var httpClient = host.GetTestServer().CreateClient();
+        var actorId = Guid.NewGuid().ToString("N");
+
+        var ignored = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        var trusted = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+        var same = await InvokeWhoAmIAsync(httpClient, actorId, "Dapr-Actor-Activation-Id", "a1");
+
+        Assert.NotEqual(ignored, trusted);
+        Assert.Equal(trusted, same);
+        Assert.Equal(2, lookups);
+    }
+
+    private static async Task<int> InvokeWhoAmIAsync(HttpClient httpClient, string actorId, string headerName, string activationId)
+    {
+        var body = await SendAsync(httpClient, $"/actors/ActivationActor/{actorId}/method/{nameof(IActivationActor.WhoAmIAsync)}", null, headerName, activationId);
+        return int.Parse(body);
+    }
+
+    private static async Task<string> SendAsync(HttpClient httpClient, string path, string body, string headerName, string activationId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, path);
+        if (body is not null)
+        {
+            request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+        }
+
+        if (headerName is not null)
+        {
+            request.Headers.TryAddWithoutValidation(headerName, activationId);
+        }
+
+        using var response = await httpClient.SendAsync(request, TestContext.Current.CancellationToken);
+        Assert.True(response.IsSuccessStatusCode, $"Expected 2xx but got {response.StatusCode}");
+        return await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+    }
+
     [Theory]
     [InlineData("Reminder")]
     [InlineData("Timer")]
@@ -127,8 +315,10 @@ public class ActorsEndpointRouteBuilderExtensionsTests
     }
 
     private static IHost CreateHost<TStartup>(Action<ActorRuntimeOptions> configure,
-        Action<IServiceCollection> configureServices = null) where TStartup : class
+        Action<IServiceCollection> configureServices = null,
+        Func<CancellationToken, Task<string>> getRuntimeVersion = null) where TStartup : class
     {
+        getRuntimeVersion ??= _ => Task.FromResult("1.19.1");
         var builder = Host
             .CreateDefaultBuilder()
             .ConfigureLogging(b =>
@@ -144,6 +334,7 @@ public class ActorsEndpointRouteBuilderExtensionsTests
             .ConfigureServices(services =>
             {
                 services.AddActors(configure);
+                services.AddSingleton(new ActorActivationIdGate(getRuntimeVersion));
                 configureServices?.Invoke(services);
             });
         var host = builder.Build();
@@ -195,6 +386,80 @@ public class ActorsEndpointRouteBuilderExtensionsTests
     {
         public RealMethodActor(ActorHost host) : base(host) { }
         public Task PingAsync() => Task.CompletedTask;
+    }
+
+    private interface IActivationActor : IActor
+    {
+        Task<int> WhoAmIAsync();
+
+        Task HoldAsync();
+    }
+
+    private class ActivationActor : Actor, IActivationActor, IRemindable
+    {
+        private static readonly ConcurrentDictionary<string, ConcurrentQueue<string>> events = new();
+        private static int counter;
+        private readonly int instance = Interlocked.Increment(ref counter);
+
+        public ActivationActor(ActorHost host) : base(host) { }
+
+        private static readonly ConcurrentDictionary<string, HoldGate> gates = new();
+
+        public static string[] Events(string actorId) => events.GetOrAdd(actorId, _ => new()).ToArray();
+
+        public static HoldGate Gate(string actorId) => gates.GetOrAdd(actorId, _ => new());
+
+        public async Task HoldAsync()
+        {
+            var gate = Gate(Id.GetId());
+            gate.Holder = this;
+            gate.Held.SetResult();
+            await gate.Release.Task;
+        }
+
+        public Task<int> WhoAmIAsync()
+        {
+            Record("call");
+            return Task.FromResult(instance);
+        }
+
+        public Task ReceiveReminderAsync(string reminderName, byte[] state, TimeSpan dueTime, TimeSpan period)
+        {
+            Record("reminder");
+            return Task.CompletedTask;
+        }
+
+        public Task OnTimerAsync()
+        {
+            Record("timer");
+            return Task.CompletedTask;
+        }
+
+        protected override Task OnActivateAsync()
+        {
+            Record("activate");
+            return Task.CompletedTask;
+        }
+
+        protected override Task OnDeactivateAsync()
+        {
+            Record("deactivate");
+            Gate(Id.GetId()).Deactivated.TrySetResult();
+            return Task.CompletedTask;
+        }
+
+        private void Record(string kind) => events.GetOrAdd(Id.GetId(), _ => new()).Enqueue($"{kind}:{instance}");
+    }
+
+    private sealed class HoldGate
+    {
+        public TaskCompletionSource Held { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Deactivated { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Actor Holder { get; set; }
     }
 
     public sealed class CallbackContextProbe
