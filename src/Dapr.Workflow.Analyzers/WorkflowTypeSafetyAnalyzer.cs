@@ -166,7 +166,7 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (IsCompatible(actualInputType, expectedInputType, context.Compilation))
+        if (IsPayloadCompatible(actualInputType, expectedInputType, context.Compilation))
         {
             return;
         }
@@ -202,7 +202,7 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (IsCompatible(declaredOutputType, requestedOutputType, context.Compilation))
+        if (IsPayloadCompatible(declaredOutputType, requestedOutputType, context.Compilation))
         {
             return;
         }
@@ -240,7 +240,7 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (IsCompatible(actualInputType, expectedInputType, context.Compilation))
+        if (IsPayloadCompatible(actualInputType, expectedInputType, context.Compilation))
         {
             return;
         }
@@ -276,7 +276,7 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (IsCompatible(declaredOutputType, requestedOutputType, context.Compilation))
+        if (IsPayloadCompatible(declaredOutputType, requestedOutputType, context.Compilation))
         {
             return;
         }
@@ -423,6 +423,32 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
         expressionType = operation.Type!;
         return expressionType is not null;
     }
+
+    private static bool IsPayloadCompatible(
+        ITypeSymbol actualType,
+        ITypeSymbol expectedType,
+        Compilation compilation)
+    {
+        if (IsCompatible(actualType, expectedType, compilation))
+            return true;
+
+        var referenceType = compilation.GetPayloadReferenceType();
+        if (referenceType is null)
+            return false;
+
+        // Offloading and hydration apply only at the payload boundary, not recursively
+        // to tuple elements, collection entries, or other nested contracts.
+        return IsCompatible(
+            GetReferencedPayloadType(actualType, referenceType),
+            GetReferencedPayloadType(expectedType, referenceType),
+            compilation);
+    }
+
+    private static ITypeSymbol GetReferencedPayloadType(ITypeSymbol type, INamedTypeSymbol referenceType) =>
+        type is INamedTypeSymbol namedType &&
+        SymbolEqualityComparer.Default.Equals(namedType.OriginalDefinition, referenceType)
+            ? namedType.TypeArguments[0]
+            : type;
 
     private static bool IsCompatible(
         ITypeSymbol actualType,

@@ -60,6 +60,14 @@ Type-safety diagnostics check serialized contracts: an implicit conversion opera
 does not run merely because a workflow input is passed as `object`. Convert the
 value explicitly before sending it, or use matching input/output contracts.
 
+`DAPR1303` (input) and `DAPR1304` (output) recognize the SDK's top-level
+`PayloadReference<T>` as a stored representation of `T`. They compare the underlying
+payload types using the same compatibility rules as ordinary values, including when
+both sides are references. This exception does not apply recursively inside collections,
+tuples, or other wrappers, nor to unrelated types named `PayloadReference<T>`.
+The analyzers do not verify runtime offloading configuration: reference-typed receivers
+still require the sender to create a reference, explicitly or through a suitable policy.
+
 ### Optional binary-store payloads
 
 For a runnable comparison of inline payloads, automatic offloading, and streaming
