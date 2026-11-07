@@ -1,8 +1,8 @@
 # Interpreted
 
-Smart-lock device types are defined as state-machine configuration, verified before rollout, and hosted by the interpreted actor at runtime.
+> Runtime requirement: Dapr 1.18 or later.
 
-Tutorial: [Part 5 - Runtime-defined state machines](../../../docs/dotnet-actorsnext/tutorial/part-5.md).
+Smart-lock device types are defined as state-machine configuration, verified before rollout, and hosted by the interpreted actor at runtime.
 
 The worked device type is a smart lock with `Locked`, `Unlocking`, `Unlocked`, and `Locking` states. `Unlock` moves a locked device to `Unlocking`, `MotorStopped` completes the unlock, `Lock` moves an unlocked device to `Locking`, and the next `MotorStopped` returns it to `Locked`.
 

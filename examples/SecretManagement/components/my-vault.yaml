@@ -1,0 +1,10 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: my-vault
+spec:
+  type: secretstores.local.file
+  version: v1
+  metadata:
+    - name: secretsFile
+      value: secrets.json

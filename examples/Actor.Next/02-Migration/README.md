@@ -1,9 +1,9 @@
 # Migration
 
+> Runtime requirement: Dapr 1.18 or later.
+
 Typed actor state migration lets actor code read the current state shape while the SDK folds older
 persisted shapes forward through registered upcasters.
-
-Tutorial: [Part 2 - Serialization and state migration](../../../docs/dotnet-actorsnext/tutorial/part-2.md).
 
 This example is the reference usage for the migration model:
 

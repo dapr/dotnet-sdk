@@ -1,37 +1,56 @@
-# Dapr Secrets Management Sample
+# Dapr secrets management example
 
-This sample demonstrates how to use the Dapr Secrets Management SDK to retrieve secrets from Dapr secret store components.
+This sample demonstrates the modern `Dapr.SecretsManagement` package:
 
-## Features Demonstrated
+1. Direct retrieval with `DaprSecretsManagementClient`.
+2. Bulk retrieval from a named secret store.
+3. A source-generated typed store declared with `[SecretStore]` and `[Secret]`.
+4. Dependency-injection registration through `AddDaprSecretsManagementClient()`.
 
-1. **Direct secret retrieval** — Using `DaprSecretsManagementClient` to fetch individual or bulk secrets via gRPC.
-2. **Typed secret stores** — Using the `[SecretStore]` and `[Secret]` attributes with the source generator to create strongly-typed secret accessors.
-3. **Dependency injection** — Registering the secrets client and typed stores via `IServiceCollection` extensions.
+`IMyVaultSecrets` binds to the `my-vault` component and loads
+`db-connection-string` and `ApiKey`. The checked-in local-file component and
+values are development-only data that make the example runnable without an
+external vault.
 
 ## Prerequisites
 
-- [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- A configured Dapr secret store component (e.g., local file, Kubernetes secrets, Azure Key Vault)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+- [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/) with an
+  [initialized local environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/).
 
-## Running the Sample
+## Run
 
-```bash
-dapr run --app-id secret-sample --app-port 6543 -- dotnet run --framework net10.0
+From the repository root:
+
+```powershell
+Set-Location examples\SecretManagement
+dapr run --app-id secret-sample --app-port 6543 --resources-path .\components -- dotnet run --project .\SecretManagementSample --framework net10.0
 ```
 
 ## Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/secrets/{storeName}/{key}` | Retrieve a single secret by key |
-| GET | `/secrets/{storeName}` | Retrieve all secrets from a store |
-| GET | `/typed-secrets` | Retrieve secrets using the source-generated typed store |
+| `GET` | `/secrets/{storeName}/{key}` | Retrieve one key through `DaprSecretsManagementClient`. |
+| `GET` | `/secrets/{storeName}` | Retrieve all secrets from a store. |
+| `GET` | `/typed-secrets` | Return `DatabaseConnection` and `ApiKey` through the generated `IMyVaultSecrets` implementation. |
 
-## NuGet Package Note
+For example:
 
-When consuming from NuGet, install the single **`Dapr.SecretsManagement`** package. The sub-projects (`Abstractions`, `Runtime`, `Generators`) are bundled into this one package and are not published individually.
-
-```xml
-<PackageReference Include="Dapr.SecretsManagement" Version="<version>" />
+```powershell
+Invoke-RestMethod http://localhost:6543/typed-secrets
+Invoke-RestMethod http://localhost:6543/secrets/my-vault/ApiKey
 ```
+
+## Files
+
+- [`IMyVaultSecrets.cs`](./SecretManagementSample/IMyVaultSecrets.cs) declares
+  the generated typed client.
+- [`my-vault.yaml`](./components/my-vault.yaml) configures the local-file store.
+- [`secrets.json`](./secrets.json) supplies non-sensitive demonstration values.
+
+## Using the package
+
+Applications should install the single `Dapr.SecretsManagement` package. It
+includes the abstractions, runtime, and source generator; those sub-projects are
+not published as separate packages.
