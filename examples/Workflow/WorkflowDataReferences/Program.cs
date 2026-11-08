@@ -23,7 +23,7 @@ PayloadExample[] examples = dataRefsEnabled
     ?
     [
         new InlinePayloadExample(), new AutomaticPayloadExample(), new ReferencePayloadExample(),
-        new AutomaticReferencePayloadExample()
+        new AutomaticReferencePayloadExample(), new ChunkStreamingPayloadExample()
     ]
     : [new InlinePayloadExample()];
 var document = new DocumentPayload("sample.txt", new string('a', 128 * 1024));
@@ -32,7 +32,7 @@ Console.WriteLine("Workflow payload approaches");
 Console.WriteLine(
     $"Each approach starts with the same document: {document.Name}, {document.Content.Length:N0} characters.");
 Console.WriteLine(
-    "Inline and automatic offloading uppercase the document; both reference-input variations stream and measure its serialized bytes.");
+    "Inline and automatic offloading uppercase the document; the reference-input variations stream and measure its serialized bytes.");
 Console.WriteLine("This is a behavior comparison, not a performance benchmark.");
 if (!dataRefsEnabled)
     Console.WriteLine("DataRefs:Enabled=false: running inline only; no payload-storage services will be registered.");

@@ -22,7 +22,7 @@ namespace WorkflowDataReferences.Activities;
 /// </summary>
 /// <param name="resolver">The resolver registered by the host's opt-in <c>WithBinaryStorePayloads</c> call.</param>
 /// <remarks>
-/// <see cref="IWorkflowPayloadResolver.ReadChunksAsync"/> returns raw serialized bytes, not a deserialized
+/// <see cref="IWorkflowPayloadResolver.ReadChunksAsync(PayloadReference, CancellationToken)"/> returns raw serialized bytes, not a deserialized
 /// document or just its content field. Enumeration owns and disposes the download. Unlike buffered resolution,
 /// this path leaves integrity verification to the caller. This example stores untransformed JSON,
 /// so hashing the streamed bytes can be compared directly with the reference's content hash.

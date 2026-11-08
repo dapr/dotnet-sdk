@@ -71,6 +71,11 @@ internal sealed class CachingWorkflowPayloadResolver : IWorkflowPayloadResolver
     public IAsyncEnumerable<ReadOnlyMemory<byte>> ReadChunksAsync(PayloadReference reference,
         CancellationToken cancellationToken = default)
         => _inner.ReadChunksAsync(reference, cancellationToken);
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<ReadOnlyMemory<byte>> ReadChunksAsync(PayloadReference reference, int chunkSize,
+        CancellationToken cancellationToken = default)
+        => _inner.ReadChunksAsync(reference, chunkSize, cancellationToken);
  
     /// <inheritdoc />
     public Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId, CancellationToken cancellationToken = default)

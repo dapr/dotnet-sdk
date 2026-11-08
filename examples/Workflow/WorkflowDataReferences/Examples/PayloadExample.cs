@@ -44,13 +44,20 @@ internal abstract class PayloadExample
         Console.WriteLine($"Result: {processed.Content.Length} characters, first character '{processed.Content[0]}'.");
     }
 
-    protected static void PrintReferenceResult(WorkflowState state, PayloadReference<DocumentPayload> inputReference)
+    protected static PayloadSummary ReadReferenceResult(
+        WorkflowState state, PayloadReference<DocumentPayload> inputReference)
     {
         var summary = state.ReadOutputAs<PayloadSummary>()
                       ?? throw new InvalidOperationException("The streaming workflow returned no summary.");
         if (summary.ByteCount != inputReference.Size || summary.Sha256 != inputReference.ContentHash)
             throw new InvalidOperationException("The streaming result does not match the stored document.");
 
+        return summary;
+    }
+
+    protected static void PrintReferenceResult(WorkflowState state, PayloadReference<DocumentPayload> inputReference)
+    {
+        var summary = ReadReferenceResult(state, inputReference);
         Console.WriteLine($"Result: activity streamed {summary.ByteCount} serialized bytes using async chunks.");
         Console.WriteLine($"SHA-256 verified: {summary.Sha256}");
         Console.WriteLine("Serialized bytes include JSON structure, not just the document's characters.");

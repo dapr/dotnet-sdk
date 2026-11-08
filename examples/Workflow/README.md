@@ -71,7 +71,8 @@ still require the sender to create a reference, explicitly or through a suitable
 ### Optional binary-store payloads
 
 For a runnable comparison of inline payloads, automatic offloading, and streaming
-with either explicitly or automatically created references, see
+with either explicitly or automatically created references, including explicit
+chunk reads in both workflows and activities, see
 [WorkflowDataReferences](./WorkflowDataReferences).
 
 SDK-managed payload storage is included in `Dapr.Workflow`; a separate

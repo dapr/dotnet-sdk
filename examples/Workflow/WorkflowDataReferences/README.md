@@ -6,10 +6,11 @@ There is no separate `Dapr.Workflow.BinaryStore` package and no public converter
 implement.
 
 The default run walks through **inline**, **automatic offloading**, **explicit references**,
-and **automatic references** in that order, with a labeled console section for each. Every approach
+**automatic references**, and **explicit chunks in workflows and activities** in that order,
+with a labeled console section for each. Every approach
 starts with the same document containing 128 KiB of text. This is a behavior
 comparison, not a performance benchmark: the first two uppercase the document,
-while the last two stream its serialized bytes and return a small summary.
+while the last three stream its serialized bytes and return a small summary.
 
 ## Follow the code
 
@@ -21,6 +22,7 @@ Each approach has its own class containing its service registration and client c
 | Automatic | [AutomaticPayloadExample](./Examples/AutomaticPayloadExample.cs) | Reference envelopes for payloads above the 64 KiB threshold. Small values stay inline. | The SDK retrieves and deserializes referenced values for ordinary inputs and client output reads. |
 | Explicit references | [ReferencePayloadExample](./Examples/ReferencePayloadExample.cs) | A typed reference as input; a small inline summary as output. | The workflow only forwards the reference; the activity streams bytes without deserializing the document. Client completion inspection also resolves the input. |
 | Automatic references | [AutomaticReferencePayloadExample](./Examples/AutomaticReferencePayloadExample.cs) | The SDK converts an ordinary document into an input reference, regardless of size; the summary stays inline. | The same reference-typed workflow and activity as the explicit variation; only the sender's registration and scheduling code differ. |
+| Explicit chunks | [ChunkStreamingPayloadExample](./Examples/ChunkStreamingPayloadExample.cs) | Explicit references as workflow/activity inputs; a small inline summary as output. No automatic offloading. | The workflow explicitly enumerates chunks and checks their total size; the activity independently enumerates chunks and verifies size and SHA-256. Replay and client inspection can cause additional reads. |
 
 Inline and automatic deliberately share
 [DocumentProcessingWorkflow](./Workflows/DocumentProcessingWorkflow.cs) and
@@ -31,23 +33,29 @@ in `WithBinaryStorePayloads(...)`, chained from
 activities. The SDK handles offloading and rehydration without
 changing their `DocumentPayload` parameters or return types.
 
-Both reference-input examples use
+The explicit-reference and automatic-reference examples use
 [StreamingPayloadWorkflow](./Workflows/StreamingPayloadWorkflow.cs) and
 [MeasurePayloadActivity](./Activities/MeasurePayloadActivity.cs), whose inputs are
 `PayloadReference<DocumentPayload>`. The activity reads with `await foreach` over `resolver.ReadChunksAsync(...)` and
 checks both the byte count and SHA-256 against the reference. Storage I/O stays in
 the client or activity, not in the replayed orchestrator.
 
+The explicit-chunks example instead uses
+[ChunkStreamingWorkflow](./Workflows/ChunkStreamingWorkflow.cs), which reads through
+`context.ReadPayloadChunksAsync(...)` before calling the same `MeasurePayloadActivity`.
+It keeps `WritePreference = Preserve` and `OffloadSites = None`: the client explicitly
+creates a reference, and both consumers explicitly enumerate stored bytes.
+
 The examples request inputs and outputs when waiting for completion so they can
 display and check results. This also resolves referenced input on the client,
-including in both reference-input cases. Passing `getInputsAndOutputs: false`
+including in all reference-input cases. Passing `getInputsAndOutputs: false`
 avoids that inspection read when only completion status is needed; it also omits
 the summary output. This demo does not claim a single download end to end.
 
 [Program.cs](./Program.cs) only selects the examples and manages host lifetime.
 [PayloadExample](./Examples/PayloadExample.cs) shares completion/result checks.
 Offloading is configured per host, so each approach gets a fresh host and the
-previous worker is stopped before the next starts. All four use one dedicated
+previous worker is stopped before the next starts. All five use one dedicated
 sidecar sequentially.
 
 ### Two ways to create the same input reference
@@ -130,7 +138,7 @@ In a second terminal, from the same directory:
 dotnet run --framework net10.0
 ```
 
-This runs all four approaches. `--DataRefs:Enabled=true` has the same effect.
+This runs all five approaches. `--DataRefs:Enabled=true` has the same effect.
 Do not attach another worker to this app ID while running the comparison; an
 inline-only worker cannot resolve an offloaded workflow's references.
 
@@ -143,10 +151,10 @@ Alongside SDK logs, expect output resembling:
 ```text
 Workflow payload approaches
 Each approach starts with the same document: sample.txt, 131,072 characters.
-Inline and automatic offloading uppercase the document; both reference-input variations stream and measure its serialized bytes.
+Inline and automatic offloading uppercase the document; the reference-input variations stream and measure its serialized bytes.
 This is a behavior comparison, not a performance benchmark.
 
-=== 1/4: Inline payloads (no binary store) ===
+=== 1/5: Inline payloads (no binary store) ===
 Registration: AddDaprWorkflow(...) only; payload storage is not enabled.
 History: full serialized documents in workflow and activity inputs/outputs.
 ...
@@ -154,7 +162,7 @@ Workflow ID: payload-inline-...
 Result: 131072 characters, first character 'A'.
 Takeaway: the document itself travels through workflow history.
 
-=== 2/4: Automatic offloading (same application code) ===
+=== 2/5: Automatic offloading (same application code) ===
 Registration: AddDaprWorkflow(...).WithBinaryStorePayloads(...), threshold 64 KiB.
 ...
 Workflow ID: payload-auto-...
@@ -162,7 +170,7 @@ Result: 131072 characters, first character 'A'.
 Persisted output reference: {"$daprRef":{"v":1,"store":"workflow-payloads",...}}
 Takeaway: smaller history does not mean zero document reads; the SDK still materializes ordinary inputs.
 
-=== 3/4: Explicit references (workflow forwards, activity streams) ===
+=== 3/5: Explicit references (workflow forwards, activity streams) ===
 ...
 Workflow ID: payload-ref-...
 Client stored ... serialized bytes; input reference: {"$daprRef":{...}}
@@ -172,7 +180,7 @@ Serialized bytes include JSON structure, not just the document's characters.
 Client inspection: fetching inputs/outputs at completion also resolves the referenced input on the client.
 Takeaway: the workflow never reads the document; the activity streams bytes instead of deserializing it.
 
-=== 4/4: Automatic references (pass document, receive reference) ===
+=== 4/5: Automatic references (pass document, receive reference) ===
 Registration: PreferReference for WorkflowInput, with no size threshold.
 ...
 Application code: pass DocumentPayload directly; the SAME streaming workflow receives PayloadReference<DocumentPayload>.
@@ -183,6 +191,20 @@ Result: activity streamed ... serialized bytes using async chunks.
 SHA-256 verified: ...
 ...
 Takeaway: the workflow never reads the document; the activity streams bytes instead of deserializing it.
+
+=== 5/5: Explicit chunks (workflow and activity both stream) ===
+Registration: Preserve with OffloadSites=None; no automatic boundary offloading.
+...
+Workflow: request 4 MiB chunks with context.ReadPayloadChunksAsync, checking the byte count.
+The 128 KiB sample fits in one final partial chunk; the SDK owns the buffer and stream.
+Activity: await foreach over resolver.ReadChunksAsync(input), checking the byte count and SHA-256.
+Workflow ID: payload-chunks-...
+Client stored the document; input reference: {"$daprRef":{...}}
+Result: workflow and activity each streamed ... serialized bytes.
+Activity SHA-256 verified: ...
+Replay reads the workflow's chunks again; keep the referenced bytes immutable and available.
+Client completion inspection also resolves the input; this is not a single-download example.
+Takeaway: explicit chunk reads work in both workflow and activity code without deserializing the document.
 
 Histories are retained for inspection using the printed workflow IDs.
 Keep the demo sidecar running while referenced payloads are needed; its binary store is in-memory.
@@ -199,14 +221,16 @@ curl.exe http://localhost:3500/v1.0/workflows/dapr/payload-inline-REPLACE_WITH_I
 curl.exe http://localhost:3500/v1.0/workflows/dapr/payload-auto-REPLACE_WITH_ID
 curl.exe http://localhost:3500/v1.0/workflows/dapr/payload-ref-REPLACE_WITH_ID
 curl.exe http://localhost:3500/v1.0/workflows/dapr/payload-auto-ref-REPLACE_WITH_ID
+curl.exe http://localhost:3500/v1.0/workflows/dapr/payload-chunks-REPLACE_WITH_ID
 ```
 
 Inline input/output contains the full document. Automatic input/output contains
 reference envelopes, while SDK `ReadOutputAs<DocumentPayload>()` returns the
 document and `ReadOutputAs<PayloadReference<DocumentPayload>>()` exposes the retained
-wire reference. Both reference-input variations contain an input envelope, but output
-is only the byte-count/hash summary. They differ in who requests the upload, not in
-the receiving workflow/activity contract or persisted representation.
+wire reference. All three reference-input variations contain an input envelope, but
+output is only the byte-count/hash summary. The explicit-reference and automatic-reference
+variations differ in who requests the upload. The explicit-chunks variation also
+reads the payload in the workflow, without changing the persisted representation.
 
 ### Compare with payload support disabled
 
@@ -239,10 +263,10 @@ await foreach (var chunk in resolver.ReadChunksAsync(reference, cancellationToke
 
 Opening is deferred until enumeration starts. Completing the loop, breaking out of it,
 throwing, or cancellation disposes the download. `.WithCancellation(token)` is also
-supported. Each enumeration reads storage again; chunks are not cached. Chunk sizes
-and boundaries are unspecified and may differ between implementations.
+supported. Each enumeration reads storage again; chunks are not cached. Without an
+explicit size, chunk sizes and boundaries are unspecified and may differ between implementations.
 
-The built-in resolver exposes the binary store's chunks directly. Existing custom
+The built-in resolver's overload without a size exposes the binary store's chunks directly. Existing custom
 resolvers inherit a default implementation that reads their `OpenAsync` stream with
 a bounded buffer. `OpenAsync` remains available for APIs that consume `Stream`.
 Orchestrators can use `context.ReadPayloadChunksAsync(reference)`; opening, reading,
@@ -251,6 +275,75 @@ and disposal use the worker's existing storage I/O queue.
 Both streaming APIs return raw stored bytes, without deserialization, stage reversal,
 or automatic integrity verification. The example verifies the hash and byte count
 as it consumes the untransformed JSON payload.
+
+To request a specific processing size without managing a stream, pass `chunkSize`:
+
+```csharp
+await foreach (var chunk in resolver.ReadChunksAsync(
+    reference, chunkSize: 4 * 1024 * 1024, cancellationToken: cancellationToken))
+{
+    hash.AppendData(chunk.Span);
+}
+```
+
+The SDK fills a reusable buffer, producing exactly 4 MiB per chunk except for the
+final remainder. Empty payloads produce no chunks. The size must be positive;
+validation is deferred until enumeration starts. Partial reads are combined internally,
+and cancellation, early exit, and disposal remain SDK-managed. Larger chunks use more
+buffer memory and delay delivery until that chunk is filled or the payload ends.
+Consume or copy the memory before advancing; it may be reused.
+
+The overload without `chunkSize` retains its existing unspecified chunk boundaries.
+The requested size controls application-visible chunks, not storage/gRPC message sizes
+or workflow/activity payload limits. Advanced users can still use `resolver.OpenAsync`
+or `context.OpenPayloadAsync` when an API requires direct `Stream` access.
+For existing calls that pass an untyped positional `default` as the second argument,
+use `cancellationToken: default` to distinguish it from the new chunk-size overload.
+
+### Explicit chunk reads inside a workflow and an activity
+
+The fifth example stores the document from the client using `StoreAsync`, then
+passes the reference into `ChunkStreamingWorkflow`. The workflow reads it explicitly:
+
+```csharp
+long byteCount = 0;
+await foreach (var chunk in context.ReadPayloadChunksAsync(input, chunkSize: 4 * 1024 * 1024))
+{
+    byteCount += chunk.Length;
+}
+```
+
+The workflow requests 4 MiB chunks; the demo's 128 KiB document produces only a final
+partial chunk. Larger documents produce full 4 MiB chunks followed by any remainder.
+
+After checking the byte count against `input.Size`, it passes the same reference to
+`MeasurePayloadActivity`. That activity opens an independent enumeration:
+
+```csharp
+await foreach (var chunk in resolver.ReadChunksAsync(input))
+{
+    byteCount += chunk.Length;
+    hash.AppendData(chunk.Span);
+}
+```
+
+The activity verifies both size and SHA-256 before returning the small summary.
+Neither consumer calls `ResolveAsync` or materializes `DocumentPayload`. The
+client's upload still buffers serialization, and completion inspection hydrates
+the input; this is not an end-to-end bounded-memory pipeline.
+
+**Workflow reads must use the context extension**, not an injected resolver,
+direct binary-store calls, or `Task.Run`. The SDK queues opening, reading, and
+disposal outside deterministic execution. Do not use `ConfigureAwait(false)` in
+the orchestration loop or schedule workflow actions based on chunk boundaries;
+those boundaries can change between reads.
+
+These reads are not durable activity results: enumeration runs again during
+workflow replay. Keep the referenced bytes immutable and available for every replay.
+The workflow checks only size in this example; the activity independently checks
+content integrity. Workflow logic that depends on the bytes themselves must also
+validate integrity as appropriate. Prefer the earlier activity-only variations
+when the workflow does not need to inspect the data.
 
 ### Allocation behavior and optional payload byte caching
 
