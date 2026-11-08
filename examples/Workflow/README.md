@@ -109,9 +109,7 @@ input/output policy. Register this support on every participating client and wor
 including cross-application destinations, with compatible serializers and access
 to the same stored data.
 
-The codec, boundary coordination, and feature registration/access hooks are internal;
-they do not add a generic feature API to `WorkflowContext`. The worker resolves inputs before
-invoking application code, drains asynchronous result reads between history events,
+The worker resolves inputs before invoking application code, drains asynchronous result reads between history events,
 and offloads pending actions after replay has removed already-recorded actions.
 Stored bytes are the original serialized snapshot, not a second serialization of it.
 The version-1 reference envelope remains unchanged; raw and propagated history APIs
