@@ -31,7 +31,10 @@ internal sealed class ChunkStreamingWorkflow : Workflow<PayloadReference<Documen
         WorkflowContext context, PayloadReference<DocumentPayload> input)
     {
         long byteCount = 0;
-        await foreach (var chunk in context.ReadPayloadChunksAsync(input, chunkSize: 4 * 1024 * 1024))
+        // Use the workflow context API, not an injected resolver/direct storage client.
+        // The SDK schedules these reads safely, but it does not persist the chunks in history.
+        // Replays read them again; prefer forwarding to an activity when the workflow needs only a summary.
+        await foreach (var chunk in context.ReadPayloadChunksAsync(input, chunkSize: 32 * 1024))
         {
             byteCount += chunk.Length;
         }

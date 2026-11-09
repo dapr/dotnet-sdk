@@ -91,7 +91,7 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
 
         if (IsScheduleNewWorkflowAsync(targetMethod, daprWorkflowClientType, iDaprWorkflowClientType))
         {
-            AnalyzeWorkflowInput(invocation, context, workflowBaseType);
+            AnalyzeWorkflowInput(invocation, context, workflowBaseType, allowStreamInput: true);
             return;
         }
 
@@ -144,7 +144,8 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
     private static void AnalyzeWorkflowInput(
         IInvocationOperation invocation,
         OperationAnalysisContext context,
-        INamedTypeSymbol workflowBaseType)
+        INamedTypeSymbol workflowBaseType,
+        bool allowStreamInput = false)
     {
         context.CancellationToken.ThrowIfCancellationRequested();
 
@@ -166,7 +167,8 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
             return;
         }
 
-        if (IsPayloadCompatible(actualInputType, expectedInputType, context.Compilation))
+        if (IsPayloadCompatible(actualInputType, expectedInputType, context.Compilation) ||
+            (allowStreamInput && IsStreamReferenceInput(actualInputType, expectedInputType, context.Compilation)))
         {
             return;
         }
@@ -422,6 +424,19 @@ public sealed class WorkflowTypeSafetyAnalyzer : DiagnosticAnalyzer
 
         expressionType = operation.Type!;
         return expressionType is not null;
+    }
+
+    private static bool IsStreamReferenceInput(ITypeSymbol actualType, ITypeSymbol expectedType, Compilation compilation)
+    {
+        var streamType = compilation.GetTypeByMetadataName("System.IO.Stream");
+        if (streamType is null || !IsCompatible(actualType, streamType, compilation))
+            return false;
+
+        // Scheduling can upload raw bytes before passing the reference. The serializer contract
+        // of a typed reference cannot be inferred from the contents of a stream.
+        return SymbolEqualityComparer.Default.Equals(expectedType, compilation.GetUntypedPayloadReferenceType()) ||
+               (expectedType is INamedTypeSymbol namedType &&
+                SymbolEqualityComparer.Default.Equals(namedType.OriginalDefinition, compilation.GetPayloadReferenceType()));
     }
 
     private static bool IsPayloadCompatible(

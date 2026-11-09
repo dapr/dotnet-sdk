@@ -29,7 +29,7 @@ namespace Dapr.Workflow.Payloads;
 /// Orchestrator code must treat this interface as read-only. Resolution of an existing reference is
 /// replay-safe because stored payloads are immutable and content-addressed; creating new payloads
 /// from an orchestrator is not, and the <see cref="WorkflowContext"/> extension methods deliberately
-/// do not expose <see cref="StoreAsync{T}"/>.
+/// do not expose <see cref="StoreAsync{T}"/> or <see cref="StoreStreamAsync"/>.
 /// </remarks>
 public interface IWorkflowPayloadResolver
 {
@@ -148,4 +148,41 @@ public interface IWorkflowPayloadResolver
     /// <param name="cancellationToken">A token used to cancel the operation.</param>
     /// <returns>A typed reference to the stored payload.</returns>
     Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Stores the remaining raw bytes of <paramref name="content"/> without serializing them or
+    /// buffering the entire payload in memory, and returns a reference to the stored bytes.
+    /// Intended for activities and clients, not orchestrator code.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Reads from the current position through end of stream, including for non-seekable streams.
+    /// The caller retains ownership: the stream is not disposed or rewound, including on failure.
+    /// Do not read, seek, or modify the stream concurrently with this operation.
+    /// </para>
+    /// <para>
+    /// The built-in resolver stages bytes in a temporary file while computing SHA-256, then uploads
+    /// that file under a content-addressed key. Memory usage is bounded, but temporary disk space
+    /// proportional to the payload is required. The temporary file is deleted when the operation
+    /// completes, fails, or is canceled. No reference is returned until upload and manifest recording
+    /// succeed. This explicit write is independent of automatic offloading policy and rehydration limits.
+    /// </para>
+    /// <para>
+    /// Consume raw bytes using <see cref="OpenAsync"/> or <see cref="ReadChunksAsync(PayloadReference, CancellationToken)"/>.
+    /// Only use <see cref="PayloadReference.AsTyped{T}"/> or materialized reads when the bytes match
+    /// the configured serializer's format for that type. Preserve references at sending boundaries;
+    /// inlining arbitrary binary data is not supported.
+    /// Existing custom resolvers default to throwing <see cref="NotSupportedException"/>.
+    /// </para>
+    /// </remarks>
+    /// <param name="content">A readable stream containing the bytes to store.</param>
+    /// <param name="instanceId">The workflow instance that owns the payload.</param>
+    /// <param name="cancellationToken">A token used to cancel reading, staging, uploading, and manifest recording.</param>
+    /// <returns>An untyped reference containing the stored byte count and SHA-256 hash.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="content"/> is null.</exception>
+    /// <exception cref="ArgumentException">The stream is not readable or the instance ID is blank.</exception>
+    /// <exception cref="NotSupportedException">The resolver does not support storing streams.</exception>
+    Task<PayloadReference> StoreStreamAsync(Stream content, string instanceId,
+        CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("This workflow payload resolver does not support storing streams.");
 }

@@ -14,14 +14,15 @@
 using Dapr.Workflow;
 using Dapr.Workflow.Payloads;
 using Microsoft.Extensions.DependencyInjection;
-using WorkflowDataReferences.Activities;
 using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
 internal sealed class AutomaticReferencePayloadExample : PayloadExample
 {
+    public override string Id => "auto-reference";
     public override string Title => "Automatic references (pass document, receive reference)";
+    public override string WhenToUse => "The caller has an object, but the workflow should receive and forward its reference.";
 
     public override void ConfigureServices(IServiceCollection services)
     {
@@ -29,9 +30,11 @@ internal sealed class AutomaticReferencePayloadExample : PayloadExample
         {
             options.StoreName = "workflow-payloads";
             options.KeyPrefix = "payload-example";
+            // The following two lines are critical to this working automatically
             options.WritePreference = PayloadWritePreference.PreferReference;
             options.OffloadSites = PayloadKind.WorkflowInput;
-            // The workflow requires a reference even when the document is small.
+            // The receiver's PayloadReference<T> type does not cause an upload.
+            // Always offload here: a threshold could leave a small document inline and break that contract.
             options.OffloadThreshold = null;
         });
     }
@@ -50,9 +53,12 @@ internal sealed class AutomaticReferencePayloadExample : PayloadExample
         var instanceId = $"payload-auto-ref-{Guid.NewGuid():N}";
         Console.WriteLine($"Workflow ID: {instanceId}");
 
+        // This is still an in-memory object upload. For an unmaterialized source, see auto-stream.
         await client.ScheduleNewWorkflowAsync(nameof(StreamingPayloadWorkflow), instanceId, document,
             startTime: null, cancellation: cancellationToken);
-        var state = await WaitForCompletionAsync(client, instanceId, cancellationToken);
+        // The workflow returns a small inline summary, not an output reference. Reading this summary
+        // through the normal metadata API also hydrates the input; the worker's reads were chunked.
+        var state = await WaitForCompletionAsync(client, instanceId, getInputsAndOutputs: true, cancellationToken);
         var inputReference = state.ReadInputAs<PayloadReference<DocumentPayload>>()
                              ?? throw new InvalidOperationException("The workflow input was not offloaded.");
         Console.WriteLine($"SDK stored the document automatically; input reference: {inputReference.ToEnvelope()}");

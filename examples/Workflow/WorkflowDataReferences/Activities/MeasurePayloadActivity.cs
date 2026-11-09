@@ -14,6 +14,7 @@
 using System.Security.Cryptography;
 using Dapr.Workflow;
 using Dapr.Workflow.Payloads;
+using Microsoft.Extensions.Hosting;
 
 namespace WorkflowDataReferences.Activities;
 
@@ -21,13 +22,14 @@ namespace WorkflowDataReferences.Activities;
 /// Enumerates a document's stored representation in chunks using an explicit data reference.
 /// </summary>
 /// <param name="resolver">The resolver registered by the host's opt-in <c>WithBinaryStorePayloads</c> call.</param>
+/// <param name="lifetime">Cancels storage reads when this example's worker is stopping.</param>
 /// <remarks>
 /// <see cref="IWorkflowPayloadResolver.ReadChunksAsync(PayloadReference, CancellationToken)"/> returns raw serialized bytes, not a deserialized
 /// document or just its content field. Enumeration owns and disposes the download. Unlike buffered resolution,
 /// this path leaves integrity verification to the caller. This example stores untransformed JSON,
 /// so hashing the streamed bytes can be compared directly with the reference's content hash.
 /// </remarks>
-internal sealed class MeasurePayloadActivity(IWorkflowPayloadResolver resolver)
+internal sealed class MeasurePayloadActivity(IWorkflowPayloadResolver resolver, IHostApplicationLifetime lifetime)
     : WorkflowActivity<PayloadReference<DocumentPayload>, PayloadSummary>
 {
     public override async Task<PayloadSummary> RunAsync(
@@ -35,12 +37,16 @@ internal sealed class MeasurePayloadActivity(IWorkflowPayloadResolver resolver)
     {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         long byteCount = 0;
-        await foreach (var chunk in resolver.ReadChunksAsync(input))
+        // These are the serialized document's bytes, including JSON structure, NOT its Content field.
+        // ResolveAsync<DocumentPayload>(input) is the alternative when a fully materialized object is wanted.
+        await foreach (var chunk in resolver.ReadChunksAsync(input, lifetime.ApplicationStopping))
         {
+            // Use each chunk before advancing: the underlying buffer may be reused.
             byteCount += chunk.Length;
             hash.AppendData(chunk.Span);
         }
 
+        // Streaming does not automatically verify integrity. A full pass lets this activity check it.
         var actualHash = Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
         if (!string.Equals(input.ContentHash, actualHash, StringComparison.Ordinal))
             throw new PayloadIntegrityException(input, actualHash);

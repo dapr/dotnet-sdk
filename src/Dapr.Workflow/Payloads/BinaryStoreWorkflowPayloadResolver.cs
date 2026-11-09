@@ -43,6 +43,10 @@ internal sealed class BinaryStoreWorkflowPayloadResolver(
         CancellationToken cancellationToken = default)
         => codec.ReadChunksAsync(reference, cancellationToken);
 
+    public Task<PayloadReference> StoreStreamAsync(Stream content, string instanceId,
+        CancellationToken cancellationToken = default)
+        => codec.StoreStreamAsync(content, instanceId, cancellationToken);
+
     public async Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId,
         CancellationToken cancellationToken = default)
     {

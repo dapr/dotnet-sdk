@@ -14,26 +14,25 @@
 using Dapr.Workflow;
 using Dapr.Workflow.Payloads;
 using Microsoft.Extensions.DependencyInjection;
-using WorkflowDataReferences.Activities;
 using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
 internal sealed class ReferencePayloadExample : PayloadExample
 {
+    public override string Id => "explicit-reference";
     public override string Title => "Explicit references (workflow forwards, activity streams)";
+    public override string WhenToUse => "Choose exactly when to store an object and pass a typed reference to consumers.";
 
     public override void ConfigureServices(IServiceCollection services)
     {
-        services.AddDaprWorkflow(options =>
-        {
-            options.RegisterWorkflow<StreamingPayloadWorkflow>();
-            options.RegisterActivity<MeasurePayloadActivity>();
-        }).WithBinaryStorePayloads(options =>
+        services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
         {
             options.StoreName = "workflow-payloads";
             options.KeyPrefix = "payload-example";
-            options.OffloadThreshold = 64 * 1024;
+            // Explicit StoreAsync is independent of thresholds and automatic offload sites.
+            options.WritePreference = PayloadWritePreference.Preserve;
+            options.OffloadSites = PayloadKind.None;
         });
     }
 
@@ -53,13 +52,17 @@ internal sealed class ReferencePayloadExample : PayloadExample
         var instanceId = $"payload-ref-{Guid.NewGuid():N}";
         Console.WriteLine($"Workflow ID: {instanceId}");
 
+        // StoreAsync serializes this already-materialized object. It is not a stream upload.
+        // The <DocumentPayload> on the reference describes its serialized contents, not a loaded value.
         // Upload from client or activity code, never from a replayed workflow orchestrator.
         var inputReference = await resolver.StoreAsync(document, instanceId, cancellationToken);
         Console.WriteLine(
             $"Client stored {inputReference.Size} serialized bytes; input reference: {inputReference.ToEnvelope()}");
         await client.ScheduleNewWorkflowAsync(nameof(StreamingPayloadWorkflow), instanceId, inputReference,
             startTime: null, cancellation: cancellationToken);
-        var state = await WaitForCompletionAsync(client, instanceId, cancellationToken);
+        // Only the activity's download is streamed here. This metadata read retrieves the inline
+        // summary and also hydrates the input. See explicit-stream for streaming client output.
+        var state = await WaitForCompletionAsync(client, instanceId, getInputsAndOutputs: true, cancellationToken);
         PrintReferenceResult(state, inputReference);
     }
 }

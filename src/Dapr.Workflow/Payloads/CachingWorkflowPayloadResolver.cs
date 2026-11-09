@@ -80,4 +80,9 @@ internal sealed class CachingWorkflowPayloadResolver : IWorkflowPayloadResolver
     /// <inheritdoc />
     public Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId, CancellationToken cancellationToken = default)
         => _inner.StoreAsync(value, instanceId, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<PayloadReference> StoreStreamAsync(Stream content, string instanceId,
+        CancellationToken cancellationToken = default)
+        => _inner.StoreStreamAsync(content, instanceId, cancellationToken);
 }

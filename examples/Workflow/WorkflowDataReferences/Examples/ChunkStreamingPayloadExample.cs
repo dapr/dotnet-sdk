@@ -20,7 +20,9 @@ namespace WorkflowDataReferences.Examples;
 
 internal sealed class ChunkStreamingPayloadExample : PayloadExample
 {
-    public override string Title => "Explicit chunks (workflow and activity both stream)";
+    public override string Id => "workflow-chunks";
+    public override string Title => "Advanced: chunks inside a replayed workflow";
+    public override string WhenToUse => "The orchestrator itself must inspect immutable bytes, accepting replay-time downloads.";
 
     public override void ConfigureServices(IServiceCollection services)
     {
@@ -38,8 +40,8 @@ internal sealed class ChunkStreamingPayloadExample : PayloadExample
     {
         Console.WriteLine("Registration: Preserve with OffloadSites=None; no automatic boundary offloading.");
         Console.WriteLine("Application code: the client explicitly stores the document and passes its reference.");
-        Console.WriteLine("Workflow: request 4 MiB chunks with context.ReadPayloadChunksAsync, checking the byte count.");
-        Console.WriteLine("The 128 KiB sample fits in one final partial chunk; the SDK owns the buffer and stream.");
+        Console.WriteLine("Workflow: request 32 KiB chunks with context.ReadPayloadChunksAsync, checking the byte count.");
+        Console.WriteLine("The sample spans multiple chunks; chunk boundaries must not drive orchestration decisions.");
         Console.WriteLine("Activity: await foreach over resolver.ReadChunksAsync(input), checking the byte count and SHA-256.");
 
         var client = services.GetRequiredService<DaprWorkflowClient>();
@@ -47,11 +49,12 @@ internal sealed class ChunkStreamingPayloadExample : PayloadExample
         var instanceId = $"payload-chunks-{Guid.NewGuid():N}";
         Console.WriteLine($"Workflow ID: {instanceId}");
 
+        // This example isolates workflow-side reading, not streaming uploads: StoreAsync buffers JSON.
         var inputReference = await resolver.StoreAsync(document, instanceId, cancellationToken);
         Console.WriteLine($"Client stored the document; input reference: {inputReference.ToEnvelope()}");
         await client.ScheduleNewWorkflowAsync(nameof(ChunkStreamingWorkflow), instanceId, inputReference,
             startTime: null, cancellation: cancellationToken);
-        var state = await WaitForCompletionAsync(client, instanceId, cancellationToken);
+        var state = await WaitForCompletionAsync(client, instanceId, getInputsAndOutputs: true, cancellationToken);
         var summary = ReadReferenceResult(state, inputReference);
 
         Console.WriteLine($"Result: workflow and activity each streamed {summary.ByteCount} serialized bytes.");

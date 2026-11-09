@@ -33,5 +33,9 @@ namespace WorkflowDataReferences.Workflows;
 internal sealed class StreamingPayloadWorkflow : Workflow<PayloadReference<DocumentPayload>, PayloadSummary>
 {
     public override Task<PayloadSummary> RunAsync(WorkflowContext context, PayloadReference<DocumentPayload> input)
-        => context.CallActivityAsync<PayloadSummary>(nameof(MeasurePayloadActivity), input);
+    {
+        // Forwarding the reference does not read its bytes. The activity returns a small inline
+        // summary, so the client's output API is a normal typed read, not output chunk enumeration.
+        return context.CallActivityAsync<PayloadSummary>(nameof(MeasurePayloadActivity), input);
+    }
 }

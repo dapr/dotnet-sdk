@@ -11,6 +11,7 @@ internal static class CompilationExtensions
     private const string WorkflowActivityBaseMetadataName = "Dapr.Workflow.WorkflowActivity`2";
     private const string WorkflowAbstractionsAssemblyName = "Dapr.Workflow.Abstractions";
     private const string PayloadReferenceMetadataName = "Dapr.Workflow.Payloads.PayloadReference`1";
+    private const string UntypedPayloadReferenceMetadataName = "Dapr.Workflow.Payloads.PayloadReference";
     private const string WorkflowAssemblyName = "Dapr.Workflow";
 
     internal static INamedTypeSymbol? GetDaprWorkflowClientType(this Compilation compilation) =>
@@ -45,6 +46,15 @@ internal static class CompilationExtensions
     internal static INamedTypeSymbol? GetPayloadReferenceType(this Compilation compilation)
     {
         var type = compilation.GetTypeByMetadataName(PayloadReferenceMetadataName);
+        return type is not null &&
+               string.Equals(type.ContainingAssembly.Name, WorkflowAssemblyName, StringComparison.Ordinal)
+            ? type
+            : null;
+    }
+
+    internal static INamedTypeSymbol? GetUntypedPayloadReferenceType(this Compilation compilation)
+    {
+        var type = compilation.GetTypeByMetadataName(UntypedPayloadReferenceMetadataName);
         return type is not null &&
                string.Equals(type.ContainingAssembly.Name, WorkflowAssemblyName, StringComparison.Ordinal)
             ? type

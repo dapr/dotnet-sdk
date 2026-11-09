@@ -87,6 +87,43 @@ public sealed class WorkflowPayloadReferenceTypeSafetyAnalyzerTests
         VerifyBoundariesAsync("string", "int", "PayloadReference<Order>", "Order", true, false);
 
     [Theory]
+    [InlineData("Stream", "PayloadReference")]
+    [InlineData("FileStream", "PayloadReference")]
+    [InlineData("MemoryStream", "PayloadReference<Order>")]
+    [InlineData("Stream", "PayloadReference<Order>")]
+    public Task VerifyStreamReferencesAreAllowedOnlyForInitialClientScheduling(string actualType, string expectedType) =>
+        VerifyBoundariesAsync(actualType, expectedType, "int", "int", true, false,
+            reportSchedulingInput: false);
+
+    [Theory]
+    [InlineData("Stream", "Order")]
+    [InlineData("Stream", "Wrapper<PayloadReference>")]
+    [InlineData("Stream[]", "PayloadReference")]
+    [InlineData("Wrapper<Stream>", "PayloadReference<Order>")]
+    [InlineData("ConvertibleStream", "PayloadReference")]
+    public Task VerifyStreamCompatibilityDoesNotHideOtherMismatches(string actualType, string expectedType) =>
+        VerifyBoundariesAsync(actualType, expectedType, "int", "int", true, false,
+            """
+            public sealed class ConvertibleStream
+            {
+                public static implicit operator Stream(ConvertibleStream value) => Stream.Null;
+            }
+            """);
+
+    [Theory]
+    [InlineData("PayloadReference")]
+    [InlineData("PayloadReference<Order>")]
+    public Task VerifyStreamInputDoesNotAcceptImpostorReferences(string expectedType) =>
+        VerifyBoundariesAsync("Stream", expectedType, "int", "int", true, false,
+            """
+            namespace Dapr.Workflow.Payloads
+            {
+                public class PayloadReference { }
+                public sealed class PayloadReference<T> : PayloadReference { }
+            }
+            """);
+
+    [Theory]
     [InlineData("Order", "PayloadReference<Order>")]
     [InlineData("PayloadReference<Order>", "Order")]
     public Task VerifySameFullyQualifiedNameFromAnotherAssemblyIsNotAnSdkReference(
@@ -101,15 +138,17 @@ public sealed class WorkflowPayloadReferenceTypeSafetyAnalyzerTests
 
     private static async Task VerifyBoundariesAsync(
         string actualInput, string expectedInput, string declaredOutput, string requestedOutput,
-        bool reportInput, bool reportOutput, string additionalTypes = "")
+        bool reportInput, bool reportOutput, string additionalTypes = "", bool? reportSchedulingInput = null)
     {
         var inputArguments = Enumerable.Range(0, 5)
-            .Select(index => Mark("input: input", index, reportInput)).ToArray();
+            .Select(index => Mark("input: input", index,
+                index < 2 ? reportSchedulingInput ?? reportInput : reportInput)).ToArray();
         var childCall = Mark($"CallChildWorkflowAsync<{requestedOutput}>", 5, reportOutput);
         var activityCall = Mark($"CallActivityAsync<{requestedOutput}>", 6, reportOutput);
         var source = $$"""
                        #pragma warning disable CS0436
                        using System.Collections.Generic;
+                       using System.IO;
                        using System.Threading.Tasks;
                        using Dapr.Workflow;
                        using Dapr.Workflow.Payloads;
@@ -160,7 +199,7 @@ public sealed class WorkflowPayloadReferenceTypeSafetyAnalyzerTests
         var expected = new List<DiagnosticResult>();
         if (reportInput)
         {
-            for (var index = 0; index < inputArguments.Length; index++)
+            for (var index = reportSchedulingInput == false ? 2 : 0; index < inputArguments.Length; index++)
                 expected.Add(VerifyAnalyzer.Diagnostic(WorkflowTypeSafetyAnalyzer.InputTypeMismatchDescriptor)
                     .WithLocation(index)
                     .WithArguments(DisplayType(actualInput), DisplayType(expectedInput),

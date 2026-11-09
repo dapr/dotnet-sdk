@@ -1,518 +1,350 @@
-# Workflow data references
+# Workflow data references: choose the right boundary APIs
 
-The `WorkflowDataReferences` console example demonstrates opt-in payload offloading
-and data references using **Dapr.Workflow**.
-There is no separate `Dapr.Workflow.BinaryStore` package and no public converter to
-implement.
+These runnable examples separate three choices that are easy to conflate:
 
-The default run walks through **inline**, **automatic offloading**, **explicit references**,
-**automatic references**, and **explicit chunks in workflows and activities** in that order,
-with a labeled console section for each. Every approach
-starts with the same document containing 128 KiB of text. This is a behavior
-comparison, not a performance benchmark: the first two uppercase the document,
-while the last three stream its serialized bytes and return a small summary.
+1. **Storage:** should a value travel inline in workflow history or through a binary-store reference?
+2. **Receiving contract:** does workflow/activity code need a materialized `T`, or a `PayloadReference<T>` / `PayloadReference`?
+3. **Consumption:** does a reader need the whole object, a `Stream`, or incremental byte chunks?
 
-## Follow the code
+**Automatic offloading is not the same as streaming.** It can shrink history while
+still serializing and materializing entire objects. For a source that is not already
+in memory, start with the **`explicit-stream`** or **`auto-stream`** examples.
 
-Each approach has its own class containing its service registration and client code:
+## Pick an example
 
-| Approach | Start here | What is in history? | Who reads the document? |
+The default run follows this order. Each scenario prints its name, intended use,
+workflow ID, and result. The links lead to the actual registration and client calls.
+
+| Name / source | Client sends | Workflow/activity behavior | Client reads |
 |---|---|---|---|
-| Inline | [InlinePayloadExample](./Examples/InlinePayloadExample.cs) | Full serialized documents in workflow/activity inputs and outputs. | The SDK deserializes ordinary inputs for the workflow and activity. No binary-store calls. |
-| Automatic | [AutomaticPayloadExample](./Examples/AutomaticPayloadExample.cs) | Reference envelopes for payloads above the 64 KiB threshold. Small values stay inline. | The SDK retrieves and deserializes referenced values for ordinary inputs and client output reads. |
-| Explicit references | [ReferencePayloadExample](./Examples/ReferencePayloadExample.cs) | A typed reference as input; a small inline summary as output. | The workflow only forwards the reference; the activity streams bytes without deserializing the document. Client completion inspection also resolves the input. |
-| Automatic references | [AutomaticReferencePayloadExample](./Examples/AutomaticReferencePayloadExample.cs) | The SDK converts an ordinary document into an input reference, regardless of size; the summary stays inline. | The same reference-typed workflow and activity as the explicit variation; only the sender's registration and scheduling code differ. |
-| Explicit chunks | [ChunkStreamingPayloadExample](./Examples/ChunkStreamingPayloadExample.cs) | Explicit references as workflow/activity inputs; a small inline summary as output. No automatic offloading. | The workflow explicitly enumerates chunks and checks their total size; the activity independently enumerates chunks and verifies size and SHA-256. Replay and client inspection can cause additional reads. |
+| [inline](Examples/InlinePayloadExample.cs) | An ordinary document | Ordinary objects; serialized values stay in history | A materialized document |
+| [auto-values](Examples/AutomaticPayloadExample.cs) | The same document | The same ordinary-object code; large values are automatically offloaded at all four boundaries | A materialized document; references are hydrated |
+| [auto-output-chunks](Examples/AutomaticOutputChunksExample.cs) | An ordinary document | The same ordinary-object code; all four payload boundaries always offload | Raw serialized JSON chunks, without client-side hydration |
+| [explicit-reference](Examples/ReferencePayloadExample.cs) | A reference from `StoreAsync(document)` | Workflow forwards a typed reference; activity streams serialized bytes and returns an inline summary | A typed summary; normal metadata retrieval also hydrates the input |
+| [auto-reference](Examples/AutomaticReferencePayloadExample.cs) | An ordinary document, always offloaded on scheduling | The same reference-typed workflow/activity as above | The same typed summary and metadata caveat |
+| [explicit-stream](Examples/StreamUploadPayloadExample.cs) | A reference from `StoreStreamAsync(source)` | Untyped references at all four boundaries; activity stores its output stream explicitly | Raw binary output chunks |
+| [auto-stream](Examples/StreamUploadPayloadExample.cs) | A `Stream` directly to scheduling | The same reference-typed workflow/activity; SDK uploads input before scheduling | Raw binary output chunks; no client resolver calls |
+| [workflow-chunks](Examples/ChunkStreamingPayloadExample.cs) | A reference from `StoreAsync(document)` | **Advanced:** the workflow itself enumerates chunks, then an activity independently reads them | An inline summary; replay can repeat workflow downloads |
 
-Inline and automatic deliberately share
-[DocumentProcessingWorkflow](./Workflows/DocumentProcessingWorkflow.cs) and
-[UppercaseDocumentActivity](./Activities/UppercaseDocumentActivity.cs). Only
-registration changes: automatic selects `WritePreference = PayloadWritePreference.PreferReference`
-in `WithBinaryStorePayloads(...)`, chained from
-`services.AddDaprWorkflow(...)`. Each class explicitly registers its workflows and
-activities. The SDK handles offloading and rehydration without
-changing their `DocumentPayload` parameters or return types.
+Object examples begin with an already-materialized 128 KiB text document. Stream
+examples generate a 32 MiB binary file using a reusable 64 KiB buffer. These examples
+compare API behavior, not performance or total download counts.
 
-The explicit-reference and automatic-reference examples use
-[StreamingPayloadWorkflow](./Workflows/StreamingPayloadWorkflow.cs) and
-[MeasurePayloadActivity](./Activities/MeasurePayloadActivity.cs), whose inputs are
-`PayloadReference<DocumentPayload>`. The activity reads with `await foreach` over `resolver.ReadChunksAsync(...)` and
-checks both the byte count and SHA-256 against the reference. Storage I/O stays in
-the client or activity, not in the replayed orchestrator.
+## Run just the scenario you need
 
-The explicit-chunks example instead uses
-[ChunkStreamingWorkflow](./Workflows/ChunkStreamingWorkflow.cs), which reads through
-`context.ReadPayloadChunksAsync(...)` before calling the same `MeasurePayloadActivity`.
-It keeps `WritePreference = Preserve` and `OffloadSites = None`: the client explicitly
-creates a reference, and both consumers explicitly enumerate stored bytes.
+Prerequisites: .NET 10 SDK, Dapr CLI, a local Dapr runtime with binary-store support
+(1.19+, also supported by `1.19.0-rc.3`), Redis, placement, and scheduler.
+The supplied state-store component assumes Redis at `localhost:6379`.
+Stream examples also need temporary disk space for the source and SDK staging files.
 
-The examples request inputs and outputs when waiting for completion so they can
-display and check results. This also resolves referenced input on the client,
-including in all reference-input cases. Passing `getInputsAndOutputs: false`
-avoids that inspection read when only completion status is needed; it also omits
-the summary output. This demo does not claim a single download end to end.
+From this directory, list scenarios without starting a sidecar:
 
-[Program.cs](./Program.cs) only selects the examples and manages host lifetime.
-[PayloadExample](./Examples/PayloadExample.cs) shares completion/result checks.
-Offloading is configured per host, so each approach gets a fresh host and the
-previous worker is stopped before the next starts. All five use one dedicated
-sidecar sequentially.
-
-### Two ways to create the same input reference
-
-`ReferencePayloadExample` keeps the default `WritePreference = Preserve` and explicitly
-uploads the document before scheduling:
-
-```csharp
-var reference = await resolver.StoreAsync(document, instanceId, cancellationToken);
-await client.ScheduleNewWorkflowAsync(nameof(StreamingPayloadWorkflow), instanceId, reference,
-    startTime: null, cancellation: cancellationToken);
+```powershell
+dotnet run --framework net10.0 -- --List=true
 ```
 
-`AutomaticReferencePayloadExample` instead configures the sending host to always
-offload workflow inputs:
-
-```csharp
-services.AddDaprWorkflow(options =>
-{
-    options.RegisterWorkflow<StreamingPayloadWorkflow>();
-    options.RegisterActivity<MeasurePayloadActivity>();
-}).WithBinaryStorePayloads(options =>
-{
-    options.StoreName = "workflow-payloads";
-    options.WritePreference = PayloadWritePreference.PreferReference;
-    options.OffloadSites = PayloadKind.WorkflowInput;
-    options.OffloadThreshold = null;
-});
-
-await client.ScheduleNewWorkflowAsync(nameof(StreamingPayloadWorkflow), instanceId, document,
-    startTime: null, cancellation: cancellationToken);
-```
-
-Here the caller passes `DocumentPayload`, but the workflow receives
-`PayloadReference<DocumentPayload>`. The SDK uploads the document before submitting
-the workflow input. The workflow then forwards that reference to the activity;
-outputs remain inline because only `WorkflowInput` is enabled for automatic offloading.
-
-**The receiving type does not trigger reference creation.** `OffloadThreshold = null`
-ensures even small documents become references. A numeric threshold would leave
-smaller inputs inline, which a `PayloadReference<T>` contract rejects. The explicit
-`StoreAsync` variation does not depend on the threshold or automatic-offloading sites.
-With `ReferencePayloadExample`'s default `Preserve` policy, passing the document directly would fail
-the reference-typed contract. Both clients and workers need payload support registered.
-
-The same sender-side conversion supports ordinary values passed to reference-typed
-activities when `ActivityInput` is enabled. Cross-app calls additionally require
-`AllowPayloadReferences = true` and destination access to the stored payload.
-This sample demonstrates conversion at the workflow input; the activity receives
-an already-created reference.
-
-Neither upload variation is an end-to-end bounded-memory stream: both currently
-buffer serialized data before uploading. Streaming here describes how the activity
-reads the stored bytes.
-
-## Prerequisites
-
-- .NET 10 SDK.
-- Dapr CLI and a local Dapr runtime supporting binary stores, **1.19 or later**
-  (also supported by `1.19.0-rc.3`).
-- An initialized local Dapr environment with Redis, placement, and scheduler
-  running. `components/statestore.yaml` assumes the default local Redis endpoint,
-  `localhost:6379`; adjust it if your setup differs.
-
-Check the installed runtime with `dapr --version`. The workflow protocol itself
-does not need runtime-native payload-reference support; the SDK uses the binary
-store API and persists version-1 reference envelopes.
-
-## Run
-
-From this directory, start a dedicated sidecar in one terminal and leave it running:
+In one terminal, start a **dedicated** sidecar:
 
 ```powershell
 dapr run --app-id workflow-data-references --dapr-http-port 3500 --dapr-grpc-port 50001 --resources-path .\components
 ```
 
-In a second terminal, from the same directory:
+In another terminal:
 
 ```powershell
-dotnet run --framework net10.0
-```
+# Recommended first stop for a source too large to materialize.
+dotnet run --framework net10.0 -- --Example=auto-stream
 
-This runs all five approaches. `--DataRefs:Enabled=true` has the same effect.
-Do not attach another worker to this app ID while running the comparison; an
-inline-only worker cannot resolve an offloaded workflow's references.
+# Compare ordinary typed reads with chunked reads of automatically offloaded output.
+dotnet run --framework net10.0 -- --Example=auto-values
+dotnet run --framework net10.0 -- --Example=auto-output-chunks
 
-The app connects to the default gRPC endpoint on port 50001. If using another port,
-set `DAPR_GRPC_ENDPOINT` to the same endpoint for the workflow and binary-store
-clients.
+# Walk through all eight scenarios.
+dotnet run --framework net10.0 -- --Example=all
 
-Alongside SDK logs, expect output resembling:
-
-```text
-Workflow payload approaches
-Each approach starts with the same document: sample.txt, 131,072 characters.
-Inline and automatic offloading uppercase the document; the reference-input variations stream and measure its serialized bytes.
-This is a behavior comparison, not a performance benchmark.
-
-=== 1/5: Inline payloads (no binary store) ===
-Registration: AddDaprWorkflow(...) only; payload storage is not enabled.
-History: full serialized documents in workflow and activity inputs/outputs.
-...
-Workflow ID: payload-inline-...
-Result: 131072 characters, first character 'A'.
-Takeaway: the document itself travels through workflow history.
-
-=== 2/5: Automatic offloading (same application code) ===
-Registration: AddDaprWorkflow(...).WithBinaryStorePayloads(...), threshold 64 KiB.
-...
-Workflow ID: payload-auto-...
-Result: 131072 characters, first character 'A'.
-Persisted output reference: {"$daprRef":{"v":1,"store":"workflow-payloads",...}}
-Takeaway: smaller history does not mean zero document reads; the SDK still materializes ordinary inputs.
-
-=== 3/5: Explicit references (workflow forwards, activity streams) ===
-...
-Workflow ID: payload-ref-...
-Client stored ... serialized bytes; input reference: {"$daprRef":{...}}
-Result: activity streamed ... serialized bytes using async chunks.
-SHA-256 verified: ...
-Serialized bytes include JSON structure, not just the document's characters.
-Client inspection: fetching inputs/outputs at completion also resolves the referenced input on the client.
-Takeaway: the workflow never reads the document; the activity streams bytes instead of deserializing it.
-
-=== 4/5: Automatic references (pass document, receive reference) ===
-Registration: PreferReference for WorkflowInput, with no size threshold.
-...
-Application code: pass DocumentPayload directly; the SAME streaming workflow receives PayloadReference<DocumentPayload>.
-Reference creation: the sender's policy uploads the document; the receiver's type alone does not trigger it.
-Workflow ID: payload-auto-ref-...
-SDK stored the document automatically; input reference: {"$daprRef":{...}}
-Result: activity streamed ... serialized bytes using async chunks.
-SHA-256 verified: ...
-...
-Takeaway: the workflow never reads the document; the activity streams bytes instead of deserializing it.
-
-=== 5/5: Explicit chunks (workflow and activity both stream) ===
-Registration: Preserve with OffloadSites=None; no automatic boundary offloading.
-...
-Workflow: request 4 MiB chunks with context.ReadPayloadChunksAsync, checking the byte count.
-The 128 KiB sample fits in one final partial chunk; the SDK owns the buffer and stream.
-Activity: await foreach over resolver.ReadChunksAsync(input), checking the byte count and SHA-256.
-Workflow ID: payload-chunks-...
-Client stored the document; input reference: {"$daprRef":{...}}
-Result: workflow and activity each streamed ... serialized bytes.
-Activity SHA-256 verified: ...
-Replay reads the workflow's chunks again; keep the referenced bytes immutable and available.
-Client completion inspection also resolves the input; this is not a single-download example.
-Takeaway: explicit chunk reads work in both workflow and activity code without deserializing the document.
-
-Histories are retained for inspection using the printed workflow IDs.
-Keep the demo sidecar running while referenced payloads are needed; its binary store is in-memory.
-```
-
-The stored byte count includes JSON property names and the document name, so it is
-larger than the content's character count. Workflow failures or unexpected results
-cause the app to fail rather than print a success message.
-
-To compare the persisted representations, substitute each printed workflow ID:
-
-```powershell
-curl.exe http://localhost:3500/v1.0/workflows/dapr/payload-inline-REPLACE_WITH_ID
-curl.exe http://localhost:3500/v1.0/workflows/dapr/payload-auto-REPLACE_WITH_ID
-curl.exe http://localhost:3500/v1.0/workflows/dapr/payload-ref-REPLACE_WITH_ID
-curl.exe http://localhost:3500/v1.0/workflows/dapr/payload-auto-ref-REPLACE_WITH_ID
-curl.exe http://localhost:3500/v1.0/workflows/dapr/payload-chunks-REPLACE_WITH_ID
-```
-
-Inline input/output contains the full document. Automatic input/output contains
-reference envelopes, while SDK `ReadOutputAs<DocumentPayload>()` returns the
-document and `ReadOutputAs<PayloadReference<DocumentPayload>>()` exposes the retained
-wire reference. All three reference-input variations contain an input envelope, but
-output is only the byte-count/hash summary. The explicit-reference and automatic-reference
-variations differ in who requests the upload. The explicit-chunks variation also
-reads the payload in the workflow, without changing the persisted representation.
-
-### Compare with payload support disabled
-
-With the sidecar still running, execute:
-
-```powershell
+# Backward-compatible inline-only mode: no payload support is registered.
 dotnet run --framework net10.0 -- --DataRefs:Enabled=false
 ```
 
-Only `InlinePayloadExample` runs, labeled `1/1`. The app does not call
-`WithBinaryStorePayloads`: it still processes all 131072 characters, but raw
-input/output stays inline and no workflow binary-store services are activated.
-Merely having the component available does not enable this capability.
+Omitting `--Example` runs all scenarios unless `DataRefs:Enabled=false`. Invalid or
+disabled selections fail with a message. `--List=true` shows the available names.
+For a different sidecar port, set `DAPR_GRPC_ENDPOINT` for the application.
+If placement/scheduler use non-default addresses, supply the matching Dapr CLI flags.
 
-Every run creates fresh workflows. Before rerunning, let any workflows from a
-previous interrupted run finish with their original configuration. Do **not**
-disable readers for existing offloaded histories.
+[Program.cs](Program.cs) starts a separate host for each selected policy and stops
+the previous worker before starting the next. Do not attach another worker to this
+app ID while running the examples. The project includes the SDK source generator,
+so `AddDaprWorkflow()` discovers the workflows and activities; registration code
+in each example focuses on the payload policy.
+The local project explicitly references the discovery generator because project
+references do not automatically import the generators bundled in the NuGet package.
 
-### Reading raw payload chunks
+## Understand the four payload boundaries
 
-Activities and clients can inject `IWorkflowPayloadResolver` and enumerate stored bytes:
+```text
+client --(1: workflow input)--> workflow
+                                  |
+                            (2: activity input)
+                                  v
+                               activity
+                                  |
+                            (3: activity output)
+                                  v
+                               workflow --(4: workflow output)--> stored result
+                                                                      |
+                                                         client chooses a read API
+```
+
+`OffloadSites` controls automatic **writes** at each sending boundary:
+`WorkflowInput`, `ActivityInput`, `ActivityOutput`, and `WorkflowOutput`.
+Enabling only `WorkflowInput` does not automatically offload activity or workflow output.
+An existing reference can still be forwarded without enabling automatic writes.
+
+The **receiving type** controls whether that reference becomes a value:
+
+| Receiver needs | Contract / API | Memory behavior |
+|---|---|---|
+| A document object | Workflow/activity parameter `DocumentPayload` | SDK hydrates a reference before invoking user code |
+| A handle to serialized document bytes | `PayloadReference<DocumentPayload>` | Reference only; `T` describes the stored serialization |
+| A handle to arbitrary binary bytes | `PayloadReference` | Reference only; no assumed JSON/document format |
+| A materialized value from a reference | `resolver.ResolveAsync<T>(reference)` | Retrieves/deserializes the value |
+| A stream from a reference | `resolver.OpenAsync(reference)` | Incremental raw-byte reads; caller disposes the stream |
+| Chunks from a reference | `resolver.ReadChunksAsync(reference[, chunkSize])` | Incremental raw bytes; enumeration owns the download |
+| Workflow output chunks without obtaining a reference first | `client.ReadWorkflowOutputChunksAsync(instanceId[, chunkSize])` | Opens only referenced output; bypasses payload hydration |
+
+Declaring `PayloadReference<T>` does **not** make an inline value become a reference.
+The sender must explicitly store it or enable automatic offloading. Use
+`OffloadThreshold = null` when a reference-typed receiver must work even for small values.
+Do not label arbitrary binary bytes with `.AsTyped<DocumentPayload>()`; that does
+not convert them into a serialized document.
+
+## Ordinary values: inline, automatically offloaded, or read as chunks
+
+`inline`, `auto-values`, and `auto-output-chunks` share
+[DocumentProcessingWorkflow](Workflows/DocumentProcessingWorkflow.cs) and
+[UppercaseDocumentActivity](Activities/UppercaseDocumentActivity.cs).
+The workflow and activity use `DocumentPayload` for both input and output.
+They still allocate full objects and strings even when history contains references.
+
+- **inline:** `AddDaprWorkflow()` without payload support. Use normal typed output reads.
+- **auto-values:** `PreferReference`, all four offload sites, a 64 KiB threshold.
+  Small values stay inline. The sample document exceeds the threshold at every boundary.
+- **auto-output-chunks:** the same sending sites, but `OffloadThreshold = null`
+  guarantees an output reference. The client waits without input/output values and
+  reads chunks instead of deserializing a document.
+
+Normal typed retrieval is intentionally simple:
 
 ```csharp
-await foreach (var chunk in resolver.ReadChunksAsync(reference, cancellationToken))
+var state = await client.WaitForWorkflowCompletionAsync(
+    instanceId, getInputsAndOutputs: true, cancellation: cancellationToken);
+if (state.RuntimeStatus != WorkflowRuntimeStatus.Completed)
+    throw new InvalidOperationException($"Workflow ended as {state.RuntimeStatus}.");
+var output = state.ReadOutputAs<DocumentPayload>();
+```
+
+The asynchronous metadata call prepares referenced values **before** the synchronous
+`ReadOutputAs<T>()`. Asking for `PayloadReference<T>` afterward does not undo that
+download. `MaxInMemoryRehydrationSize` limits buffered resolution; it is not a switch
+to turn ordinary metadata reads into a streaming API.
+
+## Object inputs with reference-typed consumers
+
+`explicit-reference` and `auto-reference` share
+[StreamingPayloadWorkflow](Workflows/StreamingPayloadWorkflow.cs) and
+[MeasurePayloadActivity](Activities/MeasurePayloadActivity.cs).
+The workflow forwards a `PayloadReference<DocumentPayload>` without inspecting its
+contents. The activity enumerates the serialized bytes, verifies size/hash, and
+returns a small inline `PayloadSummary`.
+
+The difference is the upload call:
+
+```csharp
+// explicit-reference: Preserve + OffloadSites=None.
+// StoreAsync serializes/buffers an object and writes regardless of automatic thresholds.
+var reference = await resolver.StoreAsync(document, instanceId, cancellationToken);
+await client.ScheduleNewWorkflowAsync(nameof(StreamingPayloadWorkflow), instanceId, reference,
+    startTime: null, cancellation: cancellationToken);
+
+// auto-reference: PreferReference + WorkflowInput + OffloadThreshold=null.
+// The SDK creates the reference before scheduling; the receiver still declares PayloadReference<T>.
+await client.ScheduleNewWorkflowAsync(nameof(StreamingPayloadWorkflow), instanceId, document,
+    startTime: null, cancellation: cancellationToken);
+```
+
+These are **alternatives**, not two schedules to perform for the same instance.
+Neither is a bounded-memory upload from an unmaterialized source.
+The summary is inline, so output chunk reads are inappropriate. The sample's typed
+summary inspection also hydrates its referenced input on the client; only the
+workflow/activity handling avoids materializing that document.
+
+## Unmaterialized sources: explicit or automatic stream upload
+
+Both stream scenarios live in
+[StreamUploadPayloadExample](Examples/StreamUploadPayloadExample.cs).
+The constructor's `automaticReferences` flag changes only the client upload and
+sending policy; the workflow, activity, and chunked client read are identical.
+
+```csharp
+await using var source = File.OpenRead("large-file.bin");
+
+// explicit-stream: Preserve + OffloadSites=None.
+PayloadReference input = await resolver.StoreStreamAsync(source, instanceId, cancellationToken);
+await client.ScheduleNewWorkflowAsync(nameof(StreamUploadWorkflow), instanceId, input,
+    startTime: null, cancellation: cancellationToken);
+```
+
+Or, instead:
+
+```csharp
+// auto-stream: WithBinaryStorePayloads + PreferReference + WorkflowInput.
+await using var source = File.OpenRead("large-file.bin");
+await client.ScheduleNewWorkflowAsync(nameof(StreamUploadWorkflow), instanceId, source,
+    startTime: null, cancellation: cancellationToken);
+```
+
+The automatic path recognizes a **top-level `Stream` on initial scheduling** and
+always uploads it, including small/empty streams; the normal object threshold does
+not apply. Without the required policy it rejects the stream rather than serializing
+the `Stream` object. This shortcut does not apply to nested streams, activity inputs
+or outputs, workflow returns, events, or rerun overrides.
+
+### Persisting activity output and returning workflow output
+
+[CopyStreamPayloadActivity](Activities/CopyStreamPayloadActivity.cs) uses the explicit
+write API in **both** scenarios:
+
+```csharp
+await using var content = await resolver.OpenAsync(input, cancellationToken);
+return await resolver.StoreStreamAsync(content, context.InstanceId, cancellationToken);
+```
+
+In an application, `content` could instead be a transformed, generated, or HTTP
+response stream. This sample copies identical bytes and checks size/hash; identical
+content within the same instance reuses its content-addressed key.
+
+[StreamUploadWorkflow](Workflows/StreamUploadWorkflow.cs) simply forwards references:
+
+```csharp
+public override Task<PayloadReference> RunAsync(WorkflowContext context, PayloadReference input)
+    => context.CallActivityAsync<PayloadReference>(nameof(CopyStreamPayloadActivity), input);
+```
+
+No live `Stream` enters workflow history. The workflow never uploads or downloads
+the bytes. Create new references in clients/activities, not in replayed orchestrator code.
+
+### Upload lifetime and resource costs
+
+- Reads from the current stream position to EOF; partial reads, non-seekable sources,
+  unknown lengths, and empty streams work. The caller owns the source and must leave
+  it open until the upload/scheduling call completes.
+- Leaves the source open and consumed, even on failure. Reopen or rewind before retrying;
+  do not access the source concurrently with an upload.
+- Uses a bounded 64 KiB staging buffer and temporary disk proportional to payload size
+  to compute the content-addressed key **before** upload. This is not a simultaneous
+  source-to-network pipe. Staging files are deleted on disposal, including errors/cancellation.
+- Records the manifest after upload. A later manifest or scheduling failure can leave
+  stored bytes; upload is not rolled back automatically.
+- Stores raw bytes without JSON conversion. `StoreStreamAsync` is independent of
+  automatic thresholds/sites and rehydration limits. Preserve references when forwarding
+  arbitrary binary data; do not select a policy that inlines them.
+
+## Reading output a few chunks at a time
+
+The three chunked-client scenarios use this pattern:
+
+```csharp
+var state = await client.WaitForWorkflowCompletionAsync(
+    instanceId, getInputsAndOutputs: false, cancellation: cancellationToken);
+if (state.RuntimeStatus != WorkflowRuntimeStatus.Completed)
+    throw new InvalidOperationException($"Workflow ended as {state.RuntimeStatus}.");
+
+await foreach (var chunk in client.ReadWorkflowOutputChunksAsync(
+    instanceId, chunkSize: 64 * 1024, cancellationToken: cancellationToken))
 {
-    // Consume this chunk before advancing; copy it if it must be retained.
-    hash.AppendData(chunk.Span);
+    await ProcessChunkAsync(chunk, cancellationToken); // Your processing, not an SDK method.
+    if (HaveEnoughData())                            // Your stopping condition.
+        break;
 }
 ```
 
-Opening is deferred until enumeration starts. Completing the loop, breaking out of it,
-throwing, or cancellation disposes the download. `.WithCancellation(token)` is also
-supported. Each enumeration reads storage again; chunks are not cached. Without an
-explicit size, chunk sizes and boundaries are unspecified and may differ between implementations.
+Both `DaprWorkflowClient` and `IDaprWorkflowClient` expose this API. Omit `chunkSize`
+to use native transport chunks. With a size, the SDK fills a reusable buffer of that
+size, except for the final partial chunk. It does not change transport message sizes.
 
-The built-in resolver's overload without a size exposes the binary store's chunks directly. Existing custom
-resolvers inherit a default implementation that reads their `OpenAsync` stream with
-a bounded buffer. `OpenAsync` remains available for APIs that consume `Stream`.
-Orchestrators can use `context.ReadPayloadChunksAsync(reference)`; opening, reading,
-and disposal use the worker's existing storage I/O queue.
+The runnable examples stop after a preview chunk, then demonstrate a **separate**
+full pass. Each enumeration starts a new metadata lookup/download from the beginning,
+not at the previous stopping point. Only the full verification pass in the binary
+examples needs to consume all bytes.
 
-Both streaming APIs return raw stored bytes, without deserialization, stage reversal,
-or automatic integrity verification. The example verifies the hash and byte count
-as it consumes the untransformed JSON payload.
+Consume or copy each chunk before advancing; memory may be reused. Do not collect
+all chunks if bounded memory matters. Chunk boundaries are not JSON records and can
+split UTF-8 characters. Automatically offloaded document output is serialized JSON;
+`StoreStreamAsync` output is the raw bytes originally written.
 
-To request a specific processing size without managing a stream, pass `chunkSize`:
+Enumeration owns the download. Breaking, cancellation, or a consumer exception
+disposes it; transport may have prefetched some data. Reads are lazy and operate on
+**completed stored output**, not live output from a running workflow. Chunk reads
+do not deserialize, reverse payload stages, or automatically verify integrity.
 
-```csharp
-await foreach (var chunk in resolver.ReadChunksAsync(
-    reference, chunkSize: 4 * 1024 * 1024, cancellationToken: cancellationToken))
-{
-    hash.AppendData(chunk.Span);
-}
-```
+### What if the output is not a reference?
 
-The SDK fills a reusable buffer, producing exactly 4 MiB per chunk except for the
-final remainder. Empty payloads produce no chunks. The size must be positive;
-validation is deferred until enumeration starts. Partial reads are combined internally,
-and cancellation, early exit, and disposal remain SDK-managed. Larger chunks use more
-buffer memory and delay delivery until that chunk is filled or the payload ends.
-Consume or copy the memory before advancing; it may be reused.
+The API looks at the **persisted output**, not whether the application calls its mode
+"automatic" or "explicit."
 
-The overload without `chunkSize` retains its existing unspecified chunk boundaries.
-The requested size controls application-visible chunks, not storage/gRPC message sizes
-or workflow/activity payload limits. Advanced users can still use `resolver.OpenAsync`
-or `context.OpenPayloadAsync` when an API requires direct `Stream` access.
-For existing calls that pass an untyped positional `default` as the second argument,
-use `cancellationToken: default` to distinguish it from the new chunk-size overload.
-
-### Explicit chunk reads inside a workflow and an activity
-
-The fifth example stores the document from the client using `StoreAsync`, then
-passes the reference into `ChunkStreamingWorkflow`. The workflow reads it explicitly:
-
-```csharp
-long byteCount = 0;
-await foreach (var chunk in context.ReadPayloadChunksAsync(input, chunkSize: 4 * 1024 * 1024))
-{
-    byteCount += chunk.Length;
-}
-```
-
-The workflow requests 4 MiB chunks; the demo's 128 KiB document produces only a final
-partial chunk. Larger documents produce full 4 MiB chunks followed by any remainder.
-
-After checking the byte count against `input.Size`, it passes the same reference to
-`MeasurePayloadActivity`. That activity opens an independent enumeration:
-
-```csharp
-await foreach (var chunk in resolver.ReadChunksAsync(input))
-{
-    byteCount += chunk.Length;
-    hash.AppendData(chunk.Span);
-}
-```
-
-The activity verifies both size and SHA-256 before returning the small summary.
-Neither consumer calls `ResolveAsync` or materializes `DocumentPayload`. The
-client's upload still buffers serialization, and completion inspection hydrates
-the input; this is not an end-to-end bounded-memory pipeline.
-
-**Workflow reads must use the context extension**, not an injected resolver,
-direct binary-store calls, or `Task.Run`. The SDK queues opening, reading, and
-disposal outside deterministic execution. Do not use `ConfigureAwait(false)` in
-the orchestration loop or schedule workflow actions based on chunk boundaries;
-those boundaries can change between reads.
-
-These reads are not durable activity results: enumeration runs again during
-workflow replay. Keep the referenced bytes immutable and available for every replay.
-The workflow checks only size in this example; the activity independently checks
-content integrity. Workflow logic that depends on the bytes themselves must also
-validate integrity as appropriate. Prefer the earlier activity-only variations
-when the workflow does not need to inspect the data.
-
-### Allocation behavior and optional payload byte caching
-
-Automatic hydration buffers the downloaded UTF-8 bytes once and verifies their
-hash before deserialization. The standard `JsonDaprSerializer`, including its
-configured options and JSON converters, can deserialize those bytes directly.
-Custom serializers, decorators, and subclasses continue to receive the original
-string representation through `IDaprSerializer`; their behavior is not bypassed.
-Outbound snapshots still capture values at the call boundary, including mutable
-objects. Temporary upload buffers are pooled and cleared before reuse.
-
-By default, each hydration reads storage again. History caching and
-`ResolutionCacheSize` do not cache automatic inputs across orchestration executions.
-Applications that treat referenced objects as immutable for their entire lifetime
-can explicitly enable a process-local optimization **before registering/using
-workflow payload services**:
-
-```csharp
-AppContext.SetSwitch("Dapr.Workflow.EnablePayloadByteCache", true);
-```
-
-This switch defaults to `false` and requires no new public SDK types or members.
-The implementation retains only successfully integrity-verified serialized bytes,
-not application objects. Every hydration still deserializes a fresh value, so
-mutations do not leak between replays or activity calls. Streaming through
-`OpenAsync` or `ReadChunksAsync` still reads storage directly.
-
-Cancellation passed to a stream's `ReadAsync` also aborts an outstanding chunk
-download. After cancellation, dispose the stream and open a new one to retry;
-the canceled stream is not reusable. Disposal waits for an in-flight chunk
-operation to finish before disposing its iterator. Concurrent reads on a single
-payload stream are not supported.
-
-The current cache is limited to 64 MiB of payload array capacity and 256 entries
-per payload converter/service provider, with least-recently-used eviction and
-one-minute absolute validity. These are implementation limits, not tuning APIs.
-Concurrent cache misses may download independently; the budget bounds retained
-payload arrays, not in-flight downloads.
-Pooling and caching reduce cumulative allocations but can increase retained memory.
-Reference metadata is part of cache identity; size limits and cancellation still
-apply to cache hits. Reads with integrity verification disabled are not cached.
-Writes always contact storage, even when identical bytes are cached locally.
-`SkipWriteIfExists` accepts storage's `AlreadyExists` response; a local cache entry
-is never evidence that an object still exists in shared storage. Manifest recording
-is preserved.
-
-The cache does not require replica affinity. A different worker/service provider
-starts with a cold cache and retrieves and verifies the recorded reference from
-storage. Cache hit rates therefore depend on routing, eviction, and worker lifetime.
-Every replica's sidecar must access the same durable backing store, and referenced
-objects must remain available for the lifetime of retained workflow history.
-Independent sidecar-local in-memory stores, such as the demo component, are not
-suitable authoritative storage for a replicated deployment.
-
-`WorkflowPayloadCleaner` invalidates local entries before and after deletion,
-including reads racing with cleanup. External deletion, overwrite, corruption, or
-cleanup from another process may not be observed until the entry expires or is
-evicted. **Leave the switch disabled if every read must observe current storage
-state.** There is no distributed cache invalidation. The cache is not durable
-storage, and references must remain available
-for replay after eviction or process restart. Do not delete payloads while any
-retained workflow history still needs them.
-
-### Switch back to inline payloads
-
-To stop automatic offloading while continuing to read old references, keep
-`WithBinaryStorePayloads` on every participating client and worker and disable
-automatic writes:
-
-```csharp
-services.AddDaprWorkflow()
-    .WithBinaryStorePayloads(options =>
-    {
-        options.StoreName = "workflow-payloads";
-        options.WritePreference = PayloadWritePreference.Preserve;
-    });
-```
-
-`WritePreference` defaults to `Preserve`. Under this preference, ordinary serialized
-payloads stay inline regardless of `OffloadSites` or `OffloadThreshold`. Existing
-references are still resolved with the configured integrity and size checks.
-This is a host-wide write policy, not a per-instance or version selector: future
-writes from running workflows also become inline. Existing history is unchanged.
-`OffloadSites = PayloadKind.None` remains an alternative for disabling all automatic
-offload boundaries. Inline payloads must fit the runtime's normal payload limits.
-
-For workflows already using ordinary inputs and outputs, such as
-`DocumentProcessingWorkflow`, no contract change is needed.
-`AutomaticReferencePayloadExample`, however, relies on automatic input offloading:
-switching it to `Preserve` or disabling `WorkflowInput` would send inline documents
-to a reference-typed receiver and fail. To retain that contract under `Preserve`,
-explicitly store the input as in `ReferencePayloadExample`.
-
-For explicit references,
-the switch intentionally does **not** turn `PayloadReference<T>` into `T` or disable
-`IWorkflowPayloadResolver.StoreAsync`; doing so would break existing contracts.
-To move those workflows back to inline data:
-
-1. Add a new workflow version using ordinary `T` inputs/results and ordinary-payload
-   activities instead of reference-typed ones. Remove explicit `StoreAsync` calls
-   from that new path and pass values directly when scheduling it.
-2. Route new instances to that version with automatic offloading disabled. Keep
-   the previous workflow version and its reference-typed activities registered so
-   existing instances replay with their original contracts.
-3. Retain `WithBinaryStorePayloads`, storage access, and stored bytes for as long as
-   any retained history, result, or old instance needs them.
-
-Do not replace a reference-typed workflow or activity in place under the same
-registered name. The option does not add versioning patches or migrate stored data.
-
-### Write preferences and cross-app calls
-
-| `PayloadWritePreference` | New outgoing top-level payloads |
+| Situation | Behavior / action |
 |---|---|
-| `Preserve` (default) | Ordinary values stay inline; references remain references. |
-| `PreferReference` | Ordinary values meeting `OffloadThreshold` at enabled `OffloadSites` become references. |
-| `PreferInline` | Ordinary values stay inline; references are resolved to the original serialized content. |
+| Referenced output, including an empty stored payload | Stream it; no application-side resolver call needed |
+| Inline or absent output | `InvalidOperationException`; use ordinary typed reads or change the producer to persist a reference |
+| Automatic offloading left a small output inline | Same rejection; enable `WorkflowOutput` and use `OffloadThreshold=null` if every output must be stream-readable |
+| Payload support missing on the client | `InvalidOperationException` before lookup; normally register `WithBinaryStorePayloads` |
+| Workflow missing or not successfully completed | `InvalidOperationException`; there is no implicit wait |
+| Referenced bytes deleted | `PayloadNotFoundException`; keep bytes available for readers |
+| Malformed reference or storage/transport failure | Error propagates; no empty-result or buffer-and-slice fallback |
 
-These preferences govern future writes, not retained history or instance-wide policy.
-Under `Preserve`, a reference read as an ordinary `T` and returned as `T` is a new inline
-value. Explicit `StoreAsync` still writes under every preference.
+Reads of existing references work regardless of the current write preference or
+offload sites. Enabling automatic output offloading does not make an object-producing
+workflow a streaming writer; use the activity's `StoreStreamAsync` for that.
 
-`PreferInline` is not safe for receivers expecting `PayloadReference<T>`. When keeping
-old reference-typed versions alongside a new ordinary-payload version, use `Preserve`
-and remove explicit reference creation from the new version. Do not globally inline
-references still needed by old contracts.
+**Metadata caveats:** ordinary get/wait APIs are unchanged. Even with
+`getInputsAndOutputs: false`, a referenced custom status may still hydrate during
+a wait; these examples keep status small and inline or do not set it. The chunk API
+itself bypasses all input/output/custom-status reference hydration. However, Dapr's
+metadata RPC returns their wire values together: large **inline** fields still travel
+over that RPC, including inline output before rejection. Reference-backed output
+downloads are incremental; this is not bounded-memory retrieval of inline metadata.
 
-Cross-app inputs require inline data by default even under `PreferReference`. The SDK
-resolves outgoing references before submitting the activity, child, or detached call.
-Known reference-aware destinations can opt out per call:
+## Advanced: reading inside the workflow
 
-```csharp
-await context.CallActivityAsync<int>("MeasureReferenceActivity", reference,
-    new WorkflowTaskOptions(TargetAppId: "document-service", AllowPayloadReferences: true));
+[ChunkStreamingWorkflow](Workflows/ChunkStreamingWorkflow.cs) uses
+`context.ReadPayloadChunksAsync(input, chunkSize: 32 * 1024)`. It checks the byte
+total, then calls the measuring activity, which independently reads the data.
+The sample spans multiple chunks.
+
+Use the context API in orchestration, not a directly injected resolver/storage
+client. The SDK queues reads outside deterministic execution, but replay reads the
+stored bytes again. Keep them immutable and available, and do not let chunk boundaries
+or timing drive orchestration decisions. Prefer forwarding references to activities
+when the workflow only needs the result of processing.
+
+## Inspect and retain the data
+
+Each run leaves workflow history and prints an instance ID. Inspect one using:
+
+```powershell
+curl.exe http://localhost:3500/v1.0/workflows/dapr/REPLACE_WITH_INSTANCE_ID
 ```
 
-Child calls use `ChildWorkflowTaskOptions`. The detached overload accepts
-`ScheduleNewDetachedWorkflowAsync(name, instanceId, input, startTime, options)`, with
-`WorkflowTaskOptions` for routing and payload permission; retries and history propagation
-are not supported for detached calls. An explicit same-app target follows the normal
-write preference.
+Workflow history/actor state (`components/statestore.yaml`) and payload bytes
+(`components/binarystore.yaml`) are separate stores. The demo binary store is in-memory:
+stopping the sidecar loses its bytes even if Redis retains history. Bounded SDK buffers
+do not imply bounded storage-component memory. The component explicitly permits 64 MiB
+per file and 256 MiB in total so the two 32 MiB stream scenarios fit; these are storage
+limits, not SDK chunk sizes. Repeated runs retain data and can eventually reach the
+total limit.
 
-Permission is not capability negotiation: currently only .NET supports these envelopes,
-and the destination must also register payload support and access the same stored objects.
-Inlining requires sender-side storage access, respects `MaxInMemoryRehydrationSize` and
-integrity settings, and fails explicitly on unsupported envelopes, inaccessible data,
-corruption, or exceeded limits. It never falls back to sending a reference.
-Runtime/transport limits and message overhead still apply after materialization.
-
-Inbound ordinary `T` contracts accept either representation regardless of write preference.
-Reference-typed inputs receive references without automatic resolution, but reject inline
-values rather than uploading them. Decoding does not change history. The outbound
-cross-app rule covers only top-level call inputs: nested references, return values, and
-propagated history need separate compatibility planning.
-
-## Retention and production use
-
-The included **in-memory binary store is only for a disposable demo**. Its payloads
-are lost when the sidecar stops, even though workflow histories remain in Redis.
-Do not expect those histories to replay or their payloads to resolve afterward.
-Use a durable binary-store component in production, and retain immutable payloads
-for as long as any workflow history, result, child, or rerun references them.
-
-This example intentionally does not configure a durable `IWorkflowPayloadManifest`
-or delete payloads. Workflow completion and history purging do not automatically
-clean up payload storage. For production cleanup, register a durable manifest with
-`WithPayloadManifest<TManifest>()` and invoke `WorkflowPayloadCleaner` only after
-all consumers have released their references.
-
-The project references SDK projects to use the implementation in this repository.
-A packaged application uses the `Dapr.Workflow` NuGet package; it does not need to
-reference a workflow binary-store implementation package.
+Production cleanup must account for readers, retries, and retained-history replays.
+Use the configured payload manifest/`WorkflowPayloadCleaner` only when those references
+are no longer needed; do not delete data just because the first client finished reading.
+Cross-app reference calls additionally require `AllowPayloadReferences = true` and
+destination access to the same stored bytes.
