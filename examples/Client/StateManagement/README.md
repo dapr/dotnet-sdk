@@ -2,14 +2,14 @@
 
 ## Prerequisites
 
-- [.NET 8+](https://dotnet.microsoft.com/download) installed
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
 
 ## Running the example
 
-To run the sample locally run this command in the DaprClient directory:
+Run the sample from the `examples\Client\StateManagement` directory:
 
 ```sh
 dapr run --app-id DaprClient -- dotnet run <sample number>

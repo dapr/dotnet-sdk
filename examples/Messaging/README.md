@@ -23,7 +23,7 @@ These are the worked examples for the Dapr.Messaging tutorial series demonstrati
 
 ## Prerequisites
 
-- .NET 10 SDK (or .NET 8/9 SDK)
+- .NET 10 SDK
 - Dapr runtime v1.18+ (for streaming subscription gRPC APIs)
 - Dapr CLI (`dapr init`)
 - Docker / Container runtime (for running the Testcontainers integration tests)
@@ -53,4 +53,3 @@ dotnet test examples/Messaging/05-AppCallbackPush/AppCallback.Example05.Tests/Ap
 dotnet test examples/Messaging/06-HttpSubscription/HttpSubscription.Example06.Tests/HttpSubscription.Example06.Tests.csproj
 dotnet test examples/Messaging/07-DynamicStreaming/DynamicStreaming.Example07.Tests/DynamicStreaming.Example07.Tests.csproj
 ```
-

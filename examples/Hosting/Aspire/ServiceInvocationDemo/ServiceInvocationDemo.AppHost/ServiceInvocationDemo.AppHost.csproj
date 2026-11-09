@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <Sdk Name="Aspire.AppHost.Sdk" Version="13.0.2" />
+    <Sdk Name="Aspire.AppHost.Sdk" Version="13.6.1" />
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -10,6 +10,11 @@
         <UserSecretsId>5d18c5e4-5752-4a7d-a461-88e9e4bcbacf</UserSecretsId>
         <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
         <NoWarn>$(NoWarn);CS8002</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(TargetFramework)' == ''">
+        <!-- The SDK RID task is not registered in the outer cross-targeting build. -->
+        <_AspireUseSdkPickBestRid>false</_AspireUseSdkPickBestRid>
     </PropertyGroup>
 
     <ItemGroup>

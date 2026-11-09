@@ -1,10 +1,10 @@
 # Dapr .NET SDK Bulk publish example (Deprecated)
 
-> **DEPRECATION NOTICE**: Bulk publishing events via `DaprClient` (`BulkPublishEventAsync`) is legacy. For all new development, use the modern, AOT-capable, DI-integrated **`Dapr.Messaging`** package and `IDaprPublishSubscribeClient.BulkPublishEventAsync`. See the [Dapr.Messaging Examples](../../Messaging) for the recommended usage patterns.
+> Deprecation notice: Bulk publishing events via `DaprClient` (`BulkPublishEventAsync`) is legacy. For all new development, use the modern, AOT-capable, DI-integrated `Dapr.Messaging` package and `IDaprPublishSubscribeClient.BulkPublishEventAsync`. See the [Dapr.Messaging examples](../../../Messaging) for the recommended usage patterns.
 
 ## Prerequisites
 
-- [.NET 8+](https://dotnet.microsoft.com/download) installed
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)

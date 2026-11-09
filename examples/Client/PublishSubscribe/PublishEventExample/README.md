@@ -1,17 +1,17 @@
 # Dapr .NET SDK pub/sub example (Deprecated)
 
-> **DEPRECATION NOTICE**: Publishing events via `DaprClient` (`PublishEventAsync`, `PublishByteEventAsync`) is legacy. For all new development, use the modern, AOT-capable, DI-integrated **`Dapr.Messaging`** package and `IDaprPublishSubscribeClient`. See the [Dapr.Messaging Examples](../../Messaging) for the recommended usage patterns.
+> Deprecation notice: Publishing events via `DaprClient` (`PublishEventAsync`, `PublishByteEventAsync`) is legacy. For all new development, use the modern, AOT-capable, DI-integrated `Dapr.Messaging` package and `IDaprPublishSubscribeClient`. See the [Dapr.Messaging examples](../../../Messaging) for the recommended usage patterns.
 
 ## Prerequisites
 
-- [.NET 8+](https://dotnet.microsoft.com/download) installed
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) installed
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Initialized Dapr environment](https://docs.dapr.io/getting-started/install-dapr-selfhost/)
 - [Dapr .NET SDK](https://docs.dapr.io/developing-applications/sdks/dotnet/)
 
 ## Running the example
 
-To run the sample locally run this command in the DaprClient directory:
+Run the sample from the `examples\Client\PublishSubscribe\PublishEventExample` directory:
 
 ```sh
 dapr run --app-id DaprClient -- dotnet run <sample number>

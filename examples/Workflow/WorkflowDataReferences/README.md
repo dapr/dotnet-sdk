@@ -51,8 +51,7 @@ sidecar sequentially.
 
 ## Prerequisites
 
-- .NET 8, 9, 10 or 11 SDK. The commands below select .NET 10; replace `net10.0` with
-  `net8.0`, `net9.0` ir `net10.0` if needed.
+- .NET 10 SDK.
 - Dapr CLI and a local Dapr runtime supporting binary stores, **1.19 or later**
   (also supported by `1.19.0-rc.3`).
 - An initialized local Dapr environment with Redis, placement, and scheduler
