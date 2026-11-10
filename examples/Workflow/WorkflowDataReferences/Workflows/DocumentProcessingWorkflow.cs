@@ -30,9 +30,13 @@ internal sealed class DocumentProcessingWorkflow : Workflow<DocumentPayload, Doc
 {
     public override async Task<DocumentPayload> RunAsync(WorkflowContext context, DocumentPayload input)
     {
+        // Boundary 1: the SDK has already deserialized the workflow input, even if it was offloaded.
         context.SetCustomStatus("Processing document");
+        // Boundaries 2 and 3: activity input/output use the same ordinary object contracts.
+        // The configured sending policy decides whether their serialized bytes travel inline or by reference.
         var result = await context.CallActivityAsync<DocumentPayload>(nameof(UppercaseDocumentActivity), input);
         context.SetCustomStatus("Document processed");
+        // Boundary 4: this is an in-memory object. Offloading the return value is not a streaming write.
         return result;
     }
 }

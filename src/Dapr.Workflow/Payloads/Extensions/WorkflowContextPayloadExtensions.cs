@@ -12,7 +12,9 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Workflow.Payloads;
 
@@ -64,6 +66,47 @@ public static class WorkflowContextPayloadExtensions
     /// <exception cref="InvalidOperationException">Binary store payload support is not registered.</exception>
     public static Task<Stream> OpenPayloadAsync(this WorkflowContext context, PayloadReference reference)
         => GetResolver(context).OpenAsync(reference);
+
+    /// <summary>
+    /// Enumerates the raw stored bytes identified by <paramref name="reference"/> without buffering
+    /// the entire payload. Storage I/O and disposal are scheduled outside deterministic execution.
+    /// </summary>
+    /// <remarks>
+    /// Consume or copy each chunk before advancing the enumerator; its memory may be reused.
+    /// Chunk boundaries are unspecified. Payload stages are not reversed and integrity is not verified.
+    /// </remarks>
+    /// <param name="context">The workflow context.</param>
+    /// <param name="reference">The reference to read.</param>
+    /// <param name="cancellationToken">A token used to cancel opening and reading the payload.</param>
+    /// <returns>An asynchronous sequence of payload chunks.</returns>
+    /// <exception cref="InvalidOperationException">Binary store payload support is not registered.</exception>
+    /// <exception cref="PayloadNotFoundException">The stored payload no longer exists.</exception>
+    public static IAsyncEnumerable<ReadOnlyMemory<byte>> ReadPayloadChunksAsync(this WorkflowContext context,
+        PayloadReference reference, CancellationToken cancellationToken = default)
+        => GetResolver(context).ReadChunksAsync(reference, cancellationToken);
+
+    /// <summary>
+    /// Enumerates raw stored bytes in chunks of <paramref name="chunkSize"/> bytes, except
+    /// for the final chunk, which may be smaller. Storage I/O and disposal are scheduled
+    /// outside deterministic execution.
+    /// </summary>
+    /// <remarks>
+    /// Consume or copy each chunk before advancing the enumerator; its memory may be reused.
+    /// This controls application-visible chunks, not transport message sizes. Payload stages are
+    /// not reversed and integrity is not verified. Each enumeration reads storage again.
+    /// </remarks>
+    /// <param name="context">The workflow context.</param>
+    /// <param name="reference">The reference to read.</param>
+    /// <param name="chunkSize">The positive number of bytes per full chunk.</param>
+    /// <param name="cancellationToken">A token used to cancel opening and reading the payload.</param>
+    /// <returns>An asynchronous sequence of payload chunks. Empty payloads produce no chunks.</returns>
+    /// <exception cref="InvalidOperationException">Binary store payload support is not registered.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="reference"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="chunkSize"/> is not positive.</exception>
+    /// <exception cref="PayloadNotFoundException">The stored payload no longer exists.</exception>
+    public static IAsyncEnumerable<ReadOnlyMemory<byte>> ReadPayloadChunksAsync(this WorkflowContext context,
+        PayloadReference reference, int chunkSize, CancellationToken cancellationToken = default)
+        => GetResolver(context).ReadChunksAsync(reference, chunkSize, cancellationToken);
 
     /// <summary>
     /// Returns a value indicating whether binary store payload support is available on this context.

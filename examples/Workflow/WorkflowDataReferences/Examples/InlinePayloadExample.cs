@@ -13,22 +13,20 @@
 
 using Dapr.Workflow;
 using Microsoft.Extensions.DependencyInjection;
-using WorkflowDataReferences.Activities;
 using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
 internal sealed class InlinePayloadExample : PayloadExample
 {
+    public override string Id => "inline";
     public override string Title => "Inline payloads (no binary store)";
+    public override string WhenToUse => "Small values should travel directly through history; ordinary typed reads are enough.";
 
     public override void ConfigureServices(IServiceCollection services)
     {
-        services.AddDaprWorkflow(options =>
-        {
-            options.RegisterWorkflow<DocumentProcessingWorkflow>();
-            options.RegisterActivity<UppercaseDocumentActivity>();
-        });
+        // Workflow/activity discovery is source-generated. No WithBinaryStorePayloads means no offloading.
+        services.AddDaprWorkflow();
     }
 
     public override async Task RunAsync(
@@ -43,7 +41,9 @@ internal sealed class InlinePayloadExample : PayloadExample
         Console.WriteLine($"Workflow ID: {instanceId}");
         await client.ScheduleNewWorkflowAsync(nameof(DocumentProcessingWorkflow), instanceId, document,
             startTime: null, cancellation: cancellationToken);
-        var state = await WaitForCompletionAsync(client, instanceId, cancellationToken);
+        // Request values because ReadOutputAs<DocumentPayload>() needs the serialized output.
+        // ReadWorkflowOutputChunksAsync is not an alternative for inline output.
+        var state = await WaitForCompletionAsync(client, instanceId, getInputsAndOutputs: true, cancellationToken);
         PrintDocumentResult(state, document);
         Console.WriteLine("Takeaway: the document itself travels through workflow history.");
     }
