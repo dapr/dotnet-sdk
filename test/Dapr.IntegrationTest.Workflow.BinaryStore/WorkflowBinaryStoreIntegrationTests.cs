@@ -293,9 +293,11 @@ public sealed class WorkflowBinaryStoreIntegrationTests
     }
 
     [MinimumDaprRuntimeTheory("1.19")]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ShouldStoreRawStreamsAcrossWorkflowAndActivityBoundaries(bool automaticInput)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task ShouldStoreRawStreamsAcrossWorkflowAndActivityBoundaries(bool automaticInput, bool directOutput)
     {
         var (environment, app) = await StartAsync(configureServices: services =>
             services.Configure<BinaryStorePayloadOptions>(options =>
@@ -304,6 +306,7 @@ public sealed class WorkflowBinaryStoreIntegrationTests
                 options.OffloadSites = automaticInput ? PayloadKind.WorkflowInput : PayloadKind.None;
                 options.OffloadThreshold = int.MaxValue;
                 options.MaxInMemoryRehydrationSize = long.MaxValue;
+                options.PrefixFactory = context => $"tenants/{context.InstanceId.Split("--", StringSplitOptions.None)[0]}/instances";
             }));
         await using var environmentLifetime = environment;
         await using var appLifetime = app;
@@ -313,18 +316,19 @@ public sealed class WorkflowBinaryStoreIntegrationTests
         var token = timeout.Token;
         var resolver = scope.ServiceProvider.GetRequiredService<IWorkflowPayloadResolver>();
         var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
-        var instanceId = Guid.NewGuid().ToString("N");
+        var instanceId = $"acme--{Guid.NewGuid():N}";
         var bytes = Enumerable.Range(0, 128 * 1024 + 1).Select(index => (byte)(index % 251)).ToArray();
         using var source = new MemoryStream(bytes, writable: false);
+        var workflow = directOutput ? nameof(DirectStreamPayloadWorkflow) : nameof(StreamPayloadWorkflow);
         if (automaticInput)
         {
-            await client.ScheduleNewWorkflowAsync(nameof(StreamPayloadWorkflow), instanceId, source,
+            await client.ScheduleNewWorkflowAsync(workflow, instanceId, source,
                 startTime: null, cancellation: token);
         }
         else
         {
             var stored = await resolver.StoreStreamAsync(source, instanceId, token);
-            await client.ScheduleNewWorkflowAsync(nameof(StreamPayloadWorkflow), instanceId, stored,
+            await client.ScheduleNewWorkflowAsync(workflow, instanceId, stored,
                 startTime: null, cancellation: token);
         }
         var state = await client.WaitForWorkflowCompletionAsync(instanceId, false, token);
@@ -339,13 +343,17 @@ public sealed class WorkflowBinaryStoreIntegrationTests
         Assert.NotNull(input);
         Assert.Equal(bytes.Length, input.Size);
         Assert.Equal(Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(), input.ContentHash);
-        Assert.StartsWith($"{KeyPrefix}/{instanceId}/", input.Key, StringComparison.Ordinal);
+        var instancePrefix = $"{KeyPrefix}/tenants/acme/instances/{instanceId}/";
+        Assert.StartsWith(instancePrefix, input.Key, StringComparison.Ordinal);
         Assert.True(PayloadReference.TryParse(persisted.WorkflowState.Output, out var output));
         Assert.NotNull(output);
+        Assert.Equal(output.ToEnvelope(), (await client.GetWorkflowOutputReferenceAsync(instanceId, token)).ToEnvelope());
         var expected = bytes[1..];
         Assert.Equal(expected.Length, output.Size);
         Assert.Equal(Convert.ToHexString(SHA256.HashData(expected)).ToLowerInvariant(), output.ContentHash);
         Assert.NotEqual(input.Key, output.Key);
+        if (directOutput)
+            Assert.StartsWith($"{instancePrefix}uploads/", output.Key, StringComparison.Ordinal);
         await foreach (var chunk in client.ReadWorkflowOutputChunksAsync(instanceId, token))
         {
             Assert.False(chunk.IsEmpty);
@@ -407,6 +415,8 @@ public sealed class WorkflowBinaryStoreIntegrationTests
                             runtime.RegisterActivity<ResolvePayloadActivity>();
                             runtime.RegisterWorkflow<StreamPayloadWorkflow>();
                             runtime.RegisterActivity<StripPrefixStreamActivity>();
+                            runtime.RegisterWorkflow<DirectStreamPayloadWorkflow>();
+                            runtime.RegisterActivity<StripPrefixDirectStreamActivity>();
                             runtime.RegisterWorkflow<AutomaticPayloadWorkflow>();
                             runtime.RegisterWorkflow<EchoPayloadChild>();
                             runtime.RegisterActivity<EchoPayloadActivity>();
@@ -583,6 +593,23 @@ public sealed class WorkflowBinaryStoreIntegrationTests
             await using var stream = await resolver.OpenAsync(input);
             await stream.ReadExactlyAsync(new byte[1]);
             return await resolver.StoreStreamAsync(stream, context.InstanceId);
+        }
+    }
+
+    internal sealed class DirectStreamPayloadWorkflow : Workflow<PayloadReference, PayloadReference>
+    {
+        public override Task<PayloadReference> RunAsync(WorkflowContext context, PayloadReference input)
+            => context.CallActivityAsync<PayloadReference>(nameof(StripPrefixDirectStreamActivity), input);
+    }
+
+    private sealed class StripPrefixDirectStreamActivity : WorkflowActivity<PayloadReference, PayloadReference>
+    {
+        public override async Task<PayloadReference> RunAsync(WorkflowActivityContext context, PayloadReference input)
+        {
+            Assert.True(context.HasPayloadResolver());
+            await using var stream = await context.OpenPayloadAsync(input);
+            await stream.ReadExactlyAsync(new byte[1]);
+            return await context.UploadPayloadAsync(stream);
         }
     }
 

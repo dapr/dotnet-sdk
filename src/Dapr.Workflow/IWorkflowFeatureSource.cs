@@ -14,7 +14,7 @@
 namespace Dapr.Workflow;
 
 /// <summary>
-/// Provides SDK-owned execution features without extending the public workflow context.
+/// Provides SDK-owned execution features without extending the public workflow or activity context.
 /// </summary>
 internal interface IWorkflowFeatureSource
 {

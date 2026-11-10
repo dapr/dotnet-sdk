@@ -18,12 +18,17 @@ using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Demonstrates explicit object storage and reference-typed workflow/activity inputs.</summary>
 internal sealed class ReferencePayloadExample : PayloadExample
 {
+    /// <inheritdoc />
     public override string Id => "explicit-reference";
+    /// <inheritdoc />
     public override string Title => "Explicit references (workflow forwards, activity streams)";
+    /// <inheritdoc />
     public override string WhenToUse => "Choose exactly when to store an object and pass a typed reference to consumers.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
@@ -36,6 +41,7 @@ internal sealed class ReferencePayloadExample : PayloadExample
         });
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {

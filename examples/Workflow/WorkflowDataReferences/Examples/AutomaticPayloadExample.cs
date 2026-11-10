@@ -18,12 +18,17 @@ using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Demonstrates automatic offloading with unchanged, materialized document contracts.</summary>
 internal sealed class AutomaticPayloadExample : PayloadExample
 {
+    /// <inheritdoc />
     public override string Id => "auto-values";
+    /// <inheritdoc />
     public override string Title => "Automatic offloading (same application code)";
+    /// <inheritdoc />
     public override string WhenToUse => "Keep ordinary object contracts while moving large serialized values out of history.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
@@ -39,6 +44,7 @@ internal sealed class AutomaticPayloadExample : PayloadExample
         });
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {
@@ -54,12 +60,7 @@ internal sealed class AutomaticPayloadExample : PayloadExample
         // Normal typed consumers get full objects even though history holds small references.
         var state = await WaitForCompletionAsync(client, instanceId, getInputsAndOutputs: true, cancellationToken);
 
-        // The asynchronous wait resolves output for the normal typed read, while retaining its wire reference.
-        // Asking for that reference afterward does NOT undo the download/materialization.
         PrintDocumentResult(state, document);
-        var outputReference = state.ReadOutputAs<PayloadReference<DocumentPayload>>()
-                              ?? throw new InvalidOperationException("The large output was not offloaded.");
-        Console.WriteLine($"Persisted output reference: {outputReference.ToEnvelope()}");
         Console.WriteLine("Takeaway: smaller history does not mean zero document reads; the SDK still materializes ordinary inputs.");
     }
 }

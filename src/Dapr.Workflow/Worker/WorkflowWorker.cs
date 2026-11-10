@@ -610,8 +610,14 @@ internal sealed class WorkflowWorker(
                 ? request.TaskExecutionId
                 : request.TaskId.ToString();
 
+            var instanceId = request.WorkflowInstance?.InstanceId ?? string.Empty;
+            var workflowName = request.PropagatedHistory?.Chunks
+                .LastOrDefault(chunk => chunk.InstanceId == instanceId)?.WorkflowName;
+            workflowName = string.IsNullOrWhiteSpace(workflowName) ? null : workflowName;
             var context = new WorkflowActivityContextImpl(activityIdentifier,
-                request.WorkflowInstance?.InstanceId ?? string.Empty, taskExecutionKey, request.TaskId);
+                instanceId, taskExecutionKey, request.TaskId,
+                scope.ServiceProvider.GetService<IWorkflowPayloadResolver>(), _stoppingToken,
+                workflowName);
             var codec = scope.ServiceProvider.GetService<IWorkflowPayloadConverter>();
             var payloads = codec is null ? null : new WorkflowPayloadHandler(_serializer, codec, _stoppingToken);
 
@@ -622,7 +628,8 @@ internal sealed class WorkflowWorker(
                 input = payloads is null
                     ? _serializer.Deserialize(request.Input, activity!.InputType)
                     : await payloads.DecodeAsync(request.Input, activity!.InputType,
-                        new(PayloadKind.ActivityInput, context.InstanceId, request.Name)).ConfigureAwait(false);
+                        new(PayloadKind.ActivityInput, context.InstanceId, request.Name,
+                            WorkflowName: workflowName)).ConfigureAwait(false);
             }
 
             // Execute the activity
@@ -632,7 +639,8 @@ internal sealed class WorkflowWorker(
             var outputJson = payloads is null
                 ? output != null ? _serializer.Serialize(output) : string.Empty
                 : await payloads.EncodeAsync(payloads.Snapshot(output),
-                    new(PayloadKind.ActivityOutput, context.InstanceId, request.Name)).ConfigureAwait(false);
+                    new(PayloadKind.ActivityOutput, context.InstanceId, request.Name,
+                        WorkflowName: workflowName)).ConfigureAwait(false);
 
             _logger.LogWorkerWorkflowHandleActivityRequestCompleted(request.Name, request.TaskId);
 

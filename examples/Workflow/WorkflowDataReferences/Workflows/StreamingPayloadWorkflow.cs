@@ -32,6 +32,7 @@ namespace WorkflowDataReferences.Workflows;
 /// </remarks>
 internal sealed class StreamingPayloadWorkflow : Workflow<PayloadReference<DocumentPayload>, PayloadSummary>
 {
+    /// <inheritdoc />
     public override Task<PayloadSummary> RunAsync(WorkflowContext context, PayloadReference<DocumentPayload> input)
     {
         // Forwarding the reference does not read its bytes. The activity returns a small inline

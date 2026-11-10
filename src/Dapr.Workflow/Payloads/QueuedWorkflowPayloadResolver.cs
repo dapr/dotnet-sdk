@@ -18,56 +18,85 @@ using System.Threading.Tasks;
 
 namespace Dapr.Workflow.Payloads;
 
+/// <summary>Queues orchestrator reads outside deterministic execution and rejects all writes.</summary>
+/// <param name="resolver">The underlying payload reader.</param>
+/// <param name="payloads">The orchestrator's per-execution I/O queue.</param>
 internal sealed class QueuedWorkflowPayloadResolver(
     IWorkflowPayloadResolver resolver,
     WorkflowPayloadHandler payloads) : IWorkflowPayloadResolver
 {
+    /// <inheritdoc />
     public Task<T> ResolveAsync<T>(PayloadReference reference, CancellationToken cancellationToken = default)
         => payloads.QueueAsync(() => resolver.ResolveAsync<T>(reference,
             cancellationToken.CanBeCanceled ? cancellationToken : payloads.StoppingToken));
 
+    /// <inheritdoc />
     public Task<Stream> OpenAsync(PayloadReference reference, CancellationToken cancellationToken = default)
         => payloads.QueueAsync<Stream>(async () =>
             new QueuedReadStream(await resolver.OpenAsync(reference,
                     cancellationToken.CanBeCanceled ? cancellationToken : payloads.StoppingToken).ConfigureAwait(false),
                 payloads));
 
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">Writes are not permitted from orchestrator code.</exception>
     public Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId,
         CancellationToken cancellationToken = default)
         => throw new InvalidOperationException("Store payloads in activities or clients, not in orchestrator code.");
 
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">Writes are not permitted from orchestrator code.</exception>
     public Task<PayloadReference> StoreStreamAsync(Stream content, string instanceId,
         CancellationToken cancellationToken = default)
         => throw new InvalidOperationException("Store payloads in activities or clients, not in orchestrator code.");
 
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">Writes are not permitted from orchestrator code.</exception>
+    public Task<PayloadReference> WriteAsync(Func<Stream, CancellationToken, Task> write, string instanceId,
+        CancellationToken cancellationToken = default)
+        => throw new InvalidOperationException("Store payloads in activities or clients, not in orchestrator code.");
+
+    /// <summary>Schedules asynchronous stream reads and disposal through the orchestrator's I/O queue.</summary>
     private sealed class QueuedReadStream(Stream inner, WorkflowPayloadHandler payloads) : Stream
     {
+        /// <inheritdoc />
         public override bool CanRead => inner.CanRead;
+        /// <inheritdoc />
         public override bool CanSeek => false;
+        /// <inheritdoc />
         public override bool CanWrite => false;
+        /// <inheritdoc />
         public override long Length => throw new NotSupportedException();
 
+        /// <inheritdoc />
         public override long Position
         {
             get => throw new NotSupportedException();
             set => throw new NotSupportedException();
         }
 
+        /// <inheritdoc />
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
             => new(payloads.QueueAsync(() => inner.ReadAsync(buffer,
                 cancellationToken.CanBeCanceled ? cancellationToken : payloads.StoppingToken).AsTask()));
 
+        /// <inheritdoc />
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
 
+        /// <inheritdoc />
         public override int Read(byte[] buffer, int offset, int count)
             => throw new NotSupportedException("Use asynchronous reads for payload streams in orchestrator code.");
 
+        /// <inheritdoc />
         public override void Flush() => throw new NotSupportedException();
+        /// <inheritdoc />
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        /// <inheritdoc />
         public override void SetLength(long value) => throw new NotSupportedException();
+        /// <inheritdoc />
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
+        /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -75,6 +104,7 @@ internal sealed class QueuedWorkflowPayloadResolver(
             base.Dispose(disposing);
         }
 
+        /// <inheritdoc />
         public override async ValueTask DisposeAsync()
         {
             await payloads.QueueAsync(async () =>

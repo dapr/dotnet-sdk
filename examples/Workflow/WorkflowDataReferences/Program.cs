@@ -20,13 +20,15 @@ using WorkflowDataReferences.Examples;
 var configuration = Host.CreateApplicationBuilder(args).Configuration;
 PayloadExample[] catalog =
 [
-    new InlinePayloadExample(),
     new AutomaticPayloadExample(),
+    new DirectWritePayloadExample(),
     new AutomaticOutputChunksExample(),
+    new InlinePayloadExample(),
     new ReferencePayloadExample(),
     new AutomaticReferencePayloadExample(),
     new StreamUploadPayloadExample(),
     new StreamUploadPayloadExample(automaticReferences: true),
+    new TenantPrefixPayloadExample(),
     new ChunkStreamingPayloadExample()
 ];
 
@@ -35,16 +37,19 @@ if (configuration.GetValue("List", false))
 {
     foreach (var example in catalog)
         Console.WriteLine($"{example.Id,-22} {example.WhenToUse}");
-    Console.WriteLine("Run with --Example=<name>, or --Example=all (the default).");
+    Console.WriteLine("Default: --Example=recipes (auto-values, direct-write, auto-output-chunks).");
+    Console.WriteLine("Run one with --Example=<name>, or every advanced comparison with --Example=all.");
     return;
 }
 
 // Keep the original inline-only switch for users trying the sample without binary-store support.
 var dataRefsEnabled = configuration.GetValue("DataRefs:Enabled", true);
-var selection = configuration["Example"] ?? (dataRefsEnabled ? "all" : "inline");
+var selection = configuration["Example"] ?? (dataRefsEnabled ? "recipes" : "inline");
 var runAll = string.Equals(selection, "all", StringComparison.OrdinalIgnoreCase);
+var runRecipes = string.Equals(selection, "recipes", StringComparison.OrdinalIgnoreCase);
 var examples = catalog.Where(example =>
-    (runAll || string.Equals(example.Id, selection, StringComparison.OrdinalIgnoreCase)) &&
+    (runAll || (runRecipes && example.Id is "auto-values" or "direct-write" or "auto-output-chunks") ||
+     string.Equals(example.Id, selection, StringComparison.OrdinalIgnoreCase)) &&
     (dataRefsEnabled || example.Id == "inline")).ToArray();
 if (examples.Length == 0)
     throw new ArgumentException(
@@ -53,8 +58,8 @@ if (examples.Length == 0)
 
 var document = new DocumentPayload("sample.txt", new string('a', 128 * 1024));
 
-Console.WriteLine("Workflow data references: choose storage, receiving types, and read APIs independently.");
-Console.WriteLine("Object examples use a materialized 128 KiB document; stream examples generate a 32 MiB file.");
+Console.WriteLine("Workflow data references: ordinary objects, immediate uploads, and incremental reads.");
+Console.WriteLine("Object examples use a materialized 128 KiB document; stream examples generate 32 MiB of data.");
 Console.WriteLine("Offloading reduces history size. Only streaming reads/writes avoid whole-payload buffers.");
 Console.WriteLine("This is a behavior walkthrough, not a performance benchmark.");
 

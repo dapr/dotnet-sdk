@@ -203,7 +203,7 @@ internal sealed class WorkflowPayloadHandler(
             {
                 case { ScheduleTask: { } activity }:
                     activity.Input = await EncodeAsync(activity.Input ?? string.Empty,
-                            new(PayloadKind.ActivityInput, instanceId, activity.Name, requireInline), cancellationToken)
+                            new(PayloadKind.ActivityInput, instanceId, activity.Name, requireInline, workflowName), cancellationToken)
                         .ConfigureAwait(false);
                     break;
                 case { CreateChildWorkflow: { } child }:
@@ -218,7 +218,8 @@ internal sealed class WorkflowPayloadHandler(
                     break;
                 case { SendEvent: { } sent }:
                     sent.Data = await EncodeAsync(sent.Data ?? string.Empty,
-                            new(PayloadKind.ExternalEvent, sent.Instance.InstanceId, sent.Name), cancellationToken)
+                            new(PayloadKind.ExternalEvent, sent.Instance.InstanceId, sent.Name,
+                                WorkflowName: sent.Instance.InstanceId == instanceId ? workflowName : null), cancellationToken)
                         .ConfigureAwait(false);
                     break;
                 case { CompleteWorkflow: { } completed } when completed.WorkflowStatus is
@@ -237,7 +238,7 @@ internal sealed class WorkflowPayloadHandler(
         if (response.CustomStatus is not null)
         {
             response.CustomStatus = await EncodeAsync(response.CustomStatus,
-                new(PayloadKind.CustomStatus, instanceId, null), cancellationToken).ConfigureAwait(false);
+                new(PayloadKind.CustomStatus, instanceId, null, WorkflowName: workflowName), cancellationToken).ConfigureAwait(false);
         }
     }
 }

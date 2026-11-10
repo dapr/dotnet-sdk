@@ -23,6 +23,7 @@ namespace WorkflowDataReferences.Workflows;
 /// </summary>
 internal sealed class StreamUploadWorkflow : Workflow<PayloadReference, PayloadReference>
 {
+    /// <inheritdoc />
     public override Task<PayloadReference> RunAsync(WorkflowContext context, PayloadReference input)
     {
         // All four boundaries carry references: workflow input -> activity input ->
