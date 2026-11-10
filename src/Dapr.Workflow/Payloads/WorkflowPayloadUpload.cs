@@ -22,10 +22,18 @@ using System.Threading.Tasks;
 
 namespace Dapr.Workflow.Payloads;
 
+/// <summary>Connects a byte producer to an uploader with bounded buffering and incremental integrity metadata.</summary>
 internal static class WorkflowPayloadUpload
 {
+    /// <summary>The pipe's backpressure threshold and maximum individual producer write size.</summary>
     internal const int BufferSize = 64 * 1024;
 
+    /// <summary>Runs both sides of an upload, canceling the other side when either fails.</summary>
+    /// <param name="produce">The producer that writes sequentially to the SDK-owned destination.</param>
+    /// <param name="upload">The uploader, which must consume the source through EOF before reporting success.</param>
+    /// <param name="cancellationToken">Cancels both production and upload.</param>
+    /// <returns>The number of uploaded bytes and their lowercase SHA-256 hash.</returns>
+    /// <exception cref="IOException">The uploader reports success without reading through EOF.</exception>
     internal static async Task<(long Size, string Hash)> RunAsync(
         Func<Stream, CancellationToken, Task> produce,
         Func<Stream, CancellationToken, Task> upload,
@@ -90,19 +98,26 @@ internal static class WorkflowPayloadUpload
         return (source.BytesRead, Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant());
     }
 
+    /// <summary>Splits large writes so producer calls cannot bypass the pipe's bounded buffering.</summary>
     private sealed class BoundedWriteStream(Stream inner, CancellationToken operationToken) : Stream
     {
         private bool _disposed;
+        /// <inheritdoc />
         public override bool CanRead => false;
+        /// <inheritdoc />
         public override bool CanSeek => false;
+        /// <inheritdoc />
         public override bool CanWrite => !_disposed;
+        /// <inheritdoc />
         public override long Length => throw new NotSupportedException();
+        /// <inheritdoc />
         public override long Position
         {
             get => throw new NotSupportedException();
             set => throw new NotSupportedException();
         }
 
+        /// <inheritdoc />
         public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer,
             CancellationToken cancellationToken = default)
         {
@@ -117,12 +132,15 @@ internal static class WorkflowPayloadUpload
             }
         }
 
+        /// <inheritdoc />
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             => WriteAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
 
+        /// <inheritdoc />
         public override void Write(byte[] buffer, int offset, int count)
             => WriteAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
 
+        /// <inheritdoc />
         public override void Write(ReadOnlySpan<byte> buffer)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -144,6 +162,7 @@ internal static class WorkflowPayloadUpload
             }
         }
 
+        /// <inheritdoc />
         public override async Task FlushAsync(CancellationToken cancellationToken)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
@@ -151,10 +170,15 @@ internal static class WorkflowPayloadUpload
             await inner.FlushAsync(cancellation.Token).ConfigureAwait(false);
         }
 
+        /// <inheritdoc />
         public override void Flush() => FlushAsync(default).GetAwaiter().GetResult();
+        /// <inheritdoc />
         public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        /// <inheritdoc />
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        /// <inheritdoc />
         public override void SetLength(long value) => throw new NotSupportedException();
+        /// <inheritdoc />
         protected override void Dispose(bool disposing)
         {
             _disposed = true;
@@ -162,20 +186,29 @@ internal static class WorkflowPayloadUpload
         }
     }
 
+    /// <summary>Tracks the bytes actually consumed by the uploader, including whether it reached EOF.</summary>
     private sealed class HashingReadStream(Stream inner, IncrementalHash hash) : Stream
     {
+        /// <summary>Gets the total number of bytes consumed by the uploader.</summary>
         public long BytesRead { get; private set; }
+        /// <summary>Gets whether a nonempty read request has observed the end of the source.</summary>
         public bool EndOfStream { get; private set; }
+        /// <inheritdoc />
         public override bool CanRead => true;
+        /// <inheritdoc />
         public override bool CanSeek => false;
+        /// <inheritdoc />
         public override bool CanWrite => false;
+        /// <inheritdoc />
         public override long Length => throw new NotSupportedException();
+        /// <inheritdoc />
         public override long Position
         {
             get => throw new NotSupportedException();
             set => throw new NotSupportedException();
         }
 
+        /// <inheritdoc />
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
             var read = await inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
@@ -186,15 +219,21 @@ internal static class WorkflowPayloadUpload
             return read;
         }
 
+        /// <inheritdoc />
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             => ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
 
+        /// <inheritdoc />
         public override int Read(byte[] buffer, int offset, int count)
             => ReadAsync(buffer.AsMemory(offset, count)).AsTask().GetAwaiter().GetResult();
 
+        /// <inheritdoc />
         public override void Flush() => throw new NotSupportedException();
+        /// <inheritdoc />
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        /// <inheritdoc />
         public override void SetLength(long value) => throw new NotSupportedException();
+        /// <inheritdoc />
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 }

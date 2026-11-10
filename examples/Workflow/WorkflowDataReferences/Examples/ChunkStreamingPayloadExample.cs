@@ -18,12 +18,17 @@ using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Demonstrates replay-aware workflow reads of immutable payload chunks.</summary>
 internal sealed class ChunkStreamingPayloadExample : PayloadExample
 {
+    /// <inheritdoc />
     public override string Id => "workflow-chunks";
+    /// <inheritdoc />
     public override string Title => "Advanced: chunks inside a replayed workflow";
+    /// <inheritdoc />
     public override string WhenToUse => "The orchestrator itself must inspect immutable bytes, accepting replay-time downloads.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
@@ -35,6 +40,7 @@ internal sealed class ChunkStreamingPayloadExample : PayloadExample
         });
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {

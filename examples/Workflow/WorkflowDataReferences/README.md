@@ -121,7 +121,7 @@ The links lead to the actual registration and client calls.
 | [explicit-stream](Examples/StreamUploadPayloadExample.cs) | A reference from `StoreStreamAsync(source)` | Untyped references at all four boundaries; activity stores its output stream explicitly | Raw binary output chunks |
 | [auto-stream](Examples/StreamUploadPayloadExample.cs) | A `Stream` directly to scheduling | The same reference-typed workflow/activity; SDK uploads input before scheduling | Raw binary output chunks; no client resolver calls |
 | [direct-write](Examples/DirectWritePayloadExample.cs) | A page count | Activity uploads async byte chunks without temporary files | Output reference without hydration, then sample-only verification in a helper |
-| [tenant-prefix](Examples/TenantPrefixPayloadExample.cs) | One page, for each of two tenant-qualified instance IDs | The same upload workflow/activity as direct-write; a prefix factory routes each tenant's bytes | Output references only; verifies and prints each tenant/instance path |
+| [tenant-prefix](Examples/TenantPrefixPayloadExample.cs) | A stored page count with explicit workflow metadata, for each of two tenants | The same upload workflow/activity as direct-write; context writes automatically supply the activity name | Output references only; verifies and prints tenant/workflow input and tenant/activity output paths |
 | [workflow-chunks](Examples/ChunkStreamingPayloadExample.cs) | A reference from `StoreAsync(document)` | **Advanced:** the workflow itself enumerates chunks, then an activity independently reads them | An inline summary; replay can repeat workflow downloads |
 
 Object examples begin with an already-materialized 128 KiB text document. Stream
@@ -371,7 +371,9 @@ Activities no longer need to inject `IWorkflowPayloadResolver`. With payload sup
 registered, their context exposes `ResolvePayloadAsync`, `OpenPayloadAsync`,
 `ReadPayloadChunksAsync` (including a sized overload), `StorePayloadAsync`,
 `StorePayloadStreamAsync`, `UploadPayloadAsync`, and `HasPayloadResolver`.
-Writes automatically use `context.InstanceId`. When no cancelable token is supplied,
+Writes automatically supply `context.InstanceId`, the registered activity name, and
+the owning workflow name when available, through the factory's metadata context.
+When no cancelable token is supplied,
 methods use `context.CancellationToken`, which signals **worker shutdown**, not
 workflow termination or an activity timeout. An explicit cancelable token replaces
 that default; link it with the context token if both should stop the operation.
@@ -423,35 +425,81 @@ overload you choose, so it is kept separate from the basic upload recipe.
 
 Run `--Example=tenant-prefix` to upload one page for each of `acme` and `contoso`.
 [TenantPrefixPayloadExample](Examples/TenantPrefixPayloadExample.cs) reuses the
-direct-write workflow and activity unchanged, then retrieves only the output
-references to verify and print their paths. It configures:
+direct-write workflow and activity unchanged. The client stores the page count
+with explicit workflow metadata; the activity upload supplies its own name
+automatically. Output inspection retrieves only references. It configures:
 
 ```csharp
 options.KeyPrefix = "workflow-payloads";
-options.InstancePrefixFactory = instanceId =>
+options.PrefixFactory = metadata =>
 {
     // Application convention: alphanumeric tenant followed by "--" and an execution ID.
+    var instanceId = metadata.InstanceId;
     var separator = instanceId.IndexOf("--", StringComparison.Ordinal);
     if (separator <= 0 || !instanceId[..separator].All(char.IsAsciiLetterOrDigit))
         throw new ArgumentException("Expected an alphanumeric tenant followed by '--' in the instance ID.");
-    return $"tenants/{instanceId[..separator]}/instances";
+    var scope = metadata.ActivityName is { } activity ? $"activities/{activity}"
+        : metadata.WorkflowName is { } workflow ? $"workflows/{workflow}"
+        : throw new InvalidOperationException("This policy requires a workflow or activity name.");
+    return $"tenants/{instanceId[..separator]}/{scope}/instances";
 };
 ```
 
 Schedule with a matching ID, for example `var instanceId = $"acme--{Guid.NewGuid():N}";`.
 The activity and workflow need no tenant-specific code.
 
+For explicit client writes, pass metadata instead of just the instance ID:
+
+```csharp
+var metadata = new WorkflowPayloadPrefixContext(instanceId, workflowName: nameof(DirectWritePayloadWorkflow));
+var input = await resolver.StoreAsync(1, metadata, cancellationToken);
+await client.ScheduleNewWorkflowAsync(nameof(DirectWritePayloadWorkflow), instanceId, input,
+    startTime: null, cancellation: cancellationToken);
+```
+
+`StoreAsync`, `StoreStreamAsync`, all three `UploadAsync` overloads, and the
+compatibility `WriteAsync` accept this immutable context. Existing instance-ID
+overloads remain available and leave both names null. Custom resolvers remain
+compatible: default metadata overloads call their instance-ID overloads; custom
+implementations must override the new overloads to use the extra names.
+
+The factory receives `InstanceId`, nullable `WorkflowName`, and nullable
+`ActivityName`. Names are registered names, not inferred CLR types:
+
+| Write boundary | Available names |
+|---|---|
+| Initial scheduling, child/detached workflow input, workflow output, continue-as-new, custom status | Owning workflow name when known |
+| Activity input offloaded by the workflow worker | Owning workflow and target activity names |
+| Activity-context writes and automatic activity output | Activity name; workflow name only when matching propagated history is supplied by the runtime |
+| External events, termination output, rerun overrides addressed only by instance ID | Workflow name generally unavailable; event names are never treated as workflow names |
+| Explicit resolver write | Whatever the caller supplies |
+
+The factory context's `WorkflowName` is null for activity writes without matching propagated history.
+This metadata is passed internally; no workflow-name property is added to the public activity context.
+Ancestor workflow names are not substituted for the owner. There are no hidden
+metadata RPCs or process-local instance/name mappings. A factory needing missing
+metadata should throw; the example deliberately routes activity writes by activity
+name regardless of whether the optional workflow name is available.
+
+`PrefixFactory` is the single routing configuration hook. Factory-provided names
+must form valid relative path segments, just like any other prefix.
+The callback receives a read-only metadata snapshot, **not** a `WorkflowActivityContext`.
+For instance-only routing, use `metadata.InstanceId` and ignore the optional names.
+There is no need to change the activity or add public properties to its context.
+
 For tenant `acme` and instance `acme--run1`, keys become:
 
 ```text
-workflow-payloads/tenants/acme/instances/acme--run1/{sha256}
-workflow-payloads/tenants/acme/instances/acme--run1/uploads/{uniqueId}
+workflow-payloads/tenants/acme/workflows/DirectWritePayloadWorkflow/instances/acme--run1/{sha256}
+workflow-payloads/tenants/acme/activities/WritePagedPayloadActivity/instances/acme--run1/uploads/{uniqueId}
 ```
 
 The factory runs once per write, for automatic offloading and every explicit write
 API. It returns a non-empty relative prefix, **not** a complete key. The SDK appends
 the instance ID and controls the payload identifier. Without a factory, the layout
 remains `{KeyPrefix}/{instanceId}/{payloadKey}` for ordinary IDs.
+Content-addressed deduplication is scoped to the complete resulting prefix; identical
+bytes under different workflow/activity prefixes are separate stored objects.
 
 Prefixes reject absolute paths, empty/dot/parent segments, control characters, `%`,
 and reserved characters such as `\`, `:`, `*`, `?`, `[`, `]`, and `#`. The instance ID is

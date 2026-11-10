@@ -19,6 +19,9 @@ namespace WorkflowDataReferences.Activities;
 /// <summary>Uploads generated pages as they arrive, without local files or a whole-result buffer.</summary>
 internal sealed class WritePagedPayloadActivity : WorkflowActivity<int, PayloadReference>
 {
+    /// <inheritdoc />
+    /// <param name="context">The activity context, which supplies upload ownership, prefix metadata, and cancellation.</param>
+    /// <param name="pageCount">The number of generated pages to upload without accumulating them in memory.</param>
     public override Task<PayloadReference> RunAsync(WorkflowActivityContext context, int pageCount)
         => context.UploadPayloadAsync(SamplePayloadData.FetchPagesAsync(pageCount, context.CancellationToken));
 }

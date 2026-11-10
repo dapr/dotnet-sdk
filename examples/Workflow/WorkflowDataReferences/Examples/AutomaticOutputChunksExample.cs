@@ -18,12 +18,17 @@ using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Demonstrates incremental client reads of an automatically offloaded document result.</summary>
 internal sealed class AutomaticOutputChunksExample : PayloadExample
 {
+    /// <inheritdoc />
     public override string Id => "auto-output-chunks";
+    /// <inheritdoc />
     public override string Title => "Automatic offloading with a chunked client read";
+    /// <inheritdoc />
     public override string WhenToUse => "The worker produces ordinary objects, but the client needs raw output bytes incrementally.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
@@ -39,6 +44,7 @@ internal sealed class AutomaticOutputChunksExample : PayloadExample
         });
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {

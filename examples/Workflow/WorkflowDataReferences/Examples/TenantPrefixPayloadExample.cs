@@ -14,55 +14,77 @@
 using Dapr.Workflow;
 using Dapr.Workflow.Payloads;
 using Microsoft.Extensions.DependencyInjection;
+using WorkflowDataReferences.Activities;
 using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Demonstrates explicit client prefix metadata and internally supplied activity metadata for two tenants.</summary>
+/// <remarks>The factory uses only the public prefix context; workflow and activity implementations are unchanged.</remarks>
 internal sealed class TenantPrefixPayloadExample : PayloadExample
 {
+    /// <inheritdoc />
     public override string Id => "tenant-prefix";
-    public override string Title => "Route the same workflow's payloads by tenant and instance";
-    public override string WhenToUse => "Organize stored payloads by tenant without changing activity or workflow code.";
+    /// <inheritdoc />
+    public override string Title => "Route payloads by tenant, workflow, and activity";
+    /// <inheritdoc />
+    public override string WhenToUse => "Use prefix metadata to organize payloads without changing workflow or activity code.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
         {
             options.StoreName = "workflow-payloads";
             options.KeyPrefix = "workflow-payloads";
-            options.InstancePrefixFactory = instanceId =>
+            options.PrefixFactory = metadata =>
             {
                 // Application convention: tenant--execution, independent of ambient request state.
+                var instanceId = metadata.InstanceId;
                 var separator = instanceId.IndexOf("--", StringComparison.Ordinal);
                 if (separator <= 0 || !instanceId[..separator].All(char.IsAsciiLetterOrDigit))
                     throw new ArgumentException("Expected an alphanumeric tenant followed by '--' in the instance ID.");
-                return $"tenants/{instanceId[..separator]}/instances";
+                // Activities always supply their own name, but may not know the owning workflow's name.
+                var scope = metadata.ActivityName is { } activity ? $"activities/{activity}"
+                    : metadata.WorkflowName is { } workflow ? $"workflows/{workflow}"
+                    : throw new InvalidOperationException("This policy requires a workflow or activity name.");
+                return $"tenants/{instanceId[..separator]}/{scope}/instances";
             };
             options.WritePreference = PayloadWritePreference.Preserve;
             options.OffloadSites = PayloadKind.None;
         });
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(IServiceProvider services, DocumentPayload document,
         CancellationToken cancellationToken)
     {
         var client = services.GetRequiredService<DaprWorkflowClient>();
+        var resolver = services.GetRequiredService<IWorkflowPayloadResolver>();
         foreach (var tenant in new[] { "acme", "contoso" })
         {
             var instanceId = $"{tenant}--{Guid.NewGuid():N}";
             Console.WriteLine($"Tenant: {tenant}; workflow ID: {instanceId}");
-            await client.ScheduleNewWorkflowAsync(nameof(DirectWritePayloadWorkflow), instanceId, 1,
+            var metadata = new WorkflowPayloadPrefixContext(instanceId, workflowName: nameof(DirectWritePayloadWorkflow));
+            var input = await resolver.StoreAsync(1, metadata, cancellationToken);
+            var inputPrefix = $"workflow-payloads/tenants/{tenant}/workflows/{metadata.WorkflowName}/instances/{instanceId}/";
+            if (!input.Key.StartsWith(inputPrefix, StringComparison.Ordinal))
+                throw new InvalidOperationException($"Expected input key beneath '{inputPrefix}', got '{input.Key}'.");
+            Console.WriteLine($"Input key: {input.Key}");
+            await client.ScheduleNewWorkflowAsync(nameof(DirectWritePayloadWorkflow), instanceId, input,
                 startTime: null, cancellation: cancellationToken);
             await WaitForCompletionAsync(client, instanceId, getInputsAndOutputs: false, cancellationToken);
 
             var reference = await client.GetWorkflowOutputReferenceAsync(instanceId, cancellationToken);
-            var expectedPrefix = $"workflow-payloads/tenants/{tenant}/instances/{instanceId}/uploads/";
+            var expectedPrefix = $"workflow-payloads/tenants/{tenant}/activities/{nameof(WritePagedPayloadActivity)}/instances/{instanceId}/uploads/";
             if (!reference.Key.StartsWith(expectedPrefix, StringComparison.Ordinal))
                 throw new InvalidOperationException($"Expected payload key beneath '{expectedPrefix}', got '{reference.Key}'.");
             Console.WriteLine($"Stored key: {reference.Key}");
         }
 
-        Console.WriteLine("Same workflow and activity, separate tenant/instance paths. No payload download needed.");
+        Console.WriteLine("Client supplies workflow metadata; activity-context uploads supply their activity name automatically.");
+        Console.WriteLine("The factory receives immutable prefix metadata, not the live activity context.");
+        Console.WriteLine("Output inspection downloads only the reference, not the payload.");
         Console.WriteLine("Prefixes organize data; they are not an authorization boundary.");
     }
 }

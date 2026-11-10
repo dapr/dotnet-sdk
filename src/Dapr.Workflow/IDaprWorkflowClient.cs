@@ -91,7 +91,7 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
     /// <para>
     /// The stream is read from its current position and remains open; it is not rewound on success
     /// or failure. Upload uses bounded buffers and temporary disk staging proportional to the
-    /// remaining content, as described by <see cref="Payloads.IWorkflowPayloadResolver.StoreStreamAsync"/>.
+    /// remaining content, as described by <see cref="Payloads.IWorkflowPayloadResolver.StoreStreamAsync(System.IO.Stream, string, CancellationToken)"/>.
     /// Do not modify or dispose the stream before awaiting completion. Reopen or rewind the source
     /// before retrying. If scheduling fails after upload, the stored payload is retained.
     /// </para>

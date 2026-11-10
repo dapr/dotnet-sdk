@@ -132,14 +132,21 @@ It chooses a unique key upfront and computes the reference's SHA-256 and size du
 upload; retries create distinct keys rather than deduplicating by content.
 The same API accepts async byte chunks or a writer callback. Activity methods default
 to `context.CancellationToken` (worker shutdown) when no cancelable token is supplied.
-`InstancePrefixFactory` can add tenant-specific prefixes beneath `KeyPrefix`; the SDK
-always appends the safely encoded instance ID. Reads use the keys recorded in references,
+`PrefixFactory` receives an immutable `WorkflowPayloadPrefixContext` containing the
+instance ID and available workflow/activity names. It can add tenant- and
+activity-specific prefixes beneath `KeyPrefix`; the SDK always appends the safely
+encoded instance ID. Activity writes automatically supply their activity name;
+the owning workflow name is nullable when the runtime has not propagated it.
+Explicit resolver writes can supply metadata instead of only an instance ID.
+Metadata is exposed through the prefix context, not additional public activity-context properties.
+Reads use the keys recorded in references,
 not the current factory. `GetWorkflowOutputReferenceAsync` retrieves only the output
 reference without hydrating any payloads.
 The `direct-write` scenario in [WorkflowDataReferences](./WorkflowDataReferences/README.md)
 demonstrates page-by-page production and reference-only output retrieval.
-The separate `tenant-prefix` scenario reuses that workflow and activity for two tenants
-and verifies their stored paths, keeping the basic upload example small.
+The separate `tenant-prefix` scenario reuses that workflow and activity for two tenants,
+storing inputs with explicit workflow metadata and outputs with automatic activity
+metadata, then verifies their paths.
 
 Asynchronous state retrieval prepares payloads before returning, so existing
 `ReadInputAs<T>`, `ReadOutputAs<T>`, and `ReadCustomStatusAs<T>` remain synchronous

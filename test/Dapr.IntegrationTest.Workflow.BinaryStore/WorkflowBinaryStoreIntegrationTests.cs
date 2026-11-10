@@ -306,7 +306,7 @@ public sealed class WorkflowBinaryStoreIntegrationTests
                 options.OffloadSites = automaticInput ? PayloadKind.WorkflowInput : PayloadKind.None;
                 options.OffloadThreshold = int.MaxValue;
                 options.MaxInMemoryRehydrationSize = long.MaxValue;
-                options.InstancePrefixFactory = id => $"tenants/{id.Split("--", StringSplitOptions.None)[0]}/instances";
+                options.PrefixFactory = context => $"tenants/{context.InstanceId.Split("--", StringSplitOptions.None)[0]}/instances";
             }));
         await using var environmentLifetime = environment;
         await using var appLifetime = app;

@@ -25,4 +25,17 @@ namespace Dapr.Workflow.Payloads;
 /// <see langword="null"/> for boundaries that are not named, such as <see cref="PayloadKind.CustomStatus"/>.
 /// </param>
 /// <param name="RequireInline">Whether this boundary forbids reference envelopes.</param>
-internal readonly record struct PayloadSite(PayloadKind Kind, string InstanceId, string? Name, bool RequireInline = false);
+/// <param name="WorkflowName">The owning workflow's name when Name identifies an activity or event instead.</param>
+internal readonly record struct PayloadSite(PayloadKind Kind, string InstanceId, string? Name,
+    bool RequireInline = false, string? WorkflowName = null)
+{
+    /// <summary>Maps boundary-specific names to prefix metadata without confusing event or activity names with workflow names.</summary>
+    /// <returns>Immutable metadata for the owning instance, with unknown names left null.</returns>
+    internal WorkflowPayloadPrefixContext ToPrefixContext() => new(InstanceId,
+        KnownName(WorkflowName) ?? (Kind is PayloadKind.WorkflowInput or PayloadKind.WorkflowOutput or
+            PayloadKind.ChildWorkflowInput or PayloadKind.ChildWorkflowOutput or PayloadKind.ContinueAsNewInput
+                ? KnownName(Name) : null),
+        Kind is PayloadKind.ActivityInput or PayloadKind.ActivityOutput ? KnownName(Name) : null);
+
+    private static string? KnownName(string? name) => string.IsNullOrWhiteSpace(name) ? null : name;
+}

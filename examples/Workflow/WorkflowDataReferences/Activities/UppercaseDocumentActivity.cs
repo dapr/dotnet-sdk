@@ -24,6 +24,7 @@ namespace WorkflowDataReferences.Activities;
 /// </remarks>
 internal sealed class UppercaseDocumentActivity : WorkflowActivity<DocumentPayload, DocumentPayload>
 {
+    /// <inheritdoc />
     public override Task<DocumentPayload> RunAsync(WorkflowActivityContext context, DocumentPayload input)
     {
         // Both strings exist in memory. Automatic offloading changes transport/history, not this allocation.

@@ -21,7 +21,21 @@ namespace Dapr.Workflow.Test.Payloads;
 public class WorkflowActivityContextPayloadTests
 {
     [Fact]
-    public async Task ContextForwardsAllOperationsAndSuppliesInstanceId()
+    public async Task ContextWithoutMetadataFeatureStillSuppliesInstanceAndActivity()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var reference = new PayloadReference<string>("store", "key", 0, "hash");
+        var metadata = new WorkflowPayloadPrefixContext("instance", activityName: "activity");
+        var resolver = new Mock<IWorkflowPayloadResolver>(MockBehavior.Strict);
+        resolver.Setup(r => r.StoreAsync("value", metadata, token)).ReturnsAsync(reference);
+
+        var context = new ResolverOnlyContext(resolver.Object);
+        Assert.Same(reference, await context.StorePayloadAsync("value", token));
+        resolver.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ContextForwardsAllOperationsAndSuppliesPrefixMetadata()
     {
         var token = TestContext.Current.CancellationToken;
         var reference = new PayloadReference("store", "key", 3, "hash");
@@ -29,19 +43,21 @@ public class WorkflowActivityContextPayloadTests
         using var stream = new MemoryStream();
         var chunks = new Mock<IAsyncEnumerable<ReadOnlyMemory<byte>>>().Object;
         Func<Stream, CancellationToken, Task> write = (_, _) => Task.CompletedTask;
+        var metadata = new WorkflowPayloadPrefixContext("instance", "workflow", "activity");
         var resolver = new Mock<IWorkflowPayloadResolver>(MockBehavior.Strict);
         resolver.Setup(r => r.ResolveAsync<string>(typed, token)).ReturnsAsync("typed");
         resolver.Setup(r => r.ResolveAsync<string>(reference, token)).ReturnsAsync("untyped");
         resolver.Setup(r => r.OpenAsync(reference, token)).ReturnsAsync(stream);
         resolver.Setup(r => r.ReadChunksAsync(reference, token)).Returns(chunks);
         resolver.Setup(r => r.ReadChunksAsync(reference, 42, token)).Returns(chunks);
-        resolver.Setup(r => r.StoreAsync("value", "instance", token)).ReturnsAsync(typed);
-        resolver.Setup(r => r.StoreStreamAsync(stream, "instance", token)).ReturnsAsync(reference);
-        resolver.Setup(r => r.WriteAsync(write, "instance", token)).ReturnsAsync(reference);
-        resolver.Setup(r => r.UploadAsync(write, "instance", token)).ReturnsAsync(reference);
-        resolver.Setup(r => r.UploadAsync(stream, "instance", token)).ReturnsAsync(reference);
-        resolver.Setup(r => r.UploadAsync(chunks, "instance", token)).ReturnsAsync(reference);
-        var context = new WorkflowActivityContextImpl(new TaskIdentifier("activity"), "instance", "task", 1, resolver.Object);
+        resolver.Setup(r => r.StoreAsync("value", metadata, token)).ReturnsAsync(typed);
+        resolver.Setup(r => r.StoreStreamAsync(stream, metadata, token)).ReturnsAsync(reference);
+        resolver.Setup(r => r.WriteAsync(write, metadata, token)).ReturnsAsync(reference);
+        resolver.Setup(r => r.UploadAsync(write, metadata, token)).ReturnsAsync(reference);
+        resolver.Setup(r => r.UploadAsync(stream, metadata, token)).ReturnsAsync(reference);
+        resolver.Setup(r => r.UploadAsync(chunks, metadata, token)).ReturnsAsync(reference);
+        var context = new WorkflowActivityContextImpl(new TaskIdentifier("activity"), "instance", "task", 1,
+            resolver.Object, workflowName: "workflow");
 
         Assert.True(context.HasPayloadResolver());
         Assert.Equal("typed", await context.ResolvePayloadAsync(typed, token));
@@ -73,18 +89,19 @@ public class WorkflowActivityContextPayloadTests
         using var stream = new MemoryStream();
         var chunks = new Mock<IAsyncEnumerable<ReadOnlyMemory<byte>>>().Object;
         Func<Stream, CancellationToken, Task> write = (_, _) => Task.CompletedTask;
+        var metadata = new WorkflowPayloadPrefixContext("instance", activityName: "activity");
         var resolver = new Mock<IWorkflowPayloadResolver>(MockBehavior.Strict);
         resolver.Setup(r => r.ResolveAsync(typed, expected)).ReturnsAsync("value");
         resolver.Setup(r => r.ResolveAsync<string>(reference, expected)).ReturnsAsync("value");
         resolver.Setup(r => r.OpenAsync(reference, expected)).ReturnsAsync(stream);
         resolver.Setup(r => r.ReadChunksAsync(reference, expected)).Returns(chunks);
         resolver.Setup(r => r.ReadChunksAsync(reference, 42, expected)).Returns(chunks);
-        resolver.Setup(r => r.StoreAsync("value", "instance", expected)).ReturnsAsync(typed);
-        resolver.Setup(r => r.StoreStreamAsync(stream, "instance", expected)).ReturnsAsync(reference);
-        resolver.Setup(r => r.WriteAsync(write, "instance", expected)).ReturnsAsync(reference);
-        resolver.Setup(r => r.UploadAsync(write, "instance", expected)).ReturnsAsync(reference);
-        resolver.Setup(r => r.UploadAsync(stream, "instance", expected)).ReturnsAsync(reference);
-        resolver.Setup(r => r.UploadAsync(chunks, "instance", expected)).ReturnsAsync(reference);
+        resolver.Setup(r => r.StoreAsync("value", metadata, expected)).ReturnsAsync(typed);
+        resolver.Setup(r => r.StoreStreamAsync(stream, metadata, expected)).ReturnsAsync(reference);
+        resolver.Setup(r => r.WriteAsync(write, metadata, expected)).ReturnsAsync(reference);
+        resolver.Setup(r => r.UploadAsync(write, metadata, expected)).ReturnsAsync(reference);
+        resolver.Setup(r => r.UploadAsync(stream, metadata, expected)).ReturnsAsync(reference);
+        resolver.Setup(r => r.UploadAsync(chunks, metadata, expected)).ReturnsAsync(reference);
         var context = new WorkflowActivityContextImpl(new TaskIdentifier("activity"), "instance", "task", 1,
             resolver.Object, workerCancellation.Token);
 
@@ -112,5 +129,13 @@ public class WorkflowActivityContextPayloadTests
             (_, _) => Task.CompletedTask, TestContext.Current.CancellationToken));
         Assert.Contains("WithBinaryStorePayloads", error.Message);
         Assert.Throws<ArgumentNullException>(() => WorkflowActivityContextPayloadExtensions.HasPayloadResolver(null!));
+    }
+
+    private sealed class ResolverOnlyContext(IWorkflowPayloadResolver resolver) : WorkflowActivityContext, IWorkflowFeatureSource
+    {
+        public override TaskIdentifier Identifier => new("activity");
+        public override string InstanceId => "instance";
+        public override string TaskExecutionKey => "task";
+        public TFeature? GetFeature<TFeature>() where TFeature : class => resolver as TFeature;
     }
 }

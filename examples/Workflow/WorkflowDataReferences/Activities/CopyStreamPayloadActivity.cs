@@ -23,6 +23,7 @@ namespace WorkflowDataReferences.Activities;
 internal sealed class CopyStreamPayloadActivity
     : WorkflowActivity<PayloadReference, PayloadReference>
 {
+    /// <inheritdoc />
     public override async Task<PayloadReference> RunAsync(WorkflowActivityContext context, PayloadReference input)
     {
         // OpenPayloadAsync exposes a non-seekable download. StorePayloadStreamAsync consumes it incrementally,

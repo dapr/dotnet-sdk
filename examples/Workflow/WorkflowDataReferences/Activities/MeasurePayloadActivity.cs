@@ -29,6 +29,7 @@ namespace WorkflowDataReferences.Activities;
 internal sealed class MeasurePayloadActivity
     : WorkflowActivity<PayloadReference<DocumentPayload>, PayloadSummary>
 {
+    /// <inheritdoc />
     public override async Task<PayloadSummary> RunAsync(
         WorkflowActivityContext context, PayloadReference<DocumentPayload> input)
     {

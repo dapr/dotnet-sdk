@@ -141,6 +141,15 @@ public class PayloadDirectWriteTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => queued.UploadAsync(chunks.Object, "instance", TestToken));
         await Assert.ThrowsAsync<InvalidOperationException>(() => queued.UploadAsync(
             (_, _) => throw new Exception("Producer must not run."), "instance", TestToken));
+        var metadata = new WorkflowPayloadPrefixContext("instance", "workflow", "activity");
+        await Assert.ThrowsAsync<InvalidOperationException>(() => queued.UploadAsync(source, metadata, TestToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => queued.UploadAsync(chunks.Object, metadata, TestToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => queued.UploadAsync(
+            (_, _) => throw new Exception("Producer must not run."), metadata, TestToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => queued.StoreAsync("value", metadata, TestToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => queued.StoreStreamAsync(source, metadata, TestToken));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => queued.WriteAsync(
+            (_, _) => throw new Exception("Producer must not run."), metadata, TestToken));
         Assert.Equal(0, source.Position);
         chunks.VerifyNoOtherCalls();
         inner.VerifyNoOtherCalls();

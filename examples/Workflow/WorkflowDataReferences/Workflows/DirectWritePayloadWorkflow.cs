@@ -20,6 +20,9 @@ namespace WorkflowDataReferences.Workflows;
 /// <summary>Forwards the activity's completed upload reference without reading the data.</summary>
 internal sealed class DirectWritePayloadWorkflow : Workflow<int, PayloadReference>
 {
+    /// <inheritdoc />
+    /// <param name="context">The workflow context used to schedule the upload activity.</param>
+    /// <param name="pageCount">The number of pages the activity should produce.</param>
     public override Task<PayloadReference> RunAsync(WorkflowContext context, int pageCount)
         => context.CallActivityAsync<PayloadReference>(nameof(WritePagedPayloadActivity), pageCount);
 }

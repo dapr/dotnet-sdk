@@ -18,12 +18,17 @@ using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Demonstrates immediate activity uploads followed by reference-only output retrieval.</summary>
 internal sealed class DirectWritePayloadExample : PayloadExample
 {
+    /// <inheritdoc />
     public override string Id => "direct-write";
+    /// <inheritdoc />
     public override string Title => "Activity produces pages directly into a binary-store upload";
+    /// <inheritdoc />
     public override string WhenToUse => "Upload while receiving data, with bounded memory and no temporary files.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
@@ -35,6 +40,7 @@ internal sealed class DirectWritePayloadExample : PayloadExample
         });
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(IServiceProvider services, DocumentPayload document,
         CancellationToken cancellationToken)
     {

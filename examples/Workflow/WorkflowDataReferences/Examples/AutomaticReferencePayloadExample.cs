@@ -18,12 +18,17 @@ using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Demonstrates automatic input offloading to a reference-typed workflow contract.</summary>
 internal sealed class AutomaticReferencePayloadExample : PayloadExample
 {
+    /// <inheritdoc />
     public override string Id => "auto-reference";
+    /// <inheritdoc />
     public override string Title => "Automatic references (pass document, receive reference)";
+    /// <inheritdoc />
     public override string WhenToUse => "The caller has an object, but the workflow should receive and forward its reference.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
@@ -39,6 +44,7 @@ internal sealed class AutomaticReferencePayloadExample : PayloadExample
         });
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {

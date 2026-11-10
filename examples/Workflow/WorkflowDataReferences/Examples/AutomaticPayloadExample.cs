@@ -18,12 +18,17 @@ using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Demonstrates automatic offloading with unchanged, materialized document contracts.</summary>
 internal sealed class AutomaticPayloadExample : PayloadExample
 {
+    /// <inheritdoc />
     public override string Id => "auto-values";
+    /// <inheritdoc />
     public override string Title => "Automatic offloading (same application code)";
+    /// <inheritdoc />
     public override string WhenToUse => "Keep ordinary object contracts while moving large serialized values out of history.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
@@ -39,6 +44,7 @@ internal sealed class AutomaticPayloadExample : PayloadExample
         });
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {

@@ -541,6 +541,14 @@ public sealed class PayloadStreamStorageTests
                 "instance", TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<NotSupportedException>(() =>
             resolver.UploadAsync(source, "instance", TestContext.Current.CancellationToken));
+        var metadata = new WorkflowPayloadPrefixContext("instance", "workflow", "activity");
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            resolver.StoreStreamAsync(source, metadata, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            resolver.UploadAsync(source, metadata, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<NotSupportedException>(() =>
+            resolver.WriteAsync((_, _) => throw new InvalidOperationException("Must not be invoked."),
+                metadata, TestContext.Current.CancellationToken));
         Assert.Equal(0, source.BytesRead);
     }
 
