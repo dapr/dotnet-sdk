@@ -223,7 +223,7 @@ public static class WorkflowServiceCollectionExtensions
             var serializer = sp.GetRequiredService<IDaprSerializer>();
             var daprApiToken = DaprDefaults.GetDefaultDaprApiToken(configuration);
             return new WorkflowGrpcClient(grpcClient, logger, serializer, daprApiToken,
-                sp.GetService<IWorkflowPayloadConverter>());
+                sp.GetService<IWorkflowPayloadConverter>(), sp.GetService<IWorkflowPayloadResolver>());
         });
 
         // Register gRPC client for communicating with Dapr sidecar

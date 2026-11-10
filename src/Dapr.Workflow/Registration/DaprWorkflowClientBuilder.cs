@@ -132,7 +132,7 @@ public sealed class DaprWorkflowClientBuilder(IConfiguration? configuration = nu
         }
 
         var innerClient = new WorkflowGrpcClient(grpcClient, logger, serializer, DaprApiToken,
-            payloadConverter);
+            payloadConverter, _serviceProvider?.GetService<IWorkflowPayloadResolver>());
 
         return new DaprWorkflowClient(innerClient, DaprApiToken);
     }

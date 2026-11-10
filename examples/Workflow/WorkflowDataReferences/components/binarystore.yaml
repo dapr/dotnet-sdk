@@ -1,8 +1,16 @@
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
+  # Must match StoreName in each reference-enabled example.
   name: workflow-payloads
 spec:
+  # Demo storage only: stopping the sidecar loses these bytes, even if workflow history remains.
   type: binarystore.in-memory
   version: v1
-  metadata: []
+  metadata:
+    # Bytes per file: allow the 32 MiB stream scenarios, independently of SDK chunk sizes.
+    - name: maxSize
+      value: "67108864"
+    # Bytes across all retained files: leave room for both stream scenarios and the object examples.
+    - name: maxTotalSize
+      value: "268435456"

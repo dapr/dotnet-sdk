@@ -60,10 +60,20 @@ Type-safety diagnostics check serialized contracts: an implicit conversion opera
 does not run merely because a workflow input is passed as `object`. Convert the
 value explicitly before sending it, or use matching input/output contracts.
 
+`DAPR1303` (input) and `DAPR1304` (output) recognize the SDK's top-level
+`PayloadReference<T>` as a stored representation of `T`. They compare the underlying
+payload types using the same compatibility rules as ordinary values, including when
+both sides are references. This exception does not apply recursively inside collections,
+tuples, or other wrappers, nor to unrelated types named `PayloadReference<T>`.
+The analyzers do not verify runtime offloading configuration: reference-typed receivers
+still require the sender to create a reference, explicitly or through a suitable policy.
+
 ### Optional binary-store payloads
 
-For a runnable comparison of inline payloads, automatic offloading, and explicit
-reference streaming, see [WorkflowDataReferences](./WorkflowDataReferences).
+For a runnable comparison of inline payloads, automatic offloading, and streaming
+with either explicitly or automatically created references, including explicit
+chunk reads in both workflows and activities, see
+[WorkflowDataReferences](./WorkflowDataReferences).
 
 SDK-managed payload storage is included in `Dapr.Workflow`; a separate
 `Dapr.Workflow.BinaryStore` package is not required. It uses the runtime's existing
@@ -99,9 +109,7 @@ input/output policy. Register this support on every participating client and wor
 including cross-application destinations, with compatible serializers and access
 to the same stored data.
 
-The codec, boundary coordination, and feature registration/access hooks are internal;
-they do not add a generic feature API to `WorkflowContext`. The worker resolves inputs before
-invoking application code, drains asynchronous result reads between history events,
+The worker resolves inputs before invoking application code, drains asynchronous result reads between history events,
 and offloads pending actions after replay has removed already-recorded actions.
 Stored bytes are the original serialized snapshot, not a second serialization of it.
 The version-1 reference envelope remains unchanged; raw and propagated history APIs
@@ -172,7 +180,7 @@ cleanup is a no-op and payload retention must be managed separately.
 | [WorkflowSubworkflow](./WorkflowSubworkflow) | Calling and inspecting a child workflow. |
 | [WorkflowTaskChaining](./WorkflowTaskChaining) | Passing results through a three-activity chain. |
 | [WorkflowRetryPolicy](./WorkflowRetryPolicy) | Fixed, exponential, and child-workflow retry policies; includes its own run guide. |
-| [WorkflowDataReferences](./WorkflowDataReferences) | Inline payloads, automatic binary-store offloading, and explicit payload references; includes its own run guide. |
+| [WorkflowDataReferences](./WorkflowDataReferences) | Inline payloads, automatic binary-store offloading, and streaming with explicit or automatic payload references; includes its own run guide. |
 | [WorkflowVersioning](./WorkflowVersioning) | Generated workflow version registration, strategy configuration, and version-routed vacation approval. |
 | [CrossAppVersioning](./CrossAppVersioning) | Combining generated version registrations from referenced assemblies and exposing the resulting registry. |
 

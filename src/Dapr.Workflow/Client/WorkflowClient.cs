@@ -27,7 +27,7 @@ internal abstract class WorkflowClient : IAsyncDisposable
     /// Schedules a new workflow instance for execution.
     /// </summary>
     /// <param name="workflowName">The name of the workflow to schedule.</param>
-    /// <param name="input">The optional input to pass to the scheduled workflow instance. This must be a serializable value using System.Text.Json.</param>
+    /// <param name="input">The optional serializable input, or a readable stream when automatic workflow-input references are enabled.</param>
     /// <param name="options">Options configuring the start of the workflow.</param>
     /// <param name="cancellation">Token used to cancel workflow scheduling (only if canceled before it's submitted to the Dapr runtime).</param>
     /// <returns></returns>
@@ -50,6 +50,12 @@ internal abstract class WorkflowClient : IAsyncDisposable
         string instanceId,
         bool getInputsAndOutputs = true,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads referenced workflow output without hydrating metadata. A null chunk size uses native chunks.
+    /// </summary>
+    public abstract IAsyncEnumerable<ReadOnlyMemory<byte>> ReadWorkflowOutputChunksAsync(
+        string instanceId, int? chunkSize, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Waits for a workflow to start running.

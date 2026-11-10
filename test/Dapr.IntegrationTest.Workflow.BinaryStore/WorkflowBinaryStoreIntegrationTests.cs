@@ -162,6 +162,10 @@ public sealed class WorkflowBinaryStoreIntegrationTests
         Assert.Equal(serialized, persisted.WorkflowState.Input);
         Assert.Equal(serialized, persisted.WorkflowState.Output);
         Assert.Equal(serialized, persisted.WorkflowState.CustomStatus);
+        await using var chunks = client.ReadWorkflowOutputChunksAsync(instanceId, timeout.Token)
+            .GetAsyncEnumerator(timeout.Token);
+        var unsupported = await Assert.ThrowsAsync<InvalidOperationException>(() => chunks.MoveNextAsync().AsTask());
+        Assert.Contains("WithBinaryStorePayloads", unsupported.Message);
         Assert.Equal(0, Volatile.Read(ref binaryStoreActivations));
     }
 
@@ -216,6 +220,15 @@ public sealed class WorkflowBinaryStoreIntegrationTests
         var reference = result.ReadOutputAs<PayloadReference<PayloadDocument>>();
         Assert.NotNull(reference);
         Assert.StartsWith($"{KeyPrefix}/{instanceId}/", reference.Key, StringComparison.Ordinal);
+        var expectedBytes = Encoding.UTF8.GetBytes(scope.ServiceProvider.GetRequiredService<IDaprSerializer>().Serialize(expected));
+        var offset = 0;
+        await foreach (var chunk in client.ReadWorkflowOutputChunksAsync(instanceId, 7000, timeout.Token))
+        {
+            Assert.Equal(Math.Min(7000, expectedBytes.Length - offset), chunk.Length);
+            Assert.True(chunk.Span.SequenceEqual(expectedBytes.AsSpan(offset, chunk.Length)));
+            offset += chunk.Length;
+        }
+        Assert.Equal(expectedBytes.Length, offset);
         var manifest = scope.ServiceProvider.GetRequiredService<IWorkflowPayloadManifest>();
         Assert.True((await manifest.ListAsync(instanceId, timeout.Token)).Count >= 4);
     }
@@ -267,11 +280,99 @@ public sealed class WorkflowBinaryStoreIntegrationTests
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         Assert.Equal($"{payload.Name}:{payload.Content.Length}", result.ReadOutputAs<string>());
 
+        await using var inlineChunks = workflowClient.ReadWorkflowOutputChunksAsync(instanceId, cancellationToken)
+            .GetAsyncEnumerator(cancellationToken);
+        var inlineError = await Assert.ThrowsAsync<InvalidOperationException>(() => inlineChunks.MoveNextAsync().AsTask());
+        Assert.Contains("inline or absent", inlineError.Message);
+
         var cleaner = scope.ServiceProvider.GetRequiredService<WorkflowPayloadCleaner>();
         Assert.Equal(1, await cleaner.PurgeAsync(instanceId, cancellationToken));
         var missingFile = await Assert.ThrowsAsync<DaprException>(() =>
             binaryStore.GetBinaryFileBytesAsync(reference.StoreName, reference.Key, cancellationToken));
         Assert.Equal(StatusCode.NotFound, Assert.IsType<RpcException>(missingFile.InnerException).StatusCode);
+    }
+
+    [MinimumDaprRuntimeTheory("1.19")]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShouldStoreRawStreamsAcrossWorkflowAndActivityBoundaries(bool automaticInput)
+    {
+        var (environment, app) = await StartAsync(configureServices: services =>
+            services.Configure<BinaryStorePayloadOptions>(options =>
+            {
+                options.WritePreference = automaticInput ? PayloadWritePreference.PreferReference : PayloadWritePreference.Preserve;
+                options.OffloadSites = automaticInput ? PayloadKind.WorkflowInput : PayloadKind.None;
+                options.OffloadThreshold = int.MaxValue;
+                options.MaxInMemoryRehydrationSize = long.MaxValue;
+            }));
+        await using var environmentLifetime = environment;
+        await using var appLifetime = app;
+        using var scope = app.CreateScope();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(1));
+        var token = timeout.Token;
+        var resolver = scope.ServiceProvider.GetRequiredService<IWorkflowPayloadResolver>();
+        var client = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+        var instanceId = Guid.NewGuid().ToString("N");
+        var bytes = Enumerable.Range(0, 128 * 1024 + 1).Select(index => (byte)(index % 251)).ToArray();
+        using var source = new MemoryStream(bytes, writable: false);
+        if (automaticInput)
+        {
+            await client.ScheduleNewWorkflowAsync(nameof(StreamPayloadWorkflow), instanceId, source,
+                startTime: null, cancellation: token);
+        }
+        else
+        {
+            var stored = await resolver.StoreStreamAsync(source, instanceId, token);
+            await client.ScheduleNewWorkflowAsync(nameof(StreamPayloadWorkflow), instanceId, stored,
+                startTime: null, cancellation: token);
+        }
+        var state = await client.WaitForWorkflowCompletionAsync(instanceId, false, token);
+
+        Assert.Equal(WorkflowRuntimeStatus.Completed, state.RuntimeStatus);
+        var grpc = scope.ServiceProvider.GetRequiredService<WorkflowGrpc.TaskHubSidecarService.TaskHubSidecarServiceClient>();
+        var persisted = await grpc.GetInstanceAsync(
+            new WorkflowGrpc.GetInstanceRequest { InstanceId = instanceId, GetInputsAndOutputs = true },
+            new CallOptions(cancellationToken: token));
+        Assert.True(persisted.Exists);
+        Assert.True(PayloadReference.TryParse(persisted.WorkflowState.Input, out var input));
+        Assert.NotNull(input);
+        Assert.Equal(bytes.Length, input.Size);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(), input.ContentHash);
+        Assert.StartsWith($"{KeyPrefix}/{instanceId}/", input.Key, StringComparison.Ordinal);
+        Assert.True(PayloadReference.TryParse(persisted.WorkflowState.Output, out var output));
+        Assert.NotNull(output);
+        var expected = bytes[1..];
+        Assert.Equal(expected.Length, output.Size);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(expected)).ToLowerInvariant(), output.ContentHash);
+        Assert.NotEqual(input.Key, output.Key);
+        await foreach (var chunk in client.ReadWorkflowOutputChunksAsync(instanceId, token))
+        {
+            Assert.False(chunk.IsEmpty);
+            break;
+        }
+        foreach (var sized in new[] { false, true })
+        {
+            var chunks = sized
+                ? client.ReadWorkflowOutputChunksAsync(instanceId, 7000, token)
+                : client.ReadWorkflowOutputChunksAsync(instanceId, token);
+            var offset = 0;
+            await foreach (var chunk in chunks)
+            {
+                if (sized)
+                    Assert.Equal(Math.Min(7000, expected.Length - offset), chunk.Length);
+                Assert.True(chunk.Span.SequenceEqual(expected.AsSpan(offset, chunk.Length)));
+                offset += chunk.Length;
+            }
+            Assert.Equal(expected.Length, offset);
+        }
+        Assert.True(source.CanRead);
+        var manifest = scope.ServiceProvider.GetRequiredService<IWorkflowPayloadManifest>();
+        Assert.Equal(2, (await manifest.ListAsync(instanceId, token)).Count);
+        Assert.Equal(2, await scope.ServiceProvider.GetRequiredService<WorkflowPayloadCleaner>()
+            .PurgeAsync(instanceId, token));
+        await using var missingChunks = client.ReadWorkflowOutputChunksAsync(instanceId, token).GetAsyncEnumerator(token);
+        await Assert.ThrowsAsync<PayloadNotFoundException>(() => missingChunks.MoveNextAsync().AsTask());
     }
 
     private static async Task<(DaprTestEnvironment Environment, DaprTestApplication App)> StartAsync(
@@ -304,6 +405,8 @@ public sealed class WorkflowBinaryStoreIntegrationTests
                         {
                             runtime.RegisterWorkflow<ResolvePayloadWorkflow>();
                             runtime.RegisterActivity<ResolvePayloadActivity>();
+                            runtime.RegisterWorkflow<StreamPayloadWorkflow>();
+                            runtime.RegisterActivity<StripPrefixStreamActivity>();
                             runtime.RegisterWorkflow<AutomaticPayloadWorkflow>();
                             runtime.RegisterWorkflow<EchoPayloadChild>();
                             runtime.RegisterActivity<EchoPayloadActivity>();
@@ -463,6 +566,23 @@ public sealed class WorkflowBinaryStoreIntegrationTests
             cancellationToken.ThrowIfCancellationRequested();
             _references.TryRemove(instanceId, out _);
             return Task.CompletedTask;
+        }
+    }
+
+    internal sealed class StreamPayloadWorkflow : Workflow<PayloadReference, PayloadReference>
+    {
+        public override Task<PayloadReference> RunAsync(WorkflowContext context, PayloadReference input)
+            => context.CallActivityAsync<PayloadReference>(nameof(StripPrefixStreamActivity), input);
+    }
+
+    private sealed class StripPrefixStreamActivity(IWorkflowPayloadResolver resolver)
+        : WorkflowActivity<PayloadReference, PayloadReference>
+    {
+        public override async Task<PayloadReference> RunAsync(WorkflowActivityContext context, PayloadReference input)
+        {
+            await using var stream = await resolver.OpenAsync(input);
+            await stream.ReadExactlyAsync(new byte[1]);
+            return await resolver.StoreStreamAsync(stream, context.InstanceId);
         }
     }
 

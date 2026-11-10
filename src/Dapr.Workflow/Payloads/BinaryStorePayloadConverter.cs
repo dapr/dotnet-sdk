@@ -16,6 +16,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -107,6 +108,22 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
         return OffloadIfNeededAsync(serialized, site, cancellationToken);
     }
 
+    internal async Task<string> EncodeStreamAsync(Stream content, PayloadSite site, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (site.RequireInline || _options.WritePreference != PayloadWritePreference.PreferReference ||
+            (_options.OffloadSites & site.Kind) == 0)
+        {
+            throw new InvalidOperationException(
+                "Stream workflow inputs require WritePreference = PreferReference and WorkflowInput enabled " +
+                "in OffloadSites. Streams are stored as references regardless of OffloadThreshold.");
+        }
+
+        var reference = await StoreStreamAsync(content, site.InstanceId, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        return reference.ToEnvelope();
+    }
+
     /// <inheritdoc />
     public async ValueTask<string?> DecodeAsync(string? wire, PayloadSite site,
         CancellationToken cancellationToken = default)
@@ -124,7 +141,7 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
         var transferred = false;
         try
         {
-            chunks = _store.GetBinaryFileChunksAsync(reference.StoreName, reference.Key, readCts.Token)
+            chunks = ReadChunksAsync(reference, readCts.Token)
                 .GetAsyncEnumerator(readCts.Token);
             var hasFirstChunk = await chunks.MoveNextAsync().ConfigureAwait(false);
             var stream = new BinaryStorePayloadStream(chunks, reference, hasFirstChunk, readCts);
@@ -145,6 +162,45 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
                         await chunks.DisposeAsync().ConfigureAwait(false);
                 }
                 finally { readCts.Dispose(); }
+            }
+        }
+    }
+
+    internal async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadChunksAsync(PayloadReference reference,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(reference);
+        cancellationToken.ThrowIfCancellationRequested();
+        IAsyncEnumerator<ReadOnlyMemory<byte>> chunks;
+        try
+        {
+            chunks = _store.GetBinaryFileChunksAsync(reference.StoreName, reference.Key, cancellationToken)
+                .GetAsyncEnumerator(cancellationToken);
+        }
+        catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
+        {
+            throw new PayloadNotFoundException(reference, ex);
+        }
+
+        await using (chunks.ConfigureAwait(false))
+        {
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                bool hasNext;
+                try
+                {
+                    hasNext = await chunks.MoveNextAsync().ConfigureAwait(false);
+                }
+                catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
+                {
+                    throw new PayloadNotFoundException(reference, ex);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!hasNext)
+                    yield break;
+                yield return chunks.Current;
             }
         }
     }
@@ -198,13 +254,76 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
     {
         cancellationToken.ThrowIfCancellationRequested();
         var hash = Convert.ToHexString(SHA256.HashData(bytes.AsSpan(0, length))).ToLowerInvariant();
+        using var content = new MemoryStream(bytes, 0, length, writable: false);
+        return await StoreContentAsync(content, length, hash, instanceId, cancellationToken).ConfigureAwait(false);
+    }
+
+    internal async Task<PayloadReference> StoreStreamAsync(Stream content, string instanceId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
+        if (!content.CanRead)
+        {
+            throw new ArgumentException("The payload stream must be readable.", nameof(content));
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+
+        const int bufferSize = 64 * 1024;
+        // The content-addressed key must be known before uploading. Stage even seekable sources
+        // so the uploaded bytes cannot change between hashing and the second read.
+        var fileOptions = new FileStreamOptions
+        {
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.ReadWrite,
+            Share = FileShare.None,
+            BufferSize = bufferSize,
+            Options = FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.DeleteOnClose
+        };
+        if (!OperatingSystem.IsWindows())
+        {
+            fileOptions.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+        await using var staged = new FileStream(
+            Path.Combine(Path.GetTempPath(), Path.GetRandomFileName()), fileOptions);
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        try
+        {
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var read = await content.ReadAsync(buffer.AsMemory(0, bufferSize), cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (read == 0)
+                    break;
+
+                hash.AppendData(buffer.AsSpan(0, read));
+                await staged.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+        }
+
+        await staged.FlushAsync(cancellationToken).ConfigureAwait(false);
+        staged.Position = 0;
+        var contentHash = Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
+        return await StoreContentAsync(staged, staged.Length, contentHash, instanceId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<PayloadReference> StoreContentAsync(Stream content, long length, string hash,
+        string instanceId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         var key = $"{_options.KeyPrefix}/{instanceId}/{hash}";
         var reference = new PayloadReference(_options.StoreName, key, length, hash);
 
         try
         {
             // A replica-local read cache cannot establish whether the shared store still contains this key.
-            using var content = new MemoryStream(bytes, 0, length, writable: false);
             await _store.SetBinaryFileAsync(_options.StoreName, key, content, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }

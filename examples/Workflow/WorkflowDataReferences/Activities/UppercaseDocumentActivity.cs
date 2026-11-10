@@ -25,5 +25,8 @@ namespace WorkflowDataReferences.Activities;
 internal sealed class UppercaseDocumentActivity : WorkflowActivity<DocumentPayload, DocumentPayload>
 {
     public override Task<DocumentPayload> RunAsync(WorkflowActivityContext context, DocumentPayload input)
-        => Task.FromResult(input with { Content = input.Content.ToUpperInvariant() });
+    {
+        // Both strings exist in memory. Automatic offloading changes transport/history, not this allocation.
+        return Task.FromResult(input with { Content = input.Content.ToUpperInvariant() });
+    }
 }

@@ -37,7 +37,8 @@ public sealed class BinaryStorePayloadOptions
     /// </summary>
     /// <remarks>
     /// Existing references remain readable. Explicit calls to
-    /// <see cref="IWorkflowPayloadResolver.StoreAsync{T}"/> still store payloads under every preference.
+    /// <see cref="IWorkflowPayloadResolver.StoreAsync{T}"/> and
+    /// <see cref="IWorkflowPayloadResolver.StoreStreamAsync"/> still store payloads under every preference.
     /// This host-wide option affects new writes for both new and running workflows; it does not
     /// rewrite history. Use a new workflow version when changing explicit reference contracts
     /// to ordinary payload types, and retain the old version for existing instances.
@@ -53,6 +54,9 @@ public sealed class BinaryStorePayloadOptions
     /// <summary>
     /// Gets or sets the minimum serialized payload size, in bytes, required for offloading.
     /// A null value offloads every payload at an enabled boundary.
+    /// Stream inputs to <see cref="DaprWorkflowClient.ScheduleNewWorkflowAsync(string, string, object)"/>
+    /// always become references, regardless of this threshold, when
+    /// <see cref="PayloadWritePreference.PreferReference"/> and <see cref="PayloadKind.WorkflowInput"/> are enabled.
     /// </summary>
     public int? OffloadThreshold { get; set; } = 64 * 1024;
 

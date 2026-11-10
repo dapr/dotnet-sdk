@@ -14,26 +14,27 @@
 using Dapr.Workflow;
 using Dapr.Workflow.Payloads;
 using Microsoft.Extensions.DependencyInjection;
-using WorkflowDataReferences.Activities;
 using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
 internal sealed class AutomaticPayloadExample : PayloadExample
 {
+    public override string Id => "auto-values";
     public override string Title => "Automatic offloading (same application code)";
+    public override string WhenToUse => "Keep ordinary object contracts while moving large serialized values out of history.";
 
     public override void ConfigureServices(IServiceCollection services)
     {
-        services.AddDaprWorkflow(options =>
-        {
-            options.RegisterWorkflow<DocumentProcessingWorkflow>();
-            options.RegisterActivity<UppercaseDocumentActivity>();
-        }).WithBinaryStorePayloads(options =>
+        services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
         {
             options.StoreName = "workflow-payloads";
             options.WritePreference = PayloadWritePreference.PreferReference;
             options.KeyPrefix = "payload-example";
+            // These are independent sending boundaries. Custom status is deliberately left inline.
+            options.OffloadSites = PayloadKind.WorkflowInput | PayloadKind.ActivityInput |
+                                   PayloadKind.ActivityOutput | PayloadKind.WorkflowOutput;
+            // Smaller values stay inline; the 128 KiB document is large enough at every boundary.
             options.OffloadThreshold = 64 * 1024;
         });
     }
@@ -50,9 +51,11 @@ internal sealed class AutomaticPayloadExample : PayloadExample
         Console.WriteLine($"Workflow ID: {instanceId}");
         await client.ScheduleNewWorkflowAsync(nameof(DocumentProcessingWorkflow), instanceId, document,
             startTime: null, cancellation: cancellationToken);
-        var state = await WaitForCompletionAsync(client, instanceId, cancellationToken);
+        // Normal typed consumers get full objects even though history holds small references.
+        var state = await WaitForCompletionAsync(client, instanceId, getInputsAndOutputs: true, cancellationToken);
 
         // The asynchronous wait resolves output for the normal typed read, while retaining its wire reference.
+        // Asking for that reference afterward does NOT undo the download/materialization.
         PrintDocumentResult(state, document);
         var outputReference = state.ReadOutputAs<PayloadReference<DocumentPayload>>()
                               ?? throw new InvalidOperationException("The large output was not offloaded.");

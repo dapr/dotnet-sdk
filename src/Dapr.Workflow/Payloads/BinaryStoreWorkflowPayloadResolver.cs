@@ -12,6 +12,7 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,6 +37,15 @@ internal sealed class BinaryStoreWorkflowPayloadResolver(
 
     public Task<Stream> OpenAsync(PayloadReference reference, CancellationToken cancellationToken = default)
         => codec.OpenAsync(reference, cancellationToken);
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<ReadOnlyMemory<byte>> ReadChunksAsync(PayloadReference reference,
+        CancellationToken cancellationToken = default)
+        => codec.ReadChunksAsync(reference, cancellationToken);
+
+    public Task<PayloadReference> StoreStreamAsync(Stream content, string instanceId,
+        CancellationToken cancellationToken = default)
+        => codec.StoreStreamAsync(content, instanceId, cancellationToken);
 
     public async Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId,
         CancellationToken cancellationToken = default)
