@@ -130,6 +130,28 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
         CancellationToken cancellation = default);
 
     /// <summary>
+    /// Gets the persisted output reference of a successfully completed workflow without downloading
+    /// any referenced payload or hydrating input, output, or custom status.
+    /// </summary>
+    /// <remarks>
+    /// No payload resolver or binary-store registration is required to retrieve the reference.
+    /// Use a resolver to subsequently materialize the value or read raw streams/chunks.
+    /// This does not wait for completion and rejects absent or inline output rather than uploading it.
+    /// The runtime metadata RPC still includes inline wire values, so this is not a bounded-memory
+    /// metadata API. Recorded store/key values are returned unchanged, independent of current routing.
+    /// </remarks>
+    /// <param name="instanceId">The workflow instance whose output reference should be retrieved.</param>
+    /// <param name="cancellationToken">Cancels metadata retrieval.</param>
+    /// <returns>The recorded output reference; the referenced object is not opened or checked for existence.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// The instance does not exist, is not successfully completed, or has no referenced output.
+    /// </exception>
+    /// <exception cref="NotSupportedException">The client implementation or reference version is unsupported.</exception>
+    Task<Payloads.PayloadReference> GetWorkflowOutputReferenceAsync(
+        string instanceId, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("This workflow client does not support reference-only output retrieval.");
+
+    /// <summary>
     /// Reads the raw stored output of a successfully completed workflow incrementally, without
     /// materializing referenced payloads. The output must be a payload reference.
     /// </summary>

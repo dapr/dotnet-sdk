@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapr.Workflow.Payloads;
 
 namespace Dapr.Workflow.Client;
 
@@ -56,6 +57,11 @@ internal abstract class WorkflowClient : IAsyncDisposable
     /// </summary>
     public abstract IAsyncEnumerable<ReadOnlyMemory<byte>> ReadWorkflowOutputChunksAsync(
         string instanceId, int? chunkSize, CancellationToken cancellationToken = default);
+
+    /// <summary>Gets only the output reference, without resolving any metadata payloads.</summary>
+    public virtual Task<PayloadReference> GetWorkflowOutputReferenceAsync(
+        string instanceId, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("This workflow client does not support reference-only output retrieval.");
 
     /// <summary>
     /// Waits for a workflow to start running.

@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Workflow.Client;
+using Dapr.Workflow.Payloads;
 using Grpc.Core;
 
 namespace Dapr.Workflow;
@@ -162,6 +163,14 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
         }
     }
     
+    /// <inheritdoc />
+    public Task<PayloadReference> GetWorkflowOutputReferenceAsync(
+        string instanceId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        return _innerClient.GetWorkflowOutputReferenceAsync(instanceId, cancellationToken);
+    }
+
     /// <inheritdoc />
     public IAsyncEnumerable<ReadOnlyMemory<byte>> ReadWorkflowOutputChunksAsync(
         string instanceId, CancellationToken cancellationToken = default)

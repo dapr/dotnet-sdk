@@ -108,7 +108,7 @@ public record PayloadReference
     public IReadOnlyList<PayloadStage> Stages { get; init; }
  
     /// <summary>
-    /// Returns a typed view of this reference.
+    /// Returns a typed view of this reference. Does not convert, deserialize, or validate the stored bytes.
     /// </summary>
     /// <typeparam name="T">The type the payload is expected to deserialize to.</typeparam>
     /// <returns>A <see cref="PayloadReference{T}"/> sharing this reference's values.</returns>

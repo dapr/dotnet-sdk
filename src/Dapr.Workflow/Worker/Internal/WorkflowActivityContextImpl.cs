@@ -12,17 +12,24 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Threading;
 using Dapr.Workflow.Abstractions;
+using Dapr.Workflow.Payloads;
 
 namespace Dapr.Workflow.Worker.Internal;
 
 /// <summary>
 /// Implementation of <see cref="WorkflowActivityContext"/>.
 /// </summary>
-internal sealed class WorkflowActivityContextImpl(TaskIdentifier identifier, string instanceId, string taskExecutionKey, int scheduledEventId) : WorkflowActivityContext
+internal sealed class WorkflowActivityContextImpl(TaskIdentifier identifier, string instanceId, string taskExecutionKey,
+    int scheduledEventId, IWorkflowPayloadResolver? resolver = null, CancellationToken cancellationToken = default)
+    : WorkflowActivityContext, IWorkflowFeatureSource
 {
     public override TaskIdentifier Identifier { get; } = identifier;
     public override string TaskExecutionKey { get; } = taskExecutionKey;
     public override int ScheduledEventId { get; } = scheduledEventId;
     public override string InstanceId { get; } = instanceId ?? throw new ArgumentNullException(nameof(instanceId));
+    public override CancellationToken CancellationToken { get; } = cancellationToken;
+
+    public TFeature? GetFeature<TFeature>() where TFeature : class => resolver as TFeature;
 }

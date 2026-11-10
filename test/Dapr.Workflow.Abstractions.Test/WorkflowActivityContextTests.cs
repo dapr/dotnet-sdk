@@ -39,5 +39,6 @@ public class WorkflowActivityContextTests
         Assert.Equal("act-1", ctx.Identifier.Name);
         Assert.Equal("wf-123", ctx.InstanceId);
         Assert.Equal("run-42", ctx.TaskExecutionKey);
+        Assert.False(ctx.CancellationToken.CanBeCanceled);
     }
 }

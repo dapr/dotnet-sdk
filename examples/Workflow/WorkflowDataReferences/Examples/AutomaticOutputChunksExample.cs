@@ -11,7 +11,6 @@
 // limitations under the License.
 // ------------------------------------------------------------------------
 
-using System.Security.Cryptography;
 using Dapr.Workflow;
 using Dapr.Workflow.Payloads;
 using Microsoft.Extensions.DependencyInjection;
@@ -56,22 +55,11 @@ internal sealed class AutomaticOutputChunksExample : PayloadExample
         // This workflow keeps custom status inline; the existing wait APIs can still hydrate custom status.
         await WaitForCompletionAsync(client, instanceId, getInputsAndOutputs: false, cancellationToken);
 
-        // Native chunk sizes are transport-defined. Stop after the first chunk without draining the output.
-        await foreach (var chunk in client.ReadWorkflowOutputChunksAsync(instanceId, cancellationToken))
-        {
-            Console.WriteLine($"Preview: received {chunk.Length:N0} bytes, then closed the download early.");
-            break;
-        }
-
-        // This second enumeration starts over. A full pass is optional; here it demonstrates
-        // fixed-size consumption and incremental hashing without accumulating the output in memory.
         // Chunks are byte boundaries, not JSON records or necessarily complete UTF-8 characters.
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         long byteCount = 0;
         var chunkCount = 0;
         await foreach (var chunk in client.ReadWorkflowOutputChunksAsync(instanceId, 64 * 1024, cancellationToken))
         {
-            hash.AppendData(chunk.Span);
             byteCount += chunk.Length;
             chunkCount++;
         }
@@ -79,8 +67,7 @@ internal sealed class AutomaticOutputChunksExample : PayloadExample
             throw new InvalidOperationException("The serialized document output was unexpectedly empty.");
 
         Console.WriteLine($"Result: read {byteCount:N0} JSON bytes in {chunkCount} sized chunks; no output object was deserialized.");
-        Console.WriteLine($"Observed SHA-256: {Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant()}");
-        Console.WriteLine("Hashing is explicit here; chunk reads do not automatically verify integrity.");
+        Console.WriteLine("Chunk reads do not automatically verify integrity.");
         Console.WriteLine("Takeaway: automatic references support chunked reads too, but object-based uploads still materialize data.");
     }
 }

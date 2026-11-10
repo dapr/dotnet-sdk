@@ -1,19 +1,115 @@
-# Workflow data references: choose the right boundary APIs
+# Workflow data references: three everyday recipes
 
-These runnable examples separate three choices that are easy to conflate:
+Start with ordinary objects, uploading incoming bytes, or reading referenced output.
+The default run demonstrates these three recipes, in that order. Existing comparison
+scenarios are still available individually or with `--Example=all`.
 
-1. **Storage:** should a value travel inline in workflow history or through a binary-store reference?
-2. **Receiving contract:** does workflow/activity code need a materialized `T`, or a `PayloadReference<T>` / `PayloadReference`?
-3. **Consumption:** does a reader need the whole object, a `Stream`, or incremental byte chunks?
+### Pass ordinary objects
 
-**Automatic offloading is not the same as streaming.** It can shrink history while
-still serializing and materializing entire objects. For a source that is not already
-in memory, start with the **`explicit-stream`** or **`auto-stream`** examples.
+Run `--Example=auto-values`. Configure automatic offloading once, then keep ordinary
+workflow/activity contracts and client calls:
 
-## Pick an example
+```csharp
+await client.ScheduleNewWorkflowAsync(nameof(DocumentProcessingWorkflow), instanceId, document,
+    startTime: null, cancellation: cancellationToken);
+var state = await client.WaitForWorkflowCompletionAsync(
+    instanceId, getInputsAndOutputs: true, cancellation: cancellationToken);
+if (state.RuntimeStatus != WorkflowRuntimeStatus.Completed)
+    throw new InvalidOperationException($"Workflow ended as {state.RuntimeStatus}.");
+var output = state.ReadOutputAs<DocumentPayload>();
+```
 
-The default run follows this order. Each scenario prints its name, intended use,
-workflow ID, and result. The links lead to the actual registration and client calls.
+See [AutomaticPayloadExample](Examples/AutomaticPayloadExample.cs) for registration.
+Offloading reduces history size; ordinary object inputs and outputs still materialize.
+
+### Upload incoming bytes
+
+Run `--Example=direct-write`. Inside an activity, choose **one** overload for your
+application's source; all three upload immediately and return a `PayloadReference`:
+
+```csharp
+return await context.UploadPayloadAsync(sourceStream);
+
+return await context.UploadPayloadAsync(byteChunks);
+
+return await context.UploadPayloadAsync(
+    (destination, ct) => WritePagesAsync(destination, ct));
+```
+
+`sourceStream`, `byteChunks`, and `WritePagesAsync` represent your file, external
+data source, or producer code. No resolver injection or instance-ID plumbing is
+needed. The activity context supplies its instance ID and worker-shutdown token.
+Keep the source stream open until upload completes and dispose it yourself; the
+SDK owns the callback destination. The workflow only forwards the returned reference.
+
+[WritePagedPayloadActivity](Activities/WritePagedPayloadActivity.cs) is the runnable
+chunk example. Synthetic page generation and full-read integrity verification live
+in [SamplePayloadData](SamplePayloadData.cs), outside the main API walkthrough.
+Streaming reads do **not** automatically verify hashes; that helper does so explicitly.
+
+### Read referenced output
+
+Run `--Example=auto-output-chunks`. After waiting for successful completion with
+`getInputsAndOutputs: false`, consume output without hydrating a document:
+
+```csharp
+await foreach (var chunk in client.ReadWorkflowOutputChunksAsync(instanceId, cancellationToken))
+{
+    await ProcessChunkAsync(chunk, cancellationToken); // Your processing code.
+}
+```
+
+Consume each chunk before advancing; memory may be reused. You can `break` early
+to close the download, but a partial read cannot verify whole-payload integrity.
+For metadata first, use `GetWorkflowOutputReferenceAsync`; then choose
+`resolver.OpenAsync(reference)` or `resolver.ReadChunksAsync(reference)`.
+The direct-write recipe demonstrates this alternative.
+
+## Start with your task
+
+| I need to... | Start here | Cost / contract |
+|---|---|---|
+| Pass a large object without enlarging workflow history | `auto-values`, or `StorePayloadAsync(value)` for explicit references | Serializes/materializes a complete value; returns `PayloadReference<T>` when explicit |
+| Upload bytes or pages while receiving them | `direct-write` and `UploadPayloadAsync(source)` | Bounded buffering, no staging file; raw bytes and a unique-key `PayloadReference` |
+| Read only the bytes I need from a completed result | `ReadWorkflowOutputChunksAsync`, or `GetWorkflowOutputReferenceAsync` then `OpenAsync` / `ReadChunksAsync` | No payload hydration; caller disposes streams, enumeration disposes downloads |
+
+Use the **activity context** inside activities, the **injected resolver** in clients
+and shared services, and the **workflow context** only for read-only access during
+orchestration. Activities supply their instance ID automatically. Workflows cannot
+upload payloads.
+
+The representations mean different things:
+
+| Representation | Meaning |
+|---|---|
+| `T` / `PayloadReference<T>` | A complete value in the configured serializer's format |
+| `Stream` | Raw bytes, not automatically serialized records |
+| `IAsyncEnumerable<ReadOnlyMemory<byte>>` | Raw bytes in reusable chunks, not record or page boundaries |
+
+`AsTyped<T>()` declares an interpretation; it does not convert or validate bytes.
+Use explicit framing such as NDJSON for a sequence of records. A byte chunk can
+split a UTF-8 character or JSON record.
+
+### Choose the write behavior, not just the input shape
+
+| Activity context | Injected resolver | Storage behavior |
+|---|---|---|
+| `StorePayloadAsync(value)` | `StoreAsync(value, instanceId)` | Serializes an object; content-addressed storage |
+| `StorePayloadStreamAsync(source)` | `StoreStreamAsync(source, instanceId)` | Stages the entire stream to temporary disk, then uploads under its hash |
+| `UploadPayloadAsync(source)` | `UploadAsync(source, instanceId)` | Uploads immediately; accepts a readable stream, async byte chunks, or a writer callback |
+
+All three `Upload` overloads have identical hashing, unique-key, backpressure, and
+failure semantics. They do not deduplicate retries. `WritePayloadAsync` / `WriteAsync`
+remain compatible callback entry points; prefer `Upload` for new code.
+Do not pass streams or byte sequences to the generic object-storage API and expect
+streaming behavior.
+
+<details>
+<summary>Full example catalog and advanced comparisons</summary>
+
+The default recipes are `auto-values`, `direct-write`, and `auto-output-chunks`.
+Every scenario prints its name, intended use, workflow ID, and result.
+The links lead to the actual registration and client calls.
 
 | Name / source | Client sends | Workflow/activity behavior | Client reads |
 |---|---|---|---|
@@ -24,18 +120,24 @@ workflow ID, and result. The links lead to the actual registration and client ca
 | [auto-reference](Examples/AutomaticReferencePayloadExample.cs) | An ordinary document, always offloaded on scheduling | The same reference-typed workflow/activity as above | The same typed summary and metadata caveat |
 | [explicit-stream](Examples/StreamUploadPayloadExample.cs) | A reference from `StoreStreamAsync(source)` | Untyped references at all four boundaries; activity stores its output stream explicitly | Raw binary output chunks |
 | [auto-stream](Examples/StreamUploadPayloadExample.cs) | A `Stream` directly to scheduling | The same reference-typed workflow/activity; SDK uploads input before scheduling | Raw binary output chunks; no client resolver calls |
+| [direct-write](Examples/DirectWritePayloadExample.cs) | A page count | Activity uploads async byte chunks without temporary files | Output reference without hydration, then sample-only verification in a helper |
+| [tenant-prefix](Examples/TenantPrefixPayloadExample.cs) | One page, for each of two tenant-qualified instance IDs | The same upload workflow/activity as direct-write; a prefix factory routes each tenant's bytes | Output references only; verifies and prints each tenant/instance path |
 | [workflow-chunks](Examples/ChunkStreamingPayloadExample.cs) | A reference from `StoreAsync(document)` | **Advanced:** the workflow itself enumerates chunks, then an activity independently reads them | An inline summary; replay can repeat workflow downloads |
 
 Object examples begin with an already-materialized 128 KiB text document. Stream
-examples generate a 32 MiB binary file using a reusable 64 KiB buffer. These examples
+examples generate 32 MiB using a reusable 64 KiB buffer (direct-write generates pages, not a file).
+The tenant-prefix example needs only one 64 KiB page per tenant. These examples
 compare API behavior, not performance or total download counts.
+
+</details>
 
 ## Run just the scenario you need
 
 Prerequisites: .NET 10 SDK, Dapr CLI, a local Dapr runtime with binary-store support
 (1.19+, also supported by `1.19.0-rc.3`), Redis, placement, and scheduler.
 The supplied state-store component assumes Redis at `localhost:6379`.
-Stream examples also need temporary disk space for the source and SDK staging files.
+The `explicit-stream` and `auto-stream` examples also need temporary disk space for
+the source and SDK staging files. `direct-write` does not use temporary files.
 
 From this directory, list scenarios without starting a sidecar:
 
@@ -52,21 +154,30 @@ dapr run --app-id workflow-data-references --dapr-http-port 3500 --dapr-grpc-por
 In another terminal:
 
 ```powershell
+# Run the three introductory recipes (also the default when no Example is given).
+dotnet run --framework net10.0 -- --Example=recipes
+
 # Recommended first stop for a source too large to materialize.
+dotnet run --framework net10.0 -- --Example=direct-write
+
+# Compare content-addressed uploads that stage before uploading.
 dotnet run --framework net10.0 -- --Example=auto-stream
 
 # Compare ordinary typed reads with chunked reads of automatically offloaded output.
 dotnet run --framework net10.0 -- --Example=auto-values
 dotnet run --framework net10.0 -- --Example=auto-output-chunks
 
-# Walk through all eight scenarios.
+# See the same workflow store data beneath two different tenant prefixes.
+dotnet run --framework net10.0 -- --Example=tenant-prefix
+
+# Include all ten scenarios and advanced comparisons.
 dotnet run --framework net10.0 -- --Example=all
 
 # Backward-compatible inline-only mode: no payload support is registered.
 dotnet run --framework net10.0 -- --DataRefs:Enabled=false
 ```
 
-Omitting `--Example` runs all scenarios unless `DataRefs:Enabled=false`. Invalid or
+Omitting `--Example` runs the three recipes unless `DataRefs:Enabled=false`. Invalid or
 disabled selections fail with a message. `--List=true` shows the available names.
 For a different sidecar port, set `DAPR_GRPC_ENDPOINT` for the application.
 If placement/scheduler use non-default addresses, supply the matching Dapr CLI flags.
@@ -178,7 +289,12 @@ The summary is inline, so output chunk reads are inappropriate. The sample's typ
 summary inspection also hydrates its referenced input on the client; only the
 workflow/activity handling avoids materializing that document.
 
-## Unmaterialized sources: explicit or automatic stream upload
+## Advanced: content-addressed staging and deduplication
+
+Use `UploadPayloadAsync` / `UploadAsync` for immediate uploads. These older stream
+scenarios deliberately keep `StoreStreamAsync` to demonstrate a different tradeoff:
+temporary-file staging enables content-addressed keys and deduplication within an
+instance. Replacing it with `UploadAsync` would change that behavior.
 
 Both stream scenarios live in
 [StreamUploadPayloadExample](Examples/StreamUploadPayloadExample.cs).
@@ -215,8 +331,8 @@ or outputs, workflow returns, events, or rerun overrides.
 write API in **both** scenarios:
 
 ```csharp
-await using var content = await resolver.OpenAsync(input, cancellationToken);
-return await resolver.StoreStreamAsync(content, context.InstanceId, cancellationToken);
+await using var content = await context.OpenPayloadAsync(input);
+return await context.StorePayloadStreamAsync(content);
 ```
 
 In an application, `content` could instead be a transformed, generated, or HTTP
@@ -249,9 +365,130 @@ the bytes. Create new references in clients/activities, not in replayed orchestr
   automatic thresholds/sites and rehydration limits. Preserve references when forwarding
   arbitrary binary data; do not select a policy that inlines them.
 
+## Activity-context operations and direct streaming writes
+
+Activities no longer need to inject `IWorkflowPayloadResolver`. With payload support
+registered, their context exposes `ResolvePayloadAsync`, `OpenPayloadAsync`,
+`ReadPayloadChunksAsync` (including a sized overload), `StorePayloadAsync`,
+`StorePayloadStreamAsync`, `UploadPayloadAsync`, and `HasPayloadResolver`.
+Writes automatically use `context.InstanceId`. When no cancelable token is supplied,
+methods use `context.CancellationToken`, which signals **worker shutdown**, not
+workflow termination or an activity timeout. An explicit cancelable token replaces
+that default; link it with the context token if both should stop the operation.
+The injected resolver remains available to clients and shared application services.
+
+The [upload recipe](#upload-incoming-bytes) shows the three overloads together.
+For HTTP sources, request an unbuffered response with
+`HttpCompletionOption.ResponseHeadersRead`, obtain its content stream, and pass it
+directly to `UploadPayloadAsync`. Keep the response and stream alive until upload
+finishes; dispose them afterward.
+
+Clients can call `resolver.UploadAsync(source, instanceId, cancellationToken)`
+with the same three input forms. Typed reads infer the type:
+`resolver.ResolveAsync(typedReference, cancellationToken)`.
+The source remains caller-owned. The destination is SDK-owned, write-only and
+non-seekable: do not dispose or retain it, and do not write concurrently.
+Finish and flush encoding/compression wrappers before the callback returns, using
+`leaveOpen: true`. Honor the callback token, including when fetching the next page.
+
+Unlike `StoreStreamAsync`, this uploads **while producing**. A bounded pipe
+applies backpressure, including when a single write is much larger than its buffer.
+The SDK hashes and counts bytes as the uploader reads them; it neither materializes
+the payload nor creates a staging file. Actual remote persistence timing depends
+on the binary-store component.
+
+The storage key is unique and chosen before upload; SHA-256 and byte count are
+recorded separately in the unchanged reference envelope after upload completes.
+Identical content and activity retries create different keys; `SkipWriteIfExists`
+does not deduplicate this path. Existing content-addressed APIs are unchanged.
+
+Producer/upload failures cancel the other side. The operation returns a reference
+only after producer completion, upload acknowledgement, and manifest recording.
+On failure it attempts deletion with an independent, bounded cleanup token;
+cleanup errors are reported alongside the original error. This is not transactional:
+process termination or ambiguous remote failures can leave orphaned objects.
+Successful uploads are retained even if later activity-result delivery fails.
+
+Return the reference, not the stream, and preserve it across activity/workflow
+output boundaries. Bytes are raw, not automatically serialized. Encode paged
+records explicitly (for example NDJSON); concatenated JSON documents are not one
+ordinary JSON value. Use a typed reference only for a complete payload matching
+the configured serializer. Orchestrators cannot use the writer API.
+
+## Advanced configuration: tenant and instance prefixes
+
+Every new payload belongs to an instance. `KeyPrefix` is the shared root; optionally
+derive a relative prefix from the instance ID. This is independent of which upload
+overload you choose, so it is kept separate from the basic upload recipe.
+
+Run `--Example=tenant-prefix` to upload one page for each of `acme` and `contoso`.
+[TenantPrefixPayloadExample](Examples/TenantPrefixPayloadExample.cs) reuses the
+direct-write workflow and activity unchanged, then retrieves only the output
+references to verify and print their paths. It configures:
+
+```csharp
+options.KeyPrefix = "workflow-payloads";
+options.InstancePrefixFactory = instanceId =>
+{
+    // Application convention: alphanumeric tenant followed by "--" and an execution ID.
+    var separator = instanceId.IndexOf("--", StringComparison.Ordinal);
+    if (separator <= 0 || !instanceId[..separator].All(char.IsAsciiLetterOrDigit))
+        throw new ArgumentException("Expected an alphanumeric tenant followed by '--' in the instance ID.");
+    return $"tenants/{instanceId[..separator]}/instances";
+};
+```
+
+Schedule with a matching ID, for example `var instanceId = $"acme--{Guid.NewGuid():N}";`.
+The activity and workflow need no tenant-specific code.
+
+For tenant `acme` and instance `acme--run1`, keys become:
+
+```text
+workflow-payloads/tenants/acme/instances/acme--run1/{sha256}
+workflow-payloads/tenants/acme/instances/acme--run1/uploads/{uniqueId}
+```
+
+The factory runs once per write, for automatic offloading and every explicit write
+API. It returns a non-empty relative prefix, **not** a complete key. The SDK appends
+the instance ID and controls the payload identifier. Without a factory, the layout
+remains `{KeyPrefix}/{instanceId}/{payloadKey}` for ordinary IDs.
+
+Prefixes reject absolute paths, empty/dot/parent segments, control characters, `%`,
+and reserved characters such as `\`, `:`, `*`, `?`, `[`, `]`, and `#`. The instance ID is
+percent-encoded as one path segment: for example `a/b` becomes `a%2Fb`. Existing
+references with older unescaped keys remain readable, but new writes for such IDs
+use encoded keys rather than deduplicating against the old paths.
+
+The factory must be thread-safe and return consistent results across clients,
+workers, and retries. Missing tenant mappings should throw, not fall back to another
+tenant. Do not depend on request-scoped/ambient HTTP tenant state. Child workflows
+need IDs that follow your convention too; tenant metadata is not automatically
+propagated. Prefixes organize data and do not enforce authorization.
+
+Reads and manifest-based cleanup use the reference's recorded store and key; they
+never reevaluate the factory. Prefix changes do not rewrite historical references.
+
+## Retrieve the reference without downloading its contents
+
+```csharp
+var reference = await client.GetWorkflowOutputReferenceAsync(instanceId, cancellationToken);
+// Choose how much to read only after obtaining the reference:
+await using var source = await resolver.OpenAsync(reference, cancellationToken);
+```
+
+This requires a successfully completed workflow whose persisted output is a reference.
+It does not wait, hydrate input/output/custom-status references, access the binary
+store, or require payload registration merely to retrieve the reference. Inline or
+absent output is an explicit error. The metadata RPC still transfers inline wire
+values, so this is not a bounded-memory API for arbitrarily large inline metadata.
+
+Contrast this with `GetWorkflowStateAsync` / ordinary typed metadata reads, which may
+hydrate before `ReadOutputAs<T>()` is called. Requesting a reference from that state
+afterward cannot undo the download.
+
 ## Reading output a few chunks at a time
 
-The three chunked-client scenarios use this pattern:
+The chunked-client scenarios use this pattern:
 
 ```csharp
 var state = await client.WaitForWorkflowCompletionAsync(
@@ -272,10 +509,10 @@ Both `DaprWorkflowClient` and `IDaprWorkflowClient` expose this API. Omit `chunk
 to use native transport chunks. With a size, the SDK fills a reusable buffer of that
 size, except for the final partial chunk. It does not change transport message sizes.
 
-The runnable examples stop after a preview chunk, then demonstrate a **separate**
-full pass. Each enumeration starts a new metadata lookup/download from the beginning,
-not at the previous stopping point. Only the full verification pass in the binary
-examples needs to consume all bytes.
+The advanced `explicit-stream` and `auto-stream` examples stop after a preview
+chunk, then demonstrate a **separate** full pass. Each enumeration starts a new
+metadata lookup/download from the beginning, not at the previous stopping point.
+The introductory `auto-output-chunks` recipe uses just one pass to count the bytes.
 
 Consume or copy each chunk before advancing; memory may be reused. Do not collect
 all chunks if bounded memory matters. Chunk boundaries are not JSON records and can
@@ -286,6 +523,9 @@ Enumeration owns the download. Breaking, cancellation, or a consumer exception
 disposes it; transport may have prefetched some data. Reads are lazy and operate on
 **completed stored output**, not live output from a running workflow. Chunk reads
 do not deserialize, reverse payload stages, or automatically verify integrity.
+`VerifyIntegrityOnRead` applies only to materialized reads, not these raw streams or
+chunks. A full pass can verify SHA-256 and size; stopping early cannot verify the
+complete payload. The `direct-write` example explicitly compares both against the reference.
 
 ### What if the output is not a reference?
 
@@ -304,7 +544,8 @@ The API looks at the **persisted output**, not whether the application calls its
 
 Reads of existing references work regardless of the current write preference or
 offload sites. Enabling automatic output offloading does not make an object-producing
-workflow a streaming writer; use the activity's `StoreStreamAsync` for that.
+workflow a streaming writer; use the activity's `UploadPayloadAsync` for direct
+uploads or `StorePayloadStreamAsync` for content-addressed staging.
 
 **Metadata caveats:** ordinary get/wait APIs are unchanged. Even with
 `getInputsAndOutputs: false`, a referenced custom status may still hydrate during
@@ -339,7 +580,7 @@ Workflow history/actor state (`components/statestore.yaml`) and payload bytes
 (`components/binarystore.yaml`) are separate stores. The demo binary store is in-memory:
 stopping the sidecar loses its bytes even if Redis retains history. Bounded SDK buffers
 do not imply bounded storage-component memory. The component explicitly permits 64 MiB
-per file and 256 MiB in total so the two 32 MiB stream scenarios fit; these are storage
+per file and 256 MiB in total so the 32 MiB stream scenarios fit; these are storage
 limits, not SDK chunk sizes. Repeated runs retain data and can eventually reach the
 total limit.
 

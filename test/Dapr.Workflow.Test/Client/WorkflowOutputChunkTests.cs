@@ -33,6 +33,97 @@ public sealed class WorkflowOutputChunkTests
     private static readonly PayloadReference Reference = new("store", "key", 5, "unchecked-hash");
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OutputReferenceRetrievalNeverHydratesAndDoesNotRequirePayloadSupport(bool registered)
+    {
+        var resolver = new Mock<IWorkflowPayloadResolver>(MockBehavior.Strict);
+        var grpc = CreateGrpc(Response(Reference.ToEnvelope()));
+        IDaprWorkflowClient client = CreateClient(grpc, registered ? resolver.Object : null);
+        var reference = await client.GetWorkflowOutputReferenceAsync("instance", TestContext.Current.CancellationToken);
+        Assert.Equal(Reference.ToEnvelope(), reference.ToEnvelope());
+        grpc.Verify(g => g.GetInstanceAsync(
+            It.Is<GetInstanceRequest>(r => r.InstanceId == "instance" && r.GetInputsAndOutputs),
+            It.Is<CallOptions>(o => o.CancellationToken == TestContext.Current.CancellationToken &&
+                o.Headers != null && o.Headers.Any(h => h.Key == "dapr-api-token" && h.Value == "token"))), Times.Once);
+        resolver.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("inline", typeof(InvalidOperationException))]
+    [InlineData("missing", typeof(InvalidOperationException))]
+    [InlineData("state", typeof(InvalidOperationException))]
+    [InlineData("running", typeof(InvalidOperationException))]
+    [InlineData("malformed", typeof(FormatException))]
+    [InlineData("version", typeof(NotSupportedException))]
+    public async Task OutputReferenceRetrievalRejectsUnavailableOrInvalidOutput(string scenario, Type errorType)
+    {
+        var response = Response(Reference.ToEnvelope());
+        switch (scenario)
+        {
+            case "inline": response.WorkflowState.Output = "\"value\""; break;
+            case "missing": response.Exists = false; break;
+            case "state": response.WorkflowState = null; break;
+            case "running": response.WorkflowState.WorkflowStatus = OrchestrationStatus.Running; break;
+            case "malformed": response.WorkflowState.Output = "{\"$daprRef\":{}}"; break;
+            case "version": response.WorkflowState.Output = "{\"$daprRef\":{\"v\":99}}"; break;
+        }
+        var client = CreateClient(CreateGrpc(response), null);
+        var error = await Record.ExceptionAsync(() =>
+            client.GetWorkflowOutputReferenceAsync("instance", TestContext.Current.CancellationToken));
+        Assert.IsType(errorType, error);
+    }
+
+    [Theory]
+    [InlineData(StatusCode.NotFound)]
+    [InlineData(StatusCode.PermissionDenied)]
+    [InlineData(StatusCode.Unavailable)]
+    public async Task OutputReferenceRetrievalPreservesMetadataFailures(StatusCode status)
+    {
+        var failure = new RpcException(new Status(status, "metadata failed"));
+        var grpc = CreateGrpc();
+        grpc.Setup(g => g.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Returns(Unary(Task.FromException<GetInstanceResponse>(failure)));
+        var client = CreateClient(grpc, null);
+        var error = await Record.ExceptionAsync(() =>
+            client.GetWorkflowOutputReferenceAsync("instance", TestContext.Current.CancellationToken));
+        if (status == StatusCode.NotFound)
+            Assert.Same(failure, Assert.IsType<InvalidOperationException>(error).InnerException);
+        else
+            Assert.Same(failure, error);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OutputReferenceRetrievalHonorsCancellation(bool alreadyCanceled)
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        async Task<GetInstanceResponse> Respond(CancellationToken ct)
+        {
+            entered.SetResult();
+            await Task.Delay(Timeout.Infinite, ct);
+            throw new InvalidOperationException("Must be canceled.");
+        }
+        var grpc = CreateGrpc();
+        grpc.Setup(g => g.GetInstanceAsync(It.IsAny<GetInstanceRequest>(), It.IsAny<CallOptions>()))
+            .Returns((GetInstanceRequest _, CallOptions options) => Unary(Respond(options.CancellationToken)));
+        if (alreadyCanceled)
+            await cancellation.CancelAsync();
+        var result = CreateClient(grpc, null).GetWorkflowOutputReferenceAsync("instance", cancellation.Token);
+        if (!alreadyCanceled)
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            await cancellation.CancelAsync();
+        }
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            result.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+        if (alreadyCanceled)
+            grpc.VerifyNoOtherCalls();
+    }
+
+    [Theory]
     [InlineData(null, PayloadWritePreference.Preserve)]
     [InlineData(null, PayloadWritePreference.PreferInline)]
     [InlineData(null, PayloadWritePreference.PreferReference)]

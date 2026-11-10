@@ -54,12 +54,7 @@ internal sealed class AutomaticPayloadExample : PayloadExample
         // Normal typed consumers get full objects even though history holds small references.
         var state = await WaitForCompletionAsync(client, instanceId, getInputsAndOutputs: true, cancellationToken);
 
-        // The asynchronous wait resolves output for the normal typed read, while retaining its wire reference.
-        // Asking for that reference afterward does NOT undo the download/materialization.
         PrintDocumentResult(state, document);
-        var outputReference = state.ReadOutputAs<PayloadReference<DocumentPayload>>()
-                              ?? throw new InvalidOperationException("The large output was not offloaded.");
-        Console.WriteLine($"Persisted output reference: {outputReference.ToEnvelope()}");
         Console.WriteLine("Takeaway: smaller history does not mean zero document reads; the SDK still materializes ordinary inputs.");
     }
 }

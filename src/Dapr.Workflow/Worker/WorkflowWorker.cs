@@ -611,7 +611,8 @@ internal sealed class WorkflowWorker(
                 : request.TaskId.ToString();
 
             var context = new WorkflowActivityContextImpl(activityIdentifier,
-                request.WorkflowInstance?.InstanceId ?? string.Empty, taskExecutionKey, request.TaskId);
+                request.WorkflowInstance?.InstanceId ?? string.Empty, taskExecutionKey, request.TaskId,
+                scope.ServiceProvider.GetService<IWorkflowPayloadResolver>(), _stoppingToken);
             var codec = scope.ServiceProvider.GetService<IWorkflowPayloadConverter>();
             var payloads = codec is null ? null : new WorkflowPayloadHandler(_serializer, codec, _stoppingToken);
 

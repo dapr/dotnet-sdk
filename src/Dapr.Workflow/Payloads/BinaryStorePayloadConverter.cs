@@ -49,7 +49,8 @@ namespace Dapr.Workflow.Payloads;
 /// </para>
 /// <para>
 /// Writes are never retried by this converter because the runtime cannot replay an upload
-/// stream. Idempotency comes from content addressing: a repeated write of identical bytes
+/// stream. Except for explicit direct streaming writes, idempotency comes from content addressing:
+/// a repeated write of identical bytes
 /// targets the same key and is skipped when <see cref="BinaryStorePayloadOptions.SkipWriteIfExists"/>
 /// is <see langword="true"/>.
 /// </para>
@@ -253,9 +254,10 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var instancePrefix = _options.GetInstancePrefix(instanceId);
         var hash = Convert.ToHexString(SHA256.HashData(bytes.AsSpan(0, length))).ToLowerInvariant();
         using var content = new MemoryStream(bytes, 0, length, writable: false);
-        return await StoreContentAsync(content, length, hash, instanceId, cancellationToken).ConfigureAwait(false);
+        return await StoreContentAsync(content, length, hash, instanceId, instancePrefix, cancellationToken).ConfigureAwait(false);
     }
 
     internal async Task<PayloadReference> StoreStreamAsync(Stream content, string instanceId,
@@ -268,6 +270,7 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
             throw new ArgumentException("The payload stream must be readable.", nameof(content));
         }
         cancellationToken.ThrowIfCancellationRequested();
+        var instancePrefix = _options.GetInstancePrefix(instanceId);
 
         const int bufferSize = 64 * 1024;
         // The content-addressed key must be known before uploading. Stage even seekable sources
@@ -310,15 +313,68 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
         await staged.FlushAsync(cancellationToken).ConfigureAwait(false);
         staged.Position = 0;
         var contentHash = Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
-        return await StoreContentAsync(staged, staged.Length, contentHash, instanceId, cancellationToken)
+        return await StoreContentAsync(staged, staged.Length, contentHash, instanceId, instancePrefix, cancellationToken)
             .ConfigureAwait(false);
     }
 
+    internal async Task<PayloadReference> WriteAsync(Func<Stream, CancellationToken, Task> write, string instanceId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(write);
+        ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
+        cancellationToken.ThrowIfCancellationRequested();
+        var key = $"{_options.GetInstancePrefix(instanceId)}/uploads/{Guid.NewGuid():N}";
+        var collision = false;
+        try
+        {
+            var (size, hash) = await WorkflowPayloadUpload.RunAsync(write,
+                async (source, token) =>
+                {
+                    try
+                    {
+                        await _store.SetBinaryFileAsync(_options.StoreName, key, source,
+                            cancellationToken: token).ConfigureAwait(false);
+                    }
+                    catch (DaprException ex) when (ex.HasStatusCode(StatusCode.AlreadyExists))
+                    {
+                        collision = true;
+                        throw;
+                    }
+                }, cancellationToken).ConfigureAwait(false);
+            var reference = new PayloadReference(_options.StoreName, key, size, hash);
+            await _manifest.RecordAsync(instanceId, reference, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return reference;
+        }
+        catch (Exception error)
+        {
+            // A collision is not our object to delete and must never be treated as a successful write.
+            if (collision)
+                throw;
+
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            try
+            {
+                await _store.DeleteBinaryFileAsync(_options.StoreName, key, cleanup.Token).ConfigureAwait(false);
+            }
+            catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
+            {
+                // The failed upload did not leave an object, or the runtime already removed it.
+            }
+            catch (Exception cleanupError)
+            {
+                throw new AggregateException("Payload upload failed and its object could not be cleaned up.",
+                    error, cleanupError);
+            }
+            throw;
+        }
+    }
+
     private async Task<PayloadReference> StoreContentAsync(Stream content, long length, string hash,
-        string instanceId, CancellationToken cancellationToken)
+        string instanceId, string instancePrefix, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var key = $"{_options.KeyPrefix}/{instanceId}/{hash}";
+        var key = $"{instancePrefix}/{hash}";
         var reference = new PayloadReference(_options.StoreName, key, length, hash);
 
         try

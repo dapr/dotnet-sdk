@@ -46,6 +46,7 @@ public class BinaryStorePayloadTests
             typeof(PayloadStage),
             typeof(WorkflowPayloadCleaner),
             typeof(BinaryStorePayloadServiceCollectionExtensions),
+            typeof(WorkflowActivityContextPayloadExtensions),
             typeof(WorkflowContextPayloadExtensions)
         ];
         var exported = typeof(DaprWorkflowClient).Assembly.GetExportedTypes()

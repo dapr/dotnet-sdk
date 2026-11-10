@@ -40,6 +40,10 @@ internal sealed class QueuedWorkflowPayloadResolver(
         CancellationToken cancellationToken = default)
         => throw new InvalidOperationException("Store payloads in activities or clients, not in orchestrator code.");
 
+    public Task<PayloadReference> WriteAsync(Func<Stream, CancellationToken, Task> write, string instanceId,
+        CancellationToken cancellationToken = default)
+        => throw new InvalidOperationException("Store payloads in activities or clients, not in orchestrator code.");
+
     private sealed class QueuedReadStream(Stream inner, WorkflowPayloadHandler payloads) : Stream
     {
         public override bool CanRead => inner.CanRead;

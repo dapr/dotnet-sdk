@@ -70,9 +70,9 @@ still require the sender to create a reference, explicitly or through a suitable
 
 ### Optional binary-store payloads
 
-For a runnable comparison of inline payloads, automatic offloading, and streaming
-with either explicitly or automatically created references, including explicit
-chunk reads in both workflows and activities, see
+For three introductory recipes covering ordinary objects, immediate activity
+uploads, and chunked output reads, plus advanced comparisons of inline payloads,
+content-addressed staging, and workflow chunk reads, see
 [WorkflowDataReferences](./WorkflowDataReferences).
 
 SDK-managed payload storage is included in `Dapr.Workflow`; a separate
@@ -123,6 +123,23 @@ can use `ResolveAsync<T>` or `OpenAsync`; orchestrators should use
 `context.ResolvePayloadAsync(reference)` or `context.OpenPayloadAsync(reference)`.
 For streams inside orchestrators, use asynchronous reads and `await using`.
 Do not inject the resolver directly into orchestrators or upload payloads from them.
+
+Activities can instead use context methods: `ResolvePayloadAsync`, `OpenPayloadAsync`,
+`ReadPayloadChunksAsync`, `StorePayloadAsync`, and `StorePayloadStreamAsync`.
+`context.UploadPayloadAsync(source, token)`
+uploads incoming bytes immediately with bounded buffering and no temporary file.
+It chooses a unique key upfront and computes the reference's SHA-256 and size during
+upload; retries create distinct keys rather than deduplicating by content.
+The same API accepts async byte chunks or a writer callback. Activity methods default
+to `context.CancellationToken` (worker shutdown) when no cancelable token is supplied.
+`InstancePrefixFactory` can add tenant-specific prefixes beneath `KeyPrefix`; the SDK
+always appends the safely encoded instance ID. Reads use the keys recorded in references,
+not the current factory. `GetWorkflowOutputReferenceAsync` retrieves only the output
+reference without hydrating any payloads.
+The `direct-write` scenario in [WorkflowDataReferences](./WorkflowDataReferences/README.md)
+demonstrates page-by-page production and reference-only output retrieval.
+The separate `tenant-prefix` scenario reuses that workflow and activity for two tenants
+and verifies their stored paths, keeping the basic upload example small.
 
 Asynchronous state retrieval prepares payloads before returning, so existing
 `ReadInputAs<T>`, `ReadOutputAs<T>`, and `ReadCustomStatusAs<T>` remain synchronous

@@ -85,4 +85,24 @@ internal sealed class CachingWorkflowPayloadResolver : IWorkflowPayloadResolver
     public Task<PayloadReference> StoreStreamAsync(Stream content, string instanceId,
         CancellationToken cancellationToken = default)
         => _inner.StoreStreamAsync(content, instanceId, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<PayloadReference> WriteAsync(Func<Stream, CancellationToken, Task> write, string instanceId,
+        CancellationToken cancellationToken = default)
+        => _inner.WriteAsync(write, instanceId, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<PayloadReference> UploadAsync(Stream content, string instanceId,
+        CancellationToken cancellationToken = default)
+        => _inner.UploadAsync(content, instanceId, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<PayloadReference> UploadAsync(IAsyncEnumerable<ReadOnlyMemory<byte>> chunks, string instanceId,
+        CancellationToken cancellationToken = default)
+        => _inner.UploadAsync(chunks, instanceId, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<PayloadReference> UploadAsync(Func<Stream, CancellationToken, Task> write, string instanceId,
+        CancellationToken cancellationToken = default)
+        => _inner.UploadAsync(write, instanceId, cancellationToken);
 }

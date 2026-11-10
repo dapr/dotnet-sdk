@@ -13,7 +13,6 @@
 
 using Dapr.Workflow;
 using Dapr.Workflow.Payloads;
-using Microsoft.Extensions.Hosting;
 
 namespace WorkflowDataReferences.Activities;
 
@@ -21,18 +20,16 @@ namespace WorkflowDataReferences.Activities;
 /// Stores a non-seekable download stream as an activity result without materializing its bytes.
 /// Identical content in the same instance reuses the existing content-addressed key.
 /// </summary>
-internal sealed class CopyStreamPayloadActivity(
-    IWorkflowPayloadResolver resolver, IHostApplicationLifetime lifetime)
+internal sealed class CopyStreamPayloadActivity
     : WorkflowActivity<PayloadReference, PayloadReference>
 {
     public override async Task<PayloadReference> RunAsync(WorkflowActivityContext context, PayloadReference input)
     {
-        var cancellationToken = lifetime.ApplicationStopping;
-        // OpenAsync exposes a non-seekable download. StoreStreamAsync consumes it incrementally,
+        // OpenPayloadAsync exposes a non-seekable download. StorePayloadStreamAsync consumes it incrementally,
         // stages to temporary disk to calculate the content-addressed key, then uploads.
         // Replace the source with a generated/transformed stream to produce different output bytes.
-        await using var content = await resolver.OpenAsync(input, cancellationToken);
-        var output = await resolver.StoreStreamAsync(content, context.InstanceId, cancellationToken);
+        await using var content = await context.OpenPayloadAsync(input);
+        var output = await context.StorePayloadStreamAsync(content);
         if (output.ContentHash != input.ContentHash)
             throw new PayloadIntegrityException(input, output.ContentHash);
         if (output.Size != input.Size)

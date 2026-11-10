@@ -37,6 +37,37 @@ namespace Dapr.Workflow.Test.Worker;
 
 public class WorkflowWorkerTests
 {
+    [Fact]
+    public async Task ActivityContextUsesTheResolverFromItsExecutionScope()
+    {
+        using var workerCancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var reference = new PayloadReference("store", "key", 0, "hash");
+        var resolver = new Mock<IWorkflowPayloadResolver>(MockBehavior.Strict);
+        resolver.Setup(r => r.WriteAsync(It.IsAny<Func<Stream, CancellationToken, Task>>(), "instance",
+                It.IsAny<CancellationToken>())).ReturnsAsync(reference);
+        using var services = new ServiceCollection()
+            .AddScoped<IWorkflowPayloadResolver>(_ => resolver.Object).BuildServiceProvider();
+        var factory = new StubWorkflowsFactory();
+        factory.AddActivity("activity", new InlineActivity(typeof(object), async (context, _) =>
+        {
+            Assert.True(context.HasPayloadResolver());
+            Assert.Equal(workerCancellation.Token, context.CancellationToken);
+            Assert.Same(reference, await context.WritePayloadAsync((_, _) => Task.CompletedTask));
+            return 42;
+        }));
+        var worker = new WorkflowWorker(CreateGrpcClientMock().Object, factory, NullLoggerFactory.Instance,
+            new JsonDaprSerializer(), services);
+        typeof(WorkflowWorker).GetField("_stoppingToken", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(worker, workerCancellation.Token);
+        var response = await InvokeHandleActivityResponseAsync(worker, new ActivityRequest
+        {
+            Name = "activity", WorkflowInstance = new() { InstanceId = "instance" }
+        });
+        Assert.Null(response.FailureDetails);
+        Assert.Equal("42", response.Result);
+        resolver.VerifyAll();
+    }
+
     [MinimumDaprRuntimeFact("1.19")]
     public async Task WorkerShutdownDuringPayloadReadDoesNotProduceFailedWorkflowHistory()
     {
