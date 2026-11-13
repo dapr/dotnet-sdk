@@ -16,6 +16,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Workflow.Client;
+using Dapr.Workflow.Payloads;
 using Grpc.Core;
 
 namespace Dapr.Workflow;
@@ -56,8 +57,12 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// The unique ID for the workflow instance. If not specified, a GUID is auto-generated.
     /// </param>
     /// <param name="input">
-    /// The optional input to pass to the workflow. Must be serializable via System.Text.Json.
+    /// The optional serializable input, or a readable <see cref="System.IO.Stream"/> when automatic
+    /// workflow-input references are enabled.
     /// </param>
+    /// <remarks>
+    /// <inheritdoc cref="IDaprWorkflowClient.ScheduleNewWorkflowAsync(string, string, object, DateTimeOffset?, CancellationToken)" path="/remarks/*"/>
+    /// </remarks>
     /// <returns>The instance ID of the scheduled workflow.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
     public Task<string> ScheduleNewWorkflowAsync(
@@ -73,10 +78,13 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// <param name="instanceId">
     /// The unique ID for the workflow instance. If not specified, a GUID is auto-generated.
     /// </param>
-    /// <param name="input">The optional input to pass to the workflow.</param>
+    /// <param name="input">The optional serializable input, or a readable stream when automatic workflow-input references are enabled.</param>
     /// <param name="startTime">
     /// The time when the workflow should start. If in the past or <c>null</c>, the workflow starts immediately.
     /// </param>
+    /// <remarks>
+    /// <inheritdoc cref="IDaprWorkflowClient.ScheduleNewWorkflowAsync(string, string, object, DateTimeOffset?, CancellationToken)" path="/remarks/*"/>
+    /// </remarks>
     /// <returns>The instance ID of the scheduled workflow.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
     public Task<string> ScheduleNewWorkflowAsync(
@@ -91,9 +99,12 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// </summary>
     /// <param name="name">The name of the workflow to schedule.</param>
     /// <param name="instanceId">The unique ID for the workflow instance. Auto-generated if not specified.</param>
-    /// <param name="input">The optional input to pass to the workflow.</param>
+    /// <param name="input">The optional serializable input, or a readable stream when automatic workflow-input references are enabled.</param>
     /// <param name="startTime">The time when the workflow should start. If in the past or <c>null</c>, starts immediately.</param>
-    /// <param name="cancellation">Token to cancel the scheduling operation from the client to the Dapr runtime.</param>
+    /// <param name="cancellation">Token to cancel uploading a stream input and scheduling the workflow.</param>
+    /// <remarks>
+    /// <inheritdoc cref="IDaprWorkflowClient.ScheduleNewWorkflowAsync(string, string, object, DateTimeOffset?, CancellationToken)" path="/remarks/*"/>
+    /// </remarks>
     /// <returns>The instance ID of the scheduled workflow.</returns>
     /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
     public Task<string> ScheduleNewWorkflowAsync(
@@ -152,6 +163,31 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
         }
     }
     
+    /// <inheritdoc />
+    public Task<PayloadReference> GetWorkflowOutputReferenceAsync(
+        string instanceId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        return _innerClient.GetWorkflowOutputReferenceAsync(instanceId, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<ReadOnlyMemory<byte>> ReadWorkflowOutputChunksAsync(
+        string instanceId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        return _innerClient.ReadWorkflowOutputChunksAsync(instanceId, null, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public IAsyncEnumerable<ReadOnlyMemory<byte>> ReadWorkflowOutputChunksAsync(
+        string instanceId, int chunkSize, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(chunkSize);
+        return _innerClient.ReadWorkflowOutputChunksAsync(instanceId, chunkSize, cancellationToken);
+    }
+
     /// <summary>
     /// Waits for a workflow instance to transition from the pending state to an active state.
     /// </summary>

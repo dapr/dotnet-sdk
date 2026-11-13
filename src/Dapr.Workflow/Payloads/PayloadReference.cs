@@ -37,6 +37,11 @@ namespace Dapr.Workflow.Payloads;
 /// Instances are immutable. Workflow histories are long-lived, so this type must remain
 /// backward-compatible with every version that has ever been written.
 /// </para>
+/// <para>
+/// References created by <see cref="IWorkflowPayloadResolver.StoreStreamAsync(System.IO.Stream, string, System.Threading.CancellationToken)"/> can identify
+/// arbitrary raw bytes. Consume those bytes through streaming reads; a typed view is appropriate
+/// only when they already match the configured serializer's format for that type.
+/// </para>
 /// </remarks>
 public record PayloadReference
 {
@@ -56,7 +61,7 @@ public record PayloadReference
     /// <param name="storeName">The name of the Dapr component holding the payload.</param>
     /// <param name="key">The key or file name under which the payload is stored.</param>
     /// <param name="size">The size of the stored payload in bytes, after any stage transformations.</param>
-    /// <param name="contentHash">A lowercase hexadecimal SHA-256 of the serialized payload before any stage transformations.</param>
+    /// <param name="contentHash">A lowercase hexadecimal SHA-256 of the payload bytes before any stage transformations.</param>
     /// <param name="stages">The ordered list of transformations applied before storage, or an empty list.</param>
     /// <param name="version">The envelope version. Defaults to <see cref="CurrentVersion"/>.</param>
     public PayloadReference(string storeName, string key, long size, string contentHash,
@@ -91,7 +96,7 @@ public record PayloadReference
     public long Size { get; init; }
  
     /// <summary>
-    /// Gets the lowercase hexadecimal SHA-256 hash of the serialized payload before any stage
+    /// Gets the lowercase hexadecimal SHA-256 hash of the payload bytes before any stage
     /// transformations were applied. Used for integrity verification and idempotent writes.
     /// </summary>
     public string ContentHash { get; init; }
@@ -103,7 +108,7 @@ public record PayloadReference
     public IReadOnlyList<PayloadStage> Stages { get; init; }
  
     /// <summary>
-    /// Returns a typed view of this reference.
+    /// Returns a typed view of this reference. Does not convert, deserialize, or validate the stored bytes.
     /// </summary>
     /// <typeparam name="T">The type the payload is expected to deserialize to.</typeparam>
     /// <returns>A <see cref="PayloadReference{T}"/> sharing this reference's values.</returns>

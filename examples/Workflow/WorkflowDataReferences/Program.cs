@@ -18,26 +18,60 @@ using WorkflowDataReferences;
 using WorkflowDataReferences.Examples;
 
 var configuration = Host.CreateApplicationBuilder(args).Configuration;
+PayloadExample[] catalog =
+[
+    new AutomaticPayloadExample(),
+    new DirectWritePayloadExample(),
+    new AutomaticOutputChunksExample(),
+    new InlinePayloadExample(),
+    new ReferencePayloadExample(),
+    new AutomaticReferencePayloadExample(),
+    new StreamUploadPayloadExample(),
+    new StreamUploadPayloadExample(automaticReferences: true),
+    new TenantPrefixPayloadExample(),
+    new ChunkStreamingPayloadExample()
+];
+
+// Listing and selecting scenarios happen before starting a host: --List=true needs no sidecar.
+if (configuration.GetValue("List", false))
+{
+    foreach (var example in catalog)
+        Console.WriteLine($"{example.Id,-22} {example.WhenToUse}");
+    Console.WriteLine("Default: --Example=recipes (auto-values, direct-write, auto-output-chunks).");
+    Console.WriteLine("Run one with --Example=<name>, or every advanced comparison with --Example=all.");
+    return;
+}
+
+// Keep the original inline-only switch for users trying the sample without binary-store support.
 var dataRefsEnabled = configuration.GetValue("DataRefs:Enabled", true);
-PayloadExample[] examples = dataRefsEnabled
-    ? [new InlinePayloadExample(), new AutomaticPayloadExample(), new ReferencePayloadExample()]
-    : [new InlinePayloadExample()];
+var selection = configuration["Example"] ?? (dataRefsEnabled ? "recipes" : "inline");
+var runAll = string.Equals(selection, "all", StringComparison.OrdinalIgnoreCase);
+var runRecipes = string.Equals(selection, "recipes", StringComparison.OrdinalIgnoreCase);
+var examples = catalog.Where(example =>
+    (runAll || (runRecipes && example.Id is "auto-values" or "direct-write" or "auto-output-chunks") ||
+     string.Equals(example.Id, selection, StringComparison.OrdinalIgnoreCase)) &&
+    (dataRefsEnabled || example.Id == "inline")).ToArray();
+if (examples.Length == 0)
+    throw new ArgumentException(
+        $"Unknown or disabled example '{selection}'. Use --List=true for names; " +
+        "DataRefs:Enabled=false allows only inline.");
+
 var document = new DocumentPayload("sample.txt", new string('a', 128 * 1024));
 
-Console.WriteLine("Workflow payload approaches");
-Console.WriteLine($"Each approach starts with the same document: {document.Name}, {document.Content.Length:N0} characters.");
-Console.WriteLine("Inline and automatic uppercase the document; explicit references stream and measure its serialized bytes.");
-Console.WriteLine("This is a behavior comparison, not a performance benchmark.");
-if (!dataRefsEnabled)
-    Console.WriteLine("DataRefs:Enabled=false: running inline only; no payload-storage services will be registered.");
+Console.WriteLine("Workflow data references: ordinary objects, immediate uploads, and incremental reads.");
+Console.WriteLine("Object examples use a materialized 128 KiB document; stream examples generate 32 MiB of data.");
+Console.WriteLine("Offloading reduces history size. Only streaming reads/writes avoid whole-payload buffers.");
+Console.WriteLine("This is a behavior walkthrough, not a performance benchmark.");
 
 for (var index = 0; index < examples.Length; index++)
 {
     var example = examples[index];
-    Console.WriteLine($"\n=== {index + 1}/{examples.Length}: {example.Title} ===");
+    Console.WriteLine($"\n=== {index + 1}/{examples.Length}: {example.Id} - {example.Title} ===");
+    Console.WriteLine($"Choose this when: {example.WhenToUse}");
 
     // Offloading is a host-wide setting, so the inline and offloaded examples need separate hosts.
     // Stop each worker before starting the next one against the same dedicated sidecar.
+    // The source generator discovers the workflows/activities; each example configures only its policy.
     var builder = Host.CreateApplicationBuilder(args);
     example.ConfigureServices(builder.Services);
     using var host = builder.Build();

@@ -68,6 +68,7 @@
     <PackageReference Include="Grpc.Net.ClientFactory" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="System.IO.Pipelines" />
   </ItemGroup>
 
   <!-- ── Build child lib projects for the current TFM ── -->
