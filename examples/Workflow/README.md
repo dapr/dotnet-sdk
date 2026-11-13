@@ -204,6 +204,7 @@ cleanup is a no-op and payload retention must be managed separately.
 | [WorkflowSubworkflow](./WorkflowSubworkflow) | Calling and inspecting a child workflow. |
 | [WorkflowTaskChaining](./WorkflowTaskChaining) | Passing results through a three-activity chain. |
 | [WorkflowRetryPolicy](./WorkflowRetryPolicy) | Fixed, exponential, and child-workflow retry policies; includes its own run guide. |
+| [WorkflowSchedules](./WorkflowSchedules) | Creating, triggering, listing and deleting a workflow schedule (Dapr 1.20 or later); includes its own run guide. |
 | [WorkflowDataReferences](./WorkflowDataReferences) | Inline payloads, automatic binary-store offloading, and streaming with explicit or automatic payload references; includes its own run guide. |
 | [WorkflowVersioning](./WorkflowVersioning) | Generated workflow version registration, strategy configuration, and version-routed vacation approval. |
 | [CrossAppVersioning](./CrossAppVersioning) | Combining generated version registrations from referenced assemblies and exposing the resulting registry. |

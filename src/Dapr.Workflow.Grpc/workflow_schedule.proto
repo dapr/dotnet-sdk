@@ -1,0 +1,181 @@
+/*
+Copyright 2026 The Dapr Authors
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+syntax = "proto3";
+
+option csharp_namespace = "Dapr.DurableTask.Protobuf";
+option java_package = "io.dapr.durabletask.implementation.protobuf";
+option go_package = "/api/protos";
+
+import "orchestration.proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// WorkflowSchedule starts a workflow on a cron schedule. Each run is a new,
+// detached workflow instance with the ID `{name}_{owner}_{fire time}`. The
+// owner is the first 6 hex characters of the SHA-256 of `{namespace}/{app ID}`
+// of the app that owns the schedule, so that same-named schedules of two apps
+// that target one app do not share run IDs. The fire time is formatted as
+// `20060102T150405Z` (UTC). A run started by TriggerWorkflowSchedule has the
+// ID `{name}_{owner}_{trigger time}_manual`, where the trigger time has
+// milliseconds: `20060102T150405000Z`. So the runs of a schedule are the
+// instances whose ID starts with `{name}_{owner}_`.
+message WorkflowSchedule {
+    // name identifies the schedule within the app. It may contain only
+    // letters, digits and '-', and is at most 30 characters long.
+    string name = 1;
+
+    // workflowName is the name of the workflow each run starts.
+    string workflowName = 2;
+
+    // input is the raw (typically JSON) input given to every run.
+    google.protobuf.StringValue input = 3;
+
+    // schedule is when runs start, in the syntax of the Dapr Jobs API: a
+    // 6-field cron expression with seconds (`0 30 9 * * MON`),
+    // `@every {duration}`, or one of `@yearly`, `@monthly`, `@weekly`,
+    // `@daily` and `@hourly`. A `CRON_TZ={zone} ` prefix sets the time zone of
+    // a cron expression, which is UTC otherwise.
+    string schedule = 4;
+
+    // dueTime, when set, is the time of the first run. Otherwise the first run
+    // is at the first time the schedule matches after it is created.
+    optional google.protobuf.Timestamp dueTime = 5;
+
+    // expirationTime, when set, is the time after which no run starts. The
+    // schedule completes once its next run would be after it.
+    optional google.protobuf.Timestamp expirationTime = 6;
+
+    // repeats, when set, is the number of runs, scheduled or triggered, after
+    // which the schedule completes. It must be at least 1.
+    optional uint32 repeats = 7;
+
+    // targetAppID, when set, is the app ID that hosts the workflow each run
+    // starts. It defaults to the app that owns the schedule.
+    optional string targetAppID = 8;
+
+    // targetAppNamespace, when set, is the namespace of targetAppID. It
+    // requires targetAppID.
+    optional string targetAppNamespace = 9;
+
+    // status is how the schedule stands. It is output only: the runtime fills
+    // it on GetWorkflowSchedule and ListWorkflowSchedules and ignores it on
+    // CreateWorkflowSchedule.
+    optional WorkflowScheduleStatus status = 10;
+
+    // skipMissed, when true, starts one run for the times the schedule missed
+    // while the app was down, rather than one run for each of them, and
+    // carries on from the next time after now. When unset or false, every
+    // missed time starts its own run, one after another, as with Dapr jobs
+    // and actor reminders.
+    optional bool skipMissed = 11;
+}
+
+enum WorkflowScheduleState {
+    // The schedule is waiting for its next run.
+    WORKFLOW_SCHEDULE_STATE_ACTIVE = 0;
+    // The schedule has no runs left, because of repeats or expirationTime.
+    WORKFLOW_SCHEDULE_STATE_COMPLETED = 1;
+    // The schedule stopped with an error, given in failureMessage.
+    WORKFLOW_SCHEDULE_STATE_FAILED = 2;
+}
+
+message WorkflowScheduleStatus {
+    WorkflowScheduleState state = 1;
+
+    // createdAt is when the schedule was created.
+    google.protobuf.Timestamp createdAt = 2;
+
+    // nextRunTime is when the next run starts, unless it is triggered sooner.
+    // Absent once the schedule is not active.
+    optional google.protobuf.Timestamp nextRunTime = 3;
+
+    // lastRunTime is the time the last run was started for: its fire time,
+    // or when it was triggered.
+    optional google.protobuf.Timestamp lastRunTime = 4;
+
+    // runCount is the number of runs started so far.
+    uint32 runCount = 5;
+
+    // lastRun is how the last run stands, read from that workflow instance
+    // when the schedule is queried. Absent before the first run.
+    optional WorkflowScheduleRun lastRun = 6;
+
+    // failureMessage is why the schedule failed, when state is FAILED.
+    google.protobuf.StringValue failureMessage = 7;
+}
+
+// WorkflowScheduleRun is one run of a schedule. Only instanceId is set when the
+// run's workflow instance cannot be read, for example because it was purged.
+message WorkflowScheduleRun {
+    string instanceId = 1;
+    optional OrchestrationStatus runtimeStatus = 2;
+    optional google.protobuf.Timestamp createdTimestamp = 3;
+    optional google.protobuf.Timestamp lastUpdatedTimestamp = 4;
+    google.protobuf.StringValue output = 5;
+    TaskFailureDetails failureDetails = 6;
+}
+
+message CreateWorkflowScheduleRequest {
+    WorkflowSchedule schedule = 1;
+
+    // overwrite replaces an existing schedule of the same name. Runs it
+    // already started are not affected. Without it, creating a schedule whose
+    // name is taken fails with ALREADY_EXISTS.
+    bool overwrite = 2;
+}
+
+message CreateWorkflowScheduleResponse {}
+
+message GetWorkflowScheduleRequest {
+    string name = 1;
+}
+
+message GetWorkflowScheduleResponse {
+    WorkflowSchedule schedule = 1;
+}
+
+message ListWorkflowSchedulesRequest {
+    // continuationToken is the token returned by the previous page, if any.
+    optional string continuationToken = 1;
+
+    // pageSize is the maximum number of schedules to return.
+    optional uint32 pageSize = 2;
+}
+
+message ListWorkflowSchedulesResponse {
+    repeated WorkflowSchedule schedules = 1;
+
+    // continuationToken is set when there are more schedules to list. A page
+    // can hold fewer than pageSize schedules while more remain, so callers
+    // follow the token rather than the page length.
+    optional string continuationToken = 2;
+}
+
+message DeleteWorkflowScheduleRequest {
+    string name = 1;
+}
+
+message DeleteWorkflowScheduleResponse {}
+
+message TriggerWorkflowScheduleRequest {
+    string name = 1;
+}
+
+message TriggerWorkflowScheduleResponse {
+    // instanceId is the ID of the run the trigger starts. Triggers within the
+    // same millisecond get the same ID, so they start one run. A triggered run
+    // counts towards repeats.
+    string instanceId = 1;
+}
