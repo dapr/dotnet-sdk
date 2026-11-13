@@ -50,14 +50,15 @@ internal sealed class ActorTurnLock
                     if (entry.ActiveCalls == 0 ||
                         (entry.ReentrancyAllowed && reentrancyId != null && entry.ReentrancyId == reentrancyId))
                     {
-                        if (entry.ActiveCalls == 0)
+                        var reentered = entry.ActiveCalls > 0;
+                        if (!reentered)
                         {
                             entry.ReentrancyId = reentrancyId;
                             entry.ReentrancyAllowed = false;
                         }
 
                         entry.ActiveCalls++;
-                        return new Lease(this, actorId, entry);
+                        return new Lease(this, actorId, entry, reentered);
                     }
 
                     available = entry.Available.Task;
@@ -74,6 +75,19 @@ internal sealed class ActorTurnLock
             }
 
             throw;
+        }
+    }
+
+    public bool IsInChain(ActorId actorId, string reentrancyId)
+    {
+        if (reentrancyId == null)
+        {
+            return false;
+        }
+
+        lock (this.sync)
+        {
+            return this.entries.TryGetValue(actorId, out var entry) && entry.ActiveCalls > 0 && entry.ReentrancyId == reentrancyId;
         }
     }
 
@@ -126,12 +140,15 @@ internal sealed class ActorTurnLock
         private readonly ActorId actorId;
         private readonly Entry entry;
 
-        internal Lease(ActorTurnLock owner, ActorId actorId, Entry entry)
+        internal Lease(ActorTurnLock owner, ActorId actorId, Entry entry, bool reentered)
         {
             this.owner = owner;
             this.actorId = actorId;
             this.entry = entry;
+            this.Reentered = reentered;
         }
+
+        public bool Reentered { get; }
 
         public void AllowReentrancy()
         {

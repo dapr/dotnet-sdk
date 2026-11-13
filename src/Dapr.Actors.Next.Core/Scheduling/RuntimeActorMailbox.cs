@@ -103,7 +103,7 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
 
         try
         {
-            item.Complete(await runtime.ExecuteTurnAsync(item.Request, CreateExecutionCancellationToken(item, cancellationToken), this).ConfigureAwait(false));
+            item.Complete(await runtime.ExecuteTurnAsync(item.Request, CreateExecutionCancellationToken(item, cancellationToken), this, item.Ticket).ConfigureAwait(false));
         }
         catch (Exception ex)
         {
@@ -311,7 +311,7 @@ public sealed class RuntimeActorMailbox(string actorType, ActorId actorId, Actor
 
             try
             {
-                item.Complete(await runtime.ExecuteTurnAsync(item.Request, item.CancellationToken, this).ConfigureAwait(false));
+                item.Complete(await runtime.ExecuteTurnAsync(item.Request, item.CancellationToken, this, item.Ticket).ConfigureAwait(false));
             }
             catch (Exception ex)
             {

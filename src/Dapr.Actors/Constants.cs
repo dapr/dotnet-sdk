@@ -22,6 +22,7 @@ internal static class Constants
     public const string RequestHeaderName = "X-DaprRequestHeader";
     public const string ErrorResponseHeaderName = "X-DaprErrorResponseHeader";
     public const string ReentrancyRequestHeaderName = "Dapr-Reentrancy-Id";
+    public const string ActivationIdRequestHeaderName = "Dapr-Actor-Activation-Id";
     public const string TTLResponseHeaderName = "Metadata.ttlExpireTime";
     public const string Dapr = "dapr";
     public const string Config = "config";
@@ -34,6 +35,7 @@ internal static class Constants
     public const string Method = "method";
     public const string Reminders = "reminders";
     public const string Timers = "timers";
+    public const string MetadataRelativeUrl = $"{DaprVersion}/metadata";
 
     /// <summary>
     /// Gets string format for Actors state management relative url.

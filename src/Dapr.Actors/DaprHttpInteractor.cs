@@ -265,6 +265,23 @@ internal sealed class DaprHttpInteractor : IDaprInteractor
         return this.SendAsync(RequestFunc, relativeUrl, cancellationToken);
     }
 
+    internal async Task<string> GetRuntimeVersionAsync(CancellationToken cancellationToken)
+    {
+        HttpRequestMessage RequestFunc()
+        {
+            return new HttpRequestMessage()
+            {
+                Method = HttpMethod.Get,
+            };
+        }
+
+        var json = await this.SendAsyncGetResponseAsRawJson(RequestFunc, Constants.MetadataRelativeUrl, cancellationToken);
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.TryGetProperty("runtimeVersion", out var version) && version.ValueKind == JsonValueKind.String
+            ? version.GetString()
+            : null;
+    }
+
     public async Task<HttpResponseMessage> GetReminderAsync(string actorType, string actorId, string reminderName, CancellationToken cancellationToken = default)
     {
         var relativeUrl = string.Format(CultureInfo.InvariantCulture, Constants.ActorReminderRelativeUrlFormat, actorType, actorId, reminderName);
