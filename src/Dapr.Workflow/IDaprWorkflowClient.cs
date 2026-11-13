@@ -367,6 +367,24 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
     /// <param name="pageSize">
     /// The maximum number of instance IDs to return per page, or <c>null</c> for no limit.
     /// </param>
+    /// <param name="cancellation">Token to cancel the list operation.</param>
+    /// <returns>
+    /// A page containing the instance IDs and an optional continuation token for the next page.
+    /// </returns>
+    Task<WorkflowInstancePage> ListInstanceIdsAsync(
+        string? continuationToken = null,
+        int? pageSize = null,
+        CancellationToken cancellation = default);
+
+    /// <summary>
+    /// Lists the workflow instance IDs that start with a prefix, with optional pagination.
+    /// </summary>
+    /// <param name="continuationToken">
+    /// The continuation token from a previous call, or <c>null</c> to retrieve the first page.
+    /// </param>
+    /// <param name="pageSize">
+    /// The maximum number of instance IDs to return per page, or <c>null</c> for no limit.
+    /// </param>
     /// <param name="instanceIdPrefix">
     /// When set, only instance IDs starting with it are returned, such as the runs of a workflow schedule
     /// (<c>"&lt;schedule name&gt;_"</c>).
@@ -376,9 +394,9 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
     /// A page containing the instance IDs and an optional continuation token for the next page.
     /// </returns>
     Task<WorkflowInstancePage> ListInstanceIdsAsync(
-        string? continuationToken = null,
-        int? pageSize = null,
-        string? instanceIdPrefix = null,
+        string? continuationToken,
+        int? pageSize,
+        string? instanceIdPrefix,
         CancellationToken cancellation = default);
 
     /// <summary>

@@ -13,6 +13,7 @@ limitations under the License.
 
 using Dapr.Workflow;
 using Dapr.Workflow.Client;
+using Grpc.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using WorkflowSchedules.Workflows;
@@ -22,7 +23,6 @@ var builder = Host.CreateDefaultBuilder(args).ConfigureServices(services =>
     services.AddDaprWorkflow(options => options.RegisterWorkflow<ReportWorkflow>());
 });
 
-// Start the app so the workflow worker is connected before the schedule fires.
 using var host = builder.Build();
 await host.StartAsync();
 
@@ -33,8 +33,21 @@ const string scheduleName = "daily-report";
 
 // Start ReportWorkflow every 5 seconds, 3 times. A production schedule would more likely be a cron
 // expression with seconds, such as "0 0 9 * * MON-FRI" (09:00 UTC on weekdays).
-await client.CreateWorkflowScheduleAsync(scheduleName, nameof(ReportWorkflow), "@every 5s",
-    new WorkflowScheduleOptions { Input = "sales", Repeats = 3, Overwrite = true });
+// StartAsync returns before the workflow worker has connected, and creating a schedule needs a connected
+// worker, so retry until the runtime accepts it.
+for (var attempt = 1; ; attempt++)
+{
+    try
+    {
+        await client.CreateWorkflowScheduleAsync(scheduleName, nameof(ReportWorkflow), "@every 5s",
+            new WorkflowScheduleOptions { Input = "sales", Repeats = 3, Overwrite = true });
+        break;
+    }
+    catch (RpcException e) when (e.StatusCode == StatusCode.FailedPrecondition && attempt < 30)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(1));
+    }
+}
 Console.WriteLine($"Created schedule '{scheduleName}'");
 
 // Start an extra run now, without moving the next scheduled run.
@@ -49,9 +62,29 @@ do
 } while (schedule?.Status?.State == WorkflowScheduleState.Active);
 Console.WriteLine($"Schedule state: {schedule?.Status?.State}, runs: {schedule?.Status?.RunCount}");
 
-// Every run's instance ID starts with "<schedule name>_".
-var runs = await client.ListInstanceIdsAsync(instanceIdPrefix: $"{scheduleName}_");
-Console.WriteLine($"Runs: {runs.InstanceIds.Count}");
+// Every run's instance ID starts with "<schedule name>_". A page can come back short, even empty, while
+// more remain, so follow the continuation token to the end.
+var runIds = new List<string>();
+string? continuationToken = null;
+do
+{
+    var page = await client.ListInstanceIdsAsync(continuationToken, null, $"{scheduleName}_");
+    runIds.AddRange(page.InstanceIds);
+    continuationToken = page.ContinuationToken;
+} while (continuationToken is not null);
+
+// The schedule completes when its last run starts, not when that run finishes.
+foreach (var runId in runIds)
+{
+    await client.WaitForWorkflowCompletionAsync(runId);
+}
+Console.WriteLine($"Runs: {runIds.Count}");
 
 await client.DeleteWorkflowScheduleAsync(scheduleName);
 Console.WriteLine($"Deleted schedule '{scheduleName}'");
+
+// Deleting a schedule leaves its runs, so purge them.
+foreach (var runId in runIds)
+{
+    await client.PurgeInstanceAsync(runId);
+}

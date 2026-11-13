@@ -297,6 +297,19 @@ public class DaprWorkflowClientTests
     }
 
     [Fact]
+    public async Task WorkflowClient_DefaultsKeepExistingSubclassesWorking()
+    {
+        var page = new WorkflowInstancePage(new ReadOnlyCollection<string>(["id1"]), null);
+        var inner = new Mock<WorkflowClient> { CallBase = true };
+        inner.Setup(c => c.ListInstanceIdsAsync("token", 5, It.IsAny<CancellationToken>())).ReturnsAsync(page);
+        var ct = TestContext.Current.CancellationToken;
+
+        Assert.Equal(page, await inner.Object.ListInstanceIdsAsync("token", 5, null, ct));
+        await Assert.ThrowsAsync<NotSupportedException>(() => inner.Object.ListInstanceIdsAsync("token", 5, "sched_", ct));
+        await Assert.ThrowsAsync<NotSupportedException>(() => inner.Object.TriggerWorkflowScheduleAsync("sched", ct));
+    }
+
+    [Fact]
     public async Task ListInstanceIdsAsync_ShouldForwardToInnerClient()
     {
         var expectedPage = new WorkflowInstancePage(
@@ -640,7 +653,13 @@ public class DaprWorkflowClientTests
         public override Task<WorkflowInstancePage> ListInstanceIdsAsync(
             string? continuationToken = null,
             int? pageSize = null,
-            string? instanceIdPrefix = null,
+            CancellationToken cancellationToken = default)
+            => ListInstanceIdsAsync(continuationToken, pageSize, null, cancellationToken);
+
+        public override Task<WorkflowInstancePage> ListInstanceIdsAsync(
+            string? continuationToken,
+            int? pageSize,
+            string? instanceIdPrefix,
             CancellationToken cancellationToken = default)
         {
             LastListContinuationToken = continuationToken;

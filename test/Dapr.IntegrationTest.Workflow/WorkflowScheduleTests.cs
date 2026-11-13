@@ -50,7 +50,7 @@ public sealed class WorkflowScheduleTests
         Assert.Contains("hello", schedule.SerializedInput);
         Assert.Contains("hello", schedule.Status.LastRun.SerializedOutput);
 
-        var runs = await client.ListInstanceIdsAsync(instanceIdPrefix: $"{name}_", cancellation: TestContext.Current.CancellationToken);
+        var runs = await client.ListInstanceIdsAsync(null, null, $"{name}_", TestContext.Current.CancellationToken);
         Assert.Equal(2, runs.InstanceIds.Count);
 
         var ex = await Assert.ThrowsAsync<RpcException>(() => client.TriggerWorkflowScheduleAsync(name, TestContext.Current.CancellationToken));

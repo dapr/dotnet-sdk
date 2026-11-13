@@ -7,8 +7,8 @@ This example demonstrates **workflow schedules**: a schedule starts a workflow r
 1. **Create a schedule** - `CreateWorkflowScheduleAsync` starts `ReportWorkflow` every 5 seconds with the input `"sales"`, 3 times (`Repeats = 3`). `Overwrite = true` replaces the schedule if it already exists, so the example can be run again.
 2. **Trigger a run** - `TriggerWorkflowScheduleAsync` starts an extra run now without moving the next scheduled run. A triggered run counts towards `Repeats`, and its instance ID ends with `_manual`.
 3. **Read the status** - `GetWorkflowScheduleAsync` returns the schedule with its state, run count, next run time and last run. The example polls it until the schedule is no longer `Active`.
-4. **List the runs** - every run's instance ID starts with `"<schedule name>_"`, so `ListInstanceIdsAsync(instanceIdPrefix: ...)` lists them.
-5. **Delete the schedule** - `DeleteWorkflowScheduleAsync` stops further runs. Runs already started are not affected.
+4. **List the runs** - every run's instance ID starts with `"<schedule name>_"`, so `ListInstanceIdsAsync(continuationToken, pageSize, instanceIdPrefix)` lists them. The example waits for each run to finish.
+5. **Delete the schedule** - `DeleteWorkflowScheduleAsync` stops further runs. Runs already started are not affected, so the example purges them.
 
 A production schedule would more likely use a 6-field cron expression with seconds, such as `"0 0 9 * * MON-FRI"` (09:00 UTC on weekdays).
 
@@ -24,7 +24,7 @@ A production schedule would more likely use a 6-field cron expression with secon
 From the `WorkflowSchedules` directory, run:
 
 ```sh
-dapr run --app-id wfschedules --dapr-grpc-port 50001 -- dotnet run
+dapr run --app-id wfschedules --dapr-grpc-port 50001 -- dotnet run --framework net10.0
 ```
 
 ### Expected output
@@ -42,7 +42,7 @@ The app finishes after about 10 seconds. Among the Dapr logs you should see:
 == APP == Deleted schedule 'daily-report'
 ```
 
-`Runs` counts the instances kept in the state store, so it grows by 3 each time you run the example again.
+`Runs` counts the schedule's instances in the state store. The example purges them on the way out, so it stays at 3 when you run the example again, unless an earlier run was interrupted before its purge.
 
 ## Learn more
 

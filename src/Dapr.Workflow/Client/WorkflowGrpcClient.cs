@@ -301,10 +301,17 @@ internal sealed class WorkflowGrpcClient(
     }
 
     /// <inheritdoc />
-    public override async Task<WorkflowInstancePage> ListInstanceIdsAsync(
+    public override Task<WorkflowInstancePage> ListInstanceIdsAsync(
         string? continuationToken = null,
         int? pageSize = null,
-        string? instanceIdPrefix = null,
+        CancellationToken cancellationToken = default)
+        => ListInstanceIdsAsync(continuationToken, pageSize, null, cancellationToken);
+
+    /// <inheritdoc />
+    public override async Task<WorkflowInstancePage> ListInstanceIdsAsync(
+        string? continuationToken,
+        int? pageSize,
+        string? instanceIdPrefix,
         CancellationToken cancellationToken = default)
     {
         var request = new grpc.ListInstanceIDsRequest();
