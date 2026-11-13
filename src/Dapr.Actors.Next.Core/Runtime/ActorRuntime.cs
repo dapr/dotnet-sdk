@@ -51,6 +51,9 @@ public sealed class ActorRuntime(
     private readonly ConcurrentDictionary<ActorKey, ActorActivation> activating = [];
     private readonly ConcurrentDictionary<ActorKey, ActorActivation> deactivating = [];
     private readonly ConcurrentDictionary<ActorKey, RuntimeActorMailbox> mailboxes = [];
+    private readonly Dictionary<ActorKey, Admission> latest = [];
+    private readonly object admissionLock = new();
+    private long admissionCount;
     private readonly IReadOnlyList<IActorTurnFilter> _filters = filters.ToArray();
     private readonly object lifecycleLock = new();
     private readonly Dictionary<RuntimeActorMailbox, int> admissions = [];
@@ -192,55 +195,79 @@ public sealed class ActorRuntime(
             }
         }
 
-        DiscardStale(request, mailbox);
-
-        // Fast path: when the scheduler permits inline execution and the mailbox is idle, run the turn directly
-        // on the caller. This preserves one-turn-at-a-time semantics via the mailbox execution slot while
-        // avoiding the thread-pool hop, the TaskCompletionSource, and the per-call cancellation registration
-        // that the queued path below incurs. Any turns enqueued while this one ran are drained afterward.
-        if (scheduler.AllowsInlineExecution && mailbox.TryClaimInlineTurn(request))
+        var ticket = Admit(request, mailbox);
+        try
         {
-            try
+            // Fast path: when the scheduler permits inline execution and the mailbox is idle, run the turn directly
+            // on the caller. This preserves one-turn-at-a-time semantics via the mailbox execution slot while
+            // avoiding the thread-pool hop, the TaskCompletionSource, and the per-call cancellation registration
+            // that the queued path below incurs. Any turns enqueued while this one ran are drained afterward.
+            if (scheduler.AllowsInlineExecution && mailbox.TryClaimInlineTurn(request))
             {
-                return await ExecuteTurnAsync(request, cancellationToken, mailbox).ConfigureAwait(false);
-            }
-            finally
-            {
-                if (mailbox.ReleaseInlineTurn())
+                try
                 {
-                    // Queued turns must progress even when the completed inline caller cancelled.
-                    await scheduler.ScheduleAsync(mailbox, CancellationToken.None).ConfigureAwait(false);
+                    return await ExecuteTurnAsync(request, cancellationToken, mailbox, ticket).ConfigureAwait(false);
+                }
+                finally
+                {
+                    if (mailbox.ReleaseInlineTurn())
+                    {
+                        // Queued turns must progress even when the completed inline caller cancelled.
+                        await scheduler.ScheduleAsync(mailbox, CancellationToken.None).ConfigureAwait(false);
+                    }
                 }
             }
-        }
 
-        var work = new ActorTurnWork(request, cancellationToken);
-        await mailbox.EnqueueWorkAsync(work, cancellationToken).ConfigureAwait(false);
-        SignalLifecycleChange();
-        // Once accepted, scheduling belongs to the mailbox, not to an individual caller.
-        await scheduler.ScheduleAsync(mailbox, CancellationToken.None).ConfigureAwait(false);
-        return await work.Task.ConfigureAwait(false);
+            var work = new ActorTurnWork(request, cancellationToken) { Ticket = ticket };
+            await mailbox.EnqueueWorkAsync(work, cancellationToken).ConfigureAwait(false);
+            SignalLifecycleChange();
+            // Once accepted, scheduling belongs to the mailbox, not to an individual caller.
+            await scheduler.ScheduleAsync(mailbox, CancellationToken.None).ConfigureAwait(false);
+            return await work.Task.ConfigureAwait(false);
+        }
+        finally
+        {
+            if (ticket != 0)
+            {
+                Release(new ActorKey(request.ActorType, request.ActorId.Value));
+            }
+        }
     }
 
     // A new activation id stops the running activation from saving now, its deactivation still waits for the turn.
-    private void DiscardStale(ActorRuntimeRequest request, RuntimeActorMailbox mailbox)
+    private long Admit(ActorRuntimeRequest request, RuntimeActorMailbox mailbox)
     {
         if (request.Kind == ActorTurnKind.Deactivate || mailbox.HasActiveCallChain(request.Headers))
         {
-            return;
+            return 0;
         }
 
         var activationId = ActorHeaders.GetActivationId(request.Headers);
         if (activationId.Length == 0)
         {
-            return;
+            return 0;
         }
 
         var key = new ActorKey(request.ActorType, request.ActorId.Value);
-        // An activation is published to the next map before it leaves the previous one, so checking in this order can't miss it.
-        DiscardIfOther(activating, key, activationId);
-        DiscardIfOther(activations, key, activationId);
-        DiscardIfOther(deactivating, key, activationId);
+        lock (admissionLock)
+        {
+            var ticket = ++admissionCount;
+            if (!latest.TryGetValue(key, out var admission))
+            {
+                admission = new Admission();
+                latest.Add(key, admission);
+            }
+
+            admission.Ticket = ticket;
+            admission.ActivationId = activationId;
+            admission.Waiters++;
+
+            // An activation is published to the next map before it leaves the previous one, so checking in this order can't miss it.
+            DiscardIfOther(activating, key, activationId);
+            DiscardIfOther(activations, key, activationId);
+            DiscardIfOther(deactivating, key, activationId);
+            return ticket;
+        }
 
         static void DiscardIfOther(ConcurrentDictionary<ActorKey, ActorActivation> map, ActorKey key, string activationId)
         {
@@ -250,6 +277,24 @@ public sealed class ActorRuntime(
             }
         }
     }
+
+    private void Release(ActorKey key)
+    {
+        lock (admissionLock)
+        {
+            if (latest.TryGetValue(key, out var admission) && --admission.Waiters == 0)
+            {
+                latest.Remove(key);
+            }
+        }
+    }
+
+    // Activation ids aren't ordered, so a different id that arrived after this call is the newer one.
+    private bool IsSuperseded(ActorKey key, string activationId, long ticket) =>
+        ticket != 0
+        && latest.TryGetValue(key, out var newer)
+        && newer.Ticket > ticket
+        && !string.Equals(newer.ActivationId, activationId, StringComparison.Ordinal);
 
     /// <inheritdoc />
     public async Task DeactivateAsync(string actorType, ActorId actorId, CancellationToken cancellationToken = default)
@@ -321,11 +366,11 @@ public sealed class ActorRuntime(
         }
     }
 
-    internal async Task<byte[]?> ExecuteTurnAsync(ActorRuntimeRequest request, CancellationToken cancellationToken, RuntimeActorMailbox mailbox)
+    internal async Task<byte[]?> ExecuteTurnAsync(ActorRuntimeRequest request, CancellationToken cancellationToken, RuntimeActorMailbox mailbox, long ticket = 0)
     {
         try
         {
-            return await ExecuteTurnCoreAsync(request, cancellationToken, mailbox).ConfigureAwait(false);
+            return await ExecuteTurnCoreAsync(request, cancellationToken, mailbox, ticket: ticket).ConfigureAwait(false);
         }
         finally
         {
@@ -337,7 +382,7 @@ public sealed class ActorRuntime(
         }
     }
 
-    private async Task<byte[]?> ExecuteTurnCoreAsync(ActorRuntimeRequest request, CancellationToken cancellationToken, RuntimeActorMailbox mailbox, bool rootTurn = true)
+    private async Task<byte[]?> ExecuteTurnCoreAsync(ActorRuntimeRequest request, CancellationToken cancellationToken, RuntimeActorMailbox mailbox, bool rootTurn = true, long ticket = 0)
     {
         request = request with { Headers = ActorHeaders.EnsureReentrancy(request.Headers) };
         if (request.Kind == ActorTurnKind.Deactivate)
@@ -349,7 +394,7 @@ public sealed class ActorRuntime(
         var registration = registry.GetByActorType(request.ActorType);
         // A reentrant call runs inside its parent's turn, so it keeps the parent's activation.
         var activationId = rootTurn ? ActorHeaders.GetActivationId(request.Headers) : string.Empty;
-        var activation = await GetOrActivateAsync(registration, request.ActorId, activationId, rootTurn, cancellationToken).ConfigureAwait(false);
+        var activation = await GetOrActivateAsync(registration, request.ActorId, activationId, rootTurn, ticket, cancellationToken).ConfigureAwait(false);
         mailbox.MarkActivated();
         var dispatchRequest = new ActorDispatchRequest(request.ActorType, request.ActorId, request.OperationName, request.Payload, request.Headers, request.RequestContext);
         var methodContext = ToMethodContext(dispatchRequest);
@@ -430,7 +475,7 @@ public sealed class ActorRuntime(
         return response is null ? null : response.Value.Result ?? Array.Empty<byte>();
     }
 
-    private async Task<ActorActivation> GetOrActivateAsync(ActorRuntimeRegistration registration, ActorId actorId, string activationId, bool rootTurn, CancellationToken cancellationToken)
+    private async Task<ActorActivation> GetOrActivateAsync(ActorRuntimeRegistration registration, ActorId actorId, string activationId, bool rootTurn, long ticket, CancellationToken cancellationToken)
     {
         var key = new ActorKey(registration.ActorType, actorId.Value);
         if (activations.TryGetValue(key, out var existing))
@@ -492,7 +537,23 @@ public sealed class ActorRuntime(
             throw;
         }
 
-        activating[key] = activation;
+        bool superseded;
+        lock (admissionLock)
+        {
+            // Checked as it's published, so an id admitted while the factory or the previous teardown ran can't miss it.
+            superseded = IsSuperseded(key, activationId, ticket);
+            if (!superseded)
+            {
+                activating[key] = activation;
+            }
+        }
+
+        if (superseded)
+        {
+            await DisposeActivationAsync(activation).ConfigureAwait(false);
+            throw new InvalidOperationException($"Actor {registration.ActorType}/{actorId} was activated by a newer activation while this call waited, the call was not run.");
+        }
+
         try
         {
             try
@@ -557,4 +618,13 @@ public sealed class ActorRuntime(
     }
 
     private readonly record struct ActorKey(string ActorType, string ActorId);
+
+    private sealed class Admission
+    {
+        public long Ticket { get; set; }
+
+        public string ActivationId { get; set; } = string.Empty;
+
+        public int Waiters { get; set; }
+    }
 }

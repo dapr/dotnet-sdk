@@ -797,13 +797,9 @@ internal sealed class ActorManager
             active = await this.GetOrActivateAsync(actorId, activationId, ticket);
         }
 
+        // DetachStale already queued its teardown for a root turn, so a reentrant call can't dispose it under its parent.
         if (active.Replaced)
         {
-            if (this.activeActors.TryRemove(new KeyValuePair<ActorId, ActiveActor>(actorId, active)))
-            {
-                await this.DiscardAsync(actorId, active.State);
-            }
-
             throw new InvalidOperationException($"Actor {actorId} was replaced by a newer activation during this call, the call was not run.");
         }
 

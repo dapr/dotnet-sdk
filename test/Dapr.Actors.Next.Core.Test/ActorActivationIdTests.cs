@@ -406,6 +406,54 @@ public sealed class ActorActivationIdTests
     }
 
     [Fact]
+    public async Task New_activation_id_admitted_while_the_factory_runs_rejects_the_older_activation()
+    {
+        await using var fixture = new Fixture();
+        using var inFactory = new ManualResetEventSlim();
+        using var releaseFactory = new ManualResetEventSlim();
+        fixture.OnCreate = () =>
+        {
+            fixture.OnCreate = null;
+            inFactory.Set();
+            releaseFactory.Wait(TimeSpan.FromSeconds(5));
+        };
+
+        var older = Task.Run(() => fixture.IncrementAsync("one", 1, "a1"), TestContext.Current.CancellationToken);
+        Assert.True(inFactory.Wait(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        var newer = fixture.IncrementAsync("one", 1, "a2");
+        Assert.False(newer.IsCompleted);
+        releaseFactory.Set();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => older);
+        Assert.Equal(1, await newer);
+        Assert.Equal(2, fixture.Created.Count);
+        Assert.Empty(fixture.Created[0].Events);
+        Assert.True(fixture.Created[0].Disposed);
+    }
+
+    [Fact]
+    public async Task New_activation_id_admitted_during_previous_teardown_rejects_the_waiting_activation()
+    {
+        await using var fixture = new Fixture();
+
+        Assert.Equal(1, await fixture.IncrementAsync("one", 1, "a1"));
+        var first = fixture.Created[0];
+        first.HoldOnDeactivate = true;
+        var waiting = fixture.IncrementAsync("one", 1, "a2");
+        await first.DeactivateHeld.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+
+        var newer = fixture.IncrementAsync("one", 1, "a3");
+        Assert.False(newer.IsCompleted);
+        first.DeactivateRelease.SetResult();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => waiting);
+        Assert.Equal(2, await newer);
+        Assert.Equal(3, fixture.Created.Count);
+        Assert.Empty(fixture.Created[1].Events);
+    }
+
+    [Fact]
     public async Task Matching_activation_id_replaces_activation_discarded_by_a_call_that_never_ran()
     {
         var scheduler = new HookedScheduler();
@@ -501,6 +549,7 @@ public sealed class ActorActivationIdTests
                     {
                         var actor = new ProbeActor(sp.GetRequiredService<ActorActivationContext>());
                         Created.Add(actor);
+                        OnCreate?.Invoke();
                         return actor;
                     },
                     new ProbeDispatcher(),
@@ -518,6 +567,8 @@ public sealed class ActorActivationIdTests
         public CountingStateStore Store { get; } = new();
 
         public List<ProbeActor> Created { get; } = [];
+
+        public Action? OnCreate { get; set; }
 
         public ServiceProvider Provider { get; }
 
