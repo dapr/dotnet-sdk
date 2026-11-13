@@ -200,11 +200,13 @@ internal abstract class WorkflowClient : IAsyncDisposable
     /// </summary>
     /// <param name="continuationToken">The continuation token from a previous call, or <c>null</c> for the first page.</param>
     /// <param name="pageSize">The maximum number of instance IDs to return, or <c>null</c> for no limit.</param>
+    /// <param name="instanceIdPrefix">When set, only instance IDs starting with it are returned.</param>
     /// <param name="cancellationToken">A token that can be used to cancel the operation.</param>
     /// <returns>A page of instance IDs and an optional continuation token for the next page.</returns>
     public abstract Task<WorkflowInstancePage> ListInstanceIdsAsync(
         string? continuationToken = null,
         int? pageSize = null,
+        string? instanceIdPrefix = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -229,6 +231,45 @@ internal abstract class WorkflowClient : IAsyncDisposable
         string sourceInstanceId,
         uint eventId,
         RerunWorkflowFromEventOptions? options = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a schedule that starts <paramref name="workflowName"/> on <paramref name="schedule"/>.
+    /// </summary>
+    public abstract Task CreateWorkflowScheduleAsync(
+        string name,
+        string workflowName,
+        string schedule,
+        WorkflowScheduleOptions? options = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a workflow schedule with its status, or <c>null</c> if it does not exist.
+    /// </summary>
+    public abstract Task<WorkflowSchedule?> GetWorkflowScheduleAsync(
+        string name,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists a page of workflow schedules with their status.
+    /// </summary>
+    public abstract Task<WorkflowSchedulePage> ListWorkflowSchedulesAsync(
+        string? continuationToken = null,
+        int? pageSize = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a workflow schedule. Runs it already started are not affected.
+    /// </summary>
+    public abstract Task DeleteWorkflowScheduleAsync(
+        string name,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Starts a run of a workflow schedule now and returns the run's instance ID.
+    /// </summary>
+    public abstract Task<string> TriggerWorkflowScheduleAsync(
+        string name,
         CancellationToken cancellationToken = default);
 
     /// <inheritdoc />

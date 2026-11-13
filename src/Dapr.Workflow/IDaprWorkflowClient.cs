@@ -367,6 +367,10 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
     /// <param name="pageSize">
     /// The maximum number of instance IDs to return per page, or <c>null</c> for no limit.
     /// </param>
+    /// <param name="instanceIdPrefix">
+    /// When set, only instance IDs starting with it are returned, such as the runs of a workflow schedule
+    /// (<c>"&lt;schedule name&gt;_"</c>).
+    /// </param>
     /// <param name="cancellation">Token to cancel the list operation.</param>
     /// <returns>
     /// A page containing the instance IDs and an optional continuation token for the next page.
@@ -374,6 +378,7 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
     Task<WorkflowInstancePage> ListInstanceIdsAsync(
         string? continuationToken = null,
         int? pageSize = null,
+        string? instanceIdPrefix = null,
         CancellationToken cancellation = default);
 
     /// <summary>
@@ -401,5 +406,100 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
         string sourceInstanceId,
         uint eventId,
         RerunWorkflowFromEventOptions? options = null,
+        CancellationToken cancellation = default);
+
+    /// <summary>
+    /// Creates a schedule that starts a workflow repeatedly. Each run is a new workflow instance with the ID
+    /// <c>"&lt;name&gt;_&lt;owner&gt;_&lt;fire time&gt;"</c>, where the owner is a 6-character tag of the app that
+    /// owns the schedule and the fire time is formatted as <c>yyyyMMddTHHmmssZ</c> (UTC), so the runs of a schedule
+    /// can be listed with
+    /// <see cref="ListInstanceIdsAsync(string, int?, string, CancellationToken)"/> and the prefix
+    /// <c>"&lt;name&gt;_"</c>. Times missed while the app was down each start their own run, one after another,
+    /// unless <see cref="WorkflowScheduleOptions.SkipMissed"/> is set.
+    /// </summary>
+    /// <param name="name">
+    /// The name of the schedule within the app: 1 to 30 letters, digits or <c>'-'</c>.
+    /// </param>
+    /// <param name="workflowName">The name of the workflow each run starts.</param>
+    /// <param name="schedule">
+    /// When runs start, in the syntax of the Dapr Jobs API: a 6-field cron expression with seconds
+    /// (<c>"0 30 9 * * MON"</c>), <c>"@every &lt;duration&gt;"</c> (at least 1s), or one of <c>"@yearly"</c>,
+    /// <c>"@monthly"</c>, <c>"@weekly"</c>, <c>"@daily"</c> and <c>"@hourly"</c>. A <c>"CRON_TZ=&lt;zone&gt; "</c>
+    /// prefix sets the time zone of a cron expression, which is UTC otherwise.
+    /// </param>
+    /// <param name="options">Optional input, first run, expiration, repeats, target app, missed-run and overwrite settings.</param>
+    /// <param name="cancellation">Token to cancel the create operation.</param>
+    /// <returns>A task that completes when the schedule has been created.</returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown if <paramref name="name"/>, <paramref name="workflowName"/> or <paramref name="schedule"/> is null or empty.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown if <see cref="WorkflowScheduleOptions.Repeats"/> is less than 1.</exception>
+    /// <exception cref="global::Grpc.Core.RpcException">
+    /// Thrown with <see cref="global::Grpc.Core.StatusCode.InvalidArgument"/> if the runtime rejects the schedule, or
+    /// <see cref="global::Grpc.Core.StatusCode.AlreadyExists"/> if a schedule of that name exists and
+    /// <see cref="WorkflowScheduleOptions.Overwrite"/> is not set.
+    /// </exception>
+    Task CreateWorkflowScheduleAsync(
+        string name,
+        string workflowName,
+        string schedule,
+        WorkflowScheduleOptions? options = null,
+        CancellationToken cancellation = default);
+
+    /// <summary>
+    /// Gets a workflow schedule with its status, including how its last run stands.
+    /// </summary>
+    /// <param name="name">The name of the schedule.</param>
+    /// <param name="cancellation">Token to cancel the retrieval operation.</param>
+    /// <returns>The schedule, or <c>null</c> if it does not exist.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
+    Task<WorkflowSchedule?> GetWorkflowScheduleAsync(
+        string name,
+        CancellationToken cancellation = default);
+
+    /// <summary>
+    /// Lists the app's workflow schedules with their status, with optional pagination.
+    /// </summary>
+    /// <param name="continuationToken">
+    /// The continuation token from a previous call, or <c>null</c> to retrieve the first page.
+    /// </param>
+    /// <param name="pageSize">The maximum number of schedules to return per page, or <c>null</c> for no limit.</param>
+    /// <param name="cancellation">Token to cancel the list operation.</param>
+    /// <returns>A page of schedules and an optional continuation token for the next page.</returns>
+    Task<WorkflowSchedulePage> ListWorkflowSchedulesAsync(
+        string? continuationToken = null,
+        int? pageSize = null,
+        CancellationToken cancellation = default);
+
+    /// <summary>
+    /// Deletes a workflow schedule, so it starts no more runs. Runs it already started are not affected.
+    /// </summary>
+    /// <param name="name">The name of the schedule.</param>
+    /// <param name="cancellation">Token to cancel the delete operation.</param>
+    /// <returns>A task that completes when the schedule has been deleted.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
+    /// <exception cref="global::Grpc.Core.RpcException">
+    /// Thrown with <see cref="global::Grpc.Core.StatusCode.NotFound"/> if the schedule does not exist.
+    /// </exception>
+    Task DeleteWorkflowScheduleAsync(
+        string name,
+        CancellationToken cancellation = default);
+
+    /// <summary>
+    /// Starts a run of a workflow schedule now, without changing when its next scheduled run is. The run has the
+    /// instance ID <c>"&lt;name&gt;_&lt;owner&gt;_&lt;trigger time&gt;_manual"</c>, with the trigger time in
+    /// milliseconds; triggers within the same millisecond start one run.
+    /// </summary>
+    /// <param name="name">The name of the schedule.</param>
+    /// <param name="cancellation">Token to cancel the trigger operation.</param>
+    /// <returns>The instance ID of the run.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="name"/> is null or empty.</exception>
+    /// <exception cref="global::Grpc.Core.RpcException">
+    /// Thrown with <see cref="global::Grpc.Core.StatusCode.NotFound"/> if the schedule does not exist, or
+    /// <see cref="global::Grpc.Core.StatusCode.FailedPrecondition"/> if it has completed or no workflow worker is connected
+    /// for the target app.
+    /// </exception>
+    Task<string> TriggerWorkflowScheduleAsync(
+        string name,
         CancellationToken cancellation = default);
 }

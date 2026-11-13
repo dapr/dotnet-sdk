@@ -368,6 +368,10 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     /// <param name="pageSize">
     /// The maximum number of instance IDs to return per page, or <c>null</c> for no limit.
     /// </param>
+    /// <param name="instanceIdPrefix">
+    /// When set, only instance IDs starting with it are returned, such as the runs of a workflow schedule
+    /// (<c>"&lt;schedule name&gt;_"</c>).
+    /// </param>
     /// <param name="cancellation">Token to cancel the list operation.</param>
     /// <returns>
     /// A page containing the instance IDs and an optional continuation token for the next page.
@@ -375,6 +379,7 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     public async Task<WorkflowInstancePage> ListInstanceIdsAsync(
         string? continuationToken = null,
         int? pageSize = null,
+        string? instanceIdPrefix = null,
         CancellationToken cancellation = default)
     {
         if (pageSize.HasValue)
@@ -382,7 +387,7 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize.Value);
         }
 
-        return await _innerClient.ListInstanceIdsAsync(continuationToken, pageSize, cancellation);
+        return await _innerClient.ListInstanceIdsAsync(continuationToken, pageSize, instanceIdPrefix, cancellation);
     }
 
     /// <summary>
@@ -418,6 +423,60 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     {
         ArgumentException.ThrowIfNullOrEmpty(sourceInstanceId);
         return await _innerClient.RerunWorkflowFromEventAsync(sourceInstanceId, eventId, options, cancellation);
+    }
+
+    /// <inheritdoc />
+    public Task CreateWorkflowScheduleAsync(
+        string name,
+        string workflowName,
+        string schedule,
+        WorkflowScheduleOptions? options = null,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        ArgumentException.ThrowIfNullOrEmpty(workflowName);
+        ArgumentException.ThrowIfNullOrEmpty(schedule);
+        if (options?.Repeats is { } repeats)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(repeats, nameof(options));
+        }
+
+        return _innerClient.CreateWorkflowScheduleAsync(name, workflowName, schedule, options, cancellation);
+    }
+
+    /// <inheritdoc />
+    public Task<WorkflowSchedule?> GetWorkflowScheduleAsync(string name, CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        return _innerClient.GetWorkflowScheduleAsync(name, cancellation);
+    }
+
+    /// <inheritdoc />
+    public Task<WorkflowSchedulePage> ListWorkflowSchedulesAsync(
+        string? continuationToken = null,
+        int? pageSize = null,
+        CancellationToken cancellation = default)
+    {
+        if (pageSize.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize.Value);
+        }
+
+        return _innerClient.ListWorkflowSchedulesAsync(continuationToken, pageSize, cancellation);
+    }
+
+    /// <inheritdoc />
+    public Task DeleteWorkflowScheduleAsync(string name, CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        return _innerClient.DeleteWorkflowScheduleAsync(name, cancellation);
+    }
+
+    /// <inheritdoc />
+    public Task<string> TriggerWorkflowScheduleAsync(string name, CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        return _innerClient.TriggerWorkflowScheduleAsync(name, cancellation);
     }
 
     /// <summary>

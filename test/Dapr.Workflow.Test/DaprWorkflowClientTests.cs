@@ -305,11 +305,74 @@ public class DaprWorkflowClientTests
         var inner = new CapturingWorkflowClient { ListInstanceIdsResult = expectedPage };
         var client = new DaprWorkflowClient(inner);
 
-        var result = await client.ListInstanceIdsAsync(continuationToken: "token", pageSize: 10, cancellation: TestContext.Current.CancellationToken);
+        var result = await client.ListInstanceIdsAsync(continuationToken: "token", pageSize: 10, instanceIdPrefix: "sched_",
+            cancellation: TestContext.Current.CancellationToken);
 
         Assert.Equal(expectedPage, result);
         Assert.Equal("token", inner.LastListContinuationToken);
         Assert.Equal(10, inner.LastListPageSize);
+        Assert.Equal("sched_", inner.LastListInstanceIdPrefix);
+    }
+
+    [Theory]
+    [InlineData("", "wf", "@daily")]
+    [InlineData("sched", "", "@daily")]
+    [InlineData("sched", "wf", "")]
+    public async Task CreateWorkflowScheduleAsync_ShouldThrowArgumentException_WhenRequiredArgumentIsEmpty(
+        string name, string workflowName, string schedule)
+    {
+        var client = new DaprWorkflowClient(new CapturingWorkflowClient());
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            client.CreateWorkflowScheduleAsync(name, workflowName, schedule, cancellation: TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task CreateWorkflowScheduleAsync_ShouldThrow_WhenRepeatsIsNotPositive()
+    {
+        var client = new DaprWorkflowClient(new CapturingWorkflowClient());
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => client.CreateWorkflowScheduleAsync("sched", "wf", "@daily",
+            new WorkflowScheduleOptions { Repeats = 0 }, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task WorkflowScheduleMethods_ShouldForwardToInnerClient()
+    {
+        var schedule = new WorkflowSchedule("sched", "wf", "@daily");
+        var page = new WorkflowSchedulePage([schedule], "next");
+        var inner = new CapturingWorkflowClient
+        {
+            GetWorkflowScheduleResult = schedule,
+            ListWorkflowSchedulesResult = page,
+            TriggerWorkflowScheduleResult = "sched_20260101T000000Z_manual"
+        };
+        var client = new DaprWorkflowClient(inner);
+        var options = new WorkflowScheduleOptions { Input = 1, Repeats = 3, Overwrite = true };
+        var token = TestContext.Current.CancellationToken;
+
+        await client.CreateWorkflowScheduleAsync("sched", "wf", "@daily", options, token);
+        var got = await client.GetWorkflowScheduleAsync("sched", token);
+        var listed = await client.ListWorkflowSchedulesAsync("token", 5, token);
+        await client.DeleteWorkflowScheduleAsync("sched", token);
+        var runId = await client.TriggerWorkflowScheduleAsync("sched", token);
+
+        Assert.Equal(("sched", "wf", "@daily", options), inner.LastCreateSchedule);
+        Assert.Same(schedule, got);
+        Assert.Same(page, listed);
+        Assert.Equal(("token", 5), inner.LastListSchedules);
+        Assert.Equal("sched", inner.LastDeleteScheduleName);
+        Assert.Equal("sched_20260101T000000Z_manual", runId);
+        Assert.Equal("sched", inner.LastTriggerScheduleName);
+    }
+
+    [Fact]
+    public async Task ListWorkflowSchedulesAsync_ShouldThrow_WhenPageSizeIsNotPositive()
+    {
+        var client = new DaprWorkflowClient(new CapturingWorkflowClient());
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            client.ListWorkflowSchedulesAsync(pageSize: 0, cancellation: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -448,6 +511,7 @@ public class DaprWorkflowClientTests
 
         public string? LastListContinuationToken { get; private set; }
         public int? LastListPageSize { get; private set; }
+        public string? LastListInstanceIdPrefix { get; private set; }
         public WorkflowInstancePage ListInstanceIdsResult { get; set; } =
             new(new ReadOnlyCollection<string>(Array.Empty<string>()), null);
 
@@ -459,6 +523,14 @@ public class DaprWorkflowClientTests
         public uint LastRerunEventId { get; private set; }
         public RerunWorkflowFromEventOptions? LastRerunOptions { get; private set; }
         public string RerunWorkflowFromEventResult { get; set; } = "new-id";
+
+        public (string, string, string, WorkflowScheduleOptions?)? LastCreateSchedule { get; private set; }
+        public WorkflowSchedule? GetWorkflowScheduleResult { get; set; }
+        public (string?, int?)? LastListSchedules { get; private set; }
+        public WorkflowSchedulePage ListWorkflowSchedulesResult { get; set; } = new([], null);
+        public string? LastDeleteScheduleName { get; private set; }
+        public string? LastTriggerScheduleName { get; private set; }
+        public string TriggerWorkflowScheduleResult { get; set; } = "run-id";
 
         public bool DisposeCalled { get; private set; }
 
@@ -568,11 +640,43 @@ public class DaprWorkflowClientTests
         public override Task<WorkflowInstancePage> ListInstanceIdsAsync(
             string? continuationToken = null,
             int? pageSize = null,
+            string? instanceIdPrefix = null,
             CancellationToken cancellationToken = default)
         {
             LastListContinuationToken = continuationToken;
             LastListPageSize = pageSize;
+            LastListInstanceIdPrefix = instanceIdPrefix;
             return Task.FromResult(ListInstanceIdsResult);
+        }
+
+        public override Task CreateWorkflowScheduleAsync(string name, string workflowName, string schedule,
+            WorkflowScheduleOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            LastCreateSchedule = (name, workflowName, schedule, options);
+            return Task.CompletedTask;
+        }
+
+        public override Task<WorkflowSchedule?> GetWorkflowScheduleAsync(string name,
+            CancellationToken cancellationToken = default) => Task.FromResult(GetWorkflowScheduleResult);
+
+        public override Task<WorkflowSchedulePage> ListWorkflowSchedulesAsync(string? continuationToken = null,
+            int? pageSize = null, CancellationToken cancellationToken = default)
+        {
+            LastListSchedules = (continuationToken, pageSize);
+            return Task.FromResult(ListWorkflowSchedulesResult);
+        }
+
+        public override Task DeleteWorkflowScheduleAsync(string name, CancellationToken cancellationToken = default)
+        {
+            LastDeleteScheduleName = name;
+            return Task.CompletedTask;
+        }
+
+        public override Task<string> TriggerWorkflowScheduleAsync(string name,
+            CancellationToken cancellationToken = default)
+        {
+            LastTriggerScheduleName = name;
+            return Task.FromResult(TriggerWorkflowScheduleResult);
         }
 
         public override Task<IReadOnlyList<WorkflowHistoryEvent>> GetInstanceHistoryAsync(

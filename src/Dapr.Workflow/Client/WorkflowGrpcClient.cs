@@ -304,9 +304,15 @@ internal sealed class WorkflowGrpcClient(
     public override async Task<WorkflowInstancePage> ListInstanceIdsAsync(
         string? continuationToken = null,
         int? pageSize = null,
+        string? instanceIdPrefix = null,
         CancellationToken cancellationToken = default)
     {
         var request = new grpc.ListInstanceIDsRequest();
+
+        if (instanceIdPrefix is not null)
+        {
+            request.InstanceIdPrefix = instanceIdPrefix;
+        }
 
         if (continuationToken is not null)
         {
@@ -402,6 +408,127 @@ internal sealed class WorkflowGrpcClient(
     }
 
     /// <inheritdoc />
+    public override async Task CreateWorkflowScheduleAsync(
+        string name,
+        string workflowName,
+        string schedule,
+        WorkflowScheduleOptions? options = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new grpc.CreateWorkflowScheduleRequest
+        {
+            Schedule = new grpc.WorkflowSchedule { Name = name, WorkflowName = workflowName, Schedule = schedule },
+            Overwrite = options?.Overwrite ?? false
+        };
+
+        if (options?.Input is not null)
+        {
+            // Every run reuses this input, so it cannot be a stored reference owned by a single instance.
+            request.Schedule.Input = await SerializeToWireAsync(options.Input,
+                new(PayloadKind.WorkflowInput, name, workflowName, RequireInline: true), cancellationToken);
+        }
+
+        if (options?.DueTime is { } dueTime)
+        {
+            request.Schedule.DueTime = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(dueTime);
+        }
+
+        if (options?.ExpirationTime is { } expirationTime)
+        {
+            request.Schedule.ExpirationTime = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTimeOffset(expirationTime);
+        }
+
+        if (options?.Repeats is { } repeats)
+        {
+            request.Schedule.Repeats = (uint)repeats;
+        }
+
+        if (options?.TargetAppId is not null)
+        {
+            request.Schedule.TargetAppID = options.TargetAppId;
+        }
+
+        if (options?.TargetAppNamespace is not null)
+        {
+            request.Schedule.TargetAppNamespace = options.TargetAppNamespace;
+        }
+
+        if (options is { SkipMissed: true })
+        {
+            request.Schedule.SkipMissed = true;
+        }
+
+        await grpcClient.CreateWorkflowScheduleAsync(request, CreateCallOptions(cancellationToken));
+        logger.LogCreateWorkflowSchedule(name, workflowName);
+    }
+
+    /// <inheritdoc />
+    public override async Task<WorkflowSchedule?> GetWorkflowScheduleAsync(string name,
+        CancellationToken cancellationToken = default)
+    {
+        grpc.GetWorkflowScheduleResponse response;
+        try
+        {
+            response = await grpcClient.GetWorkflowScheduleAsync(new grpc.GetWorkflowScheduleRequest { Name = name },
+                CreateCallOptions(cancellationToken));
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
+        {
+            return null;
+        }
+
+        return await ReadScheduleAsync(response.Schedule, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public override async Task<WorkflowSchedulePage> ListWorkflowSchedulesAsync(
+        string? continuationToken = null,
+        int? pageSize = null,
+        CancellationToken cancellationToken = default)
+    {
+        var request = new grpc.ListWorkflowSchedulesRequest();
+
+        if (continuationToken is not null)
+        {
+            request.ContinuationToken = continuationToken;
+        }
+
+        if (pageSize.HasValue)
+        {
+            request.PageSize = (uint)pageSize.Value;
+        }
+
+        var response = await grpcClient.ListWorkflowSchedulesAsync(request, CreateCallOptions(cancellationToken));
+
+        var schedules = new List<WorkflowSchedule>(response.Schedules.Count);
+        foreach (var schedule in response.Schedules)
+        {
+            schedules.Add(await ReadScheduleAsync(schedule, cancellationToken).ConfigureAwait(false));
+        }
+
+        return new WorkflowSchedulePage(schedules.AsReadOnly(),
+            response.HasContinuationToken ? response.ContinuationToken : null);
+    }
+
+    /// <inheritdoc />
+    public override async Task DeleteWorkflowScheduleAsync(string name, CancellationToken cancellationToken = default)
+    {
+        await grpcClient.DeleteWorkflowScheduleAsync(new grpc.DeleteWorkflowScheduleRequest { Name = name },
+            CreateCallOptions(cancellationToken));
+        logger.LogDeleteWorkflowSchedule(name);
+    }
+
+    /// <inheritdoc />
+    public override async Task<string> TriggerWorkflowScheduleAsync(string name,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await grpcClient.TriggerWorkflowScheduleAsync(
+            new grpc.TriggerWorkflowScheduleRequest { Name = name }, CreateCallOptions(cancellationToken));
+        logger.LogTriggerWorkflowSchedule(name, response.InstanceId);
+        return response.InstanceId;
+    }
+
+    /// <inheritdoc />
     public override ValueTask DisposeAsync()
     {
         // The gRPC client is managed by IHttpClientFactory, no disposal needed
@@ -454,6 +581,28 @@ internal sealed class WorkflowGrpcClient(
             SerializedOutput = output.Serialized,
             SerializedCustomStatus = customStatus.Serialized
         };
+    }
+
+    private async Task<WorkflowSchedule> ReadScheduleAsync(grpc.WorkflowSchedule proto, CancellationToken cancellationToken)
+    {
+        var schedule = ProtoConverters.ToWorkflowSchedule(proto);
+        if (_payloads is null)
+        {
+            return schedule;
+        }
+
+        var input = await _payloads.PrepareAsync(schedule.SerializedInput,
+            new(PayloadKind.WorkflowInput, schedule.Name, schedule.WorkflowName), cancellationToken).ConfigureAwait(false);
+        schedule = schedule with { SerializedInput = input.Serialized };
+
+        if (schedule.Status is { LastRun: { SerializedOutput: not null } run } status)
+        {
+            var output = await _payloads.PrepareAsync(run.SerializedOutput,
+                new(PayloadKind.WorkflowOutput, run.InstanceId, schedule.WorkflowName), cancellationToken).ConfigureAwait(false);
+            schedule = schedule with { Status = status with { LastRun = run with { SerializedOutput = output.Serialized } } };
+        }
+
+        return schedule;
     }
 
     private static grpc.TraceContext? CreateParentTraceContext()
