@@ -59,6 +59,11 @@ internal sealed record WorkflowMetadata(
     public WorkflowTaskFailureDetails? FailureDetails { get; init; }
 
     /// <summary>
+    /// Gets the reason supplied when the workflow was terminated, if any.
+    /// </summary>
+    public string? TerminationReason { get; init; }
+
+    /// <summary>
     /// Gets a value indicating whether the workflow instance exists.
     /// </summary>
     public bool Exists => !string.IsNullOrEmpty(InstanceId);
