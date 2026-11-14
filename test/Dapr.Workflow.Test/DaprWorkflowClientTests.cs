@@ -263,32 +263,6 @@ public class DaprWorkflowClientTests
     }
 
     [Fact]
-    public async Task RaiseErrorAsync_ShouldValidateParameters_AndForwardToInner()
-    {
-        var inner = new CapturingWorkflowClient();
-        var client = new DaprWorkflowClient(inner);
-        var exception = new InvalidOperationException("source failure");
-
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            client.RaiseErrorAsync("", "evt", "error", exception, TestContext.Current.CancellationToken));
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            client.RaiseErrorAsync("i", "", "error", exception, TestContext.Current.CancellationToken));
-        await Assert.ThrowsAsync<ArgumentException>(() =>
-            client.RaiseErrorAsync("i", "evt", " ", exception, TestContext.Current.CancellationToken));
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            client.RaiseErrorAsync("i", "evt", "error", null!, TestContext.Current.CancellationToken));
-
-        var cancellation = TestContext.Current.CancellationToken;
-        await client.RaiseErrorAsync("i", "approval", "approval was rejected", exception, cancellation);
-
-        Assert.Equal("i", inner.LastRaiseErrorInstanceId);
-        Assert.Equal("approval", inner.LastRaiseErrorName);
-        Assert.Equal("approval was rejected", inner.LastRaiseErrorMessage);
-        Assert.Same(exception, inner.LastRaiseErrorException);
-        Assert.Equal(cancellation, inner.LastRaiseErrorCancellationToken);
-    }
-
-    [Fact]
     public async Task TerminateSuspendResumePurge_ShouldValidateInstanceId_AndForwardToInner()
     {
         var inner = new CapturingWorkflowClient { PurgeResult = true };
@@ -459,11 +433,6 @@ public class DaprWorkflowClientTests
         public string? LastRaiseEventInstanceId { get; private set; }
         public string? LastRaiseEventName { get; private set; }
         public object? LastRaiseEventPayload { get; private set; }
-        public string? LastRaiseErrorInstanceId { get; private set; }
-        public string? LastRaiseErrorName { get; private set; }
-        public string? LastRaiseErrorMessage { get; private set; }
-        public Exception? LastRaiseErrorException { get; private set; }
-        public CancellationToken LastRaiseErrorCancellationToken { get; private set; }
 
         public string? LastTerminateInstanceId { get; private set; }
         public object? LastTerminateOutput { get; private set; }
@@ -557,21 +526,6 @@ public class DaprWorkflowClientTests
             LastRaiseEventInstanceId = instanceId;
             LastRaiseEventName = eventName;
             LastRaiseEventPayload = eventPayload;
-            return Task.CompletedTask;
-        }
-
-        public override Task RaiseErrorAsync(
-            string instanceId,
-            string eventName,
-            string errorMessage,
-            Exception exception,
-            CancellationToken cancellationToken = default)
-        {
-            LastRaiseErrorInstanceId = instanceId;
-            LastRaiseErrorName = eventName;
-            LastRaiseErrorMessage = errorMessage;
-            LastRaiseErrorException = exception;
-            LastRaiseErrorCancellationToken = cancellationToken;
             return Task.CompletedTask;
         }
 
