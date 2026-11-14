@@ -34,7 +34,7 @@ message ActivityResponse {
   string instanceId = 1;
   int32 taskId = 2;
   google.protobuf.StringValue result = 3;
-  TaskFailureDetails failureDetails = 4;
+  TaskFailureDetails failureDetails = 5;
   string completionToken = 5;
 }
 
