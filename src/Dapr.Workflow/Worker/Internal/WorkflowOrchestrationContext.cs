@@ -1439,5 +1439,6 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
             : new WorkflowTaskFailureDetails(
                 errorType: failure.ErrorType ?? "Exception",
                 errorMessage: failure.ErrorMessage ?? string.Empty,
-                stackTrace: failure.StackTrace);
+                stackTrace: failure.StackTrace,
+                innerFailure: MapFailureDetails(failure.InnerFailure));
 }
