@@ -874,6 +874,31 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
+    public async Task WaitForExternalEventAsync_ShouldFailOnlyTheWait_WhenRaisedErrorDetailsAreMalformed()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "i", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
+
+        var task = context.WaitForExternalEventAsync<int>("approval", TestContext.Current.CancellationToken);
+        context.ProcessEvents(
+        [
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent
+                {
+                    Name = "approval",
+                    Input = "\0dapr.workflow.error.v1:{"
+                }
+            }
+        ], isReplaying: true);
+
+        var error = await Assert.ThrowsAsync<WorkflowTaskFailedException>(() => task);
+        Assert.Equal("InvalidExternalEventError", error.FailureDetails.ErrorType);
+    }
+
+    [Fact]
     public async Task WaitForExternalEventAsync_RaisedErrorCompletesOnlyOneMatchingWaitInFifoOrder()
     {
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
