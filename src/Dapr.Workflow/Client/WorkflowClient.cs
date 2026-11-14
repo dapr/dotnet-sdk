@@ -151,6 +151,16 @@ internal abstract class WorkflowClient : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Terminates a workflow instance and records a reason in its durable history.
+    /// </summary>
+    /// <param name="instanceId">The instance ID of the workflow to terminate.</param>
+    /// <param name="reason">The reason retained with the terminated workflow history.</param>
+    /// <param name="output">The optional output to set for the terminated workflow instance.</param>
+    /// <param name="cancellationToken">A token that can cancel the termination request before it is enqueued.</param>
+    public abstract Task TerminateWorkflowWithReasonAsync(string instanceId, string reason, object? output = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Suspends a workflow instance, halting processing of it until
     /// <see cref="ResumeWorkflowAsync(string, string, CancellationToken)"/> is used ot resume the workflow.
     /// </summary>
