@@ -827,12 +827,12 @@ public class WorkflowOrchestrationContextTests
                 EventRaised = new EventRaisedEvent
                 {
                     Name = "approval",
-                    Input = EncodeRaisedError(new TaskFailureDetails
+                    FailureDetails = new TaskFailureDetails
                     {
                         ErrorType = "example.FooBarException",
                         ErrorMessage = "approval was rejected",
                         StackTrace = "failure stack"
-                    })
+                    }
                 }
             }
         ], isReplaying: true);
@@ -858,11 +858,11 @@ public class WorkflowOrchestrationContextTests
                 EventRaised = new EventRaisedEvent
                 {
                     Name = "approval",
-                    Input = EncodeRaisedError(new TaskFailureDetails
+                    FailureDetails = new TaskFailureDetails
                     {
                         ErrorType = "example.FooBarException",
                         ErrorMessage = "approval was rejected"
-                    })
+                    }
                 }
             }
         ], isReplaying: true);
@@ -871,31 +871,6 @@ public class WorkflowOrchestrationContextTests
         var error = await Assert.ThrowsAsync<WorkflowTaskFailedException>(() => task);
         Assert.Equal("example.FooBarException", error.FailureDetails.ErrorType);
         Assert.Equal("approval was rejected", error.FailureDetails.ErrorMessage);
-    }
-
-    [Fact]
-    public async Task WaitForExternalEventAsync_ShouldFailOnlyTheWait_WhenRaisedErrorDetailsAreMalformed()
-    {
-        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
-        var context = new WorkflowOrchestrationContext(
-            "wf", "i", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
-            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
-
-        var task = context.WaitForExternalEventAsync<int>("approval", TestContext.Current.CancellationToken);
-        context.ProcessEvents(
-        [
-            new HistoryEvent
-            {
-                EventRaised = new EventRaisedEvent
-                {
-                    Name = "approval",
-                    Input = "\0dapr.workflow.error.v1:{"
-                }
-            }
-        ], isReplaying: true);
-
-        var error = await Assert.ThrowsAsync<WorkflowTaskFailedException>(() => task);
-        Assert.Equal("InvalidExternalEventError", error.FailureDetails.ErrorType);
     }
 
     [Fact]
@@ -915,11 +890,11 @@ public class WorkflowOrchestrationContextTests
                 EventRaised = new EventRaisedEvent
                 {
                     Name = "approval",
-                    Input = EncodeRaisedError(new TaskFailureDetails
+                    FailureDetails = new TaskFailureDetails
                     {
                         ErrorType = "example.FooBarException",
                         ErrorMessage = "first approval failed"
-                    })
+                    }
                 }
             },
             new HistoryEvent
@@ -932,9 +907,6 @@ public class WorkflowOrchestrationContextTests
         Assert.Equal("first approval failed", error.FailureDetails.ErrorMessage);
         Assert.Equal(42, await second);
     }
-
-    private static string EncodeRaisedError(TaskFailureDetails details) =>
-        "\0dapr.workflow.error.v1:" + Google.Protobuf.JsonFormatter.Default.Format(details);
 
     [Fact]
     public async Task WaitForExternalEventAsync_ShouldReturnDeserializedValue_WhenEventInHistory_IgnoringCase()

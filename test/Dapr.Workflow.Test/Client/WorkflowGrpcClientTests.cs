@@ -46,11 +46,12 @@ public class WorkflowGrpcClientTests
 
         Assert.Equal("instance", raised!.InstanceId);
         Assert.Equal("approval", raised.Name);
-        var details = Google.Protobuf.JsonParser.Default.Parse<TaskFailureDetails>(raised.Input);
-        Assert.Equal(typeof(InvalidOperationException).FullName, details.ErrorType);
-        Assert.Equal("approval was rejected", details.ErrorMessage);
-        Assert.Equal(typeof(ArgumentException).FullName, details.InnerFailure.ErrorType);
-        Assert.Equal("inner exception", details.InnerFailure.ErrorMessage);
+        Assert.NotNull(raised.FailureDetails);
+        Assert.Equal(typeof(InvalidOperationException).FullName, raised.FailureDetails.ErrorType);
+        Assert.Equal("approval was rejected", raised.FailureDetails.ErrorMessage);
+        Assert.Equal(typeof(ArgumentException).FullName, raised.FailureDetails.InnerFailure.ErrorType);
+        Assert.Equal("inner exception", raised.FailureDetails.InnerFailure.ErrorMessage);
+        Assert.Null(raised.Input);
     }
 
     [MinimumDaprRuntimeFact("1.19")]

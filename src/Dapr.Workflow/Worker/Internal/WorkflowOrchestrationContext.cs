@@ -41,8 +41,6 @@ namespace Dapr.Workflow.Worker.Internal;
 /// </remarks>
 internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowFeatureSource
 {
-    private const string ExternalEventErrorPrefix = "\0dapr.workflow.error.v1:";
-
     /// <summary>
     /// Used to track patch-based versioning semantics.
     /// </summary>
@@ -391,12 +389,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     /// <inheritdoc />
     public override async Task<T> WaitForExternalEventAsync<T>(string eventName, CancellationToken cancellationToken = default)
     {
-        if (TryTakeExternalEvent(eventName, out string? eventData))
+        if (TryTakeExternalEvent(eventName, out HistoryEvent? bufferedEvent))
         {
-            if (TryCreateExternalEventFailure(eventData!, eventName) is { } bufferedFailure)
+            if (TryCreateExternalEventFailure(bufferedEvent!.EventRaised.FailureDetails, eventName) is { } bufferedFailure)
                 throw bufferedFailure;
 
-            return await DeserializeResultAsync<T>(eventData!, PayloadKind.ExternalEvent, eventName);
+            var bufferedInput = bufferedEvent.EventRaised.Input ?? string.Empty;
+            return await DeserializeResultAsync<T>(bufferedInput, PayloadKind.ExternalEvent, eventName);
         }
 
         // Create a task completion source that will be set when the external event arrives.
@@ -416,67 +415,37 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
 
         var historyEvent = await eventSource.Task;
 
-        eventData = historyEvent.EventRaised.Input ?? string.Empty;
-        if (TryCreateExternalEventFailure(eventData, eventName) is { } failure)
+        if (TryCreateExternalEventFailure(historyEvent.EventRaised.FailureDetails, eventName) is { } failure)
             throw failure;
 
+        eventData = historyEvent.EventRaised.Input ?? string.Empty;
         return await DeserializeResultAsync<T>(eventData, PayloadKind.ExternalEvent, eventName);
     }
 
-    private static WorkflowTaskFailedException? TryCreateExternalEventFailure(string eventData, string eventName)
+    private static WorkflowTaskFailedException? TryCreateExternalEventFailure(
+        TaskFailureDetails? failure,
+        string eventName)
     {
-        if (!eventData.StartsWith(ExternalEventErrorPrefix, StringComparison.Ordinal))
-            return null;
-
-        TaskFailureDetails failure;
-        try
-        {
-            failure = JsonParser.Default.Parse<TaskFailureDetails>(
-                eventData[ExternalEventErrorPrefix.Length..]);
-        }
-        catch (InvalidProtocolBufferException ex)
-        {
-            return CreateInvalidExternalEventFailure(eventName, ex.Message);
-        }
-
-        if (string.IsNullOrWhiteSpace(failure.ErrorType) ||
-            string.IsNullOrWhiteSpace(failure.ErrorMessage))
-        {
-            return CreateInvalidExternalEventFailure(eventName,
-                "The raised workflow error must include both errorType and errorMessage.");
-        }
-
-        var details = MapFailureDetails(failure)
-            ?? throw new InvalidOperationException("The raised workflow error did not include failure details.");
-
-        return new WorkflowTaskFailedException(
-            $"External event '{eventName}' failed: {details.ErrorMessage}",
-            details);
-    }
-
-    private static WorkflowTaskFailedException CreateInvalidExternalEventFailure(string eventName, string message)
-    {
-        var details = new WorkflowTaskFailureDetails("InvalidExternalEventError", message);
-        return new WorkflowTaskFailedException(
-            $"External event '{eventName}' contained invalid error details: {message}",
-            details);
+        var details = MapFailureDetails(failure);
+        return details is null
+            ? null
+            : new WorkflowTaskFailedException(
+                $"External event '{eventName}' failed: {details.ErrorMessage}",
+                details);
     }
 
     /// <summary>
     /// Try take external event by name
     /// </summary>
-    private bool TryTakeExternalEvent(string eventName, out string? eventData)
+    private bool TryTakeExternalEvent(string eventName, out HistoryEvent? historyEvent)
     {
-        var historyEvent = _externalEventBuffer.Find(e => string.Equals(e.EventRaised.Name, eventName, StringComparison.OrdinalIgnoreCase));
-        if (historyEvent is not null)
-        {
-            _externalEventBuffer.Remove(historyEvent);
-            eventData = historyEvent.EventRaised.Input ?? string.Empty;
-            return true;
-        }
+        historyEvent = _externalEventBuffer.Find(
+            e => string.Equals(e.EventRaised.Name, eventName, StringComparison.OrdinalIgnoreCase));
+        if (historyEvent is null)
+            return false;
 
-        eventData = null;
-        return false;
+        _externalEventBuffer.Remove(historyEvent);
+        return true;
     }
 
     /// <inheritdoc />

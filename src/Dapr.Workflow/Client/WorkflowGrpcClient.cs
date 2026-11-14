@@ -22,7 +22,6 @@ using System.Threading.Tasks;
 using Dapr.Common;
 using Dapr.Common.Serialization;
 using Dapr.Workflow.Payloads;
-using Google.Protobuf;
 using Grpc.Core;
 using grpc = Dapr.DurableTask.Protobuf;
 using Microsoft.Extensions.Logging;
@@ -244,7 +243,7 @@ internal sealed class WorkflowGrpcClient(
         {
             InstanceId = instanceId,
             Name = eventName,
-            Input = JsonFormatter.Default.Format(failureDetails)
+            FailureDetails = failureDetails
         };
 
         var grpcCallOptions = CreateCallOptions(cancellationToken);
