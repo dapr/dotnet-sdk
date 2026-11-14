@@ -73,6 +73,11 @@ public interface IWorkflowState
     WorkflowTaskFailureDetails? FailureDetails { get; }
 
     /// <summary>
+    /// Gets the optional reason supplied when the workflow was terminated.
+    /// </summary>
+    string? TerminationReason { get; }
+
+    /// <summary>
     /// Deserializes the workflow input into <typeparamref name="T"/>.
     /// </summary>
     /// <typeparam name="T">The type to deserialize the workflow input into.</typeparam>
