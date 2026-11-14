@@ -249,8 +249,7 @@ internal sealed class WorkflowGrpcClient(
 
         var grpcCallOptions = CreateCallOptions(cancellationToken);
         await grpcClient.RaiseErrorAsync(request, grpcCallOptions);
-        logger.LogInformation("Raised workflow error for event {EventName} on instance {InstanceId}",
-            eventName, instanceId);
+        logger.LogRaisedError(eventName, instanceId);
     }
 
     private static grpc.TaskFailureDetails CreateFailureDetails(string errorMessage, Exception exception)

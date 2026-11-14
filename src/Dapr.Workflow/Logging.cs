@@ -160,6 +160,9 @@ internal static partial class Logging
 
     [LoggerMessage(LogLevel.Information, "Raised event '{EventName}' to workflow '{InstanceId}'")]
     public static partial void LogRaisedEvent(this ILogger logger, string eventName, string instanceId);
+
+    [LoggerMessage(LogLevel.Information, "Raised error for event '{EventName}' on workflow '{InstanceId}'")]
+    public static partial void LogRaisedError(this ILogger logger, string eventName, string instanceId);
     
     [LoggerMessage(LogLevel.Information, "Terminated workflow '{InstanceId}'")]
     public static partial void LogTerminateWorkflow(this ILogger logger, string instanceId);
