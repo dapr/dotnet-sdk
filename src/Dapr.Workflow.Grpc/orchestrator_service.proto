@@ -122,9 +122,13 @@ message RaiseEventRequest {
   string name = 2;
   google.protobuf.StringValue input = 3;
 
+  // Field 4 is TaskRouter in the sidecar protocol. This SDK currently does not
+  // populate routing metadata, but must keep the field number reserved.
+  reserved 4;
+
   // When present, the raised event fails the matching external-event wait
   // with these details instead of completing it with input.
-  TaskFailureDetails failureDetails = 4;
+  TaskFailureDetails failureDetails = 5;
 }
 
 message RaiseEventResponse {
