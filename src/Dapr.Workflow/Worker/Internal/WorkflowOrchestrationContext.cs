@@ -418,7 +418,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         if (TryCreateExternalEventFailure(historyEvent.EventRaised.FailureDetails, eventName) is { } failure)
             throw failure;
 
-        eventData = historyEvent.EventRaised.Input ?? string.Empty;
+        var eventData = historyEvent.EventRaised.Input ?? string.Empty;
         return await DeserializeResultAsync<T>(eventData, PayloadKind.ExternalEvent, eventName);
     }
 
