@@ -22,6 +22,7 @@ using System.Threading.Tasks;
 using Dapr.Common;
 using Dapr.Common.Serialization;
 using Dapr.Workflow.Payloads;
+using Google.Protobuf;
 using Grpc.Core;
 using grpc = Dapr.DurableTask.Protobuf;
 using Microsoft.Extensions.Logging;
@@ -227,6 +228,42 @@ internal sealed class WorkflowGrpcClient(
         var grpcCallOptions = CreateCallOptions(cancellationToken);
         await grpcClient.RaiseEventAsync(request, grpcCallOptions);
         logger.LogRaisedEvent(eventName, instanceId);
+    }
+
+    /// <inheritdoc />
+    public override async Task RaiseErrorAsync(string instanceId, string eventName, string errorMessage,
+        Exception exception, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        ArgumentException.ThrowIfNullOrEmpty(eventName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
+        ArgumentNullException.ThrowIfNull(exception);
+
+        var failureDetails = CreateFailureDetails(errorMessage, exception);
+        var request = new grpc.RaiseEventRequest
+        {
+            InstanceId = instanceId,
+            Name = eventName,
+            Input = JsonFormatter.Default.Format(failureDetails)
+        };
+
+        var grpcCallOptions = CreateCallOptions(cancellationToken);
+        await grpcClient.RaiseErrorAsync(request, grpcCallOptions);
+        logger.LogInformation("Raised workflow error for event {EventName} on instance {InstanceId}",
+            eventName, instanceId);
+    }
+
+    private static grpc.TaskFailureDetails CreateFailureDetails(string errorMessage, Exception exception)
+    {
+        return new grpc.TaskFailureDetails
+        {
+            ErrorType = exception.GetType().FullName ?? exception.GetType().Name,
+            ErrorMessage = errorMessage,
+            StackTrace = exception.StackTrace ?? string.Empty,
+            InnerFailure = exception.InnerException is null
+                ? null
+                : CreateFailureDetails(exception.InnerException.Message, exception.InnerException)
+        };
     }
 
     /// <inheritdoc />

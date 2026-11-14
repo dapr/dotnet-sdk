@@ -319,6 +319,10 @@ service TaskHubSidecarService {
   // Raises an event to a running workflow instance.
   rpc RaiseEvent(RaiseEventRequest) returns (RaiseEventResponse);
 
+  // Raises an error to the matching external-event wait in a workflow instance.
+  // The request's input field carries protojson-encoded TaskFailureDetails.
+  rpc RaiseError(RaiseEventRequest) returns (RaiseEventResponse);
+
   // Terminates a running workflow instance.
   rpc TerminateInstance(TerminateRequest) returns (TerminateResponse);
 

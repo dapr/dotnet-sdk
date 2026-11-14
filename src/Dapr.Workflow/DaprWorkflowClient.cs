@@ -276,6 +276,30 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     }
 
     /// <summary>
+    /// Raises an error for one external-event wait in a workflow instance.
+    /// </summary>
+    /// <param name="instanceId">The unique ID of the target workflow instance.</param>
+    /// <param name="eventName">The event name identifying the wait to fail.</param>
+    /// <param name="errorMessage">A descriptive message for the failure.</param>
+    /// <param name="exception">The exception providing the failure type and stack trace.</param>
+    /// <param name="cancellation">Token to cancel the error submission operation.</param>
+    /// <exception cref="ArgumentException">Thrown if an identifier or error message is null or empty.</exception>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="exception"/> is null.</exception>
+    public async Task RaiseErrorAsync(
+        string instanceId,
+        string eventName,
+        string errorMessage,
+        Exception exception,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        ArgumentException.ThrowIfNullOrEmpty(eventName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
+        ArgumentNullException.ThrowIfNull(exception);
+        await _innerClient.RaiseErrorAsync(instanceId, eventName, errorMessage, exception, cancellation);
+    }
+
+    /// <summary>
     /// Terminates a running workflow instance.
     /// </summary>
     /// <remarks>

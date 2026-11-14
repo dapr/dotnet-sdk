@@ -41,6 +41,8 @@ namespace Dapr.Workflow.Worker.Internal;
 /// </remarks>
 internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowFeatureSource
 {
+    private const string ExternalEventErrorPrefix = "\0dapr.workflow.error.v1:";
+
     /// <summary>
     /// Used to track patch-based versioning semantics.
     /// </summary>
@@ -391,6 +393,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     {
         if (TryTakeExternalEvent(eventName, out string? eventData))
         {
+            if (TryCreateExternalEventFailure(eventData!, eventName) is { } bufferedFailure)
+                throw bufferedFailure;
+
             return await DeserializeResultAsync<T>(eventData!, PayloadKind.ExternalEvent, eventName);
         }
 
@@ -412,6 +417,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         var historyEvent = await eventSource.Task;
 
         eventData = historyEvent.EventRaised.Input ?? string.Empty;
+        if (TryCreateExternalEventFailure(eventData, eventName) is { } failure)
+            throw failure;
+
         return await DeserializeResultAsync<T>(eventData, PayloadKind.ExternalEvent, eventName);
     }
 

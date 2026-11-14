@@ -812,6 +812,106 @@ public class WorkflowOrchestrationContextTests
     }
 
     [Fact]
+    public async Task WaitForExternalEventAsync_ShouldThrowWorkflowTaskFailedException_WhenRaisedErrorArrivesForPendingWait()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "i", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
+
+        var task = context.WaitForExternalEventAsync<int>("approval", TestContext.Current.CancellationToken);
+        context.ProcessEvents(
+        [
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent
+                {
+                    Name = "approval",
+                    Input = EncodeRaisedError(new TaskFailureDetails
+                    {
+                        ErrorType = "example.FooBarException",
+                        ErrorMessage = "approval was rejected",
+                        StackTrace = "failure stack"
+                    })
+                }
+            }
+        ], isReplaying: true);
+
+        var error = await Assert.ThrowsAsync<WorkflowTaskFailedException>(() => task);
+        Assert.Equal("example.FooBarException", error.FailureDetails.ErrorType);
+        Assert.Equal("approval was rejected", error.FailureDetails.ErrorMessage);
+        Assert.Equal("failure stack", error.FailureDetails.StackTrace);
+    }
+
+    [Fact]
+    public async Task WaitForExternalEventAsync_ShouldThrowWorkflowTaskFailedException_WhenRaisedErrorWasBufferedBeforeWait()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "i", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
+
+        context.ProcessEvents(
+        [
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent
+                {
+                    Name = "approval",
+                    Input = EncodeRaisedError(new TaskFailureDetails
+                    {
+                        ErrorType = "example.FooBarException",
+                        ErrorMessage = "approval was rejected"
+                    })
+                }
+            }
+        ], isReplaying: true);
+
+        var task = context.WaitForExternalEventAsync<int>("approval", TestContext.Current.CancellationToken);
+        var error = await Assert.ThrowsAsync<WorkflowTaskFailedException>(() => task);
+        Assert.Equal("example.FooBarException", error.FailureDetails.ErrorType);
+        Assert.Equal("approval was rejected", error.FailureDetails.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task WaitForExternalEventAsync_RaisedErrorCompletesOnlyOneMatchingWaitInFifoOrder()
+    {
+        var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var context = new WorkflowOrchestrationContext(
+            "wf", "i", new DateTime(2025, 01, 01, 0, 0, 0, DateTimeKind.Utc),
+            serializer, NullLoggerFactory.Instance, new WorkflowVersionTracker([]));
+
+        var first = context.WaitForExternalEventAsync<int>("approval", TestContext.Current.CancellationToken);
+        var second = context.WaitForExternalEventAsync<int>("approval", TestContext.Current.CancellationToken);
+        context.ProcessEvents(
+        [
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent
+                {
+                    Name = "approval",
+                    Input = EncodeRaisedError(new TaskFailureDetails
+                    {
+                        ErrorType = "example.FooBarException",
+                        ErrorMessage = "first approval failed"
+                    })
+                }
+            },
+            new HistoryEvent
+            {
+                EventRaised = new EventRaisedEvent { Name = "approval", Input = "42" }
+            }
+        ], isReplaying: true);
+
+        var error = await Assert.ThrowsAsync<WorkflowTaskFailedException>(() => first);
+        Assert.Equal("first approval failed", error.FailureDetails.ErrorMessage);
+        Assert.Equal(42, await second);
+    }
+
+    private static string EncodeRaisedError(TaskFailureDetails details) =>
+        "\0dapr.workflow.error.v1:" + Google.Protobuf.JsonFormatter.Default.Format(details);
+
+    [Fact]
     public async Task WaitForExternalEventAsync_ShouldReturnDeserializedValue_WhenEventInHistory_IgnoringCase()
     {
         var serializer = new JsonDaprSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web));
