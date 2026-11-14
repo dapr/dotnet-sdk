@@ -242,14 +242,16 @@ internal sealed class WorkflowGrpcClient(
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
-        ArgumentNullException.ThrowIfNull(reason, nameof(reason));
         var request = new grpc.TerminateRequest
         {
             InstanceId = instanceId,
             Output = await SerializeToWireAsync(output, new(PayloadKind.WorkflowOutput, instanceId, null), cancellationToken),
-            Recursive = true, // Terminate child workflows too
-            Reason = reason ?? string.Empty
+            Recursive = true // Terminate child workflows too
         };
+        if (reason is not null)
+        {
+            request.Reason = reason;
+        }
 
         var grpcCallOptions = CreateCallOptions(cancellationToken);
         await grpcClient.TerminateInstanceAsync(request, grpcCallOptions);
