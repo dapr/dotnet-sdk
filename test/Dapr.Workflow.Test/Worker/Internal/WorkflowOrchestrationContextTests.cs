@@ -829,7 +829,7 @@ public class WorkflowOrchestrationContextTests
                     Name = "approval",
                     FailureDetails = new TaskFailureDetails
                     {
-                        ErrorType = "example.FooBarException",
+                        ErrorType = typeof(InvalidOperationException).FullName!,
                         ErrorMessage = "approval was rejected",
                         StackTrace = "failure stack"
                     }
@@ -838,7 +838,8 @@ public class WorkflowOrchestrationContextTests
         ], isReplaying: true);
 
         var error = await Assert.ThrowsAsync<WorkflowTaskFailedException>(() => task);
-        Assert.Equal("example.FooBarException", error.FailureDetails.ErrorType);
+        Assert.Equal(typeof(InvalidOperationException).FullName, error.FailureDetails.ErrorType);
+        Assert.True(error.FailureDetails.IsCausedBy<InvalidOperationException>());
         Assert.Equal("approval was rejected", error.FailureDetails.ErrorMessage);
         Assert.Equal("failure stack", error.FailureDetails.StackTrace);
     }
@@ -860,7 +861,7 @@ public class WorkflowOrchestrationContextTests
                     Name = "approval",
                     FailureDetails = new TaskFailureDetails
                     {
-                        ErrorType = "example.FooBarException",
+                        ErrorType = typeof(InvalidOperationException).FullName!,
                         ErrorMessage = "approval was rejected"
                     }
                 }
@@ -869,7 +870,8 @@ public class WorkflowOrchestrationContextTests
 
         var task = context.WaitForExternalEventAsync<int>("approval", TestContext.Current.CancellationToken);
         var error = await Assert.ThrowsAsync<WorkflowTaskFailedException>(() => task);
-        Assert.Equal("example.FooBarException", error.FailureDetails.ErrorType);
+        Assert.Equal(typeof(InvalidOperationException).FullName, error.FailureDetails.ErrorType);
+        Assert.True(error.FailureDetails.IsCausedBy<InvalidOperationException>());
         Assert.Equal("approval was rejected", error.FailureDetails.ErrorMessage);
     }
 
@@ -892,7 +894,7 @@ public class WorkflowOrchestrationContextTests
                     Name = "approval",
                     FailureDetails = new TaskFailureDetails
                     {
-                        ErrorType = "example.FooBarException",
+                        ErrorType = typeof(InvalidOperationException).FullName!,
                         ErrorMessage = "first approval failed"
                     }
                 }
