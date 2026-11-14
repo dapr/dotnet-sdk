@@ -310,6 +310,19 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
         CancellationToken cancellation = default);
 
     /// <summary>
+    /// Terminates a workflow and records the supplied reason in its durable history.
+    /// </summary>
+    /// <param name="instanceId">The unique ID of the workflow instance to terminate.</param>
+    /// <param name="reason">The human-readable reason for terminating the workflow.</param>
+    /// <param name="output">Optional output to set as the workflow's result.</param>
+    /// <param name="cancellation">Token to cancel the termination request.</param>
+    Task TerminateWorkflowWithReasonAsync(
+        string instanceId,
+        string reason,
+        object? output = null,
+        CancellationToken cancellation = default);
+
+    /// <summary>
     /// Suspends a workflow instance, pausing its execution until resumed.
     /// </summary>
     /// <param name="instanceId">The unique ID of the workflow instance to suspend.</param>
