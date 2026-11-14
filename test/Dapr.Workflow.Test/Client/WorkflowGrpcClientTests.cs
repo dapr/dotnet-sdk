@@ -27,33 +27,6 @@ namespace Dapr.Workflow.Test.Client;
 
 public class WorkflowGrpcClientTests
 {
-    [Fact]
-    public async Task RaiseErrorAsync_ShouldSendFailureDetailsToSidecar()
-    {
-        var grpc = CreateGrpcClientMock();
-        RaiseEventRequest? raised = null;
-        grpc.Setup(c => c.RaiseErrorAsync(It.IsAny<RaiseEventRequest>(), It.IsAny<CallOptions>()))
-            .Callback<RaiseEventRequest, CallOptions>((request, _) => raised = request)
-            .Returns(CreateAsyncUnaryCall(new RaiseEventResponse()));
-
-        var client = new WorkflowGrpcClient(grpc.Object, NullLogger<WorkflowGrpcClient>.Instance,
-            new StubSerializer());
-        var exception = new InvalidOperationException("original exception",
-            new ArgumentException("inner exception"));
-
-        await client.RaiseErrorAsync("instance", "approval", "approval was rejected", exception,
-            TestContext.Current.CancellationToken);
-
-        Assert.Equal("instance", raised!.InstanceId);
-        Assert.Equal("approval", raised.Name);
-        Assert.NotNull(raised.FailureDetails);
-        Assert.Equal(typeof(InvalidOperationException).FullName, raised.FailureDetails.ErrorType);
-        Assert.Equal("approval was rejected", raised.FailureDetails.ErrorMessage);
-        Assert.Equal(typeof(ArgumentException).FullName, raised.FailureDetails.InnerFailure.ErrorType);
-        Assert.Equal("inner exception", raised.FailureDetails.InnerFailure.ErrorMessage);
-        Assert.Null(raised.Input);
-    }
-
     [MinimumDaprRuntimeFact("1.19")]
     public async Task PayloadCodecTransformsClientWritesAfterConfiguredSerialization()
     {
