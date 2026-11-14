@@ -423,6 +423,45 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         return await DeserializeResultAsync<T>(eventData, PayloadKind.ExternalEvent, eventName);
     }
 
+    private static WorkflowTaskFailedException? TryCreateExternalEventFailure(string eventData, string eventName)
+    {
+        if (!eventData.StartsWith(ExternalEventErrorPrefix, StringComparison.Ordinal))
+            return null;
+
+        TaskFailureDetails failure;
+        try
+        {
+            failure = JsonParser.Default.Parse<TaskFailureDetails>(
+                eventData[ExternalEventErrorPrefix.Length..]);
+        }
+        catch (InvalidProtocolBufferException ex)
+        {
+            return CreateInvalidExternalEventFailure(eventName, ex.Message);
+        }
+
+        if (string.IsNullOrWhiteSpace(failure.ErrorType) ||
+            string.IsNullOrWhiteSpace(failure.ErrorMessage))
+        {
+            return CreateInvalidExternalEventFailure(eventName,
+                "The raised workflow error must include both errorType and errorMessage.");
+        }
+
+        var details = MapFailureDetails(failure)
+            ?? throw new InvalidOperationException("The raised workflow error did not include failure details.");
+
+        return new WorkflowTaskFailedException(
+            $"External event '{eventName}' failed: {details.ErrorMessage}",
+            details);
+    }
+
+    private static WorkflowTaskFailedException CreateInvalidExternalEventFailure(string eventName, string message)
+    {
+        var details = new WorkflowTaskFailureDetails("InvalidExternalEventError", message);
+        return new WorkflowTaskFailedException(
+            $"External event '{eventName}' contained invalid error details: {message}",
+            details);
+    }
+
     /// <summary>
     /// Try take external event by name
     /// </summary>
