@@ -121,6 +121,7 @@ message RaiseEventRequest {
   string instanceId = 1;
   string name = 2;
   google.protobuf.StringValue input = 3;
+  TaskFailureDetails failureDetails = 4;
 }
 
 message RaiseEventResponse {
