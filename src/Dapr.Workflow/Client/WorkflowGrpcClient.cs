@@ -250,7 +250,7 @@ internal sealed class WorkflowGrpcClient(
         };
         if (reason is not null)
         {
-            request.Reason = reason;
+            request.Reason = new Google.Protobuf.WellKnownTypes.StringValue { Value = reason };
         }
 
         var grpcCallOptions = CreateCallOptions(cancellationToken);
