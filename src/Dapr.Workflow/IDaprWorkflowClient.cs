@@ -313,9 +313,12 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
     /// Terminates a workflow and records the supplied reason in its durable history.
     /// </summary>
     /// <param name="instanceId">The unique ID of the workflow instance to terminate.</param>
-    /// <param name="reason">The human-readable reason for terminating the workflow.</param>
+    /// <param name="reason">The reason to record. An empty string is retained as supplied.</param>
     /// <param name="output">Optional output to set as the workflow's result.</param>
     /// <param name="cancellation">Token to cancel the termination request.</param>
+    /// <returns>A task that completes when the termination has been enqueued.</returns>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> is null or empty.</exception>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="reason"/> is null.</exception>
     Task TerminateWorkflowWithReasonAsync(
         string instanceId,
         string reason,

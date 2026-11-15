@@ -154,9 +154,10 @@ internal abstract class WorkflowClient : IAsyncDisposable
     /// Terminates a workflow instance and records a reason in its durable history.
     /// </summary>
     /// <param name="instanceId">The instance ID of the workflow to terminate.</param>
-    /// <param name="reason">The reason retained with the terminated workflow history.</param>
+    /// <param name="reason">The reason retained with the terminated workflow history. An empty string is retained as supplied.</param>
     /// <param name="output">The optional output to set for the terminated workflow instance.</param>
     /// <param name="cancellationToken">A token that can cancel the termination request before it is enqueued.</param>
+    /// <returns>A task that completes when the termination message is enqueued.</returns>
     public abstract Task TerminateWorkflowWithReasonAsync(string instanceId, string reason, object? output = null,
         CancellationToken cancellationToken = default);
 

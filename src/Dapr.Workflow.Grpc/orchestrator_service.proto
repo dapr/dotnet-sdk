@@ -131,8 +131,9 @@ message TerminateRequest {
   string instanceId = 1;
   google.protobuf.StringValue output = 2;
   bool recursive = 3;
-  // Optional reason retained in the workflow's termination history.
   // Field 4 is reserved for TaskRouter to keep wire compatibility with other SDKs.
+  reserved 4;
+  // Optional reason retained in the workflow's termination history.
   google.protobuf.StringValue reason = 5;
 }
 
