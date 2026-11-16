@@ -133,7 +133,6 @@ message TerminateRequest {
   bool recursive = 3;
   // Field 4 is reserved for TaskRouter to keep wire compatibility with other SDKs.
   reserved 4;
-  // Optional reason retained in the workflow's termination history.
   google.protobuf.StringValue reason = 5;
 }
 
