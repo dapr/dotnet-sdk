@@ -75,9 +75,6 @@ public interface IWorkflowState
     /// <summary>
     /// Gets the optional reason supplied when the workflow was terminated.
     /// </summary>
-    /// <remarks>
-    /// The default implementation returns <see langword="null"/> for existing custom implementations.
-    /// </remarks>
     string? TerminationReason => null;
 
     /// <summary>
