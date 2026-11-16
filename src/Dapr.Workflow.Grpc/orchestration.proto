@@ -111,7 +111,6 @@ message WorkflowState {
   map<string, string> tags = 15;
   google.protobuf.StringValue parentAppId = 16;
   optional google.protobuf.Timestamp startedAt = 17;
-  // Reason supplied when the workflow was terminated.
   google.protobuf.StringValue terminationReason = 18;
 
 }
