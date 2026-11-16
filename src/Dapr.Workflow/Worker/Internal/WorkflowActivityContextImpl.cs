@@ -12,17 +12,41 @@
 // ------------------------------------------------------------------------
 
 using System;
+using System.Threading;
 using Dapr.Workflow.Abstractions;
+using Dapr.Workflow.Payloads;
 
 namespace Dapr.Workflow.Worker.Internal;
 
 /// <summary>
 /// Implementation of <see cref="WorkflowActivityContext"/>.
 /// </summary>
-internal sealed class WorkflowActivityContextImpl(TaskIdentifier identifier, string instanceId, string taskExecutionKey, int scheduledEventId) : WorkflowActivityContext
+/// <param name="identifier">The registered activity identifier.</param>
+/// <param name="instanceId">The owning workflow instance ID.</param>
+/// <param name="taskExecutionKey">The execution key for this activity attempt.</param>
+/// <param name="scheduledEventId">The activity's scheduling event ID.</param>
+/// <param name="resolver">The payload resolver from the activity's dependency-injection scope, when configured.</param>
+/// <param name="cancellationToken">The worker-shutdown token.</param>
+/// <param name="workflowName">The owning workflow's registered name, when supplied by matching propagated history.</param>
+internal sealed class WorkflowActivityContextImpl(TaskIdentifier identifier, string instanceId, string taskExecutionKey,
+    int scheduledEventId, IWorkflowPayloadResolver? resolver = null, CancellationToken cancellationToken = default,
+    string? workflowName = null)
+    : WorkflowActivityContext, IWorkflowFeatureSource
 {
+    /// <inheritdoc />
     public override TaskIdentifier Identifier { get; } = identifier;
+    /// <inheritdoc />
     public override string TaskExecutionKey { get; } = taskExecutionKey;
+    /// <inheritdoc />
     public override int ScheduledEventId { get; } = scheduledEventId;
+    /// <inheritdoc />
     public override string InstanceId { get; } = instanceId ?? throw new ArgumentNullException(nameof(instanceId));
+    /// <inheritdoc />
+    public override CancellationToken CancellationToken { get; } = cancellationToken;
+
+    /// <inheritdoc />
+    public TFeature? GetFeature<TFeature>() where TFeature : class
+        => typeof(TFeature) == typeof(WorkflowPayloadPrefixContext)
+            ? new WorkflowPayloadPrefixContext(InstanceId, workflowName, Identifier.Name) as TFeature
+            : resolver as TFeature;
 }

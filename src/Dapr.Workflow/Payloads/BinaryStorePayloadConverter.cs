@@ -49,7 +49,8 @@ namespace Dapr.Workflow.Payloads;
 /// </para>
 /// <para>
 /// Writes are never retried by this converter because the runtime cannot replay an upload
-/// stream. Idempotency comes from content addressing: a repeated write of identical bytes
+/// stream. Except for explicit direct streaming writes, idempotency comes from content addressing:
+/// a repeated write of identical bytes
 /// targets the same key and is skipped when <see cref="BinaryStorePayloadOptions.SkipWriteIfExists"/>
 /// is <see langword="true"/>.
 /// </para>
@@ -108,6 +109,11 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
         return OffloadIfNeededAsync(serialized, site, cancellationToken);
     }
 
+    /// <summary>Stages an automatically offloaded workflow-input stream and returns its reference envelope.</summary>
+    /// <param name="content">The caller-owned source stream.</param>
+    /// <param name="site">The boundary, owning instance, and available registered names.</param>
+    /// <param name="cancellationToken">Cancels staging and upload.</param>
+    /// <returns>The serialized reference to the stored raw bytes.</returns>
     internal async Task<string> EncodeStreamAsync(Stream content, PayloadSite site, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -119,7 +125,7 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
                 "in OffloadSites. Streams are stored as references regardless of OffloadThreshold.");
         }
 
-        var reference = await StoreStreamAsync(content, site.InstanceId, cancellationToken).ConfigureAwait(false);
+        var reference = await StoreStreamAsync(content, site.ToPrefixContext(), cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         return reference.ToEnvelope();
     }
@@ -133,6 +139,7 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
         return reference is null ? wire : await ResolveStringAsync(reference, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <inheritdoc cref="IWorkflowPayloadResolver.OpenAsync"/>
     internal async Task<Stream> OpenAsync(PayloadReference reference, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(reference);
@@ -205,22 +212,36 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
         }
     }
 
+    /// <summary>Stores already-serialized content when only the owning instance ID is known.</summary>
+    /// <param name="serialized">The serialized payload to encode as UTF-8 bytes.</param>
+    /// <param name="instanceId">The owning workflow instance ID.</param>
+    /// <param name="cancellationToken">Cancels storage and manifest recording.</param>
+    /// <returns>A reference to the stored serialized bytes.</returns>
     internal Task<PayloadReference> StoreSerializedAsync(string serialized, string instanceId,
         CancellationToken cancellationToken = default)
+        => StoreSerializedAsync(serialized, new WorkflowPayloadPrefixContext(instanceId), cancellationToken);
+
+    /// <summary>Stores already-serialized content using the supplied prefix metadata.</summary>
+    /// <param name="serialized">The serialized payload to encode as UTF-8 bytes.</param>
+    /// <param name="context">The available ownership and registered-name metadata.</param>
+    /// <param name="cancellationToken">Cancels storage and manifest recording.</param>
+    /// <returns>A reference to the stored serialized bytes.</returns>
+    internal Task<PayloadReference> StoreSerializedAsync(string serialized, WorkflowPayloadPrefixContext context,
+        CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
+        ArgumentNullException.ThrowIfNull(context);
         cancellationToken.ThrowIfCancellationRequested();
-        return StoreSerializedCoreAsync(serialized, Encoding.UTF8.GetByteCount(serialized), instanceId, cancellationToken);
+        return StoreSerializedCoreAsync(serialized, Encoding.UTF8.GetByteCount(serialized), context, cancellationToken);
     }
 
-    private async Task<PayloadReference> StoreSerializedCoreAsync(string serialized, int length, string instanceId,
+    private async Task<PayloadReference> StoreSerializedCoreAsync(string serialized, int length, WorkflowPayloadPrefixContext context,
         CancellationToken cancellationToken)
     {
         var bytes = ArrayPool<byte>.Shared.Rent(length);
         try
         {
             Encoding.UTF8.GetBytes(serialized.AsSpan(), bytes);
-            return await StoreBytesAsync(bytes, length, instanceId, cancellationToken).ConfigureAwait(false);
+            return await StoreBytesAsync(bytes, length, context, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -244,30 +265,54 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
             return serialized;
         }
 
-        var reference = await StoreSerializedCoreAsync(serialized, byteCount, site.InstanceId, cancellationToken)
+        var reference = await StoreSerializedCoreAsync(serialized, byteCount, site.ToPrefixContext(), cancellationToken)
             .ConfigureAwait(false);
         return reference.ToEnvelope();
     }
 
-    internal async Task<PayloadReference> StoreBytesAsync(byte[] bytes, int length, string instanceId,
+    /// <summary>Stores a serialized byte buffer when only the owning instance ID is known.</summary>
+    /// <param name="bytes">The buffer containing serialized data.</param>
+    /// <param name="length">The number of bytes to store from the start of the buffer.</param>
+    /// <param name="instanceId">The owning workflow instance ID.</param>
+    /// <param name="cancellationToken">Cancels storage and manifest recording.</param>
+    /// <returns>A content-addressed reference to the stored bytes.</returns>
+    internal Task<PayloadReference> StoreBytesAsync(byte[] bytes, int length, string instanceId,
+        CancellationToken cancellationToken)
+        => StoreBytesAsync(bytes, length, new WorkflowPayloadPrefixContext(instanceId), cancellationToken);
+
+    /// <summary>Stores a serialized byte buffer using the supplied prefix metadata.</summary>
+    /// <param name="bytes">The buffer containing serialized data.</param>
+    /// <param name="length">The number of bytes to store from the start of the buffer.</param>
+    /// <param name="context">The available ownership and registered-name metadata.</param>
+    /// <param name="cancellationToken">Cancels storage and manifest recording.</param>
+    /// <returns>A content-addressed reference to the stored bytes.</returns>
+    internal async Task<PayloadReference> StoreBytesAsync(byte[] bytes, int length, WorkflowPayloadPrefixContext context,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var instancePrefix = _options.GetInstancePrefix(context);
         var hash = Convert.ToHexString(SHA256.HashData(bytes.AsSpan(0, length))).ToLowerInvariant();
         using var content = new MemoryStream(bytes, 0, length, writable: false);
-        return await StoreContentAsync(content, length, hash, instanceId, cancellationToken).ConfigureAwait(false);
+        return await StoreContentAsync(content, length, hash, context.InstanceId, instancePrefix, cancellationToken).ConfigureAwait(false);
     }
 
-    internal async Task<PayloadReference> StoreStreamAsync(Stream content, string instanceId,
+    /// <inheritdoc cref="IWorkflowPayloadResolver.StoreStreamAsync(Stream, string, CancellationToken)"/>
+    internal Task<PayloadReference> StoreStreamAsync(Stream content, string instanceId,
+        CancellationToken cancellationToken)
+        => StoreStreamAsync(content, new WorkflowPayloadPrefixContext(instanceId), cancellationToken);
+
+    /// <inheritdoc cref="IWorkflowPayloadResolver.StoreStreamAsync(Stream, WorkflowPayloadPrefixContext, CancellationToken)"/>
+    internal async Task<PayloadReference> StoreStreamAsync(Stream content, WorkflowPayloadPrefixContext context,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(content);
-        ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
+        ArgumentNullException.ThrowIfNull(context);
         if (!content.CanRead)
         {
             throw new ArgumentException("The payload stream must be readable.", nameof(content));
         }
         cancellationToken.ThrowIfCancellationRequested();
+        var instancePrefix = _options.GetInstancePrefix(context);
 
         const int bufferSize = 64 * 1024;
         // The content-addressed key must be known before uploading. Stage even seekable sources
@@ -310,15 +355,74 @@ internal sealed class BinaryStorePayloadConverter : IWorkflowPayloadConverter
         await staged.FlushAsync(cancellationToken).ConfigureAwait(false);
         staged.Position = 0;
         var contentHash = Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
-        return await StoreContentAsync(staged, staged.Length, contentHash, instanceId, cancellationToken)
+        return await StoreContentAsync(staged, staged.Length, contentHash, context.InstanceId, instancePrefix, cancellationToken)
             .ConfigureAwait(false);
     }
 
+    /// <inheritdoc cref="IWorkflowPayloadResolver.WriteAsync(Func{Stream, CancellationToken, Task}, string, CancellationToken)"/>
+    internal Task<PayloadReference> WriteAsync(Func<Stream, CancellationToken, Task> write, string instanceId,
+        CancellationToken cancellationToken)
+        => WriteAsync(write, new WorkflowPayloadPrefixContext(instanceId), cancellationToken);
+
+    /// <inheritdoc cref="IWorkflowPayloadResolver.WriteAsync(Func{Stream, CancellationToken, Task}, WorkflowPayloadPrefixContext, CancellationToken)"/>
+    internal async Task<PayloadReference> WriteAsync(Func<Stream, CancellationToken, Task> write, WorkflowPayloadPrefixContext context,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(write);
+        ArgumentNullException.ThrowIfNull(context);
+        cancellationToken.ThrowIfCancellationRequested();
+        var key = $"{_options.GetInstancePrefix(context)}/uploads/{Guid.NewGuid():N}";
+        var collision = false;
+        try
+        {
+            var (size, hash) = await WorkflowPayloadUpload.RunAsync(write,
+                async (source, token) =>
+                {
+                    try
+                    {
+                        await _store.SetBinaryFileAsync(_options.StoreName, key, source,
+                            cancellationToken: token).ConfigureAwait(false);
+                    }
+                    catch (DaprException ex) when (ex.HasStatusCode(StatusCode.AlreadyExists))
+                    {
+                        collision = true;
+                        throw;
+                    }
+                }, cancellationToken).ConfigureAwait(false);
+            var reference = new PayloadReference(_options.StoreName, key, size, hash);
+            await _manifest.RecordAsync(context.InstanceId, reference, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return reference;
+        }
+        catch (Exception error)
+        {
+            // A collision is not our object to delete and must never be treated as a successful write.
+            if (collision)
+                throw;
+
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            try
+            {
+                await _store.DeleteBinaryFileAsync(_options.StoreName, key, cleanup.Token).ConfigureAwait(false);
+            }
+            catch (DaprException ex) when (ex.HasStatusCode(StatusCode.NotFound))
+            {
+                // The failed upload did not leave an object, or the runtime already removed it.
+            }
+            catch (Exception cleanupError)
+            {
+                throw new AggregateException("Payload upload failed and its object could not be cleaned up.",
+                    error, cleanupError);
+            }
+            throw;
+        }
+    }
+
     private async Task<PayloadReference> StoreContentAsync(Stream content, long length, string hash,
-        string instanceId, CancellationToken cancellationToken)
+        string instanceId, string instancePrefix, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var key = $"{_options.KeyPrefix}/{instanceId}/{hash}";
+        var key = $"{instancePrefix}/{hash}";
         var reference = new PayloadReference(_options.StoreName, key, length, hash);
 
         try

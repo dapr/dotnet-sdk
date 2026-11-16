@@ -37,6 +37,84 @@ namespace Dapr.Workflow.Test.Worker;
 
 public class WorkflowWorkerTests
 {
+    [Fact]
+    public async Task ActivityContextUsesTheResolverFromItsExecutionScope()
+    {
+        using var workerCancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        var reference = new PayloadReference("store", "key", 0, "hash");
+        var resolver = new Mock<IWorkflowPayloadResolver>(MockBehavior.Strict);
+        resolver.Setup(r => r.WriteAsync(It.IsAny<Func<Stream, CancellationToken, Task>>(),
+                new WorkflowPayloadPrefixContext("instance", null, "activity"),
+                It.IsAny<CancellationToken>())).ReturnsAsync(reference);
+        using var services = new ServiceCollection()
+            .AddScoped<IWorkflowPayloadResolver>(_ => resolver.Object).BuildServiceProvider();
+        var factory = new StubWorkflowsFactory();
+        factory.AddActivity("activity", new InlineActivity(typeof(object), async (context, _) =>
+        {
+            Assert.True(context.HasPayloadResolver());
+            Assert.Equal(workerCancellation.Token, context.CancellationToken);
+            Assert.Same(reference, await context.WritePayloadAsync((_, _) => Task.CompletedTask));
+            return 42;
+        }));
+        var worker = new WorkflowWorker(CreateGrpcClientMock().Object, factory, NullLoggerFactory.Instance,
+            new JsonDaprSerializer(), services);
+        typeof(WorkflowWorker).GetField("_stoppingToken", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(worker, workerCancellation.Token);
+        var response = await InvokeHandleActivityResponseAsync(worker, new ActivityRequest
+        {
+            Name = "activity", WorkflowInstance = new() { InstanceId = "instance" }
+        });
+        Assert.Null(response.FailureDetails);
+        Assert.Equal("42", response.Result);
+        resolver.VerifyAll();
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("ancestor", null)]
+    [InlineData("instance", "owner-workflow")]
+    [InlineData("blank", null)]
+    public async Task ActivityPrefixMetadataUsesOnlyMatchingPropagatedHistory(string? historyInstance, string? expectedName)
+    {
+        var codec = new DelayedPayloadConverter();
+        using var services = new ServiceCollection().AddSingleton<IWorkflowPayloadConverter>(codec).BuildServiceProvider();
+        var factory = new StubWorkflowsFactory();
+        factory.AddActivity("registered-activity", new InlineActivity(typeof(int), (context, input) =>
+        {
+            var metadata = Assert.IsAssignableFrom<IWorkflowFeatureSource>(context)
+                .GetFeature<WorkflowPayloadPrefixContext>();
+            Assert.Equal(new WorkflowPayloadPrefixContext("instance", expectedName, "registered-activity"), metadata);
+            return Task.FromResult(input);
+        }));
+        var worker = new WorkflowWorker(CreateGrpcClientMock().Object, factory, NullLoggerFactory.Instance,
+            new JsonDaprSerializer(), services);
+        var request = new ActivityRequest
+        {
+            Name = "registered-activity", Input = "wire:42", WorkflowInstance = new() { InstanceId = "instance" }
+        };
+        if (historyInstance is not null)
+        {
+            request.PropagatedHistory = new()
+            {
+                Chunks =
+                {
+                    new PropagatedHistoryChunk { InstanceId = "ancestor", WorkflowName = "not-the-owner" },
+                    new PropagatedHistoryChunk
+                    {
+                        InstanceId = historyInstance == "blank" ? "instance" : historyInstance,
+                        WorkflowName = historyInstance == "blank" ? "" : "owner-workflow"
+                    }
+                }
+            };
+        }
+
+        var response = await InvokeHandleActivityResponseAsync(worker, request);
+        Assert.Null(response.FailureDetails);
+        var expected = new WorkflowPayloadPrefixContext("instance", expectedName, "registered-activity");
+        Assert.Equal(expected, Assert.Single(codec.Reads).ToPrefixContext());
+        Assert.Equal(expected, Assert.Single(codec.Writes).Site.ToPrefixContext());
+    }
+
     [MinimumDaprRuntimeFact("1.19")]
     public async Task WorkerShutdownDuringPayloadReadDoesNotProduceFailedWorkflowHistory()
     {

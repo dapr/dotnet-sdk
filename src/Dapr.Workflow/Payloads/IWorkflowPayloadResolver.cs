@@ -22,14 +22,19 @@ namespace Dapr.Workflow.Payloads;
 
 /// <summary>
 /// Resolves and creates <see cref="PayloadReference"/> instances against a binary store. Accessed by
-/// orchestrators through <see cref="WorkflowContextPayloadExtensions"/> and by activities and clients
-/// through dependency injection.
+/// orchestrators through <see cref="WorkflowContextPayloadExtensions"/>, by activities through
+/// <see cref="WorkflowActivityContextPayloadExtensions"/>, and by clients through dependency injection.
 /// </summary>
 /// <remarks>
 /// Orchestrator code must treat this interface as read-only. Resolution of an existing reference is
-/// replay-safe because stored payloads are immutable and content-addressed; creating new payloads
+/// replay-safe because stored payloads are immutable; creating new payloads
 /// from an orchestrator is not, and the <see cref="WorkflowContext"/> extension methods deliberately
-/// do not expose <see cref="StoreAsync{T}"/> or <see cref="StoreStreamAsync"/>.
+/// do not expose storage or upload methods.
+/// <para>
+/// Instance-ID write overloads leave workflow and activity names unknown. Supply a
+/// <see cref="WorkflowPayloadPrefixContext"/> to pass known names to <see cref="BinaryStorePayloadOptions.PrefixFactory"/>.
+/// Activity-context extension methods supply this metadata internally. Neither form performs metadata lookups.
+/// </para>
 /// </remarks>
 public interface IWorkflowPayloadResolver
 {
@@ -43,6 +48,17 @@ public interface IWorkflowPayloadResolver
     /// <exception cref="PayloadNotFoundException">The stored payload no longer exists.</exception>
     /// <exception cref="PayloadIntegrityException">The retrieved bytes did not match the recorded hash.</exception>
     Task<T> ResolveAsync<T>(PayloadReference reference, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves and deserializes a typed reference, inferring the result type from the reference.
+    /// This materializes the complete value; use raw streaming reads for large payloads.
+    /// </summary>
+    /// <typeparam name="T">The type described by the reference.</typeparam>
+    /// <param name="reference">The typed reference to resolve.</param>
+    /// <param name="cancellationToken">A token used to cancel resolution.</param>
+    /// <returns>The deserialized value.</returns>
+    Task<T> ResolveAsync<T>(PayloadReference<T> reference, CancellationToken cancellationToken = default)
+        => ResolveAsync<T>((PayloadReference)reference, cancellationToken);
  
     /// <summary>
     /// Opens a read-only stream over the raw stored bytes identified by <paramref name="reference"/>
@@ -51,6 +67,10 @@ public interface IWorkflowPayloadResolver
     /// <param name="reference">The reference to open.</param>
     /// <param name="cancellationToken">A token used to cancel the operation.</param>
     /// <returns>A stream positioned at the start of the payload.</returns>
+    /// <remarks>
+    /// This is a raw-byte read: payload stages are not reversed and integrity is not verified.
+    /// Dispose the stream when finished; early disposal does not consume the remaining bytes.
+    /// </remarks>
     /// <exception cref="PayloadNotFoundException">The stored payload no longer exists.</exception>
     Task<Stream> OpenAsync(PayloadReference reference, CancellationToken cancellationToken = default);
 
@@ -149,9 +169,30 @@ public interface IWorkflowPayloadResolver
     /// <returns>A typed reference to the stored payload.</returns>
     Task<PayloadReference<T>> StoreAsync<T>(T value, string instanceId, CancellationToken cancellationToken = default);
 
+    /// <summary>Serializes and stores a value using explicit workflow/activity metadata for prefix selection.</summary>
+    /// <remarks>
+    /// The built-in resolver preserves all metadata. The compatibility default calls the instance-ID overload;
+    /// custom resolvers must override this overload to use the additional names.
+    /// The built-in resolver materializes the serialization and uses a content-addressed key within the selected prefix.
+    /// Automatic offload thresholds do not restrict explicit writes.
+    /// </remarks>
+    /// <typeparam name="T">The type of the value to serialize.</typeparam>
+    /// <param name="value">The value to store.</param>
+    /// <param name="context">The owning instance and any known registered workflow/activity names.</param>
+    /// <param name="cancellationToken">Cancels storage and manifest recording.</param>
+    /// <returns>A typed reference to the stored serialized value.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="context"/> is null.</exception>
+    Task<PayloadReference<T>> StoreAsync<T>(T value, WorkflowPayloadPrefixContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return StoreAsync(value, context.InstanceId, cancellationToken);
+    }
+
     /// <summary>
-    /// Stores the remaining raw bytes of <paramref name="content"/> without serializing them or
-    /// buffering the entire payload in memory, and returns a reference to the stored bytes.
+    /// Stages the remaining raw bytes of <paramref name="content"/> to temporary disk, then uploads
+    /// them under a content-addressed key. Use <see cref="UploadAsync(Stream, string, CancellationToken)"/>
+    /// to upload immediately without a staging file.
     /// Intended for activities and clients, not orchestrator code.
     /// </summary>
     /// <remarks>
@@ -185,4 +226,201 @@ public interface IWorkflowPayloadResolver
     Task<PayloadReference> StoreStreamAsync(Stream content, string instanceId,
         CancellationToken cancellationToken = default)
         => throw new NotSupportedException("This workflow payload resolver does not support storing streams.");
+
+    /// <summary>Stages raw bytes to temporary disk and stores them using explicit prefix metadata.</summary>
+    /// <remarks>
+    /// Reads from the current position through EOF without disposing or rewinding the source.
+    /// The built-in resolver stages to temporary disk, then uploads under a content-addressed key.
+    /// See <see cref="StoreStreamAsync(Stream, string, CancellationToken)"/> for resource and failure semantics.
+    /// Custom resolvers default to the instance-ID overload, without the additional names.
+    /// </remarks>
+    /// <param name="content">A readable raw-byte source owned by the caller.</param>
+    /// <param name="context">The owning instance and any known registered workflow/activity names.</param>
+    /// <param name="cancellationToken">Cancels reading, staging, upload, and manifest recording.</param>
+    /// <returns>A reference containing the stored byte count and SHA-256 hash.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="context"/> or <paramref name="content"/> is null.</exception>
+    /// <exception cref="ArgumentException">The source is not readable or the factory returns an invalid prefix.</exception>
+    /// <exception cref="NotSupportedException">The resolver does not support storing streams.</exception>
+    Task<PayloadReference> StoreStreamAsync(Stream content, WorkflowPayloadPrefixContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return StoreStreamAsync(content, context.InstanceId, cancellationToken);
+    }
+
+    /// <summary>Uploads remaining raw bytes immediately using explicit prefix metadata. The caller owns the stream.</summary>
+    /// <remarks>
+    /// Reads from the current position through EOF, without rewinding or disposing the source.
+    /// Uses bounded buffering, no staging file, and a unique key; retries do not deduplicate.
+    /// Custom resolvers default to the instance-ID overload, without the additional names.
+    /// </remarks>
+    /// <param name="content">A readable raw-byte source owned by the caller.</param>
+    /// <param name="context">The owning instance and any known registered workflow/activity names.</param>
+    /// <param name="cancellationToken">Cancels reading, upload, and manifest recording.</param>
+    /// <returns>The completed upload's reference, including its byte count and SHA-256 hash.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="context"/> or <paramref name="content"/> is null.</exception>
+    /// <exception cref="ArgumentException">The source is not readable or the factory returns an invalid prefix.</exception>
+    /// <exception cref="NotSupportedException">The resolver does not support direct streaming uploads.</exception>
+    Task<PayloadReference> UploadAsync(Stream content, WorkflowPayloadPrefixContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return UploadAsync(content, context.InstanceId, cancellationToken);
+    }
+
+    /// <summary>Uploads raw byte chunks immediately using explicit prefix metadata.</summary>
+    /// <remarks>
+    /// Consumes each chunk before advancing; producers may reuse their memory. Chunk boundaries are not records.
+    /// Enumeration is disposed on completion, failure, or cancellation. Uses a unique key without local staging.
+    /// Custom resolvers default to the instance-ID overload, without the additional names.
+    /// </remarks>
+    /// <param name="chunks">The already-encoded raw bytes to enumerate once.</param>
+    /// <param name="context">The owning instance and any known registered workflow/activity names.</param>
+    /// <param name="cancellationToken">Cancels enumeration, upload, and manifest recording.</param>
+    /// <returns>The completed upload's reference, including its byte count and SHA-256 hash.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="context"/> or <paramref name="chunks"/> is null.</exception>
+    /// <exception cref="NotSupportedException">The resolver does not support direct streaming uploads.</exception>
+    Task<PayloadReference> UploadAsync(IAsyncEnumerable<ReadOnlyMemory<byte>> chunks, WorkflowPayloadPrefixContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return UploadAsync(chunks, context.InstanceId, cancellationToken);
+    }
+
+    /// <summary>Produces bytes directly into an upload using explicit prefix metadata.</summary>
+    /// <remarks>
+    /// The SDK owns the non-seekable destination. Write sequentially and flush wrappers with leave-open enabled
+    /// before returning. Do not retain or dispose the destination. Uses a unique key without local staging.
+    /// See <see cref="WriteAsync(Func{Stream, CancellationToken, Task}, string, CancellationToken)"/> for failure and cleanup semantics.
+    /// Custom resolvers default to the instance-ID overload, without the additional names.
+    /// </remarks>
+    /// <param name="write">The producer, called at most once with the destination and an operation token.</param>
+    /// <param name="context">The owning instance and any known registered workflow/activity names.</param>
+    /// <param name="cancellationToken">Cancels production, upload, and manifest recording.</param>
+    /// <returns>A reference only after production, upload acknowledgement, and manifest recording succeed.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="context"/> or <paramref name="write"/> is null.</exception>
+    /// <exception cref="NotSupportedException">The resolver does not support direct streaming uploads.</exception>
+    Task<PayloadReference> UploadAsync(Func<Stream, CancellationToken, Task> write, WorkflowPayloadPrefixContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return UploadAsync(write, context.InstanceId, cancellationToken);
+    }
+
+    /// <inheritdoc cref="UploadAsync(Func{Stream, CancellationToken, Task}, WorkflowPayloadPrefixContext, CancellationToken)"/>
+    /// <summary>
+    /// Compatibility writer using explicit prefix metadata.
+    /// Prefer <see cref="UploadAsync(Func{Stream, CancellationToken, Task}, WorkflowPayloadPrefixContext, CancellationToken)"/>.
+    /// </summary>
+    /// <remarks>Custom resolvers default to the instance-ID overload, without the additional names.</remarks>
+    Task<PayloadReference> WriteAsync(Func<Stream, CancellationToken, Task> write, WorkflowPayloadPrefixContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return WriteAsync(write, context.InstanceId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Uploads remaining source bytes immediately with bounded buffering and no temporary file,
+    /// returning an untyped reference with the final SHA-256 and length.
+    /// </summary>
+    /// <remarks>
+    /// Reads from the current position through EOF, including non-seekable streams. The caller owns
+    /// the source; it is not rewound or disposed on success or failure. Do not access it concurrently.
+    /// Uses a unique key, not content-addressed deduplication. Reopen or rewind before retrying.
+    /// </remarks>
+    /// <param name="content">A readable raw-byte source; no serialization is performed.</param>
+    /// <param name="instanceId">The workflow instance that owns the payload.</param>
+    /// <param name="cancellationToken">Cancels reading and upload.</param>
+    /// <returns>The completed upload's reference.</returns>
+    Task<PayloadReference> UploadAsync(Stream content, string instanceId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
+        if (!content.CanRead)
+            throw new ArgumentException("The payload stream must be readable.", nameof(content));
+        cancellationToken.ThrowIfCancellationRequested();
+        return UploadAsync((destination, token) => content.CopyToAsync(destination, token), instanceId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Uploads asynchronous raw-byte chunks as they arrive, with backpressure and no temporary file.
+    /// Chunk boundaries are not preserved as records in storage.
+    /// </summary>
+    /// <remarks>
+    /// Enumerates once, consuming each chunk before advancing so producers may reuse their buffers.
+    /// Enumeration is disposed on completion, failure, or cancellation. Empty chunks are permitted.
+    /// This does not serialize objects or frame JSON records; supply already encoded bytes.
+    /// Uses the same unique-key, integrity metadata, and failure semantics as the producer overload.
+    /// </remarks>
+    /// <param name="chunks">The raw-byte sequence to upload.</param>
+    /// <param name="instanceId">The workflow instance that owns the payload.</param>
+    /// <param name="cancellationToken">Cancels enumeration and upload.</param>
+    /// <returns>The completed upload's reference.</returns>
+    Task<PayloadReference> UploadAsync(IAsyncEnumerable<ReadOnlyMemory<byte>> chunks, string instanceId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(chunks);
+        ArgumentException.ThrowIfNullOrWhiteSpace(instanceId);
+        cancellationToken.ThrowIfCancellationRequested();
+        return UploadAsync(async (destination, token) =>
+        {
+            await foreach (var chunk in chunks.WithCancellation(token).ConfigureAwait(false))
+                await destination.WriteAsync(chunk, token).ConfigureAwait(false);
+        }, instanceId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Produces raw bytes directly into a binary-store upload with bounded buffering and no temporary file.
+    /// The SDK owns the destination; finish and flush wrappers with leave-open enabled before returning.
+    /// </summary>
+    /// <remarks>
+    /// Uses a unique immutable key and incremental SHA-256/length metadata. The reference is returned
+    /// only after production, upload, and manifest recording succeed. Failures cancel both sides and
+    /// attempt cleanup; retries create distinct keys. See <see cref="WriteAsync(Func{Stream, CancellationToken, Task}, string, CancellationToken)"/> for the full lifetime
+    /// and failure contract. Existing resolvers implementing that writer overload support this overload.
+    /// </remarks>
+    /// <param name="write">The sequential producer, invoked at most once with an SDK-owned destination.</param>
+    /// <param name="instanceId">The workflow instance that owns the payload.</param>
+    /// <param name="cancellationToken">Cancels production, upload, and manifest recording.</param>
+    /// <returns>The completed upload's reference.</returns>
+    Task<PayloadReference> UploadAsync(Func<Stream, CancellationToken, Task> write, string instanceId,
+        CancellationToken cancellationToken = default)
+        => WriteAsync(write, instanceId, cancellationToken);
+
+    /// <summary>
+    /// Produces raw bytes directly into a binary-store upload and returns their reference.
+    /// Compatibility entry point; prefer <see cref="UploadAsync(Func{Stream, CancellationToken, Task}, string, CancellationToken)"/>.
+    /// Intended for activities and clients, not orchestrator code.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The built-in resolver uploads under a unique immutable key, computing SHA-256 and length
+    /// incrementally. A bounded buffer applies backpressure; no temporary file or whole-payload
+    /// buffer is used. Unlike <see cref="StoreStreamAsync(Stream, string, CancellationToken)"/>, identical content and activity retries
+    /// create distinct keys. Automatic offloading policy and rehydration limits do not restrict writes.
+    /// </para>
+    /// <para>
+    /// The SDK owns the non-seekable, write-only destination. Write sequentially, honor the supplied
+    /// cancellation token, and finish and flush any wrappers with leave-open enabled before returning.
+    /// Do not dispose or retain the destination. For a readable source, use
+    /// <c>(destination, token) =&gt; source.CopyToAsync(destination, token)</c>; the caller owns the source.
+    /// </para>
+    /// <para>
+    /// A reference is returned only after the producer, upload, and manifest recording succeed.
+    /// Failures cancel both producer and upload, then attempt deletion of the unique key.
+    /// Cleanup failures are reported alongside the original error. Process termination or ambiguous
+    /// remote failures can still leave orphaned objects; this is not a storage transaction.
+    /// Consume the reference through raw streaming reads unless the bytes match the configured serializer.
+    /// Preserve references at sending boundaries to avoid inlining raw data.
+    /// </para>
+    /// </remarks>
+    /// <param name="write">The producer, invoked at most once with the destination and an operation cancellation token.</param>
+    /// <param name="instanceId">The workflow instance that owns the payload.</param>
+    /// <param name="cancellationToken">Cancels production, upload, and manifest recording.</param>
+    /// <returns>A reference containing the final byte count and SHA-256 hash.</returns>
+    /// <exception cref="NotSupportedException">The resolver does not support direct streaming writes.</exception>
+    Task<PayloadReference> WriteAsync(Func<Stream, CancellationToken, Task> write, string instanceId,
+        CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("This workflow payload resolver does not support direct streaming writes.");
 }

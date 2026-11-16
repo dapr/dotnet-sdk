@@ -17,18 +17,24 @@ using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Demonstrates ordinary document values without registering payload-reference support.</summary>
 internal sealed class InlinePayloadExample : PayloadExample
 {
+    /// <inheritdoc />
     public override string Id => "inline";
+    /// <inheritdoc />
     public override string Title => "Inline payloads (no binary store)";
+    /// <inheritdoc />
     public override string WhenToUse => "Small values should travel directly through history; ordinary typed reads are enough.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
         // Workflow/activity discovery is source-generated. No WithBinaryStorePayloads means no offloading.
         services.AddDaprWorkflow();
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {

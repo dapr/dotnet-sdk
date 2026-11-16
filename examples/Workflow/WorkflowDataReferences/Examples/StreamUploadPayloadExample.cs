@@ -19,18 +19,24 @@ using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Compares explicit and automatic stream staging under content-addressed keys.</summary>
+/// <param name="automaticReferences">Whether the client passes its stream directly to workflow scheduling.</param>
 internal sealed class StreamUploadPayloadExample(bool automaticReferences = false) : PayloadExample
 {
     // The two selectable scenarios share the same receiver and read path.
     // Only the client's upload API and sending policy differ.
+    /// <inheritdoc />
     public override string Id => automaticReferences ? "auto-stream" : "explicit-stream";
+    /// <inheritdoc />
     public override string Title => automaticReferences
         ? "Automatic stream references (pass stream, receive reference)"
         : "Stream uploads (file input and streamed activity output)";
+    /// <inheritdoc />
     public override string WhenToUse => automaticReferences
         ? "Pass a Stream directly to scheduling; receive raw output in chunks without client resolver calls."
         : "Explicitly store raw stream bytes and keep all workflow/activity boundaries reference-typed.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
         services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
@@ -44,6 +50,7 @@ internal sealed class StreamUploadPayloadExample(bool automaticReferences = fals
         });
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {

@@ -38,7 +38,7 @@ namespace Dapr.Workflow.Payloads;
 /// backward-compatible with every version that has ever been written.
 /// </para>
 /// <para>
-/// References created by <see cref="IWorkflowPayloadResolver.StoreStreamAsync"/> can identify
+/// References created by <see cref="IWorkflowPayloadResolver.StoreStreamAsync(System.IO.Stream, string, System.Threading.CancellationToken)"/> can identify
 /// arbitrary raw bytes. Consume those bytes through streaming reads; a typed view is appropriate
 /// only when they already match the configured serializer's format for that type.
 /// </para>
@@ -108,7 +108,7 @@ public record PayloadReference
     public IReadOnlyList<PayloadStage> Stages { get; init; }
  
     /// <summary>
-    /// Returns a typed view of this reference.
+    /// Returns a typed view of this reference. Does not convert, deserialize, or validate the stored bytes.
     /// </summary>
     /// <typeparam name="T">The type the payload is expected to deserialize to.</typeparam>
     /// <returns>A <see cref="PayloadReference{T}"/> sharing this reference's values.</returns>

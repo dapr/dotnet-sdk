@@ -118,6 +118,23 @@ internal sealed class WorkflowGrpcClient(
                 "Streaming workflow outputs requires payload support. Register WithBinaryStorePayloads on the client.");
         }
 
+        var reference = await GetWorkflowOutputReferenceAsync(instanceId, cancellationToken).ConfigureAwait(false);
+        var chunks = chunkSize is { } requestedSize
+            ? payloadResolver.ReadChunksAsync(reference, requestedSize, cancellationToken)
+            : payloadResolver.ReadChunksAsync(reference, cancellationToken);
+        await foreach (var chunk in chunks.WithCancellation(cancellationToken).ConfigureAwait(false))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return chunk;
+        }
+    }
+
+    /// <inheritdoc />
+    public override async Task<PayloadReference> GetWorkflowOutputReferenceAsync(
+        string instanceId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        cancellationToken.ThrowIfCancellationRequested();
         grpc.GetInstanceResponse response;
         try
         {
@@ -132,7 +149,7 @@ internal sealed class WorkflowGrpcClient(
             throw new InvalidOperationException($"Workflow instance '{instanceId}' does not exist.", ex);
         }
         cancellationToken.ThrowIfCancellationRequested();
-        if (!response.Exists)
+        if (response is null || !response.Exists)
             throw new InvalidOperationException($"Workflow instance '{instanceId}' does not exist.");
         var state = response.WorkflowState
                     ?? throw new InvalidOperationException($"Workflow instance '{instanceId}' returned no state.");
@@ -140,23 +157,15 @@ internal sealed class WorkflowGrpcClient(
         {
             throw new InvalidOperationException(
                 $"Workflow instance '{instanceId}' is not successfully completed (status: {state.WorkflowStatus}). " +
-                "Wait for completion with getInputsAndOutputs: false before reading output chunks.");
+                "Wait for completion with getInputsAndOutputs: false before reading output.");
         }
 
         // Inspect only the output envelope; normal metadata preparation would hydrate all payloads.
-        var reference = PayloadReferenceParser.Parse(state.Output)
+        return PayloadReferenceParser.Parse(state.Output)
                         ?? throw new InvalidOperationException(
                             $"Workflow instance '{instanceId}' has no referenced output; its output is inline or absent. " +
                             "Use GetWorkflowStateAsync and ReadOutputAs<T> for inline values, or configure the producer " +
                             "to persist a PayloadReference as the workflow output.");
-        var chunks = chunkSize is { } requestedSize
-            ? payloadResolver.ReadChunksAsync(reference, requestedSize, cancellationToken)
-            : payloadResolver.ReadChunksAsync(reference, cancellationToken);
-        await foreach (var chunk in chunks.WithCancellation(cancellationToken).ConfigureAwait(false))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            yield return chunk;
-        }
     }
 
     /// <inheritdoc />

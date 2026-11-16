@@ -28,6 +28,7 @@ namespace WorkflowDataReferences.Workflows;
 /// </remarks>
 internal sealed class DocumentProcessingWorkflow : Workflow<DocumentPayload, DocumentPayload>
 {
+    /// <inheritdoc />
     public override async Task<DocumentPayload> RunAsync(WorkflowContext context, DocumentPayload input)
     {
         // Boundary 1: the SDK has already deserialized the workflow input, even if it was offloaded.

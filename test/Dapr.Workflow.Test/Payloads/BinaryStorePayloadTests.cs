@@ -35,6 +35,7 @@ public class BinaryStorePayloadTests
         Type[] expected =
         [
             typeof(BinaryStorePayloadOptions),
+            typeof(WorkflowPayloadPrefixContext),
             typeof(IWorkflowPayloadManifest),
             typeof(IWorkflowPayloadResolver),
             typeof(PayloadIntegrityException),
@@ -46,6 +47,7 @@ public class BinaryStorePayloadTests
             typeof(PayloadStage),
             typeof(WorkflowPayloadCleaner),
             typeof(BinaryStorePayloadServiceCollectionExtensions),
+            typeof(WorkflowActivityContextPayloadExtensions),
             typeof(WorkflowContextPayloadExtensions)
         ];
         var exported = typeof(DaprWorkflowClient).Assembly.GetExportedTypes()
@@ -527,6 +529,10 @@ public class BinaryStorePayloadTests
         ], codec.Writes.Select(write => write.Site.Kind));
         Assert.Equal(["parent", "child", "detached", "target", "parent", "parent", "parent"],
             codec.Writes.Select(write => write.Site.InstanceId));
+        Assert.Equal(["workflow", "child", "detached", null, "workflow", "workflow", "workflow"],
+            codec.Writes.Select(write => write.Site.ToPrefixContext().WorkflowName));
+        Assert.Equal(["activity", null, null, null, null, null, null],
+            codec.Writes.Select(write => write.Site.ToPrefixContext().ActivityName));
         Assert.Equal("wire:continued-input", response.Actions[4].CompleteWorkflow.Result);
         Assert.Equal("wire:retained", carried.EventRaised.Input);
     }

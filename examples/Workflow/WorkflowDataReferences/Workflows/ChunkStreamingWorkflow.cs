@@ -27,6 +27,7 @@ namespace WorkflowDataReferences.Workflows;
 /// </remarks>
 internal sealed class ChunkStreamingWorkflow : Workflow<PayloadReference<DocumentPayload>, PayloadSummary>
 {
+    /// <inheritdoc />
     public override async Task<PayloadSummary> RunAsync(
         WorkflowContext context, PayloadReference<DocumentPayload> input)
     {
