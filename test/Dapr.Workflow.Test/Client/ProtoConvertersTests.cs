@@ -83,6 +83,25 @@ public class ProtoConvertersTests
         Assert.Same(serializer, metadata.Serializer);
     }
 
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", "")]
+    [InlineData("operator requested", "operator requested")]
+    public void ToWorkflowMetadata_ShouldPreserveTerminationReason(string? reason, string? expected)
+    {
+        var state = new Dapr.DurableTask.Protobuf.WorkflowState
+        {
+            InstanceId = "i",
+            Name = "workflow",
+            WorkflowStatus = OrchestrationStatus.Terminated,
+            TerminationReason = reason is null ? null : new StringValue { Value = reason }
+        };
+
+        var metadata = ProtoConverters.ToWorkflowMetadata(state, new JsonDaprSerializer());
+
+        Assert.Equal(expected, metadata.TerminationReason);
+    }
+
     [Fact]
     public void ToWorkflowMetadata_ShouldSetMinValueTimestamps_WhenProtoTimestampsAreNull()
     {
