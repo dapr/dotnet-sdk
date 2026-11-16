@@ -534,6 +534,34 @@ public class WorkflowGrpcClientTests
         Assert.Equal("i", captured!.InstanceId);
         Assert.True(captured.Recursive);
         Assert.Equal("{\"done\":true}", captured.Output);
+        Assert.Null(captured.Reason);
+    }
+
+    [Theory]
+    [InlineData("operator requested")]
+    [InlineData("")]
+    public async Task TerminateWorkflowWithReasonAsync_ShouldPreserveReasonAndOutput(string reason)
+    {
+        var serializer = new StubSerializer { SerializeResult = "{\"done\":true}" };
+        TerminateRequest? captured = null;
+
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.TerminateInstanceAsync(It.IsAny<TerminateRequest>(), It.IsAny<CallOptions>()))
+            .Callback<TerminateRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new TerminateResponse()));
+
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+
+        await client.TerminateWorkflowWithReasonAsync(
+            "i", reason, output: new { Done = true }, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.NotNull(captured);
+        Assert.Equal("i", captured!.InstanceId);
+        Assert.True(captured.Recursive);
+        Assert.Equal("{\"done\":true}", captured.Output);
+        Assert.NotNull(captured.Reason);
+        Assert.Equal(reason, captured.Reason.Value);
     }
 
     [Fact]
