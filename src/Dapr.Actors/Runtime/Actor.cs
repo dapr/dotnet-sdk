@@ -33,6 +33,8 @@ using Microsoft.Extensions.Logging;
 public abstract class Actor
 {
     private readonly string actorTypeName;
+    private volatile bool discarded;
+    private volatile bool detached;
 
     /// <summary>
     /// The Logger
@@ -74,7 +76,14 @@ public abstract class Actor
     /// </summary>
     public IActorStateManager StateManager { get; protected set; }
 
-    internal async Task OnActivateInternalAsync()
+    // Set once this instance was replaced or is being deactivated, so it can't overwrite newer state.
+    internal bool Discarded => this.discarded || this.detached;
+
+    internal void Discard() => this.discarded = true;
+
+    internal void Detach(bool detached) => this.detached = detached;
+
+    internal async Task OnActivateInternalAsync(Func<bool> canSave)
     {
         await this.ResetStateAsync();
         await this.OnActivateAsync();
@@ -82,7 +91,10 @@ public abstract class Actor
         this.Logger.LogDebug("Activated");
 
         // Save any state modifications done in user overridden Activate method.
-        await this.SaveStateAsync();
+        if (canSave())
+        {
+            await this.SaveStateAsync();
+        }
     }
 
     internal async Task OnDeactivateInternalAsync()
@@ -98,9 +110,10 @@ public abstract class Actor
         return this.OnPreActorMethodAsync(actorMethodContext);
     }
 
-    internal async Task OnPostActorMethodAsyncInternal(ActorMethodContext actorMethodContext)
+    internal async Task OnPostActorMethodAsyncInternal(ActorMethodContext actorMethodContext, Action ensureCanSave)
     {
         await this.OnPostActorMethodAsync(actorMethodContext);
+        ensureCanSave();
         await this.SaveStateAsync();
     }
 

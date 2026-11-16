@@ -494,6 +494,11 @@ internal sealed class ActorStateManager : IActorStateManager, IActorContextualSt
 
     public async Task SaveStateAsync(CancellationToken cancellationToken = default)
     {
+        if (this.actor.Discarded)
+        {
+            throw new InvalidOperationException($"Actor {this.actor.Id} of type {this.actorTypeName} was replaced or deactivated, state not saved.");
+        }
+
         EnsureStateProviderInitialized();
 
         var stateChangeTracker = GetContextualStateTracker();

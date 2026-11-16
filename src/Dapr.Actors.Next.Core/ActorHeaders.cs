@@ -24,6 +24,7 @@ public static class ActorHeaders
     private const string ReentrancyHeaderName = "Dapr-Reentrancy-Id";
     private const string LegacyReentrancyHeaderName = "dapr-reentrant-id";
     private const string AlternateReentrancyHeaderName = "x-dapr-reentrant-id";
+    internal const string ActivationIdHeaderName = "Dapr-Actor-Activation-Id";
     private static readonly string[] ReentrancyHeaderNames =
         [ReentrancyHeaderName, LegacyReentrancyHeaderName, AlternateReentrancyHeaderName];
 
@@ -63,6 +64,40 @@ public static class ActorHeaders
         }
 
         return WithCanonicalReentrancy(headers, Guid.NewGuid().ToString("N"));
+    }
+
+    internal static string GetActivationId(IReadOnlyDictionary<string, string> headers)
+    {
+        ArgumentNullException.ThrowIfNull(headers);
+        if (headers.TryGetValue(ActivationIdHeaderName, out var value) && !string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        foreach (var (key, candidate) in headers)
+        {
+            if (!string.IsNullOrEmpty(candidate) && string.Equals(key, ActivationIdHeaderName, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidate;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    internal static IReadOnlyDictionary<string, string> WithoutActivationId(IReadOnlyDictionary<string, string> headers)
+    {
+        ArgumentNullException.ThrowIfNull(headers);
+        var copy = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, value) in headers)
+        {
+            if (!string.Equals(key, ActivationIdHeaderName, StringComparison.OrdinalIgnoreCase))
+            {
+                copy[key] = value;
+            }
+        }
+
+        return copy;
     }
 
     internal static bool TryGetReentrancy(IReadOnlyDictionary<string, string> headers, out string key, out string value)

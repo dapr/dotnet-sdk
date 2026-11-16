@@ -38,6 +38,8 @@ internal sealed class ActorTurnWork
 
     public ActorRuntimeRequest Request { get; }
 
+    public long Ticket { get; init; }
+
     public CancellationToken CancellationToken { get; }
 
     public Task<byte[]?> Task => completion.Task;
