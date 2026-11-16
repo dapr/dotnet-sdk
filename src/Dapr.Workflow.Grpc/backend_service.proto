@@ -113,7 +113,6 @@ message WorkflowMetadata {
   optional google.protobuf.StringValue version = 12;
   optional google.protobuf.StringValue parentAppId = 13;
   optional google.protobuf.Timestamp startedAt = 14;
-  // Reason supplied when the workflow was terminated.
   google.protobuf.StringValue terminationReason = 15;
 }
 
