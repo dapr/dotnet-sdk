@@ -561,7 +561,7 @@ public class WorkflowGrpcClientTests
         Assert.True(captured.Recursive);
         Assert.Equal("{\"done\":true}", captured.Output);
         Assert.NotNull(captured.Reason);
-        Assert.Equal(reason, captured.Reason.Value);
+        Assert.Equal(reason, captured.Reason!.Value);
     }
 
     [Fact]
