@@ -112,7 +112,7 @@ public sealed class ErrorHandlingTests
         Assert.True(duration.TotalSeconds < 10, "Timer should have been cancelled early");
     }
 
-    [MinimumDaprRuntimeFact("1.17")]
+    [MinimumDaprRuntimeFact("1.20")]
     public async Task ShouldFailExternalEventWaitWhenAnErrorIsRaised()
     {
         var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
