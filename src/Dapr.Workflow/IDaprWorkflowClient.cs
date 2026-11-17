@@ -305,7 +305,7 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
     /// <param name="exception">The exception providing the failure type and stack trace.</param>
     /// <param name="cancellation">Token to cancel enqueueing the error notification.</param>
     /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> or <paramref name="eventName"/> is null or empty.</exception>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="exception"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="errorMessage"/> or <paramref name="exception"/> is null.</exception>
     Task RaiseErrorAsync(
         string instanceId,
         string eventName,
