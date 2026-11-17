@@ -112,6 +112,88 @@ public sealed class ErrorHandlingTests
         Assert.True(duration.TotalSeconds < 10, "Timer should have been cancelled early");
     }
 
+    [MinimumDaprRuntimeFact("1.17")]
+    public async Task ShouldFailExternalEventWaitWhenAnErrorIsRaised()
+    {
+        var componentsDir = TestDirectoryManager.CreateTestDirectory("workflow-components");
+        var workflowInstanceId = Guid.NewGuid().ToString();
+
+        await using var environment = await DaprTestEnvironment.CreateWithPooledNetworkAsync(
+            needsActorState: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+        await environment.StartAsync(TestContext.Current.CancellationToken);
+
+        var harness = new DaprHarnessBuilder(componentsDir)
+            .WithEnvironment(environment)
+            .BuildWorkflow();
+        await using var testApp = await DaprHarnessBuilder.ForHarness(harness)
+            .ConfigureServices(builder =>
+            {
+                builder.Services.AddDaprWorkflowBuilder(
+                    opt => opt.RegisterWorkflow<RaiseErrorWorkflow>(),
+                    configureClient: (sp, cb) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        var grpcEndpoint = config["DAPR_GRPC_ENDPOINT"];
+                        if (!string.IsNullOrEmpty(grpcEndpoint))
+                            cb.UseGrpcEndpoint(grpcEndpoint);
+                    });
+            })
+            .BuildAndStartAsync();
+
+        using var scope = testApp.CreateScope();
+        var daprWorkflowClient = scope.ServiceProvider.GetRequiredService<DaprWorkflowClient>();
+
+        await daprWorkflowClient.ScheduleNewWorkflowAsync(nameof(RaiseErrorWorkflow), workflowInstanceId);
+
+        using var waitCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        while (true)
+        {
+            waitCts.Token.ThrowIfCancellationRequested();
+            var state = await daprWorkflowClient.GetWorkflowStateAsync(
+                workflowInstanceId,
+                getInputsAndOutputs: true,
+                cancellation: waitCts.Token);
+            if (state?.ReadCustomStatusAs<string>() == "WaitingForExternalEvent")
+                break;
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), waitCts.Token);
+        }
+
+        await daprWorkflowClient.RaiseErrorAsync(
+            workflowInstanceId,
+            "approval",
+            string.Empty,
+            new InvalidOperationException(),
+            TestContext.Current.CancellationToken);
+
+        var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(
+            workflowInstanceId,
+            cancellation: TestContext.Current.CancellationToken);
+
+        Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
+        Assert.Equal(
+            $"{typeof(InvalidOperationException).FullName}|",
+            result.ReadOutputAs<string>());
+    }
+
+    private sealed class RaiseErrorWorkflow : Workflow<object?, string>
+    {
+        public override async Task<string> RunAsync(WorkflowContext context, object? input)
+        {
+            context.SetCustomStatus("WaitingForExternalEvent");
+            try
+            {
+                await context.WaitForExternalEventAsync<string>("approval");
+                return "unexpected success";
+            }
+            catch (WorkflowTaskFailedException ex)
+            {
+                return $"{ex.FailureDetails.ErrorType}|{ex.FailureDetails.ErrorMessage}";
+            }
+        }
+    }
+
     private sealed class CancellableTimerWorkflow : Workflow<object?, string>
     {
         public override async Task<string> RunAsync(WorkflowContext context, object? input)
