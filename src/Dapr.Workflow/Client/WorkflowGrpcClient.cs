@@ -235,7 +235,7 @@ internal sealed class WorkflowGrpcClient(
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
         ArgumentException.ThrowIfNullOrEmpty(eventName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
+        ArgumentNullException.ThrowIfNull(errorMessage);
         ArgumentNullException.ThrowIfNull(exception);
 
         var failureDetails = CreateFailureDetails(errorMessage, exception);
