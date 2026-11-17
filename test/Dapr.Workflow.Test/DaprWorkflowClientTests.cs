@@ -272,6 +272,7 @@ public class DaprWorkflowClientTests
         await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseErrorAsync("", "evt", "", exception, TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseErrorAsync("i", "", "", exception, TestContext.Current.CancellationToken));
         await Assert.ThrowsAsync<ArgumentNullException>(() => client.RaiseErrorAsync("i", "evt", "", null!, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => client.RaiseErrorAsync("i", "evt", null!, new InvalidOperationException(), TestContext.Current.CancellationToken));
 
         await client.RaiseErrorAsync("i", "evt", "", exception, TestContext.Current.CancellationToken);
 
