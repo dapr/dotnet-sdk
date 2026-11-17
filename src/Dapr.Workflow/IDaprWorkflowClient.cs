@@ -301,10 +301,10 @@ public interface IDaprWorkflowClient: IDaprClient, IAsyncDisposable
     /// </remarks>
     /// <param name="instanceId">The unique ID of the target workflow instance.</param>
     /// <param name="eventName">The event name identifying the wait to fail.</param>
-    /// <param name="errorMessage">A descriptive message for the failure.</param>
+    /// <param name="errorMessage">An optional descriptive message for the failure; it may be empty.</param>
     /// <param name="exception">The exception providing the failure type and stack trace.</param>
     /// <param name="cancellation">Token to cancel enqueueing the error notification.</param>
-    /// <exception cref="ArgumentException">Thrown if an identifier or error message is null or empty.</exception>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="instanceId"/> or <paramref name="eventName"/> is null or empty.</exception>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="exception"/> is null.</exception>
     Task RaiseErrorAsync(
         string instanceId,
