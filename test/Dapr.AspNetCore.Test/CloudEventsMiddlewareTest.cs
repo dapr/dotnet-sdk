@@ -356,6 +356,45 @@ public class CloudEventsMiddlewareTest
         await pipeline.Invoke(context);
     }
 
+    [Theory]
+    [InlineData("application/json")]
+    [InlineData("application/person+json")]
+    [InlineData("application/problem+json")]
+    public async Task InvokeAsync_ReplacesBodyJsonStringData_KeepsJsonEncoding(string dataContentType)
+    {
+        // A JSON string is valid JSON content, so it must reach the app still JSON-encoded
+        // for any JSON media type, including structured syntax suffix types (+json).
+        const string input = "hello, world";
+        var expected = JsonSerializer.Serialize(input);
+
+        var serviceCollection = new ServiceCollection();
+        var provider = serviceCollection.BuildServiceProvider();
+
+        var app = new ApplicationBuilder(provider);
+        app.UseCloudEvents();
+
+        // Do verification in the scope of the middleware
+        app.Run(httpContext =>
+        {
+            httpContext.Request.ContentType.ShouldBe(dataContentType);
+            ReadBody(httpContext.Request.Body).ShouldBe(expected);
+            return Task.CompletedTask;
+        });
+
+        var pipeline = app.Build();
+
+        var context = new DefaultHttpContext
+        {
+            Request =
+            {
+                ContentType = "application/cloudevents+json",
+                Body = MakeBody($"{{ \"datacontenttype\": \"{dataContentType}\", \"data\": {JsonSerializer.Serialize(input)} }}")
+            }
+        };
+
+        await pipeline.Invoke(context);
+    }
+
     // This is a special case. S.T.Json will always output utf8, so we have to reinterpret the charset
     // of the datacontenttype.
     [Fact]

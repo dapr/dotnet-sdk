@@ -235,7 +235,7 @@ internal class CloudEventsMiddleware
             contentType = dataContentType.GetString();
             isJson =
                 parsed.MediaType.Equals("application/json", StringComparison.Ordinal) ||
-                parsed.Suffix.EndsWith("+json", StringComparison.Ordinal);
+                parsed.Suffix.Equals("json", StringComparison.OrdinalIgnoreCase);
 
             // Since S.T.Json always outputs utf-8, we may need to normalize the data content type
             // to remove any charset information. We generally just assume utf-8 everywhere, so omitting
