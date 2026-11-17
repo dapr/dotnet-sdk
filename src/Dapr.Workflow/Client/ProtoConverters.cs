@@ -93,6 +93,40 @@ internal static class ProtoConverters
             _ => WorkflowHistoryEventType.Unknown
         };
 
+    /// <summary>
+    /// Converts a proto <see cref="Dapr.DurableTask.Protobuf.WorkflowSchedule"/> to <see cref="WorkflowSchedule"/>.
+    /// </summary>
+    public static WorkflowSchedule ToWorkflowSchedule(Dapr.DurableTask.Protobuf.WorkflowSchedule schedule) =>
+        new(schedule.Name, schedule.WorkflowName, schedule.Schedule)
+        {
+            SerializedInput = schedule.Input,
+            DueTime = schedule.DueTime?.ToDateTimeOffset(),
+            ExpirationTime = schedule.ExpirationTime?.ToDateTimeOffset(),
+            Repeats = schedule.HasRepeats ? (int)schedule.Repeats : null,
+            TargetAppId = schedule.HasTargetAppID ? schedule.TargetAppID : null,
+            TargetAppNamespace = schedule.HasTargetAppNamespace ? schedule.TargetAppNamespace : null,
+            SkipMissed = schedule.HasSkipMissed && schedule.SkipMissed,
+            Status = schedule.Status is { } status ? ToWorkflowScheduleStatus(status) : null,
+        };
+
+    private static WorkflowScheduleStatus ToWorkflowScheduleStatus(Dapr.DurableTask.Protobuf.WorkflowScheduleStatus status) =>
+        new((WorkflowScheduleState)status.State, status.CreatedAt?.ToDateTimeOffset() ?? default, (int)status.RunCount)
+        {
+            NextRunTime = status.NextRunTime?.ToDateTimeOffset(),
+            LastRunTime = status.LastRunTime?.ToDateTimeOffset(),
+            LastRun = status.LastRun is { } run
+                ? new WorkflowScheduleRun(run.InstanceId)
+                {
+                    RuntimeStatus = run.HasRuntimeStatus ? ToRuntimeStatus(run.RuntimeStatus) : null,
+                    CreatedAt = run.CreatedTimestamp?.ToDateTimeOffset(),
+                    LastUpdatedAt = run.LastUpdatedTimestamp?.ToDateTimeOffset(),
+                    SerializedOutput = run.Output,
+                    FailureDetails = ToWorkflowTaskFailureDetails(run.FailureDetails),
+                }
+                : null,
+            FailureMessage = status.FailureMessage,
+        };
+
     private static Workflow.WorkflowTaskFailureDetails? ToWorkflowTaskFailureDetails(TaskFailureDetails? failureDetails)
         => failureDetails is null
             ? null

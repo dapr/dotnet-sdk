@@ -254,6 +254,15 @@ internal static partial class Logging
     [LoggerMessage(LogLevel.Information, "Rerun workflow from event: source='{SourceInstanceId}', eventId={EventId}, newInstanceId='{NewInstanceId}'")]
     public static partial void LogRerunWorkflowFromEvent(this ILogger logger, string sourceInstanceId, uint eventId, string newInstanceId);
 
+    [LoggerMessage(LogLevel.Information, "Created workflow schedule '{Name}' for workflow '{WorkflowName}'")]
+    public static partial void LogCreateWorkflowSchedule(this ILogger logger, string name, string workflowName);
+
+    [LoggerMessage(LogLevel.Information, "Deleted workflow schedule '{Name}'")]
+    public static partial void LogDeleteWorkflowSchedule(this ILogger logger, string name);
+
+    [LoggerMessage(LogLevel.Information, "Triggered workflow schedule '{Name}': run '{InstanceId}'")]
+    public static partial void LogTriggerWorkflowSchedule(this ILogger logger, string name, string instanceId);
+
     [LoggerMessage(LogLevel.Debug, "gRPC protocol handler keepalive Hello call failed")]
     public static partial void LogGrpcProtocolHandlerKeepaliveFailed(this ILogger logger, Exception ex);
 }

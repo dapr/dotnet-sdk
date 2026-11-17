@@ -29,6 +29,7 @@
         <Protobuf Include="orchestrator_actions.proto" GrpcServices="Client" />
         <Protobuf Include="orchestrator_service.proto" GrpcServices="Client" />
         <Protobuf Include="runtime_state.proto" GrpcServices="Client" />
+        <Protobuf Include="workflow_schedule.proto" GrpcServices="Client" />
     </ItemGroup>
     
     <ItemGroup>

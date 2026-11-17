@@ -148,6 +148,7 @@
     <Project Path="examples/Workflow/WorkflowMonitor/WorkflowMonitor.csproj" />
     <Project Path="examples/Workflow/WorkflowParallelFanOut/WorkflowParallelFanOut.csproj" />
     <Project Path="examples/Workflow/WorkflowRetryPolicy/WorkflowRetryPolicy.csproj" />
+    <Project Path="examples/Workflow/WorkflowSchedules/WorkflowSchedules.csproj" />
     <Project Path="examples/Workflow/WorkflowSubworkflow/WorkflowSubworkflow.csproj" />
     <Project Path="examples/Workflow/WorkflowTaskChaining/WorkflowTaskChaining.csproj" />
     <Project Path="examples/Workflow/WorkflowUnitTest/WorkflowUnitTest.csproj" />

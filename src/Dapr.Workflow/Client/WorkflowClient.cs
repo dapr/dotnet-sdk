@@ -208,6 +208,23 @@ internal abstract class WorkflowClient : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Lists the workflow instance IDs that start with a prefix, with optional pagination.
+    /// </summary>
+    /// <param name="continuationToken">The continuation token from a previous call, or <c>null</c> for the first page.</param>
+    /// <param name="pageSize">The maximum number of instance IDs to return, or <c>null</c> for no limit.</param>
+    /// <param name="instanceIdPrefix">When set, only instance IDs starting with it are returned.</param>
+    /// <param name="cancellationToken">A token that can be used to cancel the operation.</param>
+    /// <returns>A page of instance IDs and an optional continuation token for the next page.</returns>
+    public virtual Task<WorkflowInstancePage> ListInstanceIdsAsync(
+        string? continuationToken,
+        int? pageSize,
+        string? instanceIdPrefix,
+        CancellationToken cancellationToken = default)
+        => string.IsNullOrEmpty(instanceIdPrefix)
+            ? ListInstanceIdsAsync(continuationToken, pageSize, cancellationToken)
+            : throw new NotSupportedException("This workflow client does not support listing instance IDs by prefix.");
+
+    /// <summary>
     /// Gets the full history of a workflow instance.
     /// </summary>
     /// <param name="instanceId">The instance ID of the workflow to get history for.</param>
@@ -230,6 +247,53 @@ internal abstract class WorkflowClient : IAsyncDisposable
         uint eventId,
         RerunWorkflowFromEventOptions? options = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a schedule that starts <paramref name="workflowName"/> on <paramref name="schedule"/>.
+    /// </summary>
+    public virtual Task CreateWorkflowScheduleAsync(
+        string name,
+        string workflowName,
+        string schedule,
+        WorkflowScheduleOptions? options = null,
+        CancellationToken cancellationToken = default)
+        => throw SchedulesNotSupported();
+
+    /// <summary>
+    /// Gets a workflow schedule with its status, or <c>null</c> if it does not exist.
+    /// </summary>
+    public virtual Task<WorkflowSchedule?> GetWorkflowScheduleAsync(
+        string name,
+        CancellationToken cancellationToken = default)
+        => throw SchedulesNotSupported();
+
+    /// <summary>
+    /// Lists a page of workflow schedules with their status.
+    /// </summary>
+    public virtual Task<WorkflowSchedulePage> ListWorkflowSchedulesAsync(
+        string? continuationToken = null,
+        int? pageSize = null,
+        CancellationToken cancellationToken = default)
+        => throw SchedulesNotSupported();
+
+    /// <summary>
+    /// Deletes a workflow schedule. Runs it already started are not affected.
+    /// </summary>
+    public virtual Task DeleteWorkflowScheduleAsync(
+        string name,
+        CancellationToken cancellationToken = default)
+        => throw SchedulesNotSupported();
+
+    /// <summary>
+    /// Starts a run of a workflow schedule now and returns the run's instance ID.
+    /// </summary>
+    public virtual Task<string> TriggerWorkflowScheduleAsync(
+        string name,
+        CancellationToken cancellationToken = default)
+        => throw SchedulesNotSupported();
+
+    private static NotSupportedException SchedulesNotSupported()
+        => new("This workflow client does not support workflow schedules.");
 
     /// <inheritdoc />
     public abstract ValueTask DisposeAsync();

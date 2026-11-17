@@ -10,6 +10,7 @@ option go_package = "/api/protos";
 import "orchestration.proto";
 import "history_events.proto";
 import "orchestrator_actions.proto";
+import "workflow_schedule.proto";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
@@ -277,6 +278,10 @@ message ListInstanceIDsRequest {
   // pageSize is the maximum number of instances to return for this page. If
   // not given, all instances will be attempted to be returned.
   optional uint32 pageSize = 2;
+
+  // instanceIdPrefix, when set, returns only the instances whose ID starts
+  // with it.
+  optional string instanceIdPrefix = 3;
 }
 
 // ListInstanceIDsResponse is the response to executing ListInstanceIDs.
@@ -346,4 +351,12 @@ service TaskHubSidecarService {
 
   rpc ListInstanceIDs (ListInstanceIDsRequest) returns (ListInstanceIDsResponse);
   rpc GetInstanceHistory (GetInstanceHistoryRequest) returns (GetInstanceHistoryResponse);
+
+  // Workflow schedules start a workflow on a cron schedule. See
+  // workflow_schedule.proto.
+  rpc CreateWorkflowSchedule (CreateWorkflowScheduleRequest) returns (CreateWorkflowScheduleResponse);
+  rpc GetWorkflowSchedule (GetWorkflowScheduleRequest) returns (GetWorkflowScheduleResponse);
+  rpc ListWorkflowSchedules (ListWorkflowSchedulesRequest) returns (ListWorkflowSchedulesResponse);
+  rpc DeleteWorkflowSchedule (DeleteWorkflowScheduleRequest) returns (DeleteWorkflowScheduleResponse);
+  rpc TriggerWorkflowSchedule (TriggerWorkflowScheduleRequest) returns (TriggerWorkflowScheduleResponse);
 }

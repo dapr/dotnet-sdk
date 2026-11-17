@@ -621,11 +621,13 @@ public class WorkflowGrpcClientTests
 
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
-        var result = await client.ListInstanceIdsAsync(continuationToken: "prev-token", pageSize: 3, cancellationToken: TestContext.Current.CancellationToken);
+        var result = await client.ListInstanceIdsAsync(continuationToken: "prev-token", pageSize: 3, instanceIdPrefix: "sched_",
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(captured);
         Assert.Equal("prev-token", captured!.ContinuationToken);
         Assert.Equal(3u, captured.PageSize);
+        Assert.Equal("sched_", captured.InstanceIdPrefix);
         Assert.Equal(3, result.InstanceIds.Count);
         Assert.Equal("id1", result.InstanceIds[0]);
         Assert.Equal("next-page", result.ContinuationToken);
@@ -650,6 +652,314 @@ public class WorkflowGrpcClientTests
 
         Assert.Single(result.InstanceIds);
         Assert.Null(result.ContinuationToken);
+    }
+
+    [Fact]
+    public async Task CreateWorkflowScheduleAsync_ShouldSendAllOptions()
+    {
+        var serializer = new StubSerializer { SerializeResult = "{\"a\":1}" };
+        CreateWorkflowScheduleRequest? captured = null;
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.CreateWorkflowScheduleAsync(It.IsAny<CreateWorkflowScheduleRequest>(), It.IsAny<CallOptions>()))
+            .Callback<CreateWorkflowScheduleRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new CreateWorkflowScheduleResponse()));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
+        var dueTime = new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero);
+        var expirationTime = dueTime.AddDays(7);
+
+        await client.CreateWorkflowScheduleAsync("sched", "wf", "0 30 9 * * MON", new WorkflowScheduleOptions
+        {
+            Input = new { a = 1 },
+            DueTime = dueTime,
+            ExpirationTime = expirationTime,
+            Repeats = 3,
+            TargetAppId = "other",
+            TargetAppNamespace = "ns",
+            SkipMissed = true,
+            Overwrite = true
+        }, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(captured);
+        Assert.True(captured!.Overwrite);
+        var schedule = captured.Schedule;
+        Assert.Equal("sched", schedule.Name);
+        Assert.Equal("wf", schedule.WorkflowName);
+        Assert.Equal("0 30 9 * * MON", schedule.Schedule);
+        Assert.Equal("{\"a\":1}", schedule.Input);
+        Assert.Equal(dueTime, schedule.DueTime.ToDateTimeOffset());
+        Assert.Equal(expirationTime, schedule.ExpirationTime.ToDateTimeOffset());
+        Assert.Equal(3u, schedule.Repeats);
+        Assert.Equal("other", schedule.TargetAppID);
+        Assert.Equal("ns", schedule.TargetAppNamespace);
+        Assert.True(schedule.HasSkipMissed);
+        Assert.True(schedule.SkipMissed);
+        Assert.Null(schedule.Status);
+    }
+
+    [Fact]
+    public async Task CreateWorkflowScheduleAsync_ShouldLeaveOptionalFieldsUnset_WhenNoOptions()
+    {
+        CreateWorkflowScheduleRequest? captured = null;
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.CreateWorkflowScheduleAsync(It.IsAny<CreateWorkflowScheduleRequest>(), It.IsAny<CallOptions>()))
+            .Callback<CreateWorkflowScheduleRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new CreateWorkflowScheduleResponse()));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, new StubSerializer());
+
+        await client.CreateWorkflowScheduleAsync("sched", "wf", "@every 1m", cancellationToken: TestContext.Current.CancellationToken);
+
+        var schedule = captured!.Schedule;
+        Assert.False(captured.Overwrite);
+        Assert.Null(schedule.Input);
+        Assert.Null(schedule.DueTime);
+        Assert.Null(schedule.ExpirationTime);
+        Assert.False(schedule.HasRepeats);
+        Assert.False(schedule.HasTargetAppID);
+        Assert.False(schedule.HasTargetAppNamespace);
+        Assert.False(schedule.HasSkipMissed);
+    }
+
+    [Fact]
+    public async Task CreateWorkflowScheduleAsync_ShouldEncodeInputInline_WhenPayloadConverterIsConfigured()
+    {
+        var codec = new DelayedPayloadConverter();
+        CreateWorkflowScheduleRequest? captured = null;
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.CreateWorkflowScheduleAsync(It.IsAny<CreateWorkflowScheduleRequest>(), It.IsAny<CallOptions>()))
+            .Callback<CreateWorkflowScheduleRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new CreateWorkflowScheduleResponse()));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance,
+            new StubSerializer { SerializeResult = "42" }, payloadConverter: codec);
+
+        await client.CreateWorkflowScheduleAsync("sched", "wf", "@daily", new WorkflowScheduleOptions { Input = 42 },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("wire:42", captured!.Schedule.Input);
+        var site = Assert.Single(codec.Writes).Site;
+        Assert.Equal(PayloadKind.WorkflowInput, site.Kind);
+        Assert.True(site.RequireInline);
+    }
+
+    [Fact]
+    public async Task GetWorkflowScheduleAsync_ShouldConvertScheduleAndStatus()
+    {
+        var created = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        GetWorkflowScheduleRequest? captured = null;
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.GetWorkflowScheduleAsync(It.IsAny<GetWorkflowScheduleRequest>(), It.IsAny<CallOptions>()))
+            .Callback<GetWorkflowScheduleRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new GetWorkflowScheduleResponse
+            {
+                Schedule = new Dapr.DurableTask.Protobuf.WorkflowSchedule
+                {
+                    Name = "sched",
+                    WorkflowName = "wf",
+                    Schedule = "@hourly",
+                    Input = "\"in\"",
+                    Repeats = 5,
+                    TargetAppID = "other",
+                    SkipMissed = true,
+                    Status = new Dapr.DurableTask.Protobuf.WorkflowScheduleStatus
+                    {
+                        State = Dapr.DurableTask.Protobuf.WorkflowScheduleState.Failed,
+                        CreatedAt = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(created),
+                        LastRunTime = Google.Protobuf.WellKnownTypes.Timestamp.FromDateTime(created.AddHours(1)),
+                        RunCount = 2,
+                        FailureMessage = "boom",
+                        LastRun = new Dapr.DurableTask.Protobuf.WorkflowScheduleRun
+                        {
+                            InstanceId = "sched_20260101T010000Z",
+                            RuntimeStatus = OrchestrationStatus.Failed,
+                            Output = "\"out\"",
+                            FailureDetails = new TaskFailureDetails { ErrorType = "E", ErrorMessage = "m" }
+                        }
+                    }
+                }
+            }));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, new StubSerializer());
+
+        var result = await client.GetWorkflowScheduleAsync("sched", TestContext.Current.CancellationToken);
+
+        Assert.Equal("sched", captured!.Name);
+        Assert.NotNull(result);
+        Assert.Equal(("sched", "wf", "@hourly"), (result!.Name, result.WorkflowName, result.Schedule));
+        Assert.Equal("\"in\"", result.SerializedInput);
+        Assert.Equal(5, result.Repeats);
+        Assert.Equal("other", result.TargetAppId);
+        Assert.Null(result.TargetAppNamespace);
+        Assert.True(result.SkipMissed);
+        Assert.Null(result.DueTime);
+        var status = result.Status!;
+        Assert.Equal(Dapr.Workflow.Client.WorkflowScheduleState.Failed, status.State);
+        Assert.Equal(new DateTimeOffset(created), status.CreatedAt);
+        Assert.Equal(new DateTimeOffset(created.AddHours(1)), status.LastRunTime);
+        Assert.Null(status.NextRunTime);
+        Assert.Equal(2, status.RunCount);
+        Assert.Equal("boom", status.FailureMessage);
+        var run = status.LastRun!;
+        Assert.Equal("sched_20260101T010000Z", run.InstanceId);
+        Assert.Equal(WorkflowRuntimeStatus.Failed, run.RuntimeStatus);
+        Assert.Equal("\"out\"", run.SerializedOutput);
+        Assert.Equal("m", run.FailureDetails!.ErrorMessage);
+        Assert.Null(run.CreatedAt);
+    }
+
+    [Fact]
+    public async Task GetWorkflowScheduleAsync_ShouldReturnNull_WhenNotFound()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.GetWorkflowScheduleAsync(It.IsAny<GetWorkflowScheduleRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCallThrows<GetWorkflowScheduleResponse>(
+                new RpcException(new Status(StatusCode.NotFound, "not found"))));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, new StubSerializer());
+
+        Assert.Null(await client.GetWorkflowScheduleAsync("missing", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task GetWorkflowScheduleAsync_ShouldDecodePayloads_WhenPayloadConverterIsConfigured()
+    {
+        var codec = new DelayedPayloadConverter();
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.GetWorkflowScheduleAsync(It.IsAny<GetWorkflowScheduleRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCall(new GetWorkflowScheduleResponse
+            {
+                Schedule = new Dapr.DurableTask.Protobuf.WorkflowSchedule
+                {
+                    Name = "sched",
+                    WorkflowName = "wf",
+                    Schedule = "@daily",
+                    Input = "wire:1",
+                    Status = new Dapr.DurableTask.Protobuf.WorkflowScheduleStatus
+                    {
+                        LastRun = new Dapr.DurableTask.Protobuf.WorkflowScheduleRun { InstanceId = "sched_x", Output = "wire:2" }
+                    }
+                }
+            }));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance,
+            new StubSerializer(), payloadConverter: codec);
+
+        var result = await client.GetWorkflowScheduleAsync("sched", TestContext.Current.CancellationToken);
+
+        Assert.Equal("1", result!.SerializedInput);
+        Assert.Equal("2", result.Status!.LastRun!.SerializedOutput);
+        Assert.Equal([PayloadKind.WorkflowInput, PayloadKind.WorkflowOutput], codec.Reads.Select(site => site.Kind));
+    }
+
+    [Fact]
+    public async Task GetWorkflowScheduleAsync_ShouldPropagateOtherRpcErrors()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.GetWorkflowScheduleAsync(It.IsAny<GetWorkflowScheduleRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCallThrows<GetWorkflowScheduleResponse>(
+                new RpcException(new Status(StatusCode.Unimplemented, "old runtime"))));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, new StubSerializer());
+
+        var ex = await Assert.ThrowsAsync<RpcException>(() =>
+            client.GetWorkflowScheduleAsync("sched", TestContext.Current.CancellationToken));
+        Assert.Equal(StatusCode.Unimplemented, ex.StatusCode);
+    }
+
+    [Fact]
+    public async Task ListWorkflowSchedulesAsync_ShouldSendRequestAndReturnPage()
+    {
+        ListWorkflowSchedulesRequest? captured = null;
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.ListWorkflowSchedulesAsync(It.IsAny<ListWorkflowSchedulesRequest>(), It.IsAny<CallOptions>()))
+            .Callback<ListWorkflowSchedulesRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new ListWorkflowSchedulesResponse
+            {
+                Schedules =
+                {
+                    new Dapr.DurableTask.Protobuf.WorkflowSchedule { Name = "a", WorkflowName = "wf", Schedule = "@daily" },
+                    new Dapr.DurableTask.Protobuf.WorkflowSchedule { Name = "b", WorkflowName = "wf", Schedule = "@hourly" }
+                },
+                ContinuationToken = "next"
+            }));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, new StubSerializer());
+
+        var page = await client.ListWorkflowSchedulesAsync("prev", 2, TestContext.Current.CancellationToken);
+
+        Assert.Equal("prev", captured!.ContinuationToken);
+        Assert.Equal(2u, captured.PageSize);
+        Assert.Equal(["a", "b"], page.Schedules.Select(s => s.Name));
+        Assert.All(page.Schedules, s => Assert.False(s.SkipMissed));
+        Assert.Equal("next", page.ContinuationToken);
+    }
+
+    [Fact]
+    public async Task ListWorkflowSchedulesAsync_ShouldLeavePagingUnset_AndReturnNullToken_WhenLastPage()
+    {
+        ListWorkflowSchedulesRequest? captured = null;
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.ListWorkflowSchedulesAsync(It.IsAny<ListWorkflowSchedulesRequest>(), It.IsAny<CallOptions>()))
+            .Callback<ListWorkflowSchedulesRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new ListWorkflowSchedulesResponse()));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, new StubSerializer());
+
+        var page = await client.ListWorkflowSchedulesAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(captured!.HasContinuationToken);
+        Assert.False(captured.HasPageSize);
+        Assert.Empty(page.Schedules);
+        Assert.Null(page.ContinuationToken);
+    }
+
+    [Fact]
+    public async Task DeleteWorkflowScheduleAsync_ShouldSendRequest()
+    {
+        DeleteWorkflowScheduleRequest? captured = null;
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.DeleteWorkflowScheduleAsync(It.IsAny<DeleteWorkflowScheduleRequest>(), It.IsAny<CallOptions>()))
+            .Callback<DeleteWorkflowScheduleRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new DeleteWorkflowScheduleResponse()));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, new StubSerializer());
+
+        await client.DeleteWorkflowScheduleAsync("sched", TestContext.Current.CancellationToken);
+
+        Assert.Equal("sched", captured!.Name);
+    }
+
+    [Fact]
+    public async Task DeleteWorkflowScheduleAsync_ShouldPropagateNotFound()
+    {
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.DeleteWorkflowScheduleAsync(It.IsAny<DeleteWorkflowScheduleRequest>(), It.IsAny<CallOptions>()))
+            .Returns(CreateAsyncUnaryCallThrows<DeleteWorkflowScheduleResponse>(
+                new RpcException(new Status(StatusCode.NotFound, "not found"))));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, new StubSerializer());
+
+        var ex = await Assert.ThrowsAsync<RpcException>(() =>
+            client.DeleteWorkflowScheduleAsync("missing", TestContext.Current.CancellationToken));
+        Assert.Equal(StatusCode.NotFound, ex.StatusCode);
+    }
+
+    [Fact]
+    public async Task TriggerWorkflowScheduleAsync_ShouldReturnRunInstanceId()
+    {
+        TriggerWorkflowScheduleRequest? captured = null;
+        var grpcClientMock = CreateGrpcClientMock();
+        grpcClientMock
+            .Setup(x => x.TriggerWorkflowScheduleAsync(It.IsAny<TriggerWorkflowScheduleRequest>(), It.IsAny<CallOptions>()))
+            .Callback<TriggerWorkflowScheduleRequest, CallOptions>((r, _) => captured = r)
+            .Returns(CreateAsyncUnaryCall(new TriggerWorkflowScheduleResponse { InstanceId = "sched_20260101T000000Z_manual" }));
+        var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, new StubSerializer());
+
+        var runId = await client.TriggerWorkflowScheduleAsync("sched", TestContext.Current.CancellationToken);
+
+        Assert.Equal("sched", captured!.Name);
+        Assert.Equal("sched_20260101T000000Z_manual", runId);
     }
 
     [Fact]
