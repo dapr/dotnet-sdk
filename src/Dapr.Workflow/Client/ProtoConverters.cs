@@ -34,7 +34,6 @@ internal static class ProtoConverters
             SerializedOutput = string.IsNullOrEmpty(state.Output) ? null : state.Output,
             SerializedCustomStatus = string.IsNullOrEmpty(state.CustomStatus) ? null : state.CustomStatus,
             FailureDetails = ToWorkflowTaskFailureDetails(state.FailureDetails),
-            TerminationReason = state.TerminationReason is null ? null : state.TerminationReason.Value,
         };
 
     /// <summary>
