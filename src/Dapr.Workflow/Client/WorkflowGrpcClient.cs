@@ -242,15 +242,16 @@ internal sealed class WorkflowGrpcClient(
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        if (output is not null && reason is not null)
+        {
+            throw new ArgumentException("output and reason cannot be supplied together", nameof(output));
+        }
+
         var request = new grpc.TerminateRequest
         {
             InstanceId = instanceId,
-            Output = await SerializeToWireAsync(output, new(PayloadKind.WorkflowOutput, instanceId, null), cancellationToken),
+            Output = reason ?? await SerializeToWireAsync(output, new(PayloadKind.WorkflowOutput, instanceId, null), cancellationToken),
             Recursive = true // Terminate child workflows too
-        };
-        if (reason is not null)
-        {
-            request.Reason = new Google.Protobuf.WellKnownTypes.StringValue { Value = reason };
         }
 
         var grpcCallOptions = CreateCallOptions(cancellationToken);
