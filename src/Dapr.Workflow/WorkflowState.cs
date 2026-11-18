@@ -85,11 +85,6 @@ public sealed class WorkflowState : IWorkflowState
     public WorkflowTaskFailureDetails? FailureDetails => _metadata?.FailureDetails;
 
     /// <summary>
-    /// Gets the optional reason supplied when the workflow was terminated.
-    /// </summary>
-    public string? TerminationReason => _metadata?.TerminationReason;
-
-    /// <summary>
     /// Deserializes the workflow input into <typeparamref name="T"/>.
     /// </summary>
     /// <typeparam name="T">The type to deserialize the workflow input into.</typeparam>
