@@ -252,7 +252,7 @@ internal sealed class WorkflowGrpcClient(
             InstanceId = instanceId,
             Output = reason ?? await SerializeToWireAsync(output, new(PayloadKind.WorkflowOutput, instanceId, null), cancellationToken),
             Recursive = true // Terminate child workflows too
-        }
+        };
 
         var grpcCallOptions = CreateCallOptions(cancellationToken);
         await grpcClient.TerminateInstanceAsync(request, grpcCallOptions);
