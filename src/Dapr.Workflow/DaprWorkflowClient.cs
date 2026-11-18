@@ -298,6 +298,22 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
         await _innerClient.TerminateWorkflowAsync(instanceId, output, cancellation);
     }
 
+    /// <inheritdoc />
+    public async Task TerminateWorkflowWithReasonAsync(
+        string instanceId,
+        string reason,
+        object? output = null,
+        CancellationToken cancellation = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        ArgumentNullException.ThrowIfNull(reason);
+        if (output is not null)
+        {
+            throw new ArgumentException("output and reason cannot be supplied together", nameof(output));
+        }
+        await _innerClient.TerminateWorkflowWithReasonAsync(instanceId, reason, cancellationToken: cancellation);
+    }
+
     /// <summary>
     /// Suspends a workflow instance, pausing its execution until resumed.
     /// </summary>

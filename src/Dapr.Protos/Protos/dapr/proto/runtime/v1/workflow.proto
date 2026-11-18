@@ -84,6 +84,7 @@ message TerminateWorkflowRequest {
   // Defaults to the local app. Must be in the same namespace; the target
   // app's WorkflowAccessPolicy governs whether the call is permitted.
   optional string app_id = 3 [json_name = "appID"];
+  optional string terminate_reason = 4 [json_name = "terminateReason"];
 }
 
 // PauseWorkflowRequest is the request for PauseWorkflowBeta1.

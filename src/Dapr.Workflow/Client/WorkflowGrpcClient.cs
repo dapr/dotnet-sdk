@@ -230,13 +230,27 @@ internal sealed class WorkflowGrpcClient(
     }
 
     /// <inheritdoc />
-    public override async Task TerminateWorkflowAsync(string instanceId, object? output = null, CancellationToken cancellationToken = default)
+    public override Task TerminateWorkflowAsync(string instanceId, object? output = null, CancellationToken cancellationToken = default)
+        => TerminateWorkflowCoreAsync(instanceId, output, null, cancellationToken);
+
+    /// <inheritdoc />
+    public override Task TerminateWorkflowWithReasonAsync(string instanceId, string reason, object? output = null,
+        CancellationToken cancellationToken = default)
+        => TerminateWorkflowCoreAsync(instanceId, output, reason, cancellationToken);
+
+    private async Task TerminateWorkflowCoreAsync(string instanceId, object? output, string? reason,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        if (output is not null && reason is not null)
+        {
+            throw new ArgumentException("output and reason cannot be supplied together", nameof(output));
+        }
+
         var request = new grpc.TerminateRequest
         {
             InstanceId = instanceId,
-            Output = await SerializeToWireAsync(output, new(PayloadKind.WorkflowOutput, instanceId, null), cancellationToken),
+            Output = reason ?? await SerializeToWireAsync(output, new(PayloadKind.WorkflowOutput, instanceId, null), cancellationToken),
             Recursive = true // Terminate child workflows too
         };
 
