@@ -534,13 +534,12 @@ public class WorkflowGrpcClientTests
         Assert.Equal("i", captured!.InstanceId);
         Assert.True(captured.Recursive);
         Assert.Equal("{\"done\":true}", captured.Output);
-        Assert.Null(captured.Reason);
     }
 
     [Theory]
     [InlineData("operator requested")]
     [InlineData("")]
-    public async Task TerminateWorkflowWithReasonAsync_ShouldPreserveReasonAndOutput(string reason)
+    public async Task TerminateWorkflowWithReasonAsync_ShouldUseExistingOutputField(string reason)
     {
         var serializer = new StubSerializer { SerializeResult = "{\"done\":true}" };
         TerminateRequest? captured = null;
@@ -554,14 +553,23 @@ public class WorkflowGrpcClientTests
         var client = new WorkflowGrpcClient(grpcClientMock.Object, NullLogger<WorkflowGrpcClient>.Instance, serializer);
 
         await client.TerminateWorkflowWithReasonAsync(
-            "i", reason, output: new { Done = true }, cancellationToken: TestContext.Current.CancellationToken);
+            "i", reason, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(captured);
         Assert.Equal("i", captured!.InstanceId);
         Assert.True(captured.Recursive);
-        Assert.Equal("{\"done\":true}", captured.Output);
-        Assert.NotNull(captured.Reason);
-        Assert.Equal(reason, captured.Reason!.Value);
+        Assert.Equal(reason, captured.Output);
+    }
+
+    [Fact]
+    public async Task TerminateWorkflowWithReasonAsync_ShouldRejectSeparateOutput()
+    {
+        var client = new WorkflowGrpcClient(
+            CreateGrpcClientMock().Object, NullLogger<WorkflowGrpcClient>.Instance, new StubSerializer());
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.TerminateWorkflowWithReasonAsync(
+            "i", "operator requested", output: new { Done = true },
+            cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
