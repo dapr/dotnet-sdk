@@ -17,60 +17,60 @@ import "google/protobuf/wrappers.proto";
 
 // Request payload for adding new workflow events.
 message AddEventRequest {
-    // The ID of the workflow to send an event to.
-    WorkflowInstance instance = 1;
-    // The event to send to the workflow.
-    HistoryEvent event = 2;
+  // The ID of the workflow to send an event to.
+  WorkflowInstance instance = 1;
+  // The event to send to the workflow.
+  HistoryEvent event = 2;
 }
 
 // Response payload for adding new workflow events.
 message AddEventResponse {
-    // No fields
+  // No fields
 }
 
 // Request payload for completing an activity work item.
 message CompleteActivityWorkItemRequest {
-    // The completion token that was provided when the work item was fetched.
-    string completionToken = 1;
+  // The completion token that was provided when the work item was fetched.
+  string completionToken = 1;
 
-    // The response event that will be sent to the workflow.
-    // This must be either a TaskCompleted event or a TaskFailed event.
-    HistoryEvent responseEvent = 2;
+  // The response event that will be sent to the workflow.
+  // This must be either a TaskCompleted event or a TaskFailed event.
+  HistoryEvent responseEvent = 2;
 }
 
 // Response payload for completing an activity work item.
 message CompleteActivityWorkItemResponse {
-    // No fields
+  // No fields
 }
 
 // Request payload for completing a workflow work item.
 message CompleteWorkflowWorkItemRequest {
-    // The completion token that was provided when the work item was fetched.
-    string completionToken = 1;
-    WorkflowInstance instance = 2;
-    OrchestrationStatus runtimeStatus = 3;
-    google.protobuf.StringValue customStatus = 4;
-    repeated HistoryEvent newHistory = 5;
-    repeated HistoryEvent newTasks = 6;
-    repeated HistoryEvent newTimers = 7;
-    repeated WorkflowMessage newMessages = 8;
+  // The completion token that was provided when the work item was fetched.
+  string completionToken = 1;
+  WorkflowInstance instance = 2;
+  OrchestrationStatus runtimeStatus = 3;
+  google.protobuf.StringValue customStatus = 4;
+  repeated HistoryEvent newHistory = 5;
+  repeated HistoryEvent newTasks = 6;
+  repeated HistoryEvent newTimers = 7;
+  repeated WorkflowMessage newMessages = 8;
 
-    // The number of work item events that were processed by the workflow.
-    // This field is optional. If not set, the service should assume that the workflow processed all events.
-    google.protobuf.Int32Value numEventsProcessed = 9;
+  // The number of work item events that were processed by the workflow.
+  // This field is optional. If not set, the service should assume that the workflow processed all events.
+  google.protobuf.Int32Value numEventsProcessed = 9;
 }
 
 // Response payload for completing a workflow work item.
 message CompleteWorkflowWorkItemResponse {
-	// No fields
+  // No fields
 }
 
 // A message to be delivered to a workflow by the backend.
 message WorkflowMessage {
-    // The ID of the workflow instance to receive the message.
-    WorkflowInstance instance = 1;
-    // The event payload to be received by the target workflow.
-    HistoryEvent event = 2;
+  // The ID of the workflow instance to receive the message.
+  WorkflowInstance instance = 1;
+  // The event payload to be received by the target workflow.
+  HistoryEvent event = 2;
 }
 
 message BackendWorkflowState {
@@ -87,11 +87,6 @@ message ActivityInvocation {
 
   // Propagated history from the calling workflow.
   optional PropagatedHistory propagatedHistory = 2;
-
-  // Execution ID of the workflow generation that dispatched the activity.
-  // Sent back with the activity's result so the workflow can reject a result
-  // dispatched by another generation: task IDs restart on ContinueAsNew.
-  optional string parentExecutionId = 3;
 }
 
 message CreateWorkflowInstanceRequest {
@@ -101,11 +96,6 @@ message CreateWorkflowInstanceRequest {
 
   // Propagated history from the parent workflow.
   optional PropagatedHistory propagatedHistory = 3;
-
-  // When true, the request fails with an ALREADY_EXISTS error if a workflow
-  // instance with the same instanceId already exists, whether active or
-  // completed. When false, an existing completed instance is restarted.
-  bool enforceUniqueInstanceId = 4;
 }
 
 message WorkflowMetadata {
@@ -143,27 +133,6 @@ message BackendWorkflowStateMetadata {
   // cleared on instance purge. Subject to the same maxStateEntries
   // tampering bound.
   uint64 externalSigningCertificateLength = 6;
-
-  // ordering is the instance's place in its ordering key's queue. Unset for
-  // an instance created without an ordering key.
-  optional BackendWorkflowOrderingMetadata ordering = 7;
-}
-
-// BackendWorkflowOrderingMetadata tracks a keyed instance in its ordering
-// key's queue.
-message BackendWorkflowOrderingMetadata {
-  // createExecutionId is the executionId of the ExecutionStartedEvent the
-  // instance was created with. It identifies the instance in the queue, and
-  // is kept across ContinueAsNew, which gives each generation a new
-  // executionId.
-  string createExecutionId = 1;
-
-  // released is set once the ordering key let the instance run.
-  optional bool released = 2;
-
-  // done is set once the ordering key acknowledged that the completed
-  // instance no longer holds it.
-  optional bool done = 3;
 }
 
 // A signing identity's X.509 certificate, stored once and referenced by index
