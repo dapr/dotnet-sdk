@@ -11,86 +11,56 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
 
 enum StalledReason {
-    PATCH_MISMATCH = 0;
-    VERSION_NOT_AVAILABLE = 1;
-    PAYLOAD_SIZE_EXCEEDED = 2;
+  PATCH_MISMATCH = 0;
+  VERSION_NOT_AVAILABLE = 1;
+  PAYLOAD_SIZE_EXCEEDED = 2;
 }
 
 enum OrchestrationStatus {
-    ORCHESTRATION_STATUS_RUNNING = 0;
-    ORCHESTRATION_STATUS_COMPLETED = 1;
-    ORCHESTRATION_STATUS_CONTINUED_AS_NEW = 2;
-    ORCHESTRATION_STATUS_FAILED = 3;
-    ORCHESTRATION_STATUS_CANCELED = 4;
-    ORCHESTRATION_STATUS_TERMINATED = 5;
-    ORCHESTRATION_STATUS_PENDING = 6;
-    ORCHESTRATION_STATUS_SUSPENDED = 7;
-    ORCHESTRATION_STATUS_STALLED = 8;
-}
-
-// WorkflowOrdering queues a workflow instance behind every other instance of
-// the same app started with the same key: it stays PENDING and runs no
-// workflow code until each instance accepted before it under the key has
-// completed, failed or been terminated. ContinueAsNew does not release the
-// key.
-message WorkflowOrdering {
-    // key names the queue. Letters, digits, '-' and '_' only, at most 64
-    // characters.
-    string key = 1;
-
-    // onPredecessorFailure is what the instance does when the instance before
-    // it under the key did not complete successfully. Unset means CONTINUE.
-    optional OrderingFailurePolicy onPredecessorFailure = 2;
-}
-
-// OrderingFailurePolicy is what a workflow instance does when the instance
-// before it under its ordering key ran and did not complete successfully: it
-// failed or was terminated. An instance that never ran, such as one
-// cancelled by this policy, is skipped: the instance after it applies its own
-// policy to the same failure.
-enum OrderingFailurePolicy {
-    // Run anyway.
-    ORDERING_FAILURE_POLICY_CONTINUE = 0;
-    // Stay pending, holding up the key, until the failed instance is started
-    // again under its instance ID and completes, or is purged.
-    ORDERING_FAILURE_POLICY_BLOCK = 1;
-    // Complete as terminated without running.
-    ORDERING_FAILURE_POLICY_CANCEL = 2;
+  ORCHESTRATION_STATUS_RUNNING = 0;
+  ORCHESTRATION_STATUS_COMPLETED = 1;
+  ORCHESTRATION_STATUS_CONTINUED_AS_NEW = 2;
+  ORCHESTRATION_STATUS_FAILED = 3;
+  ORCHESTRATION_STATUS_CANCELED = 4;
+  ORCHESTRATION_STATUS_TERMINATED = 5;
+  ORCHESTRATION_STATUS_PENDING = 6;
+  ORCHESTRATION_STATUS_SUSPENDED = 7;
+  ORCHESTRATION_STATUS_STALLED = 8;
 }
 
 message TaskRouter {
-    string sourceAppID = 1;
-    optional string targetAppID = 2;
-    optional string targetAppNamespace = 3;
+  string sourceAppID = 1;
+  optional string targetAppID = 2;
+  optional string targetAppNamespace = 3;
 }
 
 message WorkflowVersion {
-    repeated string patches = 1;
+  repeated string patches = 1;
 
-    // The name of the executed workflow
-    optional string name = 2;
+  // The name of the executed workflow
+  optional string name = 2;
 }
 
 message WorkflowInstance {
-    string instanceId = 1;
-    google.protobuf.StringValue executionId = 2;
+  string instanceId = 1;
+  google.protobuf.StringValue executionId = 2;
 }
 
 message TaskFailureDetails {
-    string errorType = 1;
-    string errorMessage = 2;
-    google.protobuf.StringValue stackTrace = 3;
-    TaskFailureDetails innerFailure = 4;
-    bool isNonRetriable = 5;
+  string errorType = 1;
+  string errorMessage = 2;
+  google.protobuf.StringValue stackTrace = 3;
+  TaskFailureDetails innerFailure = 4;
+  bool isNonRetriable = 5;
 }
 
 message ParentInstanceInfo {
-    int32 taskScheduledId = 1;
-    google.protobuf.StringValue name = 2;
-    google.protobuf.StringValue version = 3;
-    WorkflowInstance workflowInstance = 4;
-    optional string appID = 5;
-    optional string appNamespace = 6;
+  int32 taskScheduledId = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue version = 3;
+  WorkflowInstance workflowInstance = 4;
+  optional string appID = 5;
+  optional string appNamespace = 6;
 }
 
 // RerunParentInstanceInfo is used to indicate that this workflow was
@@ -102,62 +72,44 @@ message RerunParentInstanceInfo {
   string instanceID = 1;
 }
 
-// RetryParentInstanceInfo correlates a child-workflow retry attempt with the
-// initial attempt that spawned it. When a child workflow is scheduled with a
-// retry policy, each retry executes as a separate child workflow instance with
-// its own auto-generated instance ID. This message provides an explicit,
-// first-class link back to the first attempt so consumers no longer need to
-// reconstruct the relationship from event ordering and timer origins.
-//
-// Semantics: the first attempt carries no RetryParentInstanceInfo. Retry
-// attempts (2nd onward) carry RetryParentInstanceInfo with instanceID set to
-// the first attempt's instance ID. Consumers group attempts by reading the
-// parent workflow's history; the group key is retryParentInstanceInfo.instanceID
-// when present, otherwise the event's own instanceId.
-message RetryParentInstanceInfo {
-  // instanceID is the instance ID of the first attempt in this child-workflow
-  // retry chain.
-  string instanceID = 1;
-}
-
 message TraceContext {
-    string traceParent = 1;
-    string spanID = 2 [deprecated=true];
-    google.protobuf.StringValue traceState = 3;
+  string traceParent = 1;
+  string spanID = 2 [deprecated=true];
+  google.protobuf.StringValue traceState = 3;
 }
 
 // HistoryPropagationScope controls how history is propagated to a child
 // workflow or activity
 enum HistoryPropagationScope {
-    // No propagation. This is the default for an unset/missing field; the
-    // child receives no history from the caller.
-    HISTORY_PROPAGATION_SCOPE_NONE = 0;
-    // Propagate the caller's own history events only. The child does
-    // not see any ancestral history (trust boundary).
-    HISTORY_PROPAGATION_SCOPE_OWN_HISTORY = 1;
-    // Propagate the caller's own history events AND the full ancestral
-    // chain. Any propagated history this workflow received from its
-    // parent is forwarded to the child.
-    HISTORY_PROPAGATION_SCOPE_LINEAGE = 2;
+  // No propagation. This is the default for an unset/missing field; the
+  // child receives no history from the caller.
+  HISTORY_PROPAGATION_SCOPE_NONE = 0;
+  // Propagate the caller's own history events only. The child does
+  // not see any ancestral history (trust boundary).
+  HISTORY_PROPAGATION_SCOPE_OWN_HISTORY = 1;
+  // Propagate the caller's own history events AND the full ancestral
+  // chain. Any propagated history this workflow received from its
+  // parent is forwarded to the child.
+  HISTORY_PROPAGATION_SCOPE_LINEAGE = 2;
 }
 
 message WorkflowState {
-    string instanceId = 1;
-    string name = 2;
-    google.protobuf.StringValue version = 3;
-    OrchestrationStatus workflowStatus = 4;
-    google.protobuf.Timestamp scheduledStartTimestamp = 5;
-    google.protobuf.Timestamp createdTimestamp = 6;
-    google.protobuf.Timestamp lastUpdatedTimestamp = 7;
-    google.protobuf.StringValue input = 8;
-    google.protobuf.StringValue output = 9;
-    google.protobuf.StringValue customStatus = 10;
-    TaskFailureDetails failureDetails = 11;
-    google.protobuf.StringValue executionId = 12;
-    google.protobuf.Timestamp completedTimestamp = 13;
-    google.protobuf.StringValue parentInstanceId = 14;
-    map<string, string> tags = 15;
-    google.protobuf.StringValue parentAppId = 16;
-    optional google.protobuf.Timestamp startedAt = 17;
+  string instanceId = 1;
+  string name = 2;
+  google.protobuf.StringValue version = 3;
+  OrchestrationStatus workflowStatus = 4;
+  google.protobuf.Timestamp scheduledStartTimestamp = 5;
+  google.protobuf.Timestamp createdTimestamp = 6;
+  google.protobuf.Timestamp lastUpdatedTimestamp = 7;
+  google.protobuf.StringValue input = 8;
+  google.protobuf.StringValue output = 9;
+  google.protobuf.StringValue customStatus = 10;
+  TaskFailureDetails failureDetails = 11;
+  google.protobuf.StringValue executionId = 12;
+  google.protobuf.Timestamp completedTimestamp = 13;
+  google.protobuf.StringValue parentInstanceId = 14;
+  map<string, string> tags = 15;
+  google.protobuf.StringValue parentAppId = 16;
+  optional google.protobuf.Timestamp startedAt = 17;
 
 }
