@@ -311,7 +311,7 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
         {
             throw new ArgumentException("output and reason cannot be supplied together", nameof(output));
         }
-        await _innerClient.TerminateWorkflowWithReasonAsync(instanceId, reason, cancellation: cancellation);
+        await _innerClient.TerminateWorkflowWithReasonAsync(instanceId, reason, cancellationToken: cancellation);
     }
 
     /// <summary>
