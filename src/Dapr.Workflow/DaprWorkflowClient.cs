@@ -288,15 +288,13 @@ public sealed class DaprWorkflowClient : IDaprWorkflowClient
     public async Task RaiseErrorAsync(
         string instanceId,
         string eventName,
-        string errorMessage,
         Exception exception,
         CancellationToken cancellation = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
         ArgumentException.ThrowIfNullOrEmpty(eventName);
-        ArgumentNullException.ThrowIfNull(errorMessage);
         ArgumentNullException.ThrowIfNull(exception);
-        await _innerClient.RaiseErrorAsync(instanceId, eventName, errorMessage, exception, cancellation);
+        await _innerClient.RaiseErrorAsync(instanceId, eventName, exception, cancellation);
     }
 
     /// <summary>
