@@ -389,9 +389,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     /// <inheritdoc />
     public override async Task<T> WaitForExternalEventAsync<T>(string eventName, CancellationToken cancellationToken = default)
     {
-        if (TryTakeExternalEvent(eventName, out string? eventData))
+        if (TryTakeExternalEvent(eventName, out HistoryEvent? bufferedEvent))
         {
-            return await DeserializeResultAsync<T>(eventData!, PayloadKind.ExternalEvent, eventName);
+            if (TryCreateExternalEventFailure(bufferedEvent!.EventRaised.FailureDetails, eventName) is { } bufferedFailure)
+                throw bufferedFailure;
+
+            var bufferedInput = bufferedEvent.EventRaised.Input ?? string.Empty;
+            return await DeserializeResultAsync<T>(bufferedInput, PayloadKind.ExternalEvent, eventName);
         }
 
         // Create a task completion source that will be set when the external event arrives.
@@ -411,25 +415,37 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
 
         var historyEvent = await eventSource.Task;
 
-        eventData = historyEvent.EventRaised.Input ?? string.Empty;
+        if (TryCreateExternalEventFailure(historyEvent.EventRaised.FailureDetails, eventName) is { } failure)
+            throw failure;
+
+        var eventData = historyEvent.EventRaised.Input ?? string.Empty;
         return await DeserializeResultAsync<T>(eventData, PayloadKind.ExternalEvent, eventName);
+    }
+
+    private static WorkflowTaskFailedException? TryCreateExternalEventFailure(
+        TaskFailureDetails? failure,
+        string eventName)
+    {
+        var details = MapFailureDetails(failure);
+        return details is null
+            ? null
+            : new WorkflowTaskFailedException(
+                $"External event '{eventName}' failed: {details.ErrorMessage}",
+                details);
     }
 
     /// <summary>
     /// Try take external event by name
     /// </summary>
-    private bool TryTakeExternalEvent(string eventName, out string? eventData)
+    private bool TryTakeExternalEvent(string eventName, out HistoryEvent? historyEvent)
     {
-        var historyEvent = _externalEventBuffer.Find(e => string.Equals(e.EventRaised.Name, eventName, StringComparison.OrdinalIgnoreCase));
-        if (historyEvent is not null)
-        {
-            _externalEventBuffer.Remove(historyEvent);
-            eventData = historyEvent.EventRaised.Input ?? string.Empty;
-            return true;
-        }
+        historyEvent = _externalEventBuffer.Find(
+            e => string.Equals(e.EventRaised.Name, eventName, StringComparison.OrdinalIgnoreCase));
+        if (historyEvent is null)
+            return false;
 
-        eventData = null;
-        return false;
+        _externalEventBuffer.Remove(historyEvent);
+        return true;
     }
 
     /// <inheritdoc />
@@ -1271,9 +1287,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     /// </summary>
     private static WorkflowTaskFailedException CreateTaskFailedException(TaskFailedEvent failedEvent)
     {
-        var failureDetails = new WorkflowTaskFailureDetails(failedEvent.FailureDetails?.ErrorType ?? "Exception",
-            failedEvent.FailureDetails?.ErrorMessage ?? "Unknown error",
-            failedEvent.FailureDetails?.StackTrace ?? string.Empty);
+        var failureDetails = MapFailureDetails(failedEvent.FailureDetails)
+            ?? new WorkflowTaskFailureDetails("Exception", "Unknown error");
 
         return new WorkflowTaskFailedException($"Task failed: {failureDetails.ErrorMessage}", failureDetails);
     }
@@ -1423,5 +1438,6 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
             : new WorkflowTaskFailureDetails(
                 errorType: failure.ErrorType ?? "Exception",
                 errorMessage: failure.ErrorMessage ?? string.Empty,
-                stackTrace: failure.StackTrace);
+                stackTrace: failure.StackTrace,
+                innerFailure: MapFailureDetails(failure.InnerFailure));
 }

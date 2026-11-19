@@ -205,6 +205,10 @@ message EventSentEvent {
 message EventRaisedEvent {
   string name = 1;
   google.protobuf.StringValue input = 2;
+
+  // Failure details indicate that this external event completes the matching
+  // WaitForExternalEventAsync task with an error instead of a result.
+  TaskFailureDetails failureDetails = 3;
 }
 
 message ContinueAsNewEvent {

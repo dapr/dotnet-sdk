@@ -18,7 +18,8 @@ using System;
 /// <summary>
 /// Represents workflow task failure details.
 /// </summary>
-public class WorkflowTaskFailureDetails(string errorType, string errorMessage, string? stackTrace = null)
+public class WorkflowTaskFailureDetails(string errorType, string errorMessage, string? stackTrace = null,
+    WorkflowTaskFailureDetails? innerFailure = null)
 {
     /// <summary>
     /// Gets the error type, which is the namespace-qualified exception type name.
@@ -34,6 +35,11 @@ public class WorkflowTaskFailureDetails(string errorType, string errorMessage, s
     /// Gets the stack trace of the failure.
     /// </summary>
     public string? StackTrace => stackTrace;
+
+    /// <summary>
+    /// Gets the underlying failure that caused this failure, when one is available.
+    /// </summary>
+    public WorkflowTaskFailureDetails? InnerFailure => innerFailure;
 
     /// <summary>
     /// Returns <c>true</c> if the failure was caused by the specified exception type.
@@ -52,12 +58,13 @@ public class WorkflowTaskFailureDetails(string errorType, string errorMessage, s
         try
         {
             Type? exceptionType = Type.GetType(this.ErrorType, throwOnError: false);
-            return exceptionType is not null && typeof(T).IsAssignableFrom(exceptionType);
+            return (exceptionType is not null && typeof(T).IsAssignableFrom(exceptionType))
+                || this.InnerFailure?.IsCausedBy<T>() == true;
         }
         catch
         {
-            // If we can't load the type for any reason, return false
-            return false;
+            // If we can't load the type for any reason, return false.
+            return this.InnerFailure?.IsCausedBy<T>() == true;
         }
     }
 
@@ -79,6 +86,7 @@ public class WorkflowTaskFailureDetails(string errorType, string errorMessage, s
         return new WorkflowTaskFailureDetails(
             ex.GetType().FullName ?? ex.GetType().Name,
             ex.Message,
-            ex.StackTrace);
+            ex.StackTrace,
+            ex.InnerException is null ? null : FromException(ex.InnerException));
     }
 }

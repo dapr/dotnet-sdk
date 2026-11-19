@@ -139,6 +139,22 @@ internal abstract class WorkflowClient : IAsyncDisposable
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Raises an error for one external-event wait in a workflow instance.
+    /// </summary>
+    /// <remarks>
+    /// The oldest pending wait for <paramref name="eventName"/> receives a
+    /// <see cref="WorkflowTaskFailedException"/> containing the supplied failure
+    /// details. When no matching wait is pending, the error is buffered until
+    /// the workflow starts waiting for that event.
+    /// </remarks>
+    /// <param name="instanceId">The instance ID of the workflow to notify.</param>
+    /// <param name="eventName">The event name identifying the wait to fail.</param>
+    /// <param name="exception">The exception providing the failure type, message, stack trace, and inner cause.</param>
+    /// <param name="cancellationToken">Token used to cancel enqueueing the error notification.</param>
+    public abstract Task RaiseErrorAsync(string instanceId, string eventName, Exception exception,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Terminates a running workflow instance and updates its runtime status to
     /// <see cref="WorkflowRuntimeStatus.Terminated"/>.
     /// </summary>

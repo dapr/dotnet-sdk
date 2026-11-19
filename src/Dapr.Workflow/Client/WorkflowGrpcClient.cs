@@ -230,6 +230,39 @@ internal sealed class WorkflowGrpcClient(
     }
 
     /// <inheritdoc />
+    public override async Task RaiseErrorAsync(string instanceId, string eventName, Exception exception,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(instanceId);
+        ArgumentException.ThrowIfNullOrEmpty(eventName);
+        ArgumentNullException.ThrowIfNull(exception);
+
+        var request = new grpc.RaiseEventRequest
+        {
+            InstanceId = instanceId,
+            Name = eventName,
+            FailureDetails = CreateFailureDetails(exception)
+        };
+
+        var grpcCallOptions = CreateCallOptions(cancellationToken);
+        await grpcClient.RaiseEventAsync(request, grpcCallOptions);
+        logger.LogRaisedError(eventName, instanceId);
+    }
+
+    private static grpc.TaskFailureDetails CreateFailureDetails(Exception exception)
+    {
+        return new grpc.TaskFailureDetails
+        {
+            ErrorType = exception.GetType().FullName ?? exception.GetType().Name,
+            ErrorMessage = exception.Message,
+            StackTrace = exception.StackTrace ?? string.Empty,
+            InnerFailure = exception.InnerException is null
+                ? null
+                : CreateFailureDetails(exception.InnerException)
+        };
+    }
+
+    /// <inheritdoc />
     public override async Task TerminateWorkflowAsync(string instanceId, object? output = null, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);

@@ -263,6 +263,24 @@ public class DaprWorkflowClientTests
     }
 
     [Fact]
+    public async Task RaiseErrorAsync_ShouldValidateIdentifiersAndException_AndForwardToInner()
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+        var exception = new InvalidOperationException("approval rejected");
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseErrorAsync("", "evt", exception, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RaiseErrorAsync("i", "", exception, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => client.RaiseErrorAsync("i", "evt", null!, TestContext.Current.CancellationToken));
+
+        await client.RaiseErrorAsync("i", "evt", exception, TestContext.Current.CancellationToken);
+
+        Assert.Equal("i", inner.LastRaiseErrorInstanceId);
+        Assert.Equal("evt", inner.LastRaiseErrorName);
+        Assert.Same(exception, inner.LastRaiseErrorException);
+    }
+
+    [Fact]
     public async Task TerminateSuspendResumePurge_ShouldValidateInstanceId_AndForwardToInner()
     {
         var inner = new CapturingWorkflowClient { PurgeResult = true };
@@ -434,6 +452,10 @@ public class DaprWorkflowClientTests
         public string? LastRaiseEventName { get; private set; }
         public object? LastRaiseEventPayload { get; private set; }
 
+        public string? LastRaiseErrorInstanceId { get; private set; }
+        public string? LastRaiseErrorName { get; private set; }
+        public Exception? LastRaiseErrorException { get; private set; }
+
         public string? LastTerminateInstanceId { get; private set; }
         public object? LastTerminateOutput { get; private set; }
 
@@ -526,6 +548,18 @@ public class DaprWorkflowClientTests
             LastRaiseEventInstanceId = instanceId;
             LastRaiseEventName = eventName;
             LastRaiseEventPayload = eventPayload;
+            return Task.CompletedTask;
+        }
+
+        public override Task RaiseErrorAsync(
+            string instanceId,
+            string eventName,
+            Exception exception,
+            CancellationToken cancellationToken = default)
+        {
+            LastRaiseErrorInstanceId = instanceId;
+            LastRaiseErrorName = eventName;
+            LastRaiseErrorException = exception;
             return Task.CompletedTask;
         }
 

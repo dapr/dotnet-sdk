@@ -139,6 +139,9 @@ public abstract class WorkflowContext : IWorkflowContext
     /// <exception cref="TaskCanceledException">
     /// Thrown if <paramref name="cancellationToken"/> is cancelled before the external event is received.
     /// </exception>
+    /// <exception cref="WorkflowTaskFailedException">
+    /// Thrown when the corresponding external event is raised as an error.
+    /// </exception>
     /// <exception cref="InvalidOperationException">
     /// Thrown if the calling thread is not the workflow dispatch thread.
     /// </exception>

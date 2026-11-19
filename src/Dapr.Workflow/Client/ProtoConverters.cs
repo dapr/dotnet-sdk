@@ -99,5 +99,6 @@ internal static class ProtoConverters
             : new Workflow.WorkflowTaskFailureDetails(
                 failureDetails.ErrorType,
                 failureDetails.ErrorMessage,
-                string.IsNullOrEmpty(failureDetails.StackTrace) ? null : failureDetails.StackTrace);
+                string.IsNullOrEmpty(failureDetails.StackTrace) ? null : failureDetails.StackTrace,
+                ToWorkflowTaskFailureDetails(failureDetails.InnerFailure));
 }
