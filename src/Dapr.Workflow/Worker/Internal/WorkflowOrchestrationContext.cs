@@ -1287,9 +1287,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     /// </summary>
     private static WorkflowTaskFailedException CreateTaskFailedException(TaskFailedEvent failedEvent)
     {
-        var failureDetails = new WorkflowTaskFailureDetails(failedEvent.FailureDetails?.ErrorType ?? "Exception",
-            failedEvent.FailureDetails?.ErrorMessage ?? "Unknown error",
-            failedEvent.FailureDetails?.StackTrace ?? string.Empty);
+        var failureDetails = MapFailureDetails(failedEvent.FailureDetails)
+            ?? new WorkflowTaskFailureDetails("Exception", "Unknown error");
 
         return new WorkflowTaskFailedException($"Task failed: {failureDetails.ErrorMessage}", failureDetails);
     }
