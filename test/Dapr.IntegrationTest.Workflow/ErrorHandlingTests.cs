@@ -160,10 +160,14 @@ public sealed class ErrorHandlingTests
             await Task.Delay(TimeSpan.FromMilliseconds(100), waitCts.Token);
         }
 
+        var raisedException = new InvalidOperationException(
+            "Approval was rejected",
+            new TimeoutException("Risk service unavailable"));
+
         await daprWorkflowClient.RaiseErrorAsync(
             workflowInstanceId,
             "approval",
-            new InvalidOperationException("Approval was rejected"),
+            raisedException,
             TestContext.Current.CancellationToken);
 
         var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(
@@ -172,7 +176,7 @@ public sealed class ErrorHandlingTests
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         Assert.Equal(
-            $"{typeof(InvalidOperationException).FullName}|Approval was rejected",
+            $"{typeof(InvalidOperationException).FullName}|Approval was rejected|{typeof(TimeoutException).FullName}|Risk service unavailable",
             result.ReadOutputAs<string>());
     }
 
@@ -188,7 +192,8 @@ public sealed class ErrorHandlingTests
             }
             catch (WorkflowTaskFailedException ex)
             {
-                return $"{ex.FailureDetails.ErrorType}|{ex.FailureDetails.ErrorMessage}";
+                var innerFailure = ex.FailureDetails.InnerFailure;
+                return $"{ex.FailureDetails.ErrorType}|{ex.FailureDetails.ErrorMessage}|{innerFailure?.ErrorType}|{innerFailure?.ErrorMessage}";
             }
         }
     }
