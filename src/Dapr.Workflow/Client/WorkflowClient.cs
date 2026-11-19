@@ -149,11 +149,10 @@ internal abstract class WorkflowClient : IAsyncDisposable
     /// </remarks>
     /// <param name="instanceId">The instance ID of the workflow to notify.</param>
     /// <param name="eventName">The event name identifying the wait to fail.</param>
-    /// <param name="errorMessage">A descriptive message for the failure.</param>
-    /// <param name="exception">The exception providing the failure type and stack trace.</param>
+    /// <param name="exception">The exception providing the failure type, message, stack trace, and inner cause.</param>
     /// <param name="cancellationToken">Token used to cancel enqueueing the error notification.</param>
-    public abstract Task RaiseErrorAsync(string instanceId, string eventName, string errorMessage,
-        Exception exception, CancellationToken cancellationToken = default);
+    public abstract Task RaiseErrorAsync(string instanceId, string eventName, Exception exception,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Terminates a running workflow instance and updates its runtime status to
