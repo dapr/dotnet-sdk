@@ -230,37 +230,35 @@ internal sealed class WorkflowGrpcClient(
     }
 
     /// <inheritdoc />
-    public override async Task RaiseErrorAsync(string instanceId, string eventName, string errorMessage,
-        Exception exception, CancellationToken cancellationToken = default)
+    public override async Task RaiseErrorAsync(string instanceId, string eventName, Exception exception,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(instanceId);
         ArgumentException.ThrowIfNullOrEmpty(eventName);
-        ArgumentNullException.ThrowIfNull(errorMessage);
         ArgumentNullException.ThrowIfNull(exception);
 
-        var failureDetails = CreateFailureDetails(errorMessage, exception);
         var request = new grpc.RaiseEventRequest
         {
             InstanceId = instanceId,
             Name = eventName,
-            FailureDetails = failureDetails
+            FailureDetails = CreateFailureDetails(exception)
         };
 
         var grpcCallOptions = CreateCallOptions(cancellationToken);
-        await grpcClient.RaiseErrorAsync(request, grpcCallOptions);
+        await grpcClient.RaiseEventAsync(request, grpcCallOptions);
         logger.LogRaisedError(eventName, instanceId);
     }
 
-    private static grpc.TaskFailureDetails CreateFailureDetails(string errorMessage, Exception exception)
+    private static grpc.TaskFailureDetails CreateFailureDetails(Exception exception)
     {
         return new grpc.TaskFailureDetails
         {
             ErrorType = exception.GetType().FullName ?? exception.GetType().Name,
-            ErrorMessage = errorMessage,
+            ErrorMessage = exception.Message,
             StackTrace = exception.StackTrace ?? string.Empty,
             InnerFailure = exception.InnerException is null
                 ? null
-                : CreateFailureDetails(exception.InnerException.Message, exception.InnerException)
+                : CreateFailureDetails(exception.InnerException)
         };
     }
 
