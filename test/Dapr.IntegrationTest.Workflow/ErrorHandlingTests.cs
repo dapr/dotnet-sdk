@@ -163,8 +163,7 @@ public sealed class ErrorHandlingTests
         await daprWorkflowClient.RaiseErrorAsync(
             workflowInstanceId,
             "approval",
-            string.Empty,
-            new InvalidOperationException(),
+            new InvalidOperationException("Approval was rejected"),
             TestContext.Current.CancellationToken);
 
         var result = await daprWorkflowClient.WaitForWorkflowCompletionAsync(
@@ -173,7 +172,7 @@ public sealed class ErrorHandlingTests
 
         Assert.Equal(WorkflowRuntimeStatus.Completed, result.RuntimeStatus);
         Assert.Equal(
-            $"{typeof(InvalidOperationException).FullName}|",
+            $"{typeof(InvalidOperationException).FullName}|Approval was rejected",
             result.ReadOutputAs<string>());
     }
 
