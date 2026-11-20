@@ -14,6 +14,7 @@
 using System.Collections.ObjectModel;
 using Dapr.Workflow.Client;
 using Grpc.Core;
+using Moq;
 
 namespace Dapr.Workflow.Test;
 
@@ -360,6 +361,47 @@ public class DaprWorkflowClientTests
         Assert.Equal(options, inner.LastRerunOptions);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(4096)]
+    public void ReadWorkflowOutputChunks_ForwardsWithoutEnumerating(int? chunkSize)
+    {
+        var chunks = new Mock<IAsyncEnumerable<ReadOnlyMemory<byte>>>(MockBehavior.Strict).Object;
+        var inner = new CapturingWorkflowClient { OutputChunks = chunks };
+        IDaprWorkflowClient client = new DaprWorkflowClient(inner);
+        var token = TestContext.Current.CancellationToken;
+        var result = chunkSize is { } size
+            ? client.ReadWorkflowOutputChunksAsync("instance", size, token)
+            : client.ReadWorkflowOutputChunksAsync("instance", token);
+        Assert.Same(chunks, result);
+        Assert.Equal("instance", inner.LastOutputChunksInstanceId);
+        Assert.Equal(chunkSize, inner.LastOutputChunkSize);
+        Assert.Equal(token, inner.LastOutputChunksCancellationToken);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void ReadWorkflowOutputChunks_RejectsInvalidInstance(string? instanceId)
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+        Assert.ThrowsAny<ArgumentException>(() => client.ReadWorkflowOutputChunksAsync(instanceId!, TestContext.Current.CancellationToken));
+        Assert.ThrowsAny<ArgumentException>(() => client.ReadWorkflowOutputChunksAsync(instanceId!, 4096, TestContext.Current.CancellationToken));
+        Assert.Null(inner.LastOutputChunksInstanceId);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ReadWorkflowOutputChunks_RejectsInvalidChunkSize(int chunkSize)
+    {
+        var inner = new CapturingWorkflowClient();
+        var client = new DaprWorkflowClient(inner);
+        Assert.Throws<ArgumentOutOfRangeException>(() => client.ReadWorkflowOutputChunksAsync("instance", chunkSize, TestContext.Current.CancellationToken));
+        Assert.Null(inner.LastOutputChunksInstanceId);
+    }
+
     private sealed class CapturingWorkflowClient : WorkflowClient
     {
         public string? LastScheduleName { get; private set; }
@@ -369,6 +411,10 @@ public class DaprWorkflowClientTests
         public string ScheduleNewWorkflowResult { get; set; } = "id";
 
         public string? LastGetMetadataInstanceId { get; private set; }
+        public string? LastOutputChunksInstanceId { get; private set; }
+        public int? LastOutputChunkSize { get; private set; }
+        public CancellationToken LastOutputChunksCancellationToken { get; private set; }
+        public IAsyncEnumerable<ReadOnlyMemory<byte>>? OutputChunks { get; set; }
         public bool LastGetMetadataGetInputsAndOutputs { get; private set; }
         public WorkflowMetadata? GetWorkflowMetadataResult { get; set; }
         public Exception? GetWorkflowMetadataException { get; set; }
@@ -439,6 +485,15 @@ public class DaprWorkflowClientTests
             if (GetWorkflowMetadataException is not null)
                 return Task.FromException<WorkflowMetadata?>(GetWorkflowMetadataException);
             return Task.FromResult(GetWorkflowMetadataResult);
+        }
+
+        public override IAsyncEnumerable<ReadOnlyMemory<byte>> ReadWorkflowOutputChunksAsync(
+            string instanceId, int? chunkSize, CancellationToken cancellationToken = default)
+        {
+            LastOutputChunksInstanceId = instanceId;
+            LastOutputChunkSize = chunkSize;
+            LastOutputChunksCancellationToken = cancellationToken;
+            return OutputChunks ?? throw new InvalidOperationException("No output chunks configured.");
         }
 
         public override Task<WorkflowMetadata> WaitForWorkflowStartAsync(

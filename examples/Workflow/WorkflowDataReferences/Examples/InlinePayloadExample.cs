@@ -13,24 +13,28 @@
 
 using Dapr.Workflow;
 using Microsoft.Extensions.DependencyInjection;
-using WorkflowDataReferences.Activities;
 using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Demonstrates ordinary document values without registering payload-reference support.</summary>
 internal sealed class InlinePayloadExample : PayloadExample
 {
+    /// <inheritdoc />
+    public override string Id => "inline";
+    /// <inheritdoc />
     public override string Title => "Inline payloads (no binary store)";
+    /// <inheritdoc />
+    public override string WhenToUse => "Small values should travel directly through history; ordinary typed reads are enough.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
-        services.AddDaprWorkflow(options =>
-        {
-            options.RegisterWorkflow<DocumentProcessingWorkflow>();
-            options.RegisterActivity<UppercaseDocumentActivity>();
-        });
+        // Workflow/activity discovery is source-generated. No WithBinaryStorePayloads means no offloading.
+        services.AddDaprWorkflow();
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {
@@ -43,7 +47,9 @@ internal sealed class InlinePayloadExample : PayloadExample
         Console.WriteLine($"Workflow ID: {instanceId}");
         await client.ScheduleNewWorkflowAsync(nameof(DocumentProcessingWorkflow), instanceId, document,
             startTime: null, cancellation: cancellationToken);
-        var state = await WaitForCompletionAsync(client, instanceId, cancellationToken);
+        // Request values because ReadOutputAs<DocumentPayload>() needs the serialized output.
+        // ReadWorkflowOutputChunksAsync is not an alternative for inline output.
+        var state = await WaitForCompletionAsync(client, instanceId, getInputsAndOutputs: true, cancellationToken);
         PrintDocumentResult(state, document);
         Console.WriteLine("Takeaway: the document itself travels through workflow history.");
     }

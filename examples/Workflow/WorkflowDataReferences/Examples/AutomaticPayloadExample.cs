@@ -14,30 +14,37 @@
 using Dapr.Workflow;
 using Dapr.Workflow.Payloads;
 using Microsoft.Extensions.DependencyInjection;
-using WorkflowDataReferences.Activities;
 using WorkflowDataReferences.Workflows;
 
 namespace WorkflowDataReferences.Examples;
 
+/// <summary>Demonstrates automatic offloading with unchanged, materialized document contracts.</summary>
 internal sealed class AutomaticPayloadExample : PayloadExample
 {
+    /// <inheritdoc />
+    public override string Id => "auto-values";
+    /// <inheritdoc />
     public override string Title => "Automatic offloading (same application code)";
+    /// <inheritdoc />
+    public override string WhenToUse => "Keep ordinary object contracts while moving large serialized values out of history.";
 
+    /// <inheritdoc />
     public override void ConfigureServices(IServiceCollection services)
     {
-        services.AddDaprWorkflow(options =>
-        {
-            options.RegisterWorkflow<DocumentProcessingWorkflow>();
-            options.RegisterActivity<UppercaseDocumentActivity>();
-        }).WithBinaryStorePayloads(options =>
+        services.AddDaprWorkflow().WithBinaryStorePayloads(options =>
         {
             options.StoreName = "workflow-payloads";
             options.WritePreference = PayloadWritePreference.PreferReference;
             options.KeyPrefix = "payload-example";
+            // These are independent sending boundaries. Custom status is deliberately left inline.
+            options.OffloadSites = PayloadKind.WorkflowInput | PayloadKind.ActivityInput |
+                                   PayloadKind.ActivityOutput | PayloadKind.WorkflowOutput;
+            // Smaller values stay inline; the 128 KiB document is large enough at every boundary.
             options.OffloadThreshold = 64 * 1024;
         });
     }
 
+    /// <inheritdoc />
     public override async Task RunAsync(
         IServiceProvider services, DocumentPayload document, CancellationToken cancellationToken)
     {
@@ -50,13 +57,10 @@ internal sealed class AutomaticPayloadExample : PayloadExample
         Console.WriteLine($"Workflow ID: {instanceId}");
         await client.ScheduleNewWorkflowAsync(nameof(DocumentProcessingWorkflow), instanceId, document,
             startTime: null, cancellation: cancellationToken);
-        var state = await WaitForCompletionAsync(client, instanceId, cancellationToken);
+        // Normal typed consumers get full objects even though history holds small references.
+        var state = await WaitForCompletionAsync(client, instanceId, getInputsAndOutputs: true, cancellationToken);
 
-        // The asynchronous wait resolves output for the normal typed read, while retaining its wire reference.
         PrintDocumentResult(state, document);
-        var outputReference = state.ReadOutputAs<PayloadReference<DocumentPayload>>()
-                              ?? throw new InvalidOperationException("The large output was not offloaded.");
-        Console.WriteLine($"Persisted output reference: {outputReference.ToEnvelope()}");
         Console.WriteLine("Takeaway: smaller history does not mean zero document reads; the SDK still materializes ordinary inputs.");
     }
 }

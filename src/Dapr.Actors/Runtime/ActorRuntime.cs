@@ -20,6 +20,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Dapr.Actors.Client;
+using Dapr.Common;
 using Microsoft.Extensions.Logging;
 
 namespace Dapr.Actors.Runtime;
@@ -35,13 +36,15 @@ public sealed class ActorRuntime
     private readonly ILogger logger;
     private readonly ActorActivatorFactory activatorFactory;
     private readonly IActorProxyFactory proxyFactory;
+    private readonly ActorActivationIdGate activationIdGate;
 
-    internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory, ActorActivatorFactory activatorFactory, IActorProxyFactory proxyFactory)
+    internal ActorRuntime(ActorRuntimeOptions options, ILoggerFactory loggerFactory, ActorActivatorFactory activatorFactory, IActorProxyFactory proxyFactory, ActorActivationIdGate activationIdGate = null)
     {
         this.options = options;
         this.logger = loggerFactory.CreateLogger(this.GetType());
         this.activatorFactory = activatorFactory;
         this.proxyFactory = proxyFactory;
+        this.activationIdGate = activationIdGate ?? CreateActivationIdGate(options);
 
         // Loop through actor registrations and create the actor manager for each one. 
         // We do this up front so that we can catch initialization errors early, and so
@@ -159,36 +162,51 @@ public sealed class ActorRuntime
     }
 
     // Invokes the specified method for the actor when used with Remoting from CSharp client.
-    internal Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string daprActorheader, Stream data, CancellationToken cancellationToken = default)
+    internal async Task<Tuple<string, byte[]>> DispatchWithRemotingAsync(string actorTypeName, string actorId, string actorMethodName, string daprActorheader, Stream data, string activationId = null, CancellationToken cancellationToken = default)
     {
         using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, MethodName: {Reminder}", actorTypeName, actorId, actorMethodName))
         {
-            return GetActorManager(actorTypeName).DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, cancellationToken);
+            var manager = GetActorManager(actorTypeName);
+            activationId = await this.activationIdGate.FilterAsync(activationId, cancellationToken);
+            return await manager.DispatchWithRemotingAsync(new ActorId(actorId), actorMethodName, daprActorheader, data, activationId, cancellationToken);
         }
     }
 
     // Invokes the specified method for the actor when used without remoting, this is mainly used for cross language invocation.
-    internal Task DispatchWithoutRemotingAsync(string actorTypeName, string actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, CancellationToken cancellationToken = default)
+    internal async Task DispatchWithoutRemotingAsync(string actorTypeName, string actorId, string actorMethodName, Stream requestBodyStream, Stream responseBodyStream, string activationId = null, CancellationToken cancellationToken = default)
     {
-        return GetActorManager(actorTypeName).DispatchWithoutRemotingAsync(new ActorId(actorId), actorMethodName, requestBodyStream, responseBodyStream, cancellationToken);
+        var manager = GetActorManager(actorTypeName);
+        activationId = await this.activationIdGate.FilterAsync(activationId, cancellationToken);
+        await manager.DispatchWithoutRemotingAsync(new ActorId(actorId), actorMethodName, requestBodyStream, responseBodyStream, activationId, cancellationToken);
     }
 
     // Fires a reminder for the Actor.
-    internal Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, Stream requestBodyStream, CancellationToken cancellationToken = default)
+    internal async Task FireReminderAsync(string actorTypeName, string actorId, string reminderName, Stream requestBodyStream, string activationId = null, CancellationToken cancellationToken = default)
     {
         using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, ReminderName: {Reminder}", actorTypeName, actorId, reminderName))
         {
-            return GetActorManager(actorTypeName).FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, cancellationToken);
+            var manager = GetActorManager(actorTypeName);
+            activationId = await this.activationIdGate.FilterAsync(activationId, cancellationToken);
+            await manager.FireReminderAsync(new ActorId(actorId), reminderName, requestBodyStream, activationId, cancellationToken);
         }
     }
 
     // Fires a timer for the Actor.
-    internal Task<bool> FireTimerAsync(string actorTypeName, string actorId, string timerName, Stream requestBodyStream, CancellationToken cancellationToken = default)
+    internal async Task<bool> FireTimerAsync(string actorTypeName, string actorId, string timerName, Stream requestBodyStream, string activationId = null, CancellationToken cancellationToken = default)
     {
         using(this.logger.BeginScope("ActorType: {ActorType}, ActorId: {ActorId}, TimerName: {Timer}", actorTypeName, actorId, timerName))
         {
-            return GetActorManager(actorTypeName).FireTimerAsync(new ActorId(actorId), requestBodyStream, cancellationToken);
+            var manager = GetActorManager(actorTypeName);
+            activationId = await this.activationIdGate.FilterAsync(activationId, cancellationToken);
+            return await manager.FireTimerAsync(new ActorId(actorId), requestBodyStream, activationId, cancellationToken);
         }
+    }
+
+    // Older sidecars forward caller headers, so the id is only trusted from a sidecar that overwrites it.
+    internal static ActorActivationIdGate CreateActivationIdGate(ActorRuntimeOptions options)
+    {
+        var interactor = new DaprHttpInteractor(clientHandler: null, httpEndpoint: options.HttpEndpoint, apiToken: options.DaprApiToken, requestTimeout: null);
+        return new ActorActivationIdGate(interactor.GetRuntimeVersionAsync);
     }
 
     private ActorManager GetActorManager(string actorTypeName)

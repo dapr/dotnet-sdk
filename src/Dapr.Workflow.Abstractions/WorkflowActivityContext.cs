@@ -43,4 +43,14 @@ public abstract class WorkflowActivityContext
     /// Gets the unique ID of the current workflow instance.
     /// </summary>
     public abstract string InstanceId {  get; }
+
+    /// <summary>
+    /// Gets a token canceled when the worker executing this activity shuts down.
+    /// </summary>
+    /// <remarks>
+    /// This is not a workflow-termination or activity-timeout token. Pass it to external I/O.
+    /// Payload context methods use it when no cancelable token is supplied.
+    /// Custom contexts default to a non-cancelable token.
+    /// </remarks>
+    public virtual System.Threading.CancellationToken CancellationToken => default;
 }

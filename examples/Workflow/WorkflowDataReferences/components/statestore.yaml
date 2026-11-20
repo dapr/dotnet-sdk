@@ -1,6 +1,7 @@
 apiVersion: dapr.io/v1alpha1
 kind: Component
 metadata:
+  # Workflow history/actor state is separate from the binary payload store.
   name: workflow-state
 spec:
   type: state.redis

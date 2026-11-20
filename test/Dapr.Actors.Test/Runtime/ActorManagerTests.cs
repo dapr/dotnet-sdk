@@ -67,7 +67,7 @@ public sealed class ActorManagerTests
             ActorReentrancyContextAccessor.ReentrancyContext = reentrancyHeader ? Guid.NewGuid().ToString() : null;
             using var input = new MemoryStream(JsonSerializer.SerializeToUtf8Bytes(value));
             using var output = new MemoryStream();
-            await manager.DispatchWithoutRemotingAsync(id, method, input, output, token);
+            await manager.DispatchWithoutRemotingAsync(id, method, input, output, null, token);
             return output.Length == 0 ? null : JsonSerializer.Deserialize<string>(output.ToArray());
         }
 
@@ -82,11 +82,11 @@ public sealed class ActorManagerTests
             }));
             if (timer)
             {
-                await manager.FireTimerAsync(id, body, token);
+                await manager.FireTimerAsync(id, body, cancellationToken: token);
             }
             else
             {
-                await manager.FireReminderAsync(id, "a-reminder", body, token);
+                await manager.FireReminderAsync(id, "a-reminder", body, cancellationToken: token);
             }
         }
 

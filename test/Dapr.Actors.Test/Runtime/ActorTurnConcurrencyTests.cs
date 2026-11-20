@@ -91,15 +91,7 @@ public sealed class ActorTurnConcurrencyTests
         finally
         {
             probe.Release.TrySetResult(true);
-            if (stage == "Failure")
-            {
-                await Assert.ThrowsAsync<InvalidOperationException>(() => first);
-            }
-            else
-            {
-                await first.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-            }
-
+            await Assert.ThrowsAsync<InvalidOperationException>(() => first);
             await deactivation.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         }
 
@@ -148,8 +140,8 @@ public sealed class ActorTurnConcurrencyTests
             ? "{\"callback\":\"TimerCallback\"}"
             : "{\"data\":\"\",\"dueTime\":\"0h0m0s0ms\",\"period\":\"0h0m1s0ms\"}"));
         var next = callback == "Timer"
-            ? (Task)manager.FireTimerAsync(id, body, TestContext.Current.CancellationToken)
-            : manager.FireReminderAsync(id, "test", body, TestContext.Current.CancellationToken);
+            ? (Task)manager.FireTimerAsync(id, body, cancellationToken: TestContext.Current.CancellationToken)
+            : manager.FireReminderAsync(id, "test", body, cancellationToken: TestContext.Current.CancellationToken);
         try
         {
             Assert.False(next.IsCompleted);
@@ -207,7 +199,7 @@ public sealed class ActorTurnConcurrencyTests
             using var input = new MemoryStream();
             using var output = new MemoryStream();
             await manager.DispatchWithoutRemotingAsync(id, nameof(IConcurrencyActor.Execute), input, output,
-                cancellationToken);
+                null, cancellationToken);
         }
         finally
         {
