@@ -1054,16 +1054,9 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     {
         var hasTaskExecutionId = TryGetTaskExecutionId(historyEvent, out var taskExecutionId);
 
-        if (_openTasks.TryGetValue(taskId, out var tcs))
-        {
-            if (hasTaskExecutionId)
-                _consumedActivityCompletions.Add(taskId);
-            tcs.SetResult(historyEvent);
-            _openTasks.Remove(taskId);
-            RemoveTaskExecutionMapping(taskId);
-            return;
-        }
-
+        // Checked before any matching: a TaskScheduledId names one scheduled task,
+        // so a second completion for it is a repeat even when a later attempt's
+        // local task ID happens to equal it.
         if (hasTaskExecutionId && _consumedActivityCompletions.Contains(taskId))
         {
             _logger.LogWarning(
@@ -1071,6 +1064,16 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
                 taskId,
                 InstanceId,
                 historyEvent.EventTypeCase);
+            return;
+        }
+
+        if (_openTasks.TryGetValue(taskId, out var tcs))
+        {
+            if (hasTaskExecutionId)
+                _consumedActivityCompletions.Add(taskId);
+            tcs.SetResult(historyEvent);
+            _openTasks.Remove(taskId);
+            RemoveTaskExecutionMapping(taskId);
             return;
         }
 
@@ -1255,7 +1258,12 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
 
     private void RemoveTaskExecutionMapping(int taskId)
     {
-        if (_taskIdToExecutionId.Remove(taskId, out var executionId))
+        // Completing a task resumes the workflow before this runs, and a retry can
+        // register its next attempt under the same TaskExecutionId in that window.
+        // Only drop the reverse mapping while it still points at this task.
+        if (_taskIdToExecutionId.Remove(taskId, out var executionId) &&
+            _executionIdToTaskId.TryGetValue(executionId, out var mappedTaskId) &&
+            mappedTaskId == taskId)
         {
             _executionIdToTaskId.Remove(executionId);
         }

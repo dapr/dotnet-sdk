@@ -383,6 +383,54 @@ public class TimerOriginTests
     }
 
     /// <summary>
+    /// A repeated completion is ignored even when its TaskScheduledId happens to equal
+    /// the task ID of a later attempt that is still open.
+    /// </summary>
+    [Fact]
+    public async Task ActivityRetry_RepeatedCompletionMatchingLaterAttemptTaskId_IsIgnored()
+    {
+        var context = CreateContext();
+        var task = context.CallActivityAsync<string>("act", options: RetryOptions(3));
+        var executionId = Assert.Single(context.PendingActions).ScheduleTask.TaskExecutionId;
+
+        // The first failure carries a TaskScheduledId that differs from the local task
+        // ID, so it is matched by TaskExecutionId.
+        context.ProcessEvents([Failed(2, executionId), TimerFired(1)], true);
+        Assert.Contains(context.PendingActions, a => a.Id == 2 && a.ScheduleTask is not null);
+
+        context.ProcessEvents([Failed(2, executionId)], true);
+        Assert.False(task.IsCompleted);
+        Assert.DoesNotContain(context.PendingActions, a => a.Id == 3);
+
+        context.ProcessEvents([Completed(4, executionId)], false);
+        Assert.True(task.IsCompleted);
+        Assert.Equal("ok", await task);
+    }
+
+    /// <summary>
+    /// When the retry timer has already fired, the next attempt registers while the
+    /// failed attempt is still being cleaned up. That cleanup must not drop the next
+    /// attempt's TaskExecutionId mapping.
+    /// </summary>
+    [Fact]
+    public async Task ActivityRetry_NextAttemptRegisteredDuringCleanup_KeepsTaskExecutionIdMapping()
+    {
+        var context = CreateContext();
+        context.ProcessEvents([TimerFired(1)], true);
+
+        var task = context.CallActivityAsync<string>("act", options: RetryOptions(3));
+        var executionId = Assert.Single(context.PendingActions).ScheduleTask.TaskExecutionId;
+
+        context.ProcessEvents([Failed(0, executionId)], true);
+        Assert.Contains(context.PendingActions, a => a.Id == 2 && a.ScheduleTask is not null);
+
+        // Matched by TaskExecutionId only: the TaskScheduledId is not a local task ID.
+        context.ProcessEvents([Completed(7, executionId)], false);
+        Assert.True(task.IsCompleted);
+        Assert.Equal("ok", await task);
+    }
+
+    /// <summary>
     /// Child workflow retry attempts (2nd onward) link back to the first attempt; the
     /// first attempt carries no link.
     /// </summary>
