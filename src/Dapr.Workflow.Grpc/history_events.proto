@@ -101,6 +101,13 @@ message ChildWorkflowInstanceCreatedEvent {
   // scheduled. Persisted on the event so rerun can re-issue the child with
   // the same scope after the action has been discarded.
   optional HistoryPropagationScope historyPropagationScope = 7;
+
+  // If defined, indicates that this child workflow is a retry attempt and
+  // links it back to the first attempt in the retry chain. Absent on the
+  // first attempt. Consumers correlate retry attempts by grouping on
+  // retryParentInstanceInfo.instanceID when present, otherwise on this
+  // event's own instanceId.
+  optional RetryParentInstanceInfo retryParentInstanceInfo = 8;
 }
 
 message ChildWorkflowInstanceCompletedEvent {
