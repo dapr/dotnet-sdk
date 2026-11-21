@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -71,7 +72,12 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     /// Key is taskedScheduledId/timerId/etc. as provided by the history event.
     /// </summary>
     private readonly Dictionary<int, HistoryEvent> _unmatchedCompletions = [];
-    private readonly Dictionary<string, HistoryEvent> _unmatchedCompletionsByExecutionId = new(StringComparer.Ordinal);
+    // Every attempt of an activity retry chain shares one TaskExecutionId, so
+    // several completions can be buffered under the same key.
+    private readonly Dictionary<string, List<HistoryEvent>> _unmatchedCompletionsByExecutionId = new(StringComparer.Ordinal);
+    // TaskScheduledIds of activity completions already handed to a task. A
+    // repeat must not complete a later attempt that shares the TaskExecutionId.
+    private readonly HashSet<int> _consumedActivityCompletions = [];
 
 
     // Parse execution/instance ID as GUID or derive a deterministic namespace from the ID
@@ -191,13 +197,17 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         if (options?.RetryPolicy is { } retryPolicy)
         {
             var attemptOptions = options with { RetryPolicy = null };
-            // Generate a stable taskExecutionId for the entire retry chain.
-            // This ID is generated before any sequence number changes so it remains
-            // consistent across replays.
-            var retryTaskExecutionId = CreateTaskExecutionId(_sequenceNumber, name);
+            // One TaskExecutionId identifies the whole retry chain: the first
+            // attempt's, reused by every later attempt and by the retry timers.
+            // Only the first attempt reports it; it prefers the value history
+            // recorded, so a chain started by an older SDK keeps its ID.
+            string? chainTaskExecutionId = null;
             var interceptor = new RetryInterceptor<T>(this, retryPolicy,
-                () => CallActivityInternalAsync<T>(name, input, attemptOptions),
-                delay => CreateActivityRetryTimer(delay, retryTaskExecutionId));
+                () => chainTaskExecutionId is null
+                    ? CallActivityInternalAsync<T>(name, input, attemptOptions,
+                        onTaskExecutionId: id => chainTaskExecutionId = id)
+                    : CallActivityInternalAsync<T>(name, input, attemptOptions, chainTaskExecutionId),
+                delay => CreateActivityRetryTimer(delay, chainTaskExecutionId!));
             var result = await interceptor.Invoke();
             return result!;
         }
@@ -205,11 +215,12 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         return await CallActivityInternalAsync<T>(name, input, options);
     }
 
-    private async Task<T> CallActivityInternalAsync<T>(string name, object? input, WorkflowTaskOptions? options)
+    private async Task<T> CallActivityInternalAsync<T>(string name, object? input, WorkflowTaskOptions? options,
+        string? chainTaskExecutionId = null, Action<string>? onTaskExecutionId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         var taskId = _sequenceNumber++;
-        var taskExecutionId = CreateTaskExecutionId(taskId, name);
+        var taskExecutionId = chainTaskExecutionId ?? CreateTaskExecutionId(taskId, name);
 
         // If history already scheduled this task, its persisted TaskExecutionId is
         // authoritative: an execution scheduled under a different derivation seed
@@ -220,12 +231,17 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
             taskExecutionId = persistedExecutionId;
         }
 
+        onTaskExecutionId?.Invoke(taskExecutionId);
+
         var router = CreateRouter(options?.TargetAppId);
         
         // If the completion arrived before we registered the task, consume it now
-        if (_unmatchedCompletionsByExecutionId.Remove(taskExecutionId, out var earlyCompletion) ||
+        if (TryTakeUnmatchedCompletion(taskExecutionId, taskId, out var earlyCompletion) ||
             _unmatchedCompletions.Remove(taskId, out earlyCompletion))
         {
+            _consumedActivityCompletions.Add(GetTaskScheduledId(earlyCompletion));
+            if (TryGetTaskExecutionId(earlyCompletion, out var earlyRecorded))
+                onTaskExecutionId?.Invoke(earlyRecorded);
             _logger.LogDebug("Found early completion in buffer for task {TaskId} ({ActivityName})", taskId, name);
             return await HandleHistoryMatch<T>(name, earlyCompletion, taskId);
         }
@@ -262,6 +278,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         _executionIdToTaskId[taskExecutionId] = taskId;
         
         var historyEvent = await tcs.Task;
+        if (TryGetTaskExecutionId(historyEvent, out var recorded))
+            onTaskExecutionId?.Invoke(recorded);
         return await HandleHistoryMatch<T>(name, historyEvent, taskId);
     }
 
@@ -474,7 +492,7 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
             var attemptOptions = options with { RetryPolicy = null };
             var interceptor = new RetryInterceptor<TResult>(this, retryPolicy,
                 () => CallChildWorkflowInternalAsync<TResult>(workflowName, input, attemptOptions,
-                    id => firstChildInstanceId ??= id),
+                    id => firstChildInstanceId ??= id, firstChildInstanceId),
                 delay => CreateChildWorkflowRetryTimer(delay, firstChildInstanceId!));
             var result = await interceptor.Invoke();
             return result!;
@@ -486,7 +504,8 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     private async Task<TResult> CallChildWorkflowInternalAsync<TResult>(
         string workflowName,
         object? input,
-        ChildWorkflowTaskOptions? options, Action<string>? onScheduled = null)
+        ChildWorkflowTaskOptions? options, Action<string>? onScheduled = null,
+        string? retryParentInstanceId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workflowName);
 
@@ -505,6 +524,13 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
             Input = SnapshotCallInput(input, options, taskId, PayloadKind.ChildWorkflowInput, workflowName),
             Router = router
         };
+
+        // Retry attempts (2nd onward) link back to the first attempt of the chain.
+        if (retryParentInstanceId is not null)
+        {
+            createChildWorkflowAction.RetryParentInstanceInfo =
+                new RetryParentInstanceInfo { InstanceID = retryParentInstanceId };
+        }
 
         // Propagate history to the child workflow based on the requested scope
         var propagationScope = options?.PropagationScope ?? HistoryPropagationScope.None;
@@ -1026,18 +1052,33 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
     
     private void HandleActionCompleted(HistoryEvent historyEvent, int taskId)
     {
+        var hasTaskExecutionId = TryGetTaskExecutionId(historyEvent, out var taskExecutionId);
+
         if (_openTasks.TryGetValue(taskId, out var tcs))
         {
+            if (hasTaskExecutionId)
+                _consumedActivityCompletions.Add(taskId);
             tcs.SetResult(historyEvent);
             _openTasks.Remove(taskId);
             RemoveTaskExecutionMapping(taskId);
             return;
         }
 
-        if (TryGetTaskExecutionId(historyEvent, out var taskExecutionId) &&
+        if (hasTaskExecutionId && _consumedActivityCompletions.Contains(taskId))
+        {
+            _logger.LogWarning(
+                "Ignoring repeated completion for taskId {TaskId} in instance {InstanceId}. EventType={EventType}",
+                taskId,
+                InstanceId,
+                historyEvent.EventTypeCase);
+            return;
+        }
+
+        if (hasTaskExecutionId &&
             _executionIdToTaskId.TryGetValue(taskExecutionId, out var executionTaskId) &&
             _openTasks.TryGetValue(executionTaskId, out var executionTcs))
         {
+            _consumedActivityCompletions.Add(taskId);
             executionTcs.SetResult(historyEvent);
             _openTasks.Remove(executionTaskId);
             RemoveTaskExecutionMapping(executionTaskId);
@@ -1055,9 +1096,14 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         
         // Buffer the completion so the next replay pass can consume it when the workflow schedules/await the task.
         // Ignore duplicates (first completion wins)
-        if (TryGetTaskExecutionId(historyEvent, out var unmatchedExecutionId))
+        if (hasTaskExecutionId)
         {
-            if (!_unmatchedCompletionsByExecutionId.TryAdd(unmatchedExecutionId, historyEvent))
+            if (!_unmatchedCompletionsByExecutionId.TryGetValue(taskExecutionId, out var buffered))
+            {
+                _unmatchedCompletionsByExecutionId[taskExecutionId] = buffered = [];
+            }
+
+            if (buffered.Exists(e => GetTaskScheduledId(e) == taskId))
             {
                 _logger.LogWarning(
                     "Received completion for unknown taskId {TaskId} in instance {InstanceId}. OpenTasks=[{OpenTasks}] EventType={EventType}",
@@ -1065,6 +1111,10 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
                     InstanceId,
                     string.Join(",", _openTasks.Keys),
                     historyEvent.EventTypeCase);
+            }
+            else
+            {
+                buffered.Add(historyEvent);
             }
 
             return;
@@ -1170,6 +1220,37 @@ internal sealed class WorkflowOrchestrationContext : WorkflowContext, IWorkflowF
         };
 
         return !string.IsNullOrWhiteSpace(taskExecutionId);
+    }
+
+    private static int GetTaskScheduledId(HistoryEvent historyEvent) => historyEvent switch
+    {
+        { TaskCompleted: { } completed } => completed.TaskScheduledId,
+        { TaskFailed: { } failed } => failed.TaskScheduledId,
+        _ => -1
+    };
+
+    /// <summary>
+    /// Takes a buffered completion for the given TaskExecutionId: the one recorded
+    /// for <paramref name="taskId"/> when present, otherwise the oldest.
+    /// </summary>
+    private bool TryTakeUnmatchedCompletion(string taskExecutionId, int taskId,
+        [NotNullWhen(true)] out HistoryEvent? completion)
+    {
+        completion = null;
+        if (!_unmatchedCompletionsByExecutionId.TryGetValue(taskExecutionId, out var buffered))
+        {
+            return false;
+        }
+
+        var index = Math.Max(0, buffered.FindIndex(e => GetTaskScheduledId(e) == taskId));
+        completion = buffered[index];
+        buffered.RemoveAt(index);
+        if (buffered.Count is 0)
+        {
+            _unmatchedCompletionsByExecutionId.Remove(taskExecutionId);
+        }
+
+        return true;
     }
 
     private void RemoveTaskExecutionMapping(int taskId)

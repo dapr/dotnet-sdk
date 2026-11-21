@@ -72,6 +72,24 @@ message RerunParentInstanceInfo {
   string instanceID = 1;
 }
 
+// RetryParentInstanceInfo correlates a child-workflow retry attempt with the
+// initial attempt that spawned it. When a child workflow is scheduled with a
+// retry policy, each retry executes as a separate child workflow instance with
+// its own auto-generated instance ID. This message provides an explicit,
+// first-class link back to the first attempt so consumers no longer need to
+// reconstruct the relationship from event ordering and timer origins.
+//
+// Semantics: the first attempt carries no RetryParentInstanceInfo. Retry
+// attempts (2nd onward) carry RetryParentInstanceInfo with instanceID set to
+// the first attempt's instance ID. Consumers group attempts by reading the
+// parent workflow's history; the group key is retryParentInstanceInfo.instanceID
+// when present, otherwise the event's own instanceId.
+message RetryParentInstanceInfo {
+  // instanceID is the instance ID of the first attempt in this child-workflow
+  // retry chain.
+  string instanceID = 1;
+}
+
 message TraceContext {
   string traceParent = 1;
   string spanID = 2 [deprecated=true];

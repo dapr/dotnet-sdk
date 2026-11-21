@@ -33,6 +33,14 @@ message CreateChildWorkflowAction {
 
   // History propagation scope. Absent/SCOPE_NONE = no propagation.
   optional HistoryPropagationScope historyPropagationScope = 6;
+
+  // If defined, indicates that this child workflow is a retry attempt and
+  // links it back to the first attempt in the retry chain. Absent on the
+  // first attempt. Set by the SDK on retry; the runtime persists it onto the
+  // resulting ChildWorkflowInstanceCreatedEvent. Consumers correlate retry
+  // attempts by grouping on retryParentInstanceInfo.instanceID when present,
+  // otherwise on the event's own instanceId.
+  optional RetryParentInstanceInfo retryParentInstanceInfo = 7;
 }
 
 // CreateDetachedWorkflowAction creates a new, detached workflow instance from
